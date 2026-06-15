@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /**
@@ -38,8 +39,7 @@ export async function createClient() {
  * use it sparingly (e.g. signed URL generation, admin seed actions).
  */
 export function createServiceClient() {
-  const { createClient: createSb } = require("@supabase/supabase-js");
-  return createSb(
+  return createSbClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },

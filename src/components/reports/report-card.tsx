@@ -34,15 +34,21 @@ const STATUS_BADGE: Record<Report["status"], string> = {
 export function ReportCard({
   report,
   caseRecord,
+  subjectName,
   canApprove,
 }: {
   report: Report;
   caseRecord?: Case | null;
+  subjectName?: string | null;
   canApprove: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
+
+  const exportRef = caseRecord
+    ? { case_number: caseRecord.case_number, client_name: caseRecord.client_name, case_type: caseRecord.case_type, target_name: subjectName ?? null }
+    : undefined;
 
   function approve(clientVisible: boolean) {
     start(async () => {
@@ -94,10 +100,10 @@ export function ReportCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => exportReportPdf({ report, caseRecord })}>
+              <DropdownMenuItem onClick={() => exportReportPdf({ report, caseRecord: exportRef })}>
                 Download PDF
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportReportDocx({ report, caseRecord })}>
+              <DropdownMenuItem onClick={() => exportReportDocx({ report, caseRecord: exportRef })}>
                 Download DOCX
               </DropdownMenuItem>
             </DropdownMenuContent>

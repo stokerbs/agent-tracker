@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { getCases } from "@/lib/queries";
+import { decryptField } from "@/lib/security/encryption";
 import { PageHeader } from "@/components/shared/page-header";
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog";
 import {
@@ -75,7 +76,7 @@ export default async function CasesPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {c.case_type ?? "—"}
                     </TableCell>
-                    <TableCell className="text-sm">{c.target_name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{c.target_name_enc ? decryptField(c.target_name_enc) : "—"}</TableCell>
                     <TableCell><CasePriorityBadge priority={c.priority} /></TableCell>
                     <TableCell><CaseStatusBadge status={c.status} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">

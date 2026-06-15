@@ -5,6 +5,7 @@ import {
   sanitizeTemplateData,
   validateReportOutput,
 } from "@/lib/security/prompt-injection";
+import { decryptField } from "@/lib/security/encryption";
 
 interface GenerateInput {
   caseRecord: Case;
@@ -46,7 +47,10 @@ async function generateWithAnthropic(
   entries: TimelineEntry[],
 ): Promise<AiReportSections> {
   const model = process.env.AI_REPORT_MODEL ?? "claude-sonnet-4-6";
-  const { system, user } = buildSecureReportPrompt(caseRecord, entries);
+  const targetName = caseRecord.target_name_enc
+    ? decryptField(caseRecord.target_name_enc)
+    : null;
+  const { system, user } = buildSecureReportPrompt(caseRecord, entries, targetName);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -88,8 +92,11 @@ function templateReport(
   caseRecord: Case,
   entries: TimelineEntry[],
 ): AiReportSections {
+  const targetName = caseRecord.target_name_enc
+    ? decryptField(caseRecord.target_name_enc)
+    : null;
   const subject = sanitizeTemplateData(
-    caseRecord.target_name ?? "the subject of interest",
+    targetName ?? "the subject of interest",
   );
   const clientName = caseRecord.client_name
     ? sanitizeTemplateData(caseRecord.client_name)

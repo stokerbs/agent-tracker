@@ -101,6 +101,7 @@ export function sanitizeTemplateData(value: string): string {
 export function buildSecureReportPrompt(
   caseRecord: Case,
   entries: TimelineEntry[],
+  targetName: string | null = null,
 ): { system: string; user: string } {
   const logLines = entries
     .map((e) => {
@@ -135,7 +136,7 @@ export function buildSecureReportPrompt(
     `Case number: ${sanitizePromptData(caseRecord.case_number)}`,
     `Client: ${sanitizePromptData(caseRecord.client_name ?? "N/A")}`,
     `Case type: ${sanitizePromptData(caseRecord.case_type ?? "N/A")}`,
-    `Subject of interest: ${sanitizePromptData(caseRecord.target_name ?? "Unknown")}`,
+    `Subject of interest: ${sanitizePromptData(targetName ?? "Unknown")}`,
     "</case_data>",
     "",
     "<surveillance_log>",

@@ -55,7 +55,7 @@ export async function addExpense(formData: FormData) {
     const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from(BUCKETS.receipts)
-      .upload(path, receipt, { contentType: receipt.type });
+      .upload(path, receipt, { contentType: receipt.type, upsert: false });
     if (!upErr) receiptPath = path;
   }
 

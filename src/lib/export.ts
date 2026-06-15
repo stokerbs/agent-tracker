@@ -1,8 +1,15 @@
-import type { Case, Report } from "@/lib/types";
+import type { Report } from "@/lib/types";
+
+interface ExportCaseRef {
+  case_number?: string | null;
+  client_name?: string | null;
+  target_name?: string | null;
+  case_type?: string | null;
+}
 
 interface ExportData {
   report: Report;
-  caseRecord?: Pick<Case, "case_number" | "client_name" | "target_name" | "case_type"> | null;
+  caseRecord?: ExportCaseRef | null;
 }
 
 /** Generates and downloads a professional PDF using jsPDF (client-side). */

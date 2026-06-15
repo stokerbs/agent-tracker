@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { getCurrentProfile, isStaff, requireProfile } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { BUCKETS } from "@/lib/constants";
 import {
@@ -102,7 +102,19 @@ export async function uploadEvidence(formData: FormData) {
 
 /** Returns a short-lived signed URL for previewing/downloading evidence. */
 export async function getEvidenceUrl(storagePath: string) {
+  await requireProfile();
   const supabase = await createClient();
+
+  // Verify the caller has table-level access to this specific evidence record
+  // before generating a signed URL. Evidence table RLS enforces case assignment,
+  // so this query succeeds only for rows the caller is permitted to read.
+  const { data: row } = await supabase
+    .from("evidence")
+    .select("id")
+    .eq("storage_path", storagePath)
+    .maybeSingle();
+  if (!row) return { error: "Evidence not found" };
+
   const { data, error } = await supabase.storage
     .from(BUCKETS.evidence)
     .createSignedUrl(storagePath, 60 * 10);

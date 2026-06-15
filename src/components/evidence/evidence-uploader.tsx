@@ -35,12 +35,12 @@ export function EvidenceUploader({ caseId }: { caseId: string }) {
       <input type="hidden" name="case_id" value={caseId} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="file">File (photo, video, PDF)</Label>
+          <Label htmlFor="file">File (JPEG, PNG, WebP or PDF)</Label>
           <Input
             id="file"
             name="file"
             type="file"
-            accept="image/*,video/*,application/pdf,audio/*"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
             required
           />

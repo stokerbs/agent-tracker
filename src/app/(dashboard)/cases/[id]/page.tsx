@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { decryptField } from "@/lib/security/encryption";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   CasePriorityBadge,
@@ -56,6 +57,12 @@ export default async function CaseDetailPage({
     .single();
   if (!caseRecord) notFound();
   const c = caseRecord as Case;
+
+  const targetName    = c.target_name_enc    ? decryptField(c.target_name_enc)    : null;
+  const targetPhone   = c.target_phone_enc   ? decryptField(c.target_phone_enc)   : null;
+  const targetVehicle = c.target_vehicle_enc ? decryptField(c.target_vehicle_enc) : null;
+  const licensePlate  = c.license_plate_enc  ? decryptField(c.license_plate_enc)  : null;
+  const targetAddress = c.target_address_enc ? decryptField(c.target_address_enc) : null;
 
   const [
     { data: caseAgentRows },
@@ -114,11 +121,11 @@ export default async function CaseDetailPage({
             <CardTitle>Case File</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <InfoRow icon={<User className="h-4 w-4" />} label="Target" value={c.target_name} />
-            <InfoRow icon={<Phone className="h-4 w-4" />} label="Target phone" value={c.target_phone} />
-            <InfoRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={c.target_vehicle} />
-            <InfoRow icon={<Car className="h-4 w-4" />} label="License plate" value={c.license_plate} />
-            <InfoRow icon={<MapPin className="h-4 w-4" />} label="Address" value={c.target_address} />
+            <InfoRow icon={<User className="h-4 w-4" />} label="Target" value={targetName} />
+            <InfoRow icon={<Phone className="h-4 w-4" />} label="Target phone" value={targetPhone} />
+            <InfoRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={targetVehicle} />
+            <InfoRow icon={<Car className="h-4 w-4" />} label="License plate" value={licensePlate} />
+            <InfoRow icon={<MapPin className="h-4 w-4" />} label="Address" value={targetAddress} />
             <InfoRow icon={<Clock className="h-4 w-4" />} label="Start" value={formatDate(c.start_date)} />
             <InfoRow icon={<Clock className="h-4 w-4" />} label="End" value={c.end_date ? formatDate(c.end_date) : "Ongoing"} />
             {c.description && (
@@ -242,6 +249,7 @@ export default async function CaseDetailPage({
                 key={r.id}
                 report={r}
                 caseRecord={c}
+                subjectName={targetName}
                 canApprove={staff}
               />
             ))

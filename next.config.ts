@@ -19,6 +19,18 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  webpack(config) {
+    // Suppress "Critical dependency" warning from the bundled CJS output of
+    // @supabase/supabase-js — upstream packaging artefact, no runtime impact.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      {
+        module: /node_modules\/@supabase\/supabase-js/,
+        message: /Critical dependency/,
+      },
+    ];
+    return config;
+  },
 };
 
 export default nextConfig;

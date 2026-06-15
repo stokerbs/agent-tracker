@@ -39,13 +39,6 @@ export async function createCase(formData: FormData) {
     case_number:  String(formData.get("case_number") ?? "").trim(),
     client_name:  emptyToNull(formData.get("client_name")),
     case_type:    emptyToNull(formData.get("case_type")),
-    // plaintext PII — retained during dual-write transition
-    target_name,
-    target_phone,
-    target_vehicle,
-    license_plate,
-    target_address,
-    // encrypted PII (written simultaneously with plaintext)
     target_name_enc:    enc(target_name),
     target_name_bidx:   bidx(target_name,   createNameBlindIndex),
     target_phone_enc:   enc(target_phone),

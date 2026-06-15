@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
+import { decryptField } from "@/lib/security/encryption";
 import {
   getActiveAgents,
   getActiveAlerts,
@@ -178,7 +179,7 @@ export default async function DashboardPage() {
                     {c.case_number} · {c.client_name}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {c.case_type} · Target: {c.target_name ?? "—"}
+                    {c.case_type} · Target: {c.target_name_enc ? decryptField(c.target_name_enc) : "—"}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

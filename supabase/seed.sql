@@ -22,10 +22,11 @@ insert into public.agents (id, agent_code, full_name, nickname, phone, email, po
 on conflict (id) do nothing;
 
 -- Demo cases ----------------------------------------------------------------
-insert into public.cases (id, case_number, client_id, client_name, case_type, target_name, target_phone, target_vehicle, license_plate, target_address, start_date, end_date, status, priority, description) values
-  ('c1111111-1111-1111-1111-111111111111', 'CASE-2026-0001', '11111111-1111-1111-1111-111111111111', 'Eleanor Vance', 'Infidelity',   'Daniel West',  '+1-202-555-0190', 'Black BMW 5 Series', 'NY-8841 XR', '88 Riverside Dr, New York', '2026-06-01', null,         'active',  'high',     'Surveillance of subject during weekday evenings.'),
-  ('c2222222-2222-2222-2222-222222222222', 'CASE-2026-0002', '22222222-2222-2222-2222-222222222222', 'Marcus Reid',   'Insurance',    'Karen Lowe',   '+1-202-555-0191', 'White Toyota RAV4',  'NY-2210 QP', '12 Maple Ave, Brooklyn',    '2026-05-20', null,         'assigned','critical', 'Suspected fraudulent disability claim — document physical activity.'),
-  ('c3333333-3333-3333-3333-333333333333', 'CASE-2026-0003', null,                                   'Walk-in',       'Background',   'Unknown',      null,              null,                 null,         null,                        '2026-06-10', '2026-06-12', 'closed',  'low',      'Pre-employment background verification.')
+-- PII fields are encrypted; seed data has null *_enc values (local dev only).
+insert into public.cases (id, case_number, client_id, client_name, case_type, start_date, end_date, status, priority, description) values
+  ('c1111111-1111-1111-1111-111111111111', 'CASE-2026-0001', '11111111-1111-1111-1111-111111111111', 'Eleanor Vance', 'Infidelity', '2026-06-01', null,         'active',  'high',     'Surveillance of subject during weekday evenings.'),
+  ('c2222222-2222-2222-2222-222222222222', 'CASE-2026-0002', '22222222-2222-2222-2222-222222222222', 'Marcus Reid',   'Insurance',  '2026-05-20', null,         'assigned','critical', 'Suspected fraudulent disability claim — document physical activity.'),
+  ('c3333333-3333-3333-3333-333333333333', 'CASE-2026-0003', null,                                   'Walk-in',       'Background', '2026-06-10', '2026-06-12', 'closed',  'low',      'Pre-employment background verification.')
 on conflict (id) do nothing;
 
 -- Assignments ---------------------------------------------------------------
