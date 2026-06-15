@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, requireRole } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
 
 /**
  * Triggers an SOS emergency alert for the calling agent. The DB trigger
@@ -29,7 +30,7 @@ export async function triggerSos(input: {
     notes: input.notes ?? "SOS triggered from field device",
     status: "active",
   });
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "emergency") };
 
   revalidatePath("/emergency");
   revalidatePath("/dashboard");
@@ -47,7 +48,7 @@ export async function acknowledgeAlert(alertId: string) {
       acknowledged_at: new Date().toISOString(),
     })
     .eq("id", alertId);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "emergency") };
   revalidatePath("/emergency");
   return { ok: true };
 }
@@ -59,7 +60,7 @@ export async function resolveAlert(alertId: string) {
     .from("emergency_alerts")
     .update({ status: "resolved" })
     .eq("id", alertId);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "emergency") };
   revalidatePath("/emergency");
   return { ok: true };
 }

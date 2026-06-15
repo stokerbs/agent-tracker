@@ -1,4 +1,10 @@
 import type { AiReportSections, Case, TimelineEntry } from "@/lib/types";
+import {
+  buildSecureReportPrompt,
+  PromptInjectionError,
+  sanitizeTemplateData,
+  validateReportOutput,
+} from "@/lib/security/prompt-injection";
 
 interface GenerateInput {
   caseRecord: Case;
@@ -11,6 +17,9 @@ interface GenerateInput {
  * Uses the Anthropic API when ANTHROPIC_API_KEY is set; otherwise falls back
  * to a deterministic template engine so the feature works without external
  * dependencies (and remains fully testable offline).
+ *
+ * PromptInjectionError is re-thrown without fallback — a compromised AI
+ * output should never be silently replaced by the template engine.
  */
 export async function generateReport(
   input: GenerateInput,
@@ -25,6 +34,7 @@ export async function generateReport(
     try {
       return await generateWithAnthropic(input.caseRecord, ordered);
     } catch (err) {
+      if (err instanceof PromptInjectionError) throw err;
       console.error("AI report generation failed, using fallback:", err);
     }
   }
@@ -36,20 +46,7 @@ async function generateWithAnthropic(
   entries: TimelineEntry[],
 ): Promise<AiReportSections> {
   const model = process.env.AI_REPORT_MODEL ?? "claude-sonnet-4-6";
-  const log = entries
-    .map((e) => `${e.entry_date} ${e.entry_time} — ${e.entry}${e.location ? ` (${e.location})` : ""}`)
-    .join("\n");
-
-  const prompt = `You are a professional private investigator writing a formal surveillance report.
-Case: ${caseRecord.case_number} | Client: ${caseRecord.client_name ?? "N/A"} | Type: ${caseRecord.case_type ?? "N/A"}
-Subject of interest: ${caseRecord.target_name ?? "Unknown"}
-
-Surveillance log (chronological):
-${log || "No entries recorded."}
-
-Write a professional English report. Respond ONLY with strict JSON of the shape:
-{"executive_summary": string, "chronological_report": string, "observations": string, "conclusion": string}
-Use formal, objective, court-appropriate language. Do not fabricate facts beyond the log.`;
+  const { system, user } = buildSecureReportPrompt(caseRecord, entries);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -61,7 +58,8 @@ Use formal, objective, court-appropriate language. Do not fabricate facts beyond
     body: JSON.stringify({
       model,
       max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
+      system,
+      messages: [{ role: "user", content: user }],
     }),
   });
 
@@ -71,27 +69,42 @@ Use formal, objective, court-appropriate language. Do not fabricate facts beyond
   const jsonStart = text.indexOf("{");
   const jsonEnd = text.lastIndexOf("}");
   const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-  return {
+  const sections: AiReportSections = {
     executive_summary: parsed.executive_summary ?? "",
     chronological_report: parsed.chronological_report ?? "",
     observations: parsed.observations ?? "",
     conclusion: parsed.conclusion ?? "",
   };
+
+  validateReportOutput(sections);
+  return sections;
 }
 
 // ----------------------------------------------------------------------------
 // Deterministic fallback — produces a clean, professional report offline.
+// Not subject to prompt injection since no LLM is involved.
 // ----------------------------------------------------------------------------
 function templateReport(
   caseRecord: Case,
   entries: TimelineEntry[],
 ): AiReportSections {
-  const subject = caseRecord.target_name ?? "the subject of interest";
+  const subject = sanitizeTemplateData(
+    caseRecord.target_name ?? "the subject of interest",
+  );
+  const clientName = caseRecord.client_name
+    ? sanitizeTemplateData(caseRecord.client_name)
+    : null;
+  const caseNumber = sanitizeTemplateData(caseRecord.case_number);
+
   const dates = entries.map((e) => e.entry_date);
   const firstDate = dates[0];
   const lastDate = dates[dates.length - 1];
   const locations = Array.from(
-    new Set(entries.map((e) => e.location).filter(Boolean)),
+    new Set(
+      entries
+        .map((e) => (e.location ? sanitizeTemplateData(e.location) : null))
+        .filter(Boolean),
+    ),
   ) as string[];
 
   const period =
@@ -101,8 +114,8 @@ function templateReport(
         : `between ${firstDate} and ${lastDate}`
       : "during the observation period";
 
-  const executive_summary = `This report documents surveillance conducted under case ${caseRecord.case_number}${
-    caseRecord.client_name ? ` on behalf of ${caseRecord.client_name}` : ""
+  const executive_summary = `This report documents surveillance conducted under case ${caseNumber}${
+    clientName ? ` on behalf of ${clientName}` : ""
   }. Over the course of ${entries.length} logged observation${
     entries.length === 1 ? "" : "s"
   } ${period}, investigators monitored the movements and activities of ${subject}. ${
@@ -117,8 +130,10 @@ function templateReport(
     ? entries
         .map(
           (e) =>
-            `• ${e.entry_date} at ${e.entry_time} — ${e.entry}${
-              e.location ? ` Location: ${e.location}.` : ""
+            `• ${e.entry_date} at ${e.entry_time} — ${sanitizeTemplateData(e.entry)}${
+              e.location
+                ? ` Location: ${sanitizeTemplateData(e.location)}.`
+                : ""
             }`,
         )
         .join("\n")

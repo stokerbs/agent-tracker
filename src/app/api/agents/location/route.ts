@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { handleDbError } from "@/lib/errors";
 
 const schema = z.object({
   lat: z.number().min(-90).max(90),
@@ -24,6 +26,15 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limit = checkRateLimit("gps", user.id);
+  if (!limit.allowed) {
+    const retryAfter = Math.ceil(limit.retryAfterMs / 1000);
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
   }
 
   let parsed;
@@ -60,7 +71,10 @@ export async function POST(request: NextRequest) {
     .eq("id", agent.id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: handleDbError(error, "gps:update") },
+      { status: 500 },
+    );
   }
   return NextResponse.json({ ok: true });
 }

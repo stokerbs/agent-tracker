@@ -2,16 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile, requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { generateReport } from "@/lib/ai-report";
-import type { Case, TimelineEntry } from "@/lib/types";
+import type { AiReportSections, Case, TimelineEntry } from "@/lib/types";
 
 /**
  * Generates an AI surveillance report for a case from its timeline entries
  * and persists it as a draft report.
  */
 export async function generateCaseReport(caseId: string) {
-  const profile = await requireProfile();
+  const profile = await requireRole(["admin", "supervisor", "agent"]);
+  const rl = checkRateLimit("report", profile.id);
+  if (!rl.allowed) {
+    const minutes = Math.ceil(rl.retryAfterMs / 60_000);
+    return {
+      error: `Report generation limit reached (5 per hour). Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    };
+  }
   const supabase = await createClient();
 
   const { data: caseRecord } = await supabase
@@ -28,10 +37,15 @@ export async function generateCaseReport(caseId: string) {
     .order("entry_date")
     .order("entry_time");
 
-  const sections = await generateReport({
-    caseRecord: caseRecord as Case,
-    entries: (entries as TimelineEntry[]) ?? [],
-  });
+  let sections: AiReportSections;
+  try {
+    sections = await generateReport({
+      caseRecord: caseRecord as Case,
+      entries: (entries as TimelineEntry[]) ?? [],
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Report generation failed." };
+  }
 
   const body = [
     "1. EXECUTIVE SUMMARY",
@@ -62,7 +76,7 @@ export async function generateCaseReport(caseId: string) {
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "reports") };
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/reports");
@@ -81,7 +95,7 @@ export async function approveReport(reportId: string, clientVisible: boolean) {
       is_client_visible: clientVisible,
     })
     .eq("id", reportId);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "reports") };
   revalidatePath("/reports");
   return { ok: true };
 }

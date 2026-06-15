@@ -82,11 +82,21 @@ export interface Case {
   client_id: string | null;
   client_name: string | null;
   case_type: string | null;
+  // plaintext PII — will be removed after backfill + dual-read migration
   target_name: string | null;
   target_phone: string | null;
   target_vehicle: string | null;
   license_plate: string | null;
   target_address: string | null;
+  // encrypted PII (added in migration 0007)
+  target_name_enc: string | null;
+  target_name_bidx: string | null;
+  target_phone_enc: string | null;
+  target_phone_bidx: string | null;
+  target_vehicle_enc: string | null;
+  license_plate_enc: string | null;
+  license_plate_bidx: string | null;
+  target_address_enc: string | null;
   start_date: string | null;
   end_date: string | null;
   status: CaseStatus;

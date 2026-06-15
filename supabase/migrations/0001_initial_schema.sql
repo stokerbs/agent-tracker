@@ -172,7 +172,7 @@ create table public.expenses (
   created_at    timestamptz not null default now()
 );
 create index expenses_agent_idx on public.expenses (agent_id);
-create index expenses_month_idx on public.expenses (date_trunc('month', expense_date));
+create index expenses_month_idx on public.expenses (expense_date);
 
 -- ----------------------------------------------------------------------------
 -- emergency_alerts — SOS records

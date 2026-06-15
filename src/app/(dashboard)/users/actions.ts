@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
 import type { UserRole } from "@/lib/types";
 
 export async function updateUserRole(userId: string, role: UserRole) {
@@ -12,7 +13,7 @@ export async function updateUserRole(userId: string, role: UserRole) {
     .from("profiles")
     .update({ role })
     .eq("id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "users") };
   revalidatePath("/users");
   return { ok: true };
 }
@@ -24,7 +25,7 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
     .from("profiles")
     .update({ is_active: isActive })
     .eq("id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "users") };
   revalidatePath("/users");
   return { ok: true };
 }

@@ -7,13 +7,6 @@ import { signUp, type AuthState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(
@@ -48,25 +41,6 @@ export default function RegisterPage() {
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
-          <Select name="role" defaultValue="agent">
-            <SelectTrigger id="role">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="agent">Field Agent</SelectItem>
-              <SelectItem value="supervisor">Supervisor</SelectItem>
-              <SelectItem value="admin">Administrator</SelectItem>
-              <SelectItem value="client">Client</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            In production, role assignment is admin-controlled. Open here for
-            demo onboarding.
-          </p>
-        </div>
-
         {state?.error && (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {state.error}

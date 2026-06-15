@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
 
 export async function updateProfile(formData: FormData) {
   const profile = await requireProfile();
@@ -14,7 +15,7 @@ export async function updateProfile(formData: FormData) {
       phone: String(formData.get("phone") ?? "").trim() || null,
     })
     .eq("id", profile.id);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "updateProfile") };
   revalidatePath("/settings/profile");
   return { ok: true };
 }
