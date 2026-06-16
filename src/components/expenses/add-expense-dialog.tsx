@@ -28,7 +28,7 @@ import type { ExpenseCategory } from "@/lib/types";
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ["fuel", "toll", "parking", "food", "hotel", "misc"];
 
-export function AddExpenseDialog() {
+export function AddExpenseDialog({ caseId }: { caseId?: string } = {}) {
   const t = useTranslations("expenses.dialog");
   const tCategories = useTranslations("expenses.categories");
   const [open, setOpen] = useState(false);
@@ -58,6 +58,7 @@ export function AddExpenseDialog() {
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         <form action={onSubmit} className="grid gap-4 sm:grid-cols-2">
+          {caseId && <input type="hidden" name="case_id" value={caseId} />}
           <div className="space-y-2">
             <Label htmlFor="category">{t("categoryLabel")}</Label>
             <Select name="category" defaultValue="fuel">

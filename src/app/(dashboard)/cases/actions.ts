@@ -128,6 +128,27 @@ export async function assignAgent(caseId: string, agentId: string) {
   return { ok: true };
 }
 
+export async function updateCase(caseId: string, formData: FormData) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const payload = {
+    client_name: emptyToNull(formData.get("client_name")),
+    case_type:   emptyToNull(formData.get("case_type")),
+    status:      String(formData.get("status") ?? "new") as CaseStatus,
+    priority:    String(formData.get("priority") ?? "medium") as CasePriority,
+    start_date:  emptyToNull(formData.get("start_date")),
+    end_date:    emptyToNull(formData.get("end_date")),
+    description: emptyToNull(formData.get("description")),
+  };
+
+  const { error } = await supabase.from("cases").update(payload).eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/cases");
+  return { ok: true };
+}
+
 export async function unassignAgent(caseId: string, agentId: string) {
   await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();

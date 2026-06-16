@@ -211,6 +211,12 @@
       "reporting": "Reporting",
       "reportingHint": "Generate a professional AI surveillance report from the {count} logged timeline entry.",
       "reportingHintPlural": "Generate a professional AI surveillance report from the {count} logged timeline entries.",
+      "stats": {
+        "timeline": "Timeline Entries",
+        "evidence": "Evidence Files",
+        "reports": "Reports",
+        "expenses": "Case Expenses"
+      },
       "infoLabels": {
         "target": "Target",
         "phone": "Target phone",
@@ -219,12 +225,14 @@
         "address": "Address",
         "start": "Start",
         "end": "End",
-        "ongoing": "Ongoing"
+        "ongoing": "Ongoing",
+        "client": "Client"
       },
       "tabs": {
         "timeline": "Timeline",
         "evidence": "Evidence",
-        "reports": "Reports"
+        "reports": "Reports",
+        "expenses": "Expenses"
       },
       "noTimeline": "No timeline entries",
       "noTimelineDescription": "Add the first surveillance observation above.",
@@ -232,6 +240,16 @@
       "noEvidenceDescription": "Upload photos, videos or PDF files for this case.",
       "noReports": "No reports yet",
       "noReportsDescription": "Use \"Generate AI Report\" to create one from the timeline.",
+      "noExpenses": "No expenses logged",
+      "noExpensesDescription": "Log field expenses against this case using the button above.",
+      "expenseTable": {
+        "date": "Date",
+        "agent": "Agent",
+        "category": "Category",
+        "notes": "Notes",
+        "amount": "Amount",
+        "total": "Total"
+      },
       "closeCase": {
         "button": "Close Case",
         "title": "Close this case",
@@ -275,6 +293,26 @@
       "createButton": "Create case",
       "toast": {
         "success": "Case created"
+      }
+    },
+    "editDialog": {
+      "button": "Edit case",
+      "title": "Edit case",
+      "description": "Update case details. Case number:",
+      "piiNote": "Target identity fields (name, phone, vehicle, address) are encrypted and must be updated via a separate secure process.",
+      "fields": {
+        "clientName": "Client Name",
+        "caseType": "Case Type",
+        "caseTypePlaceholder": "Infidelity / Insurance / Background",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "status": "Status",
+        "priority": "Priority",
+        "description": "Description",
+        "descriptionPlaceholder": "Surveillance objectives, schedule, special notes…"
+      },
+      "toast": {
+        "success": "Case updated"
       }
     }
   },
