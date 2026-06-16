@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { MapPin, Siren } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { requireProfile, isStaff } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { SosButton } from "@/components/emergency/sos-button";
@@ -21,10 +21,10 @@ const STATUS_BADGE = {
 } as const;
 
 export default async function EmergencyPage() {
-  const profile = await requireProfile();
+  await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("emergency");
   const supabase = await createClient();
-  const staff = isStaff(profile.role);
+  const staff = true;
 
   const { data } = await supabase
     .from("emergency_alerts")

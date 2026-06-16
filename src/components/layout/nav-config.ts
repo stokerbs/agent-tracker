@@ -20,7 +20,7 @@ export const NAV_SECTIONS: NavSection[] = [
     sectionKey: "operations",
     items: [
       { labelKey: "dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ALL },
-      { labelKey: "map", href: "/map", icon: "MapPin", roles: ALL },
+      { labelKey: "map", href: "/map", icon: "MapPin", roles: STAFF },
       { labelKey: "cases", href: "/cases", icon: "Briefcase", roles: ALL },
       { labelKey: "timeline", href: "/timeline", icon: "Clock", roles: ALL },
     ],
@@ -28,11 +28,11 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     sectionKey: "field",
     items: [
-      { labelKey: "agents", href: "/agents", icon: "Users", roles: ALL },
+      { labelKey: "agents", href: "/agents", icon: "Users", roles: STAFF },
       { labelKey: "evidence", href: "/evidence", icon: "FolderLock", roles: ALL },
       { labelKey: "reports", href: "/reports", icon: "FileText", roles: ALL },
       { labelKey: "expenses", href: "/expenses", icon: "Receipt", roles: ALL },
-      { labelKey: "emergency", href: "/emergency", icon: "Siren", roles: ALL },
+      { labelKey: "emergency", href: "/emergency", icon: "Siren", roles: STAFF },
     ],
   },
   {

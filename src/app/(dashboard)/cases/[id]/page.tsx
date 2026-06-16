@@ -72,13 +72,11 @@ export default async function CaseDetailPage({
 
   const [
     { data: caseAgentRows },
-    { data: allAgents },
     { data: timeline },
     { data: evidence },
     { data: reports },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
-    supabase.from("agents").select("*").order("full_name"),
     supabase
       .from("timeline_entries")
       .select("*, agents(full_name, nickname)")
@@ -96,6 +94,12 @@ export default async function CaseDetailPage({
       .eq("case_id", id)
       .order("created_at", { ascending: false }),
   ]);
+
+  // Agent roster is only needed by staff for the assign-agent dropdown.
+  // Agents cannot manage assignments and must not receive other agents' GPS data.
+  const allAgents: Agent[] = staff
+    ? ((await supabase.from("agents").select("*").order("full_name")).data as Agent[] ?? [])
+    : [];
 
   const assignedAgents = ((caseAgentRows ?? []) as unknown as { agents: Agent }[])
     .map((r) => r.agents)

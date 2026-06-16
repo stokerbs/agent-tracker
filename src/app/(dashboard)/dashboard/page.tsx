@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Users,
   UserCheck,
   Radio,
-  PowerOff,
   Briefcase,
   CheckCircle2,
   Siren,
@@ -12,7 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { requireProfile } from "@/lib/auth";
+import { requireProfile, isStaff } from "@/lib/auth";
 import { decryptField } from "@/lib/security/encryption";
 import {
   getActiveAgents,
@@ -44,15 +42,19 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
+  const staff = isStaff(profile.role);
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
+
+  // Location-sensitive queries run only for staff
   const [stats, activeAgents, alerts, timeline, activeMissions] = await Promise.all([
     getDashboardStats(),
-    getActiveAgents(),
-    getActiveAlerts(),
+    staff ? getActiveAgents() : Promise.resolve([]),
+    staff ? getActiveAlerts() : Promise.resolve([]),
     getRecentTimeline(7),
     getActiveCases(5),
   ]);
+
   const firstName = profile.full_name?.split(" ")[0] ?? t("operative");
 
   return (
@@ -62,16 +64,20 @@ export default async function DashboardPage() {
         description={t("description")}
       />
 
-      {/* Stat row */}
+      {/* Stat row — agent counts visible to staff only */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label={t("stats.openCases")} value={stats.openCases} icon={<Briefcase className="h-5 w-5" />} accent="text-blue-500" />
         <StatCard label={t("stats.closedCases")} value={stats.closedCases} icon={<CheckCircle2 className="h-5 w-5" />} accent="text-emerald-500" />
-        <StatCard label={t("stats.activeAgents")} value={stats.activeAgents} icon={<Radio className="h-5 w-5" />} accent="text-violet-500" />
-        <StatCard label={t("stats.availableAgents")} value={stats.availableAgents} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
+        {staff && (
+          <>
+            <StatCard label={t("stats.activeAgents")} value={stats.activeAgents} icon={<Radio className="h-5 w-5" />} accent="text-violet-500" />
+            <StatCard label={t("stats.availableAgents")} value={stats.availableAgents} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
+          </>
+        )}
       </div>
 
-      {/* Emergency banner */}
-      {stats.emergencyAlerts > 0 && (
+      {/* Emergency banner — staff only */}
+      {staff && stats.emergencyAlerts > 0 && (
         <Link href="/emergency">
           <Card className="border-destructive/40 bg-destructive/5 transition-colors hover:bg-destructive/10">
             <CardContent className="flex items-center gap-3 p-4">
@@ -94,32 +100,33 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Live map */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>{t("liveMap")}</CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/map">
-                {tCommon("fullMap")} <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <LiveMap initialAgents={activeAgents} />
-          </CardContent>
-        </Card>
+      {/* Live map + availability board — staff only */}
+      {staff && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle>{t("liveMap")}</CardTitle>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/map">
+                  {tCommon("fullMap")} <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <LiveMap initialAgents={activeAgents} />
+            </CardContent>
+          </Card>
 
-        {/* Availability board */}
-        <AgentAvailabilityBoard
-          stats={{
-            total: stats.totalAgents,
-            available: stats.availableAgents,
-            active: stats.activeAgents,
-            offline: stats.offlineAgents,
-          }}
-        />
-      </div>
+          <AgentAvailabilityBoard
+            stats={{
+              total: stats.totalAgents,
+              available: stats.availableAgents,
+              active: stats.activeAgents,
+              offline: stats.offlineAgents,
+            }}
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent timeline */}
@@ -195,8 +202,8 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Active alerts list */}
-      {alerts.length > 0 && (
+      {/* Active alerts list — staff only */}
+      {staff && (alerts as any[]).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Users, UserCheck, Radio, PowerOff, BatteryMedium, BatteryCharging } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { requireProfile } from "@/lib/auth";
-import { isStaff } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { getAgents } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -25,7 +24,7 @@ export const metadata: Metadata = { title: "Agents" };
 export const dynamic = "force-dynamic";
 
 export default async function AgentsPage() {
-  const profile = await requireProfile();
+  await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("agents");
   const agents = await getAgents();
 
@@ -37,7 +36,7 @@ export default async function AgentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")}>
-        {isStaff(profile.role) && <CreateAgentDialog />}
+        <CreateAgentDialog />
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
