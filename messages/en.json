@@ -398,6 +398,8 @@
         "success": "Expense submitted"
       }
     },
+    "exportPdf": "Export PDF",
+    "exportTitle": "Expense Report",
     "categories": {
       "fuel": "Fuel",
       "toll": "Toll",
@@ -552,6 +554,11 @@
       "supervisor": "Supervisor",
       "agent": "Field Agent",
       "client": "Client"
+    },
+    "filter": {
+      "all": "All",
+      "count": "{count} users",
+      "empty": "No users match this filter."
     }
   },
   "audit": {

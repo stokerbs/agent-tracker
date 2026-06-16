@@ -6,6 +6,7 @@ import { getExpenses } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
+import { ExportExpensesButton } from "@/components/expenses/export-expenses-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ export default async function ExpensesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")}>
+        <ExportExpensesButton expenses={expenses} />
         <AddExpenseDialog />
       </PageHeader>
 

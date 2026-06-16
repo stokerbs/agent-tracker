@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { RoleSelect } from "@/components/users/role-select";
+import { UserRoleFilter } from "@/components/users/user-role-filter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,24 +19,47 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { initials, formatDate } from "@/lib/utils";
-import type { Profile } from "@/lib/types";
+import type { Profile, UserRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Users" };
 export const dynamic = "force-dynamic";
 
-export default async function UsersPage() {
+const VALID_ROLES: UserRole[] = ["admin", "supervisor", "agent", "client"];
+
+interface Props {
+  searchParams: Promise<{ role?: string }>;
+}
+
+export default async function UsersPage({ searchParams }: Props) {
   await requireRole(["admin"]);
+  const sp = await searchParams;
   const t = await getTranslations("users");
   const supabase = await createClient();
-  const { data } = await supabase
+
+  const roleFilter = sp.role && VALID_ROLES.includes(sp.role as UserRole)
+    ? (sp.role as UserRole)
+    : null;
+
+  let query = supabase
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (roleFilter) {
+    query = query.eq("role", roleFilter);
+  }
+
+  const { data } = await query;
   const users = (data as Profile[]) ?? [];
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} />
+
+      <Suspense>
+        <UserRoleFilter count={users.length} />
+      </Suspense>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -74,10 +99,18 @@ export default async function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                    {t("filter.empty")}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-3 w-3" />
         {t("roleNote")}

@@ -36,3 +36,12 @@ export async function requireRole(allowed: UserRole[]): Promise<Profile> {
 export function isStaff(role: UserRole): boolean {
   return role === "admin" || role === "supervisor";
 }
+
+export function isClient(role: UserRole): boolean {
+  return role === "client";
+}
+
+/** Pure predicate used by requireRole — testable without Next.js runtime. */
+export function hasRequiredRole(role: UserRole, allowed: UserRole[]): boolean {
+  return allowed.includes(role);
+}
