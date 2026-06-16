@@ -188,6 +188,13 @@
     "newCase": "New Case",
     "noTitle": "No cases yet",
     "noDescription": "Open your first case to begin tracking a surveillance operation.",
+    "filters": {
+      "searchPlaceholder": "Search case # or client…",
+      "allStatuses": "All statuses",
+      "allPriorities": "All priorities",
+      "clearFilters": "Clear",
+      "results": "{count, plural, one {# case} other {# cases}}"
+    },
     "table": {
       "case": "Case",
       "client": "Client",

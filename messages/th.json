@@ -188,6 +188,13 @@
     "newCase": "คดีใหม่",
     "noTitle": "ยังไม่มีคดี",
     "noDescription": "เปิดคดีแรกของคุณเพื่อเริ่มติดตามปฏิบัติการสอดแนม",
+    "filters": {
+      "searchPlaceholder": "ค้นหาหมายเลขคดีหรือลูกค้า…",
+      "allStatuses": "ทุกสถานะ",
+      "allPriorities": "ทุกความสำคัญ",
+      "clearFilters": "ล้าง",
+      "results": "{count} คดี"
+    },
     "table": {
       "case": "คดี",
       "client": "ลูกค้า",
