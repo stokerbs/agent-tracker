@@ -27,6 +27,7 @@
     "@vis.gl/react-google-maps": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "docx": "^9.0.3",
     "framer-motion": "^12.40.0",
     "jspdf": "^2.5.2",

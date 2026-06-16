@@ -7,6 +7,7 @@ import { LogOut, Menu, Settings, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { signOut } from "@/app/(auth)/actions";
 import { SidebarNav } from "./sidebar";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -119,6 +120,8 @@ export function Header({ profile }: { profile: Profile }) {
       <Breadcrumb />
 
       <div className="flex-1" />
+
+      <GlobalSearch role={profile.role} />
 
       {/* Right controls */}
       <div className="flex items-center gap-1">

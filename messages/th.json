@@ -130,7 +130,24 @@
     "navigation": "การนำทาง",
     "notifications": "การแจ้งเตือน",
     "profile": "โปรไฟล์",
-    "allCaughtUp": "คุณทันทุกการแจ้งเตือนแล้ว"
+    "allCaughtUp": "คุณทันทุกการแจ้งเตือนแล้ว",
+    "search": "ค้นหา…",
+    "searchShortcut": "⌘K"
+  },
+  "search": {
+    "title": "ค้นหาทั่วไป",
+    "placeholder": "ค้นหาคดี, ลูกค้า, เจ้าหน้าที่, รายงาน…",
+    "noResults": "ไม่พบผลลัพธ์",
+    "groups": {
+      "cases": "คดี",
+      "clients": "ลูกค้า",
+      "agents": "เจ้าหน้าที่",
+      "reports": "รายงาน"
+    },
+    "hints": {
+      "navigate": "เพื่อเลือก",
+      "close": "เพื่อปิด"
+    }
   },
   "dashboard": {
     "title": "ยินดีต้อนรับกลับ, {name}",

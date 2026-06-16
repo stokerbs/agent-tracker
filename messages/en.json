@@ -130,7 +130,24 @@
     "navigation": "Navigation",
     "notifications": "Notifications",
     "profile": "Profile",
-    "allCaughtUp": "You're all caught up."
+    "allCaughtUp": "You're all caught up.",
+    "search": "Search…",
+    "searchShortcut": "⌘K"
+  },
+  "search": {
+    "title": "Global Search",
+    "placeholder": "Search cases, clients, agents, reports…",
+    "noResults": "No results found.",
+    "groups": {
+      "cases": "Cases",
+      "clients": "Clients",
+      "agents": "Agents",
+      "reports": "Reports"
+    },
+    "hints": {
+      "navigate": "to select",
+      "close": "to close"
+    }
   },
   "dashboard": {
     "title": "Welcome back, {name}",
