@@ -169,7 +169,18 @@
     "noTimeline": "ยังไม่มีกิจกรรมในไทม์ไลน์",
     "activeMissions": "ภารกิจที่ดำเนินอยู่",
     "noActiveMissions": "ไม่มีภารกิจที่ดำเนินอยู่",
-    "emergencyAlerts": "การแจ้งเหตุฉุกเฉิน"
+    "emergencyAlerts": "การแจ้งเหตุฉุกเฉิน",
+    "charts": {
+      "casesTrend": "คดีที่เปิด — 6 เดือนล่าสุด",
+      "caseStatus": "สถานะคดี",
+      "agentWorkload": "ภาระงานเจ้าหน้าที่",
+      "revenueTrend": "แนวโน้มรายได้",
+      "newCases": "คดีใหม่",
+      "activeCases": "คดีที่ดำเนินอยู่",
+      "invoiced": "ออกใบแจ้งหนี้",
+      "paid": "ชำระแล้ว",
+      "noData": "ยังไม่มีข้อมูล"
+    }
   },
   "cases": {
     "title": "การจัดการคดี",

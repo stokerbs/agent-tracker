@@ -16,6 +16,7 @@ import {
   getActiveAgents,
   getActiveAlerts,
   getActiveCases,
+  getChartData,
   getDashboardStats,
   getRecentTimeline,
 } from "@/lib/queries";
@@ -23,6 +24,12 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { LiveMap } from "@/components/map/live-map";
 import { AgentAvailabilityBoard } from "@/components/dashboard/availability-board";
+import {
+  CasesTrendChart,
+  CaseStatusChart,
+  AgentWorkloadChart,
+  RevenueTrendChart,
+} from "@/components/dashboard/charts";
 import { FadeUp } from "@/components/shared/motion";
 import {
   Card,
@@ -47,13 +54,13 @@ export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
 
-  // Location-sensitive queries run only for staff
-  const [stats, activeAgents, alerts, timeline, activeMissions] = await Promise.all([
+  const [stats, activeAgents, alerts, timeline, activeMissions, charts] = await Promise.all([
     getDashboardStats(),
     staff ? getActiveAgents() : Promise.resolve([]),
     staff ? getActiveAlerts() : Promise.resolve([]),
     getRecentTimeline(7),
     getActiveCases(5),
+    staff ? getChartData() : Promise.resolve(null),
   ]);
 
   const firstName = profile.full_name?.split(" ")[0] ?? t("operative");
@@ -103,6 +110,85 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
+      )}
+
+      {/* Analytics charts — staff only */}
+      {staff && charts && (
+        <FadeUp delay={0.1}>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Cases trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  {t("charts.casesTrend")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {charts.casesTrend.every((p) => p.cases === 0) ? (
+                  <p className="py-12 text-center text-xs text-muted-foreground">
+                    {t("charts.noData")}
+                  </p>
+                ) : (
+                  <CasesTrendChart data={charts.casesTrend} />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Case status breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  {t("charts.caseStatus")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {charts.caseStatus.length === 0 ? (
+                  <p className="py-12 text-center text-xs text-muted-foreground">
+                    {t("charts.noData")}
+                  </p>
+                ) : (
+                  <CaseStatusChart data={charts.caseStatus} />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Agent workload */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  {t("charts.agentWorkload")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {charts.agentWorkload.length === 0 ? (
+                  <p className="py-12 text-center text-xs text-muted-foreground">
+                    {t("charts.noData")}
+                  </p>
+                ) : (
+                  <AgentWorkloadChart data={charts.agentWorkload} />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Revenue trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  {t("charts.revenueTrend")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {charts.revenueTrend.every((p) => p.invoiced === 0) ? (
+                  <p className="py-12 text-center text-xs text-muted-foreground">
+                    {t("charts.noData")}
+                  </p>
+                ) : (
+                  <RevenueTrendChart data={charts.revenueTrend} />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </FadeUp>
       )}
 
       {/* Live map + availability board — staff only */}

@@ -6,6 +6,12 @@ import type {
   Expense,
   TimelineEntry,
 } from "@/lib/types";
+import type {
+  AgentLoad,
+  CasesTrendPoint,
+  RevenueTrendPoint,
+  StatusSlice,
+} from "@/components/dashboard/charts";
 
 // ----------------------------------------------------------------------------
 // Server-side data access helpers. All run under the caller's RLS context.
@@ -98,6 +104,81 @@ export async function getActiveAlerts(): Promise<EmergencyAlert[]> {
     .neq("status", "resolved")
     .order("created_at", { ascending: false });
   return (data as never) ?? [];
+}
+
+export async function getChartData(): Promise<{
+  casesTrend: CasesTrendPoint[];
+  caseStatus: StatusSlice[];
+  agentWorkload: AgentLoad[];
+  revenueTrend: RevenueTrendPoint[];
+}> {
+  const supabase = await createClient();
+
+  const [casesRes, caseAgentsRes, invoicesRes] = await Promise.all([
+    supabase.from("cases").select("created_at, status"),
+    supabase.from("case_agents").select("agent_id, agents(full_name, nickname), cases(status)"),
+    supabase.from("invoices").select("issued_date, amount, status"),
+  ]);
+
+  const cases = (casesRes.data ?? []) as { created_at: string; status: string }[];
+  const invoices = (invoicesRes.data ?? []) as { issued_date: string; amount: number; status: string }[];
+
+  // ── Last 6 calendar months ─────────────────────────────────────────────
+  const months: { key: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleString("en", { month: "short" }),
+    });
+  }
+
+  const casesTrend: CasesTrendPoint[] = months.map(({ key, label }) => ({
+    month: label,
+    cases: cases.filter((c) => c.created_at.startsWith(key)).length,
+  }));
+
+  // ── Case status breakdown ──────────────────────────────────────────────
+  const statusCount: Record<string, number> = {};
+  for (const c of cases) {
+    statusCount[c.status] = (statusCount[c.status] ?? 0) + 1;
+  }
+  const caseStatus: StatusSlice[] = Object.entries(statusCount).map(([name, value]) => ({
+    name,
+    value,
+    color: "",
+  }));
+
+  // ── Agent workload ─────────────────────────────────────────────────────
+  const agentMap = new Map<string, { name: string; cases: number }>();
+  for (const row of caseAgentsRes.data ?? []) {
+    const r = row as any;
+    const agentId: string = r.agent_id;
+    const agentName: string = r.agents?.nickname ?? r.agents?.full_name ?? "Unknown";
+    const caseStatus: string = r.cases?.status ?? "";
+    if (!agentMap.has(agentId)) agentMap.set(agentId, { name: agentName, cases: 0 });
+    if (caseStatus === "active") agentMap.get(agentId)!.cases++;
+  }
+  const agentWorkload: AgentLoad[] = Array.from(agentMap.values())
+    .sort((a, b) => b.cases - a.cases)
+    .slice(0, 8);
+
+  // ── Revenue trend ──────────────────────────────────────────────────────
+  const revenueTrend: RevenueTrendPoint[] = months.map(({ key, label }) => {
+    const monthInvoices = invoices.filter((inv) =>
+      (inv.issued_date ?? "").startsWith(key),
+    );
+    return {
+      month: label,
+      invoiced: monthInvoices.reduce((s, inv) => s + (inv.amount ?? 0), 0),
+      paid: monthInvoices
+        .filter((inv) => inv.status === "paid")
+        .reduce((s, inv) => s + (inv.amount ?? 0), 0),
+    };
+  });
+
+  return { casesTrend, caseStatus, agentWorkload, revenueTrend };
 }
 
 export async function getExpenses(): Promise<Expense[]> {

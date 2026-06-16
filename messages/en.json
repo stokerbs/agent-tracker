@@ -169,7 +169,18 @@
     "noTimeline": "No timeline activity yet.",
     "activeMissions": "Active Missions",
     "noActiveMissions": "No active missions.",
-    "emergencyAlerts": "Emergency Alerts"
+    "emergencyAlerts": "Emergency Alerts",
+    "charts": {
+      "casesTrend": "Cases Opened — Last 6 Months",
+      "caseStatus": "Case Status Breakdown",
+      "agentWorkload": "Agent Workload",
+      "revenueTrend": "Revenue Trend",
+      "newCases": "New Cases",
+      "activeCases": "Active Cases",
+      "invoiced": "Invoiced",
+      "paid": "Paid",
+      "noData": "No data yet"
+    }
   },
   "cases": {
     "title": "Case Management",
