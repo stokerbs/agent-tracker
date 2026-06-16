@@ -487,6 +487,26 @@
       "company": "Company",
       "email": "Email",
       "phone": "Phone"
+    },
+    "detail": {
+      "back": "All clients",
+      "contactInfo": "Contact",
+      "notes": "Notes",
+      "portalAccess": "Portal Access",
+      "portalActive": "Active — client can log in to the portal",
+      "portalNone": "No portal account linked",
+      "stats": {
+        "totalCases": "Total Cases",
+        "openCases": "Open Cases",
+        "totalInvoiced": "Total Invoiced",
+        "outstanding": "Outstanding"
+      },
+      "tabs": {
+        "cases": "Cases",
+        "invoices": "Invoices"
+      },
+      "noCases": "No cases for this client",
+      "noInvoices": "No invoices for this client"
     }
   },
   "users": {

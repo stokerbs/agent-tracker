@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
@@ -51,8 +52,15 @@ export default async function ClientsPage() {
               </TableHeader>
               <TableBody>
                 {clients.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableRow key={c.id} className="relative cursor-pointer">
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/clients/${c.id}`}
+                        className="absolute inset-0"
+                        aria-label={c.name}
+                      />
+                      {c.name}
+                    </TableCell>
                     <TableCell className="text-sm">{c.company ?? "—"}</TableCell>
                     <TableCell className="text-sm">{c.email ?? "—"}</TableCell>
                     <TableCell className="text-sm">{c.phone ?? "—"}</TableCell>
