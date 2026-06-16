@@ -389,6 +389,13 @@
       "pdf": "PDF",
       "audio": "AUD",
       "document": "DOC"
+    },
+    "lightbox": {
+      "download": "Download",
+      "downloadError": "Download failed",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "close": "Close"
     }
   },
   "expenses": {

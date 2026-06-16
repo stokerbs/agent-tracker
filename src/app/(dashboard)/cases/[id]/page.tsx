@@ -29,7 +29,7 @@ import { AddTimelineEntry } from "@/components/cases/add-timeline-entry";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { GenerateReportButton } from "@/components/cases/generate-report-button";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
-import { EvidencePreview } from "@/components/evidence/evidence-preview";
+import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
 import { ReportCard } from "@/components/reports/report-card";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
@@ -284,11 +284,10 @@ export default async function CaseDetailPage({
               description={t("noEvidenceDescription")}
             />
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(evidence as Evidence[]).map((e) => (
-                <EvidencePreview key={e.id} item={e} />
-              ))}
-            </div>
+            <EvidenceGallery
+              items={evidence as Evidence[]}
+              columns="grid-cols-2 sm:grid-cols-3"
+            />
           )}
         </TabsContent>
 

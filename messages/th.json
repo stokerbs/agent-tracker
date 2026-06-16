@@ -389,6 +389,13 @@
       "pdf": "PDF",
       "audio": "AUD",
       "document": "DOC"
+    },
+    "lightbox": {
+      "download": "ดาวน์โหลด",
+      "downloadError": "ดาวน์โหลดล้มเหลว",
+      "zoomIn": "ขยาย",
+      "zoomOut": "ย่อ",
+      "close": "ปิด"
     }
   },
   "expenses": {

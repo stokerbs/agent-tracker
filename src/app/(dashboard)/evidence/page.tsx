@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
-import { EvidencePreview } from "@/components/evidence/evidence-preview";
+import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { Evidence } from "@/lib/types";
 
@@ -61,11 +61,7 @@ export default async function EvidencePage() {
               </div>
 
               {/* Gallery grid */}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {list.map((e) => (
-                  <EvidencePreview key={e.id} item={e} />
-                ))}
-              </div>
+              <EvidenceGallery items={list} columns="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" />
             </section>
           ))}
         </div>
