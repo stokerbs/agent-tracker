@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FileText, Receipt } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ReportCard } from "@/components/reports/report-card";
@@ -17,34 +18,33 @@ export const dynamic = "force-dynamic";
 
 export default async function PortalPage() {
   const profile = await requireProfile();
+  const t = await getTranslations("portal");
   const supabase = await createClient();
 
-  // RLS ensures clients only see approved + client-visible reports for their cases.
   const { data } = await supabase
     .from("reports")
     .select("*, cases(*)")
     .order("created_at", { ascending: false });
 
   const reports = (data ?? []) as (Report & { cases: Case | null })[];
+  const firstName = profile.full_name?.split(" ")[0] ?? "Client";
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome, {profile.full_name?.split(" ")[0] ?? "Client"}
+          {t("welcome", { name: firstName })}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your approved surveillance reports and invoices.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <Tabs defaultValue="reports">
         <TabsList>
           <TabsTrigger value="reports">
-            <FileText className="mr-1 h-4 w-4" /> Reports
+            <FileText className="mr-1 h-4 w-4" /> {t("tabs.reports")}
           </TabsTrigger>
           <TabsTrigger value="invoices">
-            <Receipt className="mr-1 h-4 w-4" /> Invoices
+            <Receipt className="mr-1 h-4 w-4" /> {t("tabs.invoices")}
           </TabsTrigger>
         </TabsList>
 
@@ -52,8 +52,8 @@ export default async function PortalPage() {
           {reports.length === 0 ? (
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
-              title="No reports available yet"
-              description="Approved reports for your cases will appear here. You can read and download each as a PDF."
+              title={t("noReports")}
+              description={t("noReportsDescription")}
             />
           ) : (
             reports.map((r) => (
@@ -70,8 +70,8 @@ export default async function PortalPage() {
         <TabsContent value="invoices">
           <EmptyState
             icon={<Receipt className="h-6 w-6" />}
-            title="No invoices yet"
-            description="Invoices issued for your engagements will be listed here."
+            title={t("noInvoices")}
+            description={t("noInvoicesDescription")}
           />
         </TabsContent>
       </Tabs>

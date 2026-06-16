@@ -1,0 +1,535 @@
+{
+  "common": {
+    "save": "Save changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "loading": "Loading…",
+    "confirm": "Confirm",
+    "submit": "Submit",
+    "create": "Create",
+    "update": "Update",
+    "or": "or",
+    "yes": "Yes",
+    "no": "No",
+    "na": "—",
+    "viewAll": "View all",
+    "fullMap": "Full map",
+    "allCases": "All cases",
+    "upload": "Upload",
+    "export": "Export",
+    "download": "Download"
+  },
+  "lang": {
+    "switcher": "Language",
+    "en": "English",
+    "th": "ภาษาไทย"
+  },
+  "meta": {
+    "appName": "Detective Pulse",
+    "subtitle": "Command Center",
+    "tagline": "Operations Command Center",
+    "description": "Secure, real-time coordination for private investigation and surveillance teams — from the first lead to the final report.",
+    "copyright": "© {year} Detective Pulse. All rights reserved."
+  },
+  "home": {
+    "live": "Operations Command Center",
+    "hero": "Run every surveillance operation from one command center.",
+    "subhero": "Detective Pulse unifies live agent tracking, case management, evidence, AI reporting and emergency response into a single secure, mobile-first platform.",
+    "launch": "Launch the platform",
+    "signIn": "Sign in",
+    "footer": "Detective Pulse Operations Command Center · Built for field teams",
+    "features": {
+      "gps": {
+        "title": "Live GPS Tracking",
+        "desc": "Real-time field positions refreshed every 60 seconds with battery and status."
+      },
+      "agents": {
+        "title": "Agent Management",
+        "desc": "Roster, availability board and field status across your whole team."
+      },
+      "ai": {
+        "title": "AI Report Generator",
+        "desc": "Turn raw timeline logs into a professional surveillance report in seconds."
+      },
+      "sos": {
+        "title": "Emergency SOS",
+        "desc": "One-tap distress alerts that instantly notify supervisors with location."
+      },
+      "ops": {
+        "title": "Operations Dashboard",
+        "desc": "Cases, missions, expenses and alerts unified into one command view."
+      },
+      "security": {
+        "title": "Secure by Design",
+        "desc": "Row-level security, RBAC, audit logging and encrypted storage."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or you don't have access to it.",
+    "backToDashboard": "Back to dashboard"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your command center.",
+      "email": "Email",
+      "emailPlaceholder": "agent@detectivepulse.io",
+      "password": "Password",
+      "signIn": "Sign in",
+      "createOne": "Create one",
+      "noAccount": "Don't have an account?"
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "Join the operations command center.",
+      "fullName": "Full name",
+      "namePlaceholder": "James Holloway",
+      "email": "Email",
+      "emailPlaceholder": "agent@detectivepulse.io",
+      "password": "Password",
+      "passwordHint": "At least 8 characters",
+      "createAccount": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "signOut": "Sign out",
+    "brandDescription": "Secure, real-time coordination for private investigation and surveillance teams — from the first lead to the final report."
+  },
+  "nav": {
+    "sections": {
+      "operations": "Operations",
+      "field": "Field",
+      "administration": "Administration"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "map": "Live Map",
+      "cases": "Cases",
+      "timeline": "Timeline",
+      "agents": "Agents",
+      "evidence": "Evidence",
+      "reports": "Reports",
+      "expenses": "Expenses",
+      "emergency": "Emergency",
+      "clients": "Clients",
+      "users": "Users",
+      "audit": "Audit Log",
+      "settings": "Settings"
+    }
+  },
+  "header": {
+    "navigation": "Navigation",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "allCaughtUp": "You're all caught up."
+  },
+  "dashboard": {
+    "title": "Welcome back, {name}",
+    "description": "Operations command overview.",
+    "operative": "Operative",
+    "stats": {
+      "openCases": "Open Cases",
+      "closedCases": "Closed Cases",
+      "activeAgents": "Active Agents",
+      "availableAgents": "Available Agents"
+    },
+    "emergencyBanner": {
+      "one": "{count} active emergency alert",
+      "other": "{count} active emergency alerts",
+      "review": "Click to review and dispatch a response."
+    },
+    "liveMap": "Live Agent Map",
+    "recentTimeline": "Recent Timeline Entries",
+    "noTimeline": "No timeline activity yet.",
+    "activeMissions": "Active Missions",
+    "noActiveMissions": "No active missions.",
+    "emergencyAlerts": "Emergency Alerts"
+  },
+  "cases": {
+    "title": "Case Management",
+    "description": "All surveillance assignments.",
+    "newCase": "New Case",
+    "noTitle": "No cases yet",
+    "noDescription": "Open your first case to begin tracking a surveillance operation.",
+    "table": {
+      "case": "Case",
+      "client": "Client",
+      "type": "Type",
+      "target": "Target",
+      "priority": "Priority",
+      "status": "Status",
+      "start": "Start"
+    },
+    "detail": {
+      "allCases": "All cases",
+      "caseFile": "Case File",
+      "assignedAgents": "Assigned Agents",
+      "reporting": "Reporting",
+      "reportingHint": "Generate a professional AI surveillance report from the {count} logged timeline entry.",
+      "reportingHintPlural": "Generate a professional AI surveillance report from the {count} logged timeline entries.",
+      "infoLabels": {
+        "target": "Target",
+        "phone": "Target phone",
+        "vehicle": "Vehicle",
+        "plate": "License plate",
+        "address": "Address",
+        "start": "Start",
+        "end": "End",
+        "ongoing": "Ongoing"
+      },
+      "tabs": {
+        "timeline": "Timeline",
+        "evidence": "Evidence",
+        "reports": "Reports"
+      },
+      "noTimeline": "No timeline entries",
+      "noTimelineDescription": "Add the first surveillance observation above.",
+      "noEvidence": "No evidence uploaded",
+      "noEvidenceDescription": "Upload photos, videos or PDF files for this case.",
+      "noReports": "No reports yet",
+      "noReportsDescription": "Use \"Generate AI Report\" to create one from the timeline."
+    },
+    "createDialog": {
+      "title": "Open a new case",
+      "description": "Record the client, target and surveillance parameters.",
+      "fields": {
+        "caseNumber": "Case Number",
+        "clientName": "Client Name",
+        "clientNamePlaceholder": "Eleanor Vance",
+        "caseType": "Case Type",
+        "caseTypePlaceholder": "Infidelity / Insurance / Background",
+        "targetName": "Target Name",
+        "targetNamePlaceholder": "Daniel West",
+        "targetPhone": "Target Phone",
+        "targetVehicle": "Target Vehicle",
+        "targetVehiclePlaceholder": "Black BMW 5 Series",
+        "licensePlate": "License Plate",
+        "licensePlatePlaceholder": "NY-8841 XR",
+        "targetAddress": "Target Address",
+        "targetAddressPlaceholder": "88 Riverside Dr",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "status": "Status",
+        "priority": "Priority",
+        "description": "Description",
+        "descriptionPlaceholder": "Surveillance objectives, schedule, special notes…"
+      },
+      "createButton": "Create case",
+      "toast": {
+        "success": "Case created"
+      }
+    }
+  },
+  "agents": {
+    "title": "Agent Management",
+    "description": "Field roster and live status.",
+    "newAgent": "New Agent",
+    "noTitle": "No agents yet",
+    "noDescription": "Create your first field operative to start tracking operations.",
+    "stats": {
+      "total": "Total Agents",
+      "available": "Available",
+      "active": "Active",
+      "offline": "Offline"
+    },
+    "table": {
+      "agent": "Agent",
+      "position": "Position",
+      "area": "Area",
+      "status": "Status",
+      "battery": "Battery",
+      "lastActive": "Last Active"
+    },
+    "createDialog": {
+      "title": "Create field agent",
+      "description": "Add an operative to the roster. Status and live position can be updated later.",
+      "fields": {
+        "agentId": "Agent ID",
+        "agentIdPlaceholder": "DP-006",
+        "fullName": "Full name",
+        "fullNamePlaceholder": "Alex Carter",
+        "nickname": "Nickname",
+        "nicknamePlaceholder": "Viper",
+        "position": "Position",
+        "positionPlaceholder": "Field Agent",
+        "phone": "Phone",
+        "phonePlaceholder": "+1 202 555 0199",
+        "email": "Email",
+        "emailPlaceholder": "agent@dp.local",
+        "area": "Area",
+        "areaPlaceholder": "Downtown",
+        "status": "Status"
+      },
+      "createButton": "Create agent",
+      "toast": {
+        "success": "Agent created"
+      }
+    }
+  },
+  "timeline": {
+    "title": "Timeline Reporting",
+    "description": "Chronological surveillance log across all cases.",
+    "noTitle": "No timeline entries",
+    "noDescription": "Field observations submitted by agents will appear here.",
+    "addEntry": {
+      "locationPlaceholder": "Location",
+      "entryPlaceholder": "e.g. Target left residence heading north on foot.",
+      "addButton": "Add entry",
+      "toast": {
+        "success": "Timeline entry added"
+      }
+    }
+  },
+  "evidence": {
+    "title": "Evidence Management",
+    "description": "Secure photo, video and document storage across cases.",
+    "noTitle": "No evidence stored",
+    "noDescription": "Evidence uploaded to cases will be organised here.",
+    "itemCount": "{count} item",
+    "itemCountPlural": "{count} items",
+    "uploader": {
+      "fileLabel": "File (JPEG, PNG, WebP or PDF)",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Photo / Vehicle / Document",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Context for this evidence…",
+      "uploadButton": "Upload",
+      "toast": {
+        "success": "Evidence uploaded"
+      }
+    }
+  },
+  "expenses": {
+    "title": "Expense Management",
+    "description": "Field reimbursements and monthly summaries.",
+    "addExpense": "Add Expense",
+    "noTitle": "No expenses logged",
+    "noDescription": "Submit your first field expense to start tracking.",
+    "stats": {
+      "thisMonth": "This month",
+      "allTime": "All time",
+      "entriesThisMonth": "Entries this month"
+    },
+    "summaryByCategory": "Monthly Summary by Category",
+    "table": {
+      "date": "Date",
+      "agent": "Agent",
+      "category": "Category",
+      "notes": "Notes",
+      "amount": "Amount"
+    },
+    "dialog": {
+      "title": "Submit an expense",
+      "categoryLabel": "Category",
+      "amountLabel": "Amount (THB)",
+      "dateLabel": "Date",
+      "receiptLabel": "Receipt image",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "What was this for?",
+      "submitButton": "Submit expense",
+      "toast": {
+        "success": "Expense submitted"
+      }
+    },
+    "categories": {
+      "fuel": "Fuel",
+      "toll": "Toll",
+      "parking": "Parking",
+      "food": "Food",
+      "hotel": "Hotel",
+      "misc": "Miscellaneous"
+    }
+  },
+  "reports": {
+    "title": "Surveillance Reports",
+    "description": "AI-generated reports across all cases. Approve to publish to clients.",
+    "noTitle": "No reports yet",
+    "noDescription": "Open a case and use \"Generate AI Report\" to produce one.",
+    "generateButton": "Generate AI Report",
+    "approveButton": "Approve & publish",
+    "visibleToClient": "Visible to client",
+    "exportLabel": "Export",
+    "downloadPdf": "Download PDF",
+    "downloadDocx": "Download DOCX",
+    "viewFull": "View full report",
+    "hide": "Hide",
+    "sections": {
+      "chronological": "Chronological Report",
+      "observations": "Observations",
+      "conclusion": "Conclusion"
+    },
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "generated": "Generated {date}",
+    "toast": {
+      "generated": "AI report generated",
+      "approved": "Report approved"
+    }
+  },
+  "emergency": {
+    "title": "Emergency Alert System",
+    "description": "Field distress signals and response coordination.",
+    "noTitle": "No emergency alerts",
+    "noDescription": "All clear. SOS alerts from the field will appear here in real time.",
+    "sos": {
+      "button": "SOS",
+      "dialogTitle": "Trigger Emergency Alert",
+      "dialogDescription": "This immediately notifies all supervisors with your current GPS location. Use only in a genuine emergency.",
+      "notesPlaceholder": "Optional: describe the situation…",
+      "sendButton": "Send SOS now",
+      "toast": {
+        "success": "Emergency alert sent — supervisors notified"
+      }
+    },
+    "alert": {
+      "unknownAgent": "Unknown agent",
+      "sosTriggered": "SOS triggered",
+      "acknowledge": "Acknowledge",
+      "resolve": "Resolve"
+    },
+    "status": {
+      "active": "Active",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved"
+    }
+  },
+  "map": {
+    "title": "Live GPS Tracking",
+    "description": "Real-time field positions, auto-refreshed every 60 seconds.",
+    "searchPlaceholder": "Search agents…",
+    "areaAll": "All areas",
+    "statusAll": "All statuses",
+    "sync": "Sync",
+    "agentCount": "{count} agents · {time}",
+    "noApiKeyTitle": "Google Maps key not configured",
+    "noApiKeyDescription": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the live tracking map. Agent positions below are still synced from the database.",
+    "battery": "Battery",
+    "updated": "Updated"
+  },
+  "clients": {
+    "title": "Clients",
+    "description": "Surveillance customers and report-portal accounts.",
+    "noTitle": "No clients yet",
+    "noDescription": "Clients are linked to cases and can access approved reports through the portal.",
+    "table": {
+      "name": "Name",
+      "company": "Company",
+      "email": "Email",
+      "phone": "Phone"
+    }
+  },
+  "users": {
+    "title": "User Management",
+    "description": "Manage roles and permissions across the platform.",
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "status": "Status",
+      "joined": "Joined"
+    },
+    "roleNote": "Role changes take effect immediately and are recorded in the audit log.",
+    "roleUpdated": "Role updated successfully.",
+    "statusActive": "Active",
+    "statusDisabled": "Disabled",
+    "roles": {
+      "admin": "Administrator",
+      "supervisor": "Supervisor",
+      "agent": "Field Agent",
+      "client": "Client"
+    }
+  },
+  "audit": {
+    "title": "Audit Log",
+    "description": "Immutable record of system activity for compliance and security.",
+    "noTitle": "No audit events",
+    "noDescription": "Database changes will be recorded here automatically.",
+    "table": {
+      "when": "When",
+      "actor": "Actor",
+      "action": "Action",
+      "entity": "Entity",
+      "record": "Record"
+    },
+    "system": "System"
+  },
+  "settings": {
+    "title": "System Settings",
+    "description": "Platform configuration and integration health.",
+    "integrationStatus": "Integration Status",
+    "about": "About",
+    "aboutText": "Detective Pulse Operations Command Center · v1.0.0",
+    "aboutDescription": "Built with Next.js 15, TypeScript, Tailwind CSS, Shadcn UI and Supabase. Secured with Row Level Security, RBAC and audit logging.",
+    "configured": "Configured",
+    "missing": "Missing"
+  },
+  "profile": {
+    "title": "My Profile",
+    "description": "Manage your account details.",
+    "emailLabel": "Email",
+    "fullNameLabel": "Full name",
+    "phoneLabel": "Phone",
+    "saveButton": "Save changes",
+    "toast": {
+      "success": "Profile updated"
+    }
+  },
+  "portal": {
+    "clientPortal": "Client Portal",
+    "welcome": "Welcome, {name}",
+    "subtitle": "Your approved surveillance reports and invoices.",
+    "tabs": {
+      "reports": "Reports",
+      "invoices": "Invoices"
+    },
+    "noReports": "No reports available yet",
+    "noReportsDescription": "Approved reports for your cases will appear here. You can read and download each as a PDF.",
+    "noInvoices": "No invoices yet",
+    "noInvoicesDescription": "Invoices issued for your engagements will be listed here."
+  },
+  "availability": {
+    "title": "Agent Availability Board",
+    "totalAgents": "Total agents",
+    "available": "Available",
+    "onDuty": "On Duty (Active)",
+    "offline": "Offline"
+  },
+  "assignAgent": {
+    "noAgentsAssigned": "No agents assigned yet.",
+    "placeholder": "Assign an agent…",
+    "toast": {
+      "assigned": "Agent assigned",
+      "removed": "Agent removed"
+    }
+  },
+  "status": {
+    "agent": {
+      "available": "Available",
+      "on_mission": "On Mission",
+      "traveling": "Traveling",
+      "break": "Break",
+      "offline": "Offline"
+    },
+    "case": {
+      "new": "New",
+      "assigned": "Assigned",
+      "active": "Active",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    }
+  }
+}

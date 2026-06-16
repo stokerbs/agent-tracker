@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
   const profile = await requireProfile();
+  const t = await getTranslations("reports");
   const staff = isStaff(profile.role);
   const supabase = await createClient();
 
@@ -24,16 +26,13 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Surveillance Reports"
-        description="AI-generated reports across all cases. Approve to publish to clients."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       {reports.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title="No reports yet"
-          description="Open a case and use “Generate AI Report” to produce one."
+          title={t("noTitle")}
+          description={t("noDescription")}
         />
       ) : (
         <div className="grid gap-4">

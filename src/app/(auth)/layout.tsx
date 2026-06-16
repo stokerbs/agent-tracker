@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { Radio } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = await getTranslations("auth");
+  const tMeta = await getTranslations("meta");
+
   return (
     <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
@@ -17,25 +22,23 @@ export default function AuthLayout({
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Radio className="h-5 w-5" />
           </div>
-          Detective Pulse
+          {tMeta("appName")}
         </Link>
         <div className="relative z-10 max-w-md">
           <h2 className="text-3xl font-semibold leading-tight">
-            Operations Command Center
+            {tMeta("tagline")}
           </h2>
-          <p className="mt-3 text-slate-300">
-            Secure, real-time coordination for private investigation and
-            surveillance teams — from the first lead to the final report.
-          </p>
+          <p className="mt-3 text-slate-300">{t("brandDescription")}</p>
         </div>
         <p className="relative z-10 text-xs text-slate-400">
-          © {new Date().getFullYear()} Detective Pulse. All rights reserved.
+          {tMeta("copyright", { year: new Date().getFullYear() })}
         </p>
       </div>
 
       {/* Form panel */}
       <div className="relative flex items-center justify-center p-6">
-        <div className="absolute right-4 top-4">
+        <div className="absolute right-4 top-4 flex items-center gap-1">
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
         <div className="w-full max-w-sm">{children}</div>

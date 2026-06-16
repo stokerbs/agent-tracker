@@ -11,14 +11,15 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { decryptField } from "@/lib/security/encryption";
 import {
   getActiveAgents,
   getActiveAlerts,
+  getActiveCases,
   getDashboardStats,
   getRecentTimeline,
-  getCases,
 } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -43,29 +44,30 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
-  const [stats, activeAgents, alerts, timeline, cases] = await Promise.all([
+  const t = await getTranslations("dashboard");
+  const tCommon = await getTranslations("common");
+  const [stats, activeAgents, alerts, timeline, activeMissions] = await Promise.all([
     getDashboardStats(),
     getActiveAgents(),
     getActiveAlerts(),
     getRecentTimeline(7),
-    getCases(),
+    getActiveCases(5),
   ]);
-
-  const activeMissions = cases.filter((c) => c.status === "active").slice(0, 5);
+  const firstName = profile.full_name?.split(" ")[0] ?? t("operative");
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${profile.full_name?.split(" ")[0] ?? "Operative"}`}
-        description="Operations command overview."
+        title={t("title", { name: firstName })}
+        description={t("description")}
       />
 
       {/* Stat row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Open Cases" value={stats.openCases} icon={<Briefcase className="h-5 w-5" />} accent="text-blue-500" />
-        <StatCard label="Closed Cases" value={stats.closedCases} icon={<CheckCircle2 className="h-5 w-5" />} accent="text-emerald-500" />
-        <StatCard label="Active Agents" value={stats.activeAgents} icon={<Radio className="h-5 w-5" />} accent="text-violet-500" />
-        <StatCard label="Available Agents" value={stats.availableAgents} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
+        <StatCard label={t("stats.openCases")} value={stats.openCases} icon={<Briefcase className="h-5 w-5" />} accent="text-blue-500" />
+        <StatCard label={t("stats.closedCases")} value={stats.closedCases} icon={<CheckCircle2 className="h-5 w-5" />} accent="text-emerald-500" />
+        <StatCard label={t("stats.activeAgents")} value={stats.activeAgents} icon={<Radio className="h-5 w-5" />} accent="text-violet-500" />
+        <StatCard label={t("stats.availableAgents")} value={stats.availableAgents} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
       </div>
 
       {/* Emergency banner */}
@@ -78,11 +80,12 @@ export default async function DashboardPage() {
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-destructive">
-                  {stats.emergencyAlerts} active emergency alert
-                  {stats.emergencyAlerts === 1 ? "" : "s"}
+                  {stats.emergencyAlerts === 1
+                    ? t("emergencyBanner.one", { count: stats.emergencyAlerts })
+                    : t("emergencyBanner.other", { count: stats.emergencyAlerts })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Click to review and dispatch a response.
+                  {t("emergencyBanner.review")}
                 </p>
               </div>
               <ArrowRight className="h-5 w-5 text-destructive" />
@@ -95,10 +98,10 @@ export default async function DashboardPage() {
         {/* Live map */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Live Agent Map</CardTitle>
+            <CardTitle>{t("liveMap")}</CardTitle>
             <Button asChild variant="ghost" size="sm">
               <Link href="/map">
-                Full map <ArrowRight className="h-4 w-4" />
+                {tCommon("fullMap")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
@@ -123,28 +126,28 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Recent Timeline Entries
+              <Clock className="h-4 w-4" /> {t("recentTimeline")}
             </CardTitle>
             <Button asChild variant="ghost" size="sm">
               <Link href="/timeline">
-                View all <ArrowRight className="h-4 w-4" />
+                {tCommon("viewAll")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {timeline.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No timeline activity yet.
+                {t("noTimeline")}
               </p>
             )}
-            {timeline.map((t) => (
-              <div key={t.id} className="flex gap-3 text-sm">
+            {timeline.map((t2) => (
+              <div key={t2.id} className="flex gap-3 text-sm">
                 <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 <div className="min-w-0">
-                  <p className="truncate">{t.entry}</p>
+                  <p className="truncate">{t2.entry}</p>
                   <p className="text-xs text-muted-foreground">
-                    {t.cases?.case_number ?? "Case"} ·{" "}
-                    {t.agents?.full_name ?? "Agent"} · {t.entry_time}
+                    {t2.cases?.case_number ?? "Case"} ·{" "}
+                    {t2.agents?.full_name ?? "Agent"} · {t2.entry_time}
                   </p>
                 </div>
               </div>
@@ -155,17 +158,17 @@ export default async function DashboardPage() {
         {/* Active missions */}
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Active Missions</CardTitle>
+            <CardTitle>{t("activeMissions")}</CardTitle>
             <Button asChild variant="ghost" size="sm">
               <Link href="/cases">
-                All cases <ArrowRight className="h-4 w-4" />
+                {tCommon("allCases")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {activeMissions.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No active missions.
+                {t("noActiveMissions")}
               </p>
             )}
             {activeMissions.map((c) => (
@@ -197,7 +200,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
-              <Siren className="h-4 w-4" /> Emergency Alerts
+              <Siren className="h-4 w-4" /> {t("emergencyAlerts")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">

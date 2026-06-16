@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { getCases } from "@/lib/queries";
 import { decryptField } from "@/lib/security/encryption";
@@ -27,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CasesPage() {
   const profile = await requireProfile();
+  const t = await getTranslations("cases");
   const cases = await getCases();
 
   const year = new Date().getFullYear();
@@ -35,7 +37,7 @@ export default async function CasesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Case Management" description="All surveillance assignments.">
+      <PageHeader title={t("title")} description={t("description")}>
         {isStaff(profile.role) && (
           <CreateCaseDialog suggestedNumber={suggestedNumber} />
         )}
@@ -47,21 +49,21 @@ export default async function CasesPage() {
             <div className="p-6">
               <EmptyState
                 icon={<Briefcase className="h-6 w-6" />}
-                title="No cases yet"
-                description="Open your first case to begin tracking a surveillance operation."
+                title={t("noTitle")}
+                description={t("noDescription")}
               />
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Case</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Start</TableHead>
+                  <TableHead>{t("table.case")}</TableHead>
+                  <TableHead>{t("table.client")}</TableHead>
+                  <TableHead>{t("table.type")}</TableHead>
+                  <TableHead>{t("table.target")}</TableHead>
+                  <TableHead>{t("table.priority")}</TableHead>
+                  <TableHead>{t("table.status")}</TableHead>
+                  <TableHead>{t("table.start")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FolderLock } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EvidencePage() {
   await requireProfile();
+  const t = await getTranslations("evidence");
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -24,7 +26,6 @@ export default async function EvidencePage() {
 
   const items = (data ?? []) as (Evidence & { cases: { case_number: string } | null })[];
 
-  // Group by case.
   const groups = items.reduce<Record<string, typeof items>>((acc, e) => {
     const key = e.cases?.case_number ?? "Unassigned";
     (acc[key] ??= []).push(e);
@@ -33,16 +34,13 @@ export default async function EvidencePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Evidence Management"
-        description="Secure photo, video and document storage across cases."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       {items.length === 0 ? (
         <EmptyState
           icon={<FolderLock className="h-6 w-6" />}
-          title="No evidence stored"
-          description="Evidence uploaded to cases will be organised here."
+          title={t("noTitle")}
+          description={t("noDescription")}
         />
       ) : (
         Object.entries(groups).map(([caseNum, list]) => (
@@ -57,7 +55,9 @@ export default async function EvidencePage() {
                   {caseNum}
                 </Link>
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({list.length} item{list.length === 1 ? "" : "s"})
+                  ({list.length === 1
+                    ? t("itemCount", { count: list.length })
+                    : t("itemCountPlural", { count: list.length })})
                 </span>
               </CardTitle>
             </CardHeader>

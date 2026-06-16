@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Database, KeyRound, MapPin, Settings as SettingsIcon, Sparkles } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   await requireRole(["admin"]);
+  const t = await getTranslations("settings");
 
   const checks = [
     {
@@ -39,15 +41,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="System Settings"
-        description="Platform configuration and integration health."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" /> Integration Status
+            <SettingsIcon className="h-4 w-4" /> {t("integrationStatus")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -66,7 +65,7 @@ export default async function SettingsPage() {
                 </div>
               </div>
               <Badge variant={c.ok ? "default" : "destructive"}>
-                {c.ok ? "Configured" : "Missing"}
+                {c.ok ? t("configured") : t("missing")}
               </Badge>
             </div>
           ))}
@@ -75,14 +74,11 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>About</CardTitle>
+          <CardTitle>{t("about")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Detective Pulse Operations Command Center · v1.0.0</p>
-          <p>
-            Built with Next.js 15, TypeScript, Tailwind CSS, Shadcn UI and
-            Supabase. Secured with Row Level Security, RBAC and audit logging.
-          </p>
+          <p>{t("aboutText")}</p>
+          <p>{t("aboutDescription")}</p>
         </CardContent>
       </Card>
     </div>

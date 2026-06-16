@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CheckCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   acknowledgeAlert,
   resolveAlert,
@@ -18,6 +19,7 @@ export function AlertActions({
   alertId: string;
   status: AlertStatus;
 }) {
+  const t = useTranslations("emergency.alert");
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -39,7 +41,7 @@ export function AlertActions({
           disabled={pending}
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          Acknowledge
+          {t("acknowledge")}
         </Button>
       )}
       {status !== "resolved" && (
@@ -49,7 +51,7 @@ export function AlertActions({
           onClick={() => run(() => resolveAlert(alertId))}
           disabled={pending}
         >
-          <CheckCheck className="h-4 w-4" /> Resolve
+          <CheckCheck className="h-4 w-4" /> {t("resolve")}
         </Button>
       )}
     </div>

@@ -7,43 +7,25 @@ import {
   Radio,
   Users,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
-const FEATURES = [
-  {
-    icon: MapPin,
-    title: "Live GPS Tracking",
-    desc: "Real-time field positions refreshed every 60 seconds with battery and status.",
-  },
-  {
-    icon: Users,
-    title: "Agent Management",
-    desc: "Roster, availability board and field status across your whole team.",
-  },
-  {
-    icon: FileText,
-    title: "AI Report Generator",
-    desc: "Turn raw timeline logs into a professional surveillance report in seconds.",
-  },
-  {
-    icon: Radio,
-    title: "Emergency SOS",
-    desc: "One-tap distress alerts that instantly notify supervisors with location.",
-  },
-  {
-    icon: Activity,
-    title: "Operations Dashboard",
-    desc: "Cases, missions, expenses and alerts unified into one command view.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure by Design",
-    desc: "Row-level security, RBAC, audit logging and encrypted storage.",
-  },
-];
+export default async function Home() {
+  const t = await getTranslations("home");
+  const tMeta = await getTranslations("meta");
+  const tAuth = await getTranslations("auth.login");
 
-export default function Home() {
+  const FEATURES = [
+    { icon: MapPin, key: "gps" },
+    { icon: Users, key: "agents" },
+    { icon: FileText, key: "ai" },
+    { icon: Radio, key: "sos" },
+    { icon: Activity, key: "ops" },
+    { icon: ShieldCheck, key: "security" },
+  ] as const;
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
@@ -54,15 +36,16 @@ export default function Home() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Radio className="h-5 w-5" />
           </div>
-          <span>Detective Pulse</span>
+          <span>{tMeta("appName")}</span>
         </div>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <ThemeToggle />
           <Button asChild variant="ghost">
-            <Link href="/login">Sign in</Link>
+            <Link href="/login">{tAuth("signIn")}</Link>
           </Button>
           <Button asChild>
-            <Link href="/register">Get started</Link>
+            <Link href="/register">{t("launch")}</Link>
           </Button>
         </div>
       </header>
@@ -74,22 +57,20 @@ export default function Home() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            Operations Command Center
+            {t("live")}
           </div>
           <h1 className="mx-auto max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-6xl">
-            Run every surveillance operation from one command center.
+            {t("hero")}
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
-            Detective Pulse unifies live agent tracking, case management,
-            evidence, AI reporting and emergency response into a single
-            secure, mobile-first platform.
+            {t("subhero")}
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Button asChild size="lg">
-              <Link href="/register">Launch the platform</Link>
+              <Link href="/register">{t("launch")}</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/login">Sign in</Link>
+              <Link href="/login">{tAuth("signIn")}</Link>
             </Button>
           </div>
         </section>
@@ -97,21 +78,23 @@ export default function Home() {
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div
-              key={f.title}
+              key={f.key}
               className="rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary/40"
             >
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold">{f.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
+              <h3 className="font-semibold">{t(`features.${f.key}.title` as any)}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t(`features.${f.key}.desc` as any)}
+              </p>
             </div>
           ))}
         </section>
       </main>
 
       <footer className="relative z-10 border-t py-6 text-center text-sm text-muted-foreground">
-        Detective Pulse Operations Command Center · Built for field teams
+        {t("footer")}
       </footer>
     </div>
   );

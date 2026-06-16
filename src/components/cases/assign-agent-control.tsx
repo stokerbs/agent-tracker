@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { assignAgent, unassignAgent } from "@/app/(dashboard)/cases/actions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ export function AssignAgentControl({
   available: Agent[];
   canManage: boolean;
 }) {
+  const t = useTranslations("assignAgent");
   const [selected, setSelected] = useState<string>("");
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -41,7 +43,7 @@ export function AssignAgentControl({
     start(async () => {
       const res = await assignAgent(caseId, selected);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Agent assigned");
+      toast.success(t("toast.assigned"));
       setSelected("");
       router.refresh();
     });
@@ -51,7 +53,7 @@ export function AssignAgentControl({
     start(async () => {
       const res = await unassignAgent(caseId, agentId);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Agent removed");
+      toast.success(t("toast.removed"));
       router.refresh();
     });
   }
@@ -59,7 +61,7 @@ export function AssignAgentControl({
   return (
     <div className="space-y-3">
       {assigned.length === 0 && (
-        <p className="text-sm text-muted-foreground">No agents assigned yet.</p>
+        <p className="text-sm text-muted-foreground">{t("noAgentsAssigned")}</p>
       )}
       <div className="space-y-2">
         {assigned.map((a) => (
@@ -96,7 +98,7 @@ export function AssignAgentControl({
         <div className="flex items-center gap-2">
           <Select value={selected} onValueChange={setSelected}>
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Assign an agent…" />
+              <SelectValue placeholder={t("placeholder")} />
             </SelectTrigger>
             <SelectContent>
               {unassigned.map((a) => (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Receipt, TrendingUp } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { getExpenses } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
@@ -16,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EXPENSE_CATEGORY_META } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Expenses" };
@@ -24,6 +24,8 @@ export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage() {
   await requireProfile();
+  const t = await getTranslations("expenses");
+  const locale = await getLocale();
   const expenses = (await getExpenses()) as any[];
 
   const now = new Date();
@@ -35,37 +37,38 @@ export default async function ExpensesPage() {
   const monthTotal = thisMonth.reduce((s, e) => s + Number(e.amount), 0);
   const allTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
-  // Category breakdown for this month.
   const byCategory = thisMonth.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);
     return acc;
   }, {});
 
+  const monthName = now.toLocaleString(locale === "th" ? "th-TH" : "en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Expense Management"
-        description="Field reimbursements and monthly summaries."
-      >
+      <PageHeader title={t("title")} description={t("description")}>
         <AddExpenseDialog />
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
-          label="This month"
+          label={t("stats.thisMonth")}
           value={formatCurrency(monthTotal)}
           icon={<Receipt className="h-5 w-5" />}
           accent="text-blue-500"
-          hint={now.toLocaleString("en-US", { month: "long", year: "numeric" })}
+          hint={monthName}
         />
         <StatCard
-          label="All time"
+          label={t("stats.allTime")}
           value={formatCurrency(allTotal)}
           icon={<TrendingUp className="h-5 w-5" />}
           accent="text-emerald-500"
         />
         <StatCard
-          label="Entries this month"
+          label={t("stats.entriesThisMonth")}
           value={thisMonth.length}
           icon={<Receipt className="h-5 w-5" />}
           accent="text-violet-500"
@@ -75,12 +78,12 @@ export default async function ExpensesPage() {
       {Object.keys(byCategory).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Summary by Category</CardTitle>
+            <CardTitle>{t("summaryByCategory")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {Object.entries(byCategory).map(([cat, total]) => (
               <Badge key={cat} variant="secondary" className="text-sm">
-                {EXPENSE_CATEGORY_META[cat as keyof typeof EXPENSE_CATEGORY_META]?.label ?? cat}:{" "}
+                {t(`categories.${cat as keyof typeof byCategory}` as any)}:{" "}
                 {formatCurrency(total)}
               </Badge>
             ))}
@@ -94,19 +97,19 @@ export default async function ExpensesPage() {
             <div className="p-6">
               <EmptyState
                 icon={<Receipt className="h-6 w-6" />}
-                title="No expenses logged"
-                description="Submit your first field expense to start tracking."
+                title={t("noTitle")}
+                description={t("noDescription")}
               />
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{t("table.date")}</TableHead>
+                  <TableHead>{t("table.agent")}</TableHead>
+                  <TableHead>{t("table.category")}</TableHead>
+                  <TableHead>{t("table.notes")}</TableHead>
+                  <TableHead className="text-right">{t("table.amount")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,7 +119,7 @@ export default async function ExpensesPage() {
                     <TableCell className="text-sm">{e.agents?.full_name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {EXPENSE_CATEGORY_META[e.category as keyof typeof EXPENSE_CATEGORY_META]?.label ?? e.category}
+                        {t(`categories.${e.category}` as any)}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate text-sm text-muted-foreground">

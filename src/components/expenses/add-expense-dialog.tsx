@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { addExpense } from "@/app/(dashboard)/expenses/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +24,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EXPENSE_CATEGORY_META } from "@/lib/constants";
+import type { ExpenseCategory } from "@/lib/types";
+
+const EXPENSE_CATEGORIES: ExpenseCategory[] = ["fuel", "toll", "parking", "food", "hotel", "misc"];
 
 export function AddExpenseDialog() {
+  const t = useTranslations("expenses.dialog");
+  const tCategories = useTranslations("expenses.categories");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -35,7 +40,7 @@ export function AddExpenseDialog() {
     start(async () => {
       const res = await addExpense(formData);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Expense submitted");
+      toast.success(t("toast.success"));
       setOpen(false);
       router.refresh();
     });
@@ -45,45 +50,45 @@ export function AddExpenseDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="h-4 w-4" /> Add Expense
+          <Plus className="h-4 w-4" /> {t("submitButton")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Submit an expense</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         <form action={onSubmit} className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category">{t("categoryLabel")}</Label>
             <Select name="category" defaultValue="fuel">
               <SelectTrigger id="category"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(EXPENSE_CATEGORY_META).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                {EXPENSE_CATEGORIES.map((k) => (
+                  <SelectItem key={k} value={k}>{tCategories(k)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount (USD)</Label>
+            <Label htmlFor="amount">{t("amountLabel")}</Label>
             <Input id="amount" name="amount" type="number" step="0.01" min="0" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="expense_date">Date</Label>
+            <Label htmlFor="expense_date">{t("dateLabel")}</Label>
             <Input id="expense_date" name="expense_date" type="date" defaultValue={today} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="receipt">Receipt image</Label>
+            <Label htmlFor="receipt">{t("receiptLabel")}</Label>
             <Input id="receipt" name="receipt" type="file" accept="image/*,application/pdf" />
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Input id="notes" name="notes" placeholder="What was this for?" />
+            <Label htmlFor="notes">{t("notesLabel")}</Label>
+            <Input id="notes" name="notes" placeholder={t("notesPlaceholder")} />
           </div>
           <DialogFooter className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Submit expense
+              {t("submitButton")}
             </Button>
           </DialogFooter>
         </form>

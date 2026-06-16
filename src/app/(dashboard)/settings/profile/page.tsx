@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProfileForm } from "@/components/settings/profile-form";
@@ -12,11 +13,13 @@ export const metadata: Metadata = { title: "My Profile" };
 
 export default async function ProfilePage() {
   const profile = await requireProfile();
+  const t = await getTranslations("profile");
+  const tUsers = await getTranslations("users.roles");
   const roleMeta = ROLE_META[profile.role];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="My Profile" description="Manage your account details." />
+      <PageHeader title={t("title")} description={t("description")} />
 
       <Card>
         <CardHeader>
@@ -27,7 +30,9 @@ export default async function ProfilePage() {
             </Avatar>
             <div>
               <p>{profile.full_name}</p>
-              <Badge className={`mt-1 ${roleMeta.badge}`}>{roleMeta.label}</Badge>
+              <Badge className={`mt-1 ${roleMeta.badge}`}>
+                {tUsers(profile.role)}
+              </Badge>
             </div>
           </CardTitle>
         </CardHeader>

@@ -56,6 +56,3 @@ export function batteryColor(pct: number | null): string {
   return "text-emerald-500";
 }
 
-export function classForStatusDot(active: boolean): string {
-  return active ? "bg-emerald-500" : "bg-slate-400";
-}

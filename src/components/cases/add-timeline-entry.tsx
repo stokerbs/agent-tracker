@@ -4,12 +4,14 @@ import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { addTimelineEntry } from "@/app/(dashboard)/timeline/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 export function AddTimelineEntry({ caseId }: { caseId: string }) {
+  const t = useTranslations("timeline.addEntry");
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -22,7 +24,7 @@ export function AddTimelineEntry({ caseId }: { caseId: string }) {
     start(async () => {
       const res = await addTimelineEntry(formData);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Timeline entry added");
+      toast.success(t("toast.success"));
       formRef.current?.reset();
       router.refresh();
     });
@@ -40,14 +42,14 @@ export function AddTimelineEntry({ caseId }: { caseId: string }) {
         <Input name="entry_time" type="time" defaultValue={time} aria-label="Time" />
         <Input
           name="location"
-          placeholder="Location"
+          placeholder={t("locationPlaceholder")}
           className="col-span-2"
-          aria-label="Location"
+          aria-label={t("locationPlaceholder")}
         />
       </div>
       <Textarea
         name="entry"
-        placeholder="e.g. Target left residence heading north on foot."
+        placeholder={t("entryPlaceholder")}
         required
       />
       <div className="flex justify-end">
@@ -57,7 +59,7 @@ export function AddTimelineEntry({ caseId }: { caseId: string }) {
           ) : (
             <Plus className="h-4 w-4" />
           )}
-          Add entry
+          {t("addButton")}
         </Button>
       </div>
     </form>

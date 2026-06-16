@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-/** Lightweight health check for uptime monitoring / Vercel. */
+/**
+ * Lightweight health check for uptime monitoring.
+ * Requires authentication to avoid leaking integration configuration.
+ */
 export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ status: "ok" });
+  }
+
   return NextResponse.json({
     status: "ok",
     service: "detective-pulse-ops-center",

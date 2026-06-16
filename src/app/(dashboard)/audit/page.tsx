@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ScrollText } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -27,6 +28,7 @@ const ACTION_BADGE: Record<string, string> = {
 
 export default async function AuditPage() {
   await requireRole(["admin"]);
+  const t = await getTranslations("audit");
   const supabase = await createClient();
   const { data } = await supabase
     .from("audit_logs")
@@ -38,29 +40,26 @@ export default async function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Audit Log"
-        description="Immutable record of system activity for compliance and security."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
       <Card>
         <CardContent className="p-0">
           {logs.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 icon={<ScrollText className="h-6 w-6" />}
-                title="No audit events"
-                description="Database changes will be recorded here automatically."
+                title={t("noTitle")}
+                description={t("noDescription")}
               />
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Record</TableHead>
+                  <TableHead>{t("table.when")}</TableHead>
+                  <TableHead>{t("table.actor")}</TableHead>
+                  <TableHead>{t("table.action")}</TableHead>
+                  <TableHead>{t("table.entity")}</TableHead>
+                  <TableHead>{t("table.record")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -70,7 +69,7 @@ export default async function AuditPage() {
                       {timeAgo(l.created_at)}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {l.profiles?.full_name ?? l.profiles?.email ?? "System"}
+                      {l.profiles?.full_name ?? l.profiles?.email ?? t("system")}
                     </TableCell>
                     <TableCell>
                       <Badge className={`border-transparent ${ACTION_BADGE[l.action] ?? ""}`}>

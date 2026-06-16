@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Users, UserCheck, Radio, PowerOff, BatteryMedium } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { isStaff } from "@/lib/auth";
 import { getAgents } from "@/lib/queries";
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AgentsPage() {
   const profile = await requireProfile();
+  const t = await getTranslations("agents");
   const agents = await getAgents();
 
   const total = agents.length;
@@ -34,15 +36,15 @@ export default async function AgentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Agent Management" description="Field roster and live status.">
+      <PageHeader title={t("title")} description={t("description")}>
         {isStaff(profile.role) && <CreateAgentDialog />}
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total Agents" value={total} icon={<Users className="h-5 w-5" />} />
-        <StatCard label="Available" value={available} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
-        <StatCard label="Active" value={active} icon={<Radio className="h-5 w-5" />} accent="text-blue-500" />
-        <StatCard label="Offline" value={offline} icon={<PowerOff className="h-5 w-5" />} accent="text-slate-400" />
+        <StatCard label={t("stats.total")} value={total} icon={<Users className="h-5 w-5" />} />
+        <StatCard label={t("stats.available")} value={available} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
+        <StatCard label={t("stats.active")} value={active} icon={<Radio className="h-5 w-5" />} accent="text-blue-500" />
+        <StatCard label={t("stats.offline")} value={offline} icon={<PowerOff className="h-5 w-5" />} accent="text-slate-400" />
       </div>
 
       <Card>
@@ -51,20 +53,20 @@ export default async function AgentsPage() {
             <div className="p-6">
               <EmptyState
                 icon={<Users className="h-6 w-6" />}
-                title="No agents yet"
-                description="Create your first field operative to start tracking operations."
+                title={t("noTitle")}
+                description={t("noDescription")}
               />
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Battery</TableHead>
-                  <TableHead>Last Active</TableHead>
+                  <TableHead>{t("table.agent")}</TableHead>
+                  <TableHead>{t("table.position")}</TableHead>
+                  <TableHead>{t("table.area")}</TableHead>
+                  <TableHead>{t("table.status")}</TableHead>
+                  <TableHead>{t("table.battery")}</TableHead>
+                  <TableHead>{t("table.lastActive")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -80,7 +82,7 @@ export default async function AgentsPage() {
                           <p className="font-medium">{a.full_name}</p>
                           <p className="text-xs text-muted-foreground">
                             {a.agent_code}
-                            {a.nickname ? ` · “${a.nickname}”` : ""}
+                            {a.nickname ? ` · "${a.nickname}"` : ""}
                           </p>
                         </div>
                       </div>

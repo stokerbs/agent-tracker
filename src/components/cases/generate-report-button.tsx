@@ -4,10 +4,12 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { generateCaseReport } from "@/app/(dashboard)/reports/actions";
 import { Button } from "@/components/ui/button";
 
 export function GenerateReportButton({ caseId }: { caseId: string }) {
+  const t = useTranslations("reports");
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -15,7 +17,7 @@ export function GenerateReportButton({ caseId }: { caseId: string }) {
     start(async () => {
       const res = await generateCaseReport(caseId);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("AI report generated");
+      toast.success(t("toast.generated"));
       router.refresh();
     });
   }
@@ -27,7 +29,7 @@ export function GenerateReportButton({ caseId }: { caseId: string }) {
       ) : (
         <Sparkles className="h-4 w-4" />
       )}
-      Generate AI Report
+      {t("generateButton")}
     </Button>
   );
 }

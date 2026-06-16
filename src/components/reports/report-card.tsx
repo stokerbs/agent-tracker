@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { approveReport } from "@/app/(dashboard)/reports/actions";
 import { exportReportDocx, exportReportPdf } from "@/lib/export";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ export function ReportCard({
   subjectName?: string | null;
   canApprove: boolean;
 }) {
+  const t = useTranslations("reports");
   const [expanded, setExpanded] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -54,7 +56,7 @@ export function ReportCard({
     start(async () => {
       const res = await approveReport(report.id, clientVisible);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Report approved");
+      toast.success(t("toast.approved"));
       router.refresh();
     });
   }
@@ -67,11 +69,11 @@ export function ReportCard({
             <FileText className="h-4 w-4" /> {report.title}
           </CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Generated {formatDate(report.created_at)}
+            {t("generated", { date: formatDate(report.created_at) })}
           </p>
         </div>
         <Badge className={`border-transparent ${STATUS_BADGE[report.status]}`}>
-          {report.status}
+          {t(`status.${report.status}` as any)}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -81,30 +83,30 @@ export function ReportCard({
 
         {expanded && (
           <div className="space-y-3 rounded-lg bg-muted/40 p-4 text-sm">
-            <Section title="Chronological Report" body={report.body} chrono />
-            <Section title="Observations" body={report.observations} />
-            <Section title="Conclusion" body={report.conclusion} />
+            <Section title={t("sections.chronological")} body={report.body} chrono />
+            <Section title={t("sections.observations")} body={report.observations} />
+            <Section title={t("sections.conclusion")} body={report.conclusion} />
           </div>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setExpanded((e) => !e)}>
             <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
-            {expanded ? "Hide" : "View full report"}
+            {expanded ? t("hide") : t("viewFull")}
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <Download className="h-4 w-4" /> Export
+                <Download className="h-4 w-4" /> {t("exportLabel")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => exportReportPdf({ report, caseRecord: exportRef })}>
-                Download PDF
+                {t("downloadPdf")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => exportReportDocx({ report, caseRecord: exportRef })}>
-                Download DOCX
+                {t("downloadDocx")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -121,11 +123,11 @@ export function ReportCard({
               ) : (
                 <CheckCircle2 className="h-4 w-4" />
               )}
-              Approve & publish
+              {t("approveButton")}
             </Button>
           )}
           {report.status === "approved" && report.is_client_visible && (
-            <Badge variant="secondary">Visible to client</Badge>
+            <Badge variant="secondary">{t("visibleToClient")}</Badge>
           )}
         </div>
       </CardContent>

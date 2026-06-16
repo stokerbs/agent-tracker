@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { signUp, type AuthState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function RegisterPage() {
+  const t = useTranslations("auth.register");
   const [state, action, pending] = useActionState<AuthState, FormData>(
     signUp,
     undefined,
@@ -16,27 +18,36 @@ export default function RegisterPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Create your account</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Join the operations command center.
-      </p>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 
       <form action={action} className="mt-8 space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="full_name">Full name</Label>
-          <Input id="full_name" name="full_name" placeholder="James Holloway" required />
+          <Label htmlFor="full_name">{t("fullName")}</Label>
+          <Input
+            id="full_name"
+            name="full_name"
+            placeholder={t("namePlaceholder")}
+            required
+          />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="agent@detectivepulse.io" required />
+          <Label htmlFor="email">{t("email")}</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder={t("emailPlaceholder")}
+            required
+          />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("password")}</Label>
           <Input
             id="password"
             name="password"
             type="password"
-            placeholder="At least 8 characters"
+            placeholder={t("passwordHint")}
             minLength={8}
             required
           />
@@ -49,14 +60,14 @@ export default function RegisterPage() {
 
         <Button type="submit" className="w-full" disabled={pending}>
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          Create account
+          {t("createAccount")}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("hasAccount")}{" "}
         <Link href="/login" className="font-medium text-primary hover:underline">
-          Sign in
+          {t("signIn")}
         </Link>
       </p>
     </div>

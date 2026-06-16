@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock, MapPin } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
 
 export default async function TimelinePage() {
   await requireProfile();
+  const t = await getTranslations("timeline");
+  const locale = await getLocale();
   const supabase = await createClient();
   const { data } = await supabase
     .from("timeline_entries")
@@ -22,7 +25,6 @@ export default async function TimelinePage() {
 
   const entries = (data ?? []) as any[];
 
-  // Group by date.
   const groups = entries.reduce<Record<string, any[]>>((acc, e) => {
     (acc[e.entry_date] ??= []).push(e);
     return acc;
@@ -30,23 +32,20 @@ export default async function TimelinePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Timeline Reporting"
-        description="Chronological surveillance log across all cases."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       {entries.length === 0 ? (
         <EmptyState
           icon={<Clock className="h-6 w-6" />}
-          title="No timeline entries"
-          description="Field observations submitted by agents will appear here."
+          title={t("noTitle")}
+          description={t("noDescription")}
         />
       ) : (
         <div className="space-y-6">
           {Object.entries(groups).map(([date, items]) => (
             <div key={date}>
               <p className="mb-2 text-sm font-semibold text-muted-foreground">
-                {new Date(date).toLocaleDateString("en-US", {
+                {new Date(date).toLocaleDateString(locale === "th" ? "th-TH" : "en-US", {
                   weekday: "long",
                   month: "long",
                   day: "numeric",

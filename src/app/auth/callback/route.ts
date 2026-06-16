@@ -8,7 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const rawNext = searchParams.get("next") ?? "/dashboard";
+  // Only allow same-origin paths — must start with exactly one slash.
+  const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/dashboard";
 
   if (code) {
     const supabase = await createClient();

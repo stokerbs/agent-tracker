@@ -8,6 +8,7 @@ import {
   InfoWindow,
 } from "@vis.gl/react-google-maps";
 import { BatteryMedium, MapPinOff, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,8 +30,11 @@ import { batteryColor, initials, timeAgo } from "@/lib/utils";
 import type { Agent, AgentStatus } from "@/lib/types";
 
 const MAP_ID = "detective-pulse-ops-map";
+const AGENT_STATUSES = Object.keys(AGENT_STATUS_META) as AgentStatus[];
 
 export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
+  const t = useTranslations("map");
+  const tStatus = useTranslations("status.agent");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [selected, setSelected] = useState<Agent | null>(null);
@@ -50,7 +54,6 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
     setLastSync(new Date());
   }
 
-  // Auto-refresh every 60s (spec requirement).
   useEffect(() => {
     const id = setInterval(refresh, GPS_REFRESH_MS);
     return () => clearInterval(id);
@@ -82,17 +85,17 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
       <Input
-        placeholder="Search agents…"
+        placeholder={t("searchPlaceholder")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="h-9 w-40"
       />
       <Select value={areaFilter} onValueChange={setAreaFilter}>
         <SelectTrigger className="h-9 w-36">
-          <SelectValue placeholder="Area" />
+          <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All areas</SelectItem>
+          <SelectItem value="all">{t("areaAll")}</SelectItem>
           {areas.map((a) => (
             <SelectItem key={a} value={a}>
               {a}
@@ -102,20 +105,20 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
       </Select>
       <Select value={statusFilter} onValueChange={setStatusFilter}>
         <SelectTrigger className="h-9 w-36">
-          <SelectValue placeholder="Status" />
+          <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          {Object.entries(AGENT_STATUS_META).map(([k, v]) => (
+          <SelectItem value="all">{t("statusAll")}</SelectItem>
+          {AGENT_STATUSES.map((k) => (
             <SelectItem key={k} value={k}>
-              {v.label}
+              {tStatus(k)}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <Button variant="outline" size="sm" onClick={refresh} className="gap-2">
         <RefreshCw className="h-4 w-4" />
-        Sync
+        {t("sync")}
       </Button>
     </div>
   );
@@ -126,11 +129,9 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
         {controls}
         <div className="flex h-[60vh] flex-col items-center justify-center rounded-xl border border-dashed text-center">
           <MapPinOff className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="font-medium">Google Maps key not configured</p>
+          <p className="font-medium">{t("noApiKeyTitle")}</p>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            Set <code className="rounded bg-muted px-1">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>{" "}
-            to enable the live tracking map. Agent positions below are still
-            synced from the database.
+            {t("noApiKeyDescription")}
           </p>
           <div className="mt-6 grid w-full max-w-2xl gap-2 px-4">
             {filtered.map((a) => (
@@ -147,8 +148,7 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         {controls}
         <p className="text-xs text-muted-foreground">
-          {filtered.length} agent{filtered.length === 1 ? "" : "s"} · synced{" "}
-          {timeAgo(lastSync)}
+          {t("agentCount", { count: filtered.length, time: timeAgo(lastSync) })}
         </p>
       </div>
 
@@ -190,10 +190,10 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
                     <AgentStatusBadge status={selected.status} />
                   </div>
                   <p className="mt-2 text-xs text-slate-600">
-                    Battery: {selected.battery_pct ?? "—"}% · {selected.area}
+                    {t("battery")}: {selected.battery_pct ?? "—"}% · {selected.area}
                   </p>
                   <p className="text-xs text-slate-600">
-                    Updated {timeAgo(selected.last_active)}
+                    {t("updated")}: {timeAgo(selected.last_active)}
                   </p>
                 </div>
               </InfoWindow>

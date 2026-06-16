@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MapPin, Siren } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -21,6 +22,7 @@ const STATUS_BADGE = {
 
 export default async function EmergencyPage() {
   const profile = await requireProfile();
+  const t = await getTranslations("emergency");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -34,18 +36,15 @@ export default async function EmergencyPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Emergency Alert System"
-        description="Field distress signals and response coordination."
-      >
+      <PageHeader title={t("title")} description={t("description")}>
         <SosButton />
       </PageHeader>
 
       {alerts.length === 0 ? (
         <EmptyState
           icon={<Siren className="h-6 w-6" />}
-          title="No emergency alerts"
-          description="All clear. SOS alerts from the field will appear here in real time."
+          title={t("noTitle")}
+          description={t("noDescription")}
         />
       ) : (
         <div className="space-y-3">
@@ -67,13 +66,13 @@ export default async function EmergencyPage() {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {a.agents?.full_name ?? "Unknown agent"}{" "}
+                      {a.agents?.full_name ?? t("alert.unknownAgent")}{" "}
                       <span className="text-xs text-muted-foreground">
                         {a.agents?.agent_code}
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {a.notes ?? "SOS triggered"}
+                      {a.notes ?? t("alert.sosTriggered")}
                     </p>
                     <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{timeAgo(a.created_at)}</span>
@@ -93,7 +92,7 @@ export default async function EmergencyPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge className={`border-transparent ${STATUS_BADGE[a.status as keyof typeof STATUS_BADGE]}`}>
-                    {a.status}
+                    {t(`status.${a.status}` as any)}
                   </Badge>
                   {staff && <AlertActions alertId={a.id} status={a.status} />}
                 </div>

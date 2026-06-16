@@ -2,7 +2,6 @@ import type {
   AgentStatus,
   CasePriority,
   CaseStatus,
-  ExpenseCategory,
   UserRole,
 } from "./types";
 
@@ -84,18 +83,6 @@ export const CASE_PRIORITY_META: Record<
     label: "Critical",
     badge: "bg-red-500/15 text-red-600 dark:text-red-400",
   },
-};
-
-export const EXPENSE_CATEGORY_META: Record<
-  ExpenseCategory,
-  { label: string; icon: string }
-> = {
-  fuel: { label: "Fuel", icon: "Fuel" },
-  toll: { label: "Toll", icon: "TrafficCone" },
-  parking: { label: "Parking", icon: "SquareParking" },
-  food: { label: "Food", icon: "Utensils" },
-  hotel: { label: "Hotel", icon: "BedDouble" },
-  misc: { label: "Miscellaneous", icon: "Receipt" },
 };
 
 export const ROLE_META: Record<UserRole, { label: string; badge: string }> = {

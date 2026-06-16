@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Radio } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Button } from "@/components/ui/button";
 
 export default async function PortalLayout({
@@ -11,8 +13,9 @@ export default async function PortalLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireProfile();
+  const t = await getTranslations("portal");
+  const tAuth = await getTranslations("auth");
 
-  // Only clients use the portal; staff/agents go to the operations app.
   if (profile.role !== "client") {
     const { redirect } = await import("next/navigation");
     redirect("/dashboard");
@@ -26,16 +29,17 @@ export default async function PortalLayout({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Radio className="h-4 w-4" />
             </div>
-            Client Portal
+            {t("clientPortal")}
           </Link>
           <div className="flex items-center gap-2">
             <span className="hidden text-sm text-muted-foreground sm:inline">
               {profile.email}
             </span>
+            <LanguageSwitcher />
             <ThemeToggle />
             <form action={signOut}>
               <Button variant="outline" size="sm">
-                Sign out
+                {tAuth("signOut")}
               </Button>
             </form>
           </div>

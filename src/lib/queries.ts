@@ -39,6 +39,18 @@ export async function getCases(): Promise<Case[]> {
   return (data as Case[]) ?? [];
 }
 
+/** Returns only active/assigned/new cases for the dashboard mission list. */
+export async function getActiveCases(limit = 5): Promise<Case[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("cases")
+    .select("*")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  return (data as Case[]) ?? [];
+}
+
 export async function getDashboardStats() {
   const supabase = await createClient();
   const [agents, cases, alerts] = await Promise.all([

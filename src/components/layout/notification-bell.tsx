@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { timeAgo } from "@/lib/utils";
 import type { Notification } from "@/lib/types";
 
 export function NotificationBell({ userId }: { userId: string }) {
+  const t = useTranslations("header");
   const [items, setItems] = useState<Notification[]>([]);
   const supabase = createClient();
 
@@ -31,7 +33,6 @@ export function NotificationBell({ userId }: { userId: string }) {
 
   useEffect(() => {
     load();
-    // Realtime subscription for new notifications.
     const channel = supabase
       .channel("notifications")
       .on(
@@ -65,7 +66,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   return (
     <DropdownMenu onOpenChange={(o) => o && unread && markAllRead()}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+        <Button variant="ghost" size="icon" className="relative" aria-label={t("notifications")}>
           <Bell className="h-5 w-5" />
           {unread > 0 && (
             <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
@@ -75,12 +76,12 @@ export function NotificationBell({ userId }: { userId: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("notifications")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-80 overflow-y-auto scrollbar-thin">
           {items.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-              You&apos;re all caught up.
+              {t("allCaughtUp")}
             </p>
           ) : (
             items.map((n) => (

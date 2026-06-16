@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   await requireRole(["admin"]);
+  const t = await getTranslations("users");
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
@@ -32,19 +34,16 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="User Management"
-        description="Manage roles and permissions across the platform."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead>{t("table.user")}</TableHead>
+                <TableHead>{t("table.role")}</TableHead>
+                <TableHead>{t("table.status")}</TableHead>
+                <TableHead>{t("table.joined")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -67,7 +66,7 @@ export default async function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.is_active ? "default" : "destructive"}>
-                      {u.is_active ? "Active" : "Disabled"}
+                      {u.is_active ? t("statusActive") : t("statusDisabled")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -81,7 +80,7 @@ export default async function UsersPage() {
       </Card>
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-3 w-3" />
-        Role changes take effect immediately and are recorded in the audit log.
+        {t("roleNote")}
       </p>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { createAgent } from "@/app/(dashboard)/agents/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AGENT_STATUS_META } from "@/lib/constants";
+import type { AgentStatus } from "@/lib/types";
+
+const AGENT_STATUSES: AgentStatus[] = ["available", "on_mission", "traveling", "break", "offline"];
 
 export function CreateAgentDialog() {
+  const t = useTranslations("agents.createDialog");
+  const tStatus = useTranslations("status.agent");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -38,7 +43,7 @@ export function CreateAgentDialog() {
         toast.error(res.error);
         return;
       }
-      toast.success("Agent created");
+      toast.success(t("toast.success"));
       setOpen(false);
       router.refresh();
     });
@@ -48,35 +53,32 @@ export function CreateAgentDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="h-4 w-4" /> New Agent
+          <Plus className="h-4 w-4" /> {t("createButton")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create field agent</DialogTitle>
-          <DialogDescription>
-            Add an operative to the roster. Status and live position can be
-            updated later.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form action={onSubmit} className="grid gap-4 sm:grid-cols-2">
-          <Field label="Agent ID" name="agent_code" placeholder="DP-006" required />
-          <Field label="Full name" name="full_name" placeholder="Alex Carter" required />
-          <Field label="Nickname" name="nickname" placeholder="Viper" />
-          <Field label="Position" name="position" placeholder="Field Agent" />
-          <Field label="Phone" name="phone" type="tel" placeholder="+1 202 555 0199" />
-          <Field label="Email" name="email" type="email" placeholder="agent@dp.local" />
-          <Field label="Area" name="area" placeholder="Downtown" />
+          <Field label={t("fields.agentId")} name="agent_code" placeholder={t("fields.agentIdPlaceholder")} required />
+          <Field label={t("fields.fullName")} name="full_name" placeholder={t("fields.fullNamePlaceholder")} required />
+          <Field label={t("fields.nickname")} name="nickname" placeholder={t("fields.nicknamePlaceholder")} />
+          <Field label={t("fields.position")} name="position" placeholder={t("fields.positionPlaceholder")} />
+          <Field label={t("fields.phone")} name="phone" type="tel" placeholder={t("fields.phonePlaceholder")} />
+          <Field label={t("fields.email")} name="email" type="email" placeholder={t("fields.emailPlaceholder")} />
+          <Field label={t("fields.area")} name="area" placeholder={t("fields.areaPlaceholder")} />
           <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t("fields.status")}</Label>
             <Select name="status" defaultValue="offline">
               <SelectTrigger id="status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(AGENT_STATUS_META).map(([k, v]) => (
+                {AGENT_STATUSES.map((k) => (
                   <SelectItem key={k} value={k}>
-                    {v.label}
+                    {tStatus(k)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -86,7 +88,7 @@ export function CreateAgentDialog() {
           <DialogFooter className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create agent
+              {t("createButton")}
             </Button>
           </DialogFooter>
         </form>

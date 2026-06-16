@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { signIn, type AuthState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 function LoginForm() {
+  const t = useTranslations("auth.login");
   const params = useSearchParams();
   const next = params.get("next") ?? "/dashboard";
   const [state, action, pending] = useActionState<AuthState, FormData>(
@@ -22,18 +24,18 @@ function LoginForm() {
     <form action={action} className="mt-8 space-y-4">
       <input type="hidden" name="next" value={next} />
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("email")}</Label>
         <Input
           id="email"
           name="email"
           type="email"
-          placeholder="agent@detectivepulse.io"
+          placeholder={t("emailPlaceholder")}
           autoComplete="email"
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("password")}</Label>
         <Input
           id="password"
           name="password"
@@ -52,28 +54,27 @@ function LoginForm() {
 
       <Button type="submit" className="w-full" disabled={pending}>
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Sign in
+        {t("signIn")}
       </Button>
     </form>
   );
 }
 
 export default function LoginPage() {
+  const t = useTranslations("auth.login");
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Welcome back</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Sign in to your command center.
-      </p>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 
       <Suspense fallback={<div className="mt-8 h-48" />}>
         <LoginForm />
       </Suspense>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
-          Create one
+          {t("createOne")}
         </Link>
       </p>
     </div>

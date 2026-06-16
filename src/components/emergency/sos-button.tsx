@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Siren } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { triggerSos } from "@/app/(dashboard)/emergency/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 export function SosButton() {
+  const t = useTranslations("emergency.sos");
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [pending, start] = useTransition();
@@ -25,7 +27,6 @@ export function SosButton() {
 
   function fire() {
     start(async () => {
-      // Best-effort geolocation capture.
       const coords = await new Promise<GeolocationCoordinates | null>((resolve) => {
         if (!navigator.geolocation) return resolve(null);
         navigator.geolocation.getCurrentPosition(
@@ -41,7 +42,7 @@ export function SosButton() {
         notes: notes || undefined,
       });
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Emergency alert sent — supervisors notified");
+      toast.success(t("toast.success"));
       setOpen(false);
       setNotes("");
       router.refresh();
@@ -52,23 +53,20 @@ export function SosButton() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="destructive" className="gap-2">
-          <Siren className="h-4 w-4" /> SOS
+          <Siren className="h-4 w-4" /> {t("button")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
-            <Siren className="h-5 w-5" /> Trigger Emergency Alert
+            <Siren className="h-5 w-5" /> {t("dialogTitle")}
           </DialogTitle>
-          <DialogDescription>
-            This immediately notifies all supervisors with your current GPS
-            location. Use only in a genuine emergency.
-          </DialogDescription>
+          <DialogDescription>{t("dialogDescription")}</DialogDescription>
         </DialogHeader>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Optional: describe the situation…"
+          placeholder={t("notesPlaceholder")}
         />
         <DialogFooter>
           <Button variant="destructive" onClick={fire} disabled={pending}>
@@ -77,7 +75,7 @@ export function SosButton() {
             ) : (
               <Siren className="h-4 w-4" />
             )}
-            Send SOS now
+            {t("sendButton")}
           </Button>
         </DialogFooter>
       </DialogContent>

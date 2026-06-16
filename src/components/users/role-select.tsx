@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { updateUserRole } from "@/app/(dashboard)/users/actions";
 import {
   Select,
@@ -11,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ROLE_META } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
+
+const ROLES: UserRole[] = ["admin", "supervisor", "agent", "client"];
 
 export function RoleSelect({
   userId,
@@ -21,6 +23,8 @@ export function RoleSelect({
   userId: string;
   role: UserRole;
 }) {
+  const t = useTranslations("users.roles");
+  const tUsers = useTranslations("users");
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -28,7 +32,7 @@ export function RoleSelect({
     start(async () => {
       const res = await updateUserRole(userId, value as UserRole);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Role updated");
+      toast.success(tUsers("roleUpdated"));
       router.refresh();
     });
   }
@@ -39,9 +43,9 @@ export function RoleSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {Object.entries(ROLE_META).map(([k, v]) => (
+        {ROLES.map((k) => (
           <SelectItem key={k} value={k}>
-            {v.label}
+            {t(k)}
           </SelectItem>
         ))}
       </SelectContent>
