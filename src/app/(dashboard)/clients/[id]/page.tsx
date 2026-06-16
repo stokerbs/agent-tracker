@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { InvoiceCard } from "@/components/invoices/invoice-card";
+import { EditClientDialog } from "@/components/clients/edit-client-dialog";
 import {
   CasePriorityBadge,
   CaseStatusBadge,
@@ -92,7 +93,9 @@ export default async function ClientDetailPage({
         <PageHeader
           title={client.name}
           description={client.company ?? undefined}
-        />
+        >
+          <EditClientDialog client={client} />
+        </PageHeader>
       </FadeUp>
 
       {/* Stats */}

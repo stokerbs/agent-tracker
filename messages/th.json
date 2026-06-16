@@ -513,7 +513,25 @@
         "invoices": "ใบแจ้งหนี้"
       },
       "noCases": "ไม่มีคดีสำหรับลูกค้านี้",
-      "noInvoices": "ไม่มีใบแจ้งหนี้สำหรับลูกค้านี้"
+      "noInvoices": "ไม่มีใบแจ้งหนี้สำหรับลูกค้านี้",
+      "edit": {
+        "button": "แก้ไข",
+        "title": "แก้ไขข้อมูลลูกค้า",
+        "description": "อัปเดตรายละเอียดการติดต่อและหมายเหตุ",
+        "fields": {
+          "name": "ชื่อ-นามสกุล",
+          "namePlaceholder": "อีเลนอร์ แวนซ์",
+          "company": "บริษัท",
+          "companyPlaceholder": "แวนซ์ เอ็นเตอร์ไพรส์",
+          "email": "อีเมล",
+          "emailPlaceholder": "eleanor@example.com",
+          "phone": "โทรศัพท์",
+          "phonePlaceholder": "+66 81 234 5678",
+          "notes": "หมายเหตุ",
+          "notesPlaceholder": "หมายเหตุภายในเกี่ยวกับลูกค้านี้…"
+        },
+        "success": "อัปเดตข้อมูลลูกค้าแล้ว"
+      }
     }
   },
   "users": {

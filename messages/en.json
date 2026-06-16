@@ -513,7 +513,25 @@
         "invoices": "Invoices"
       },
       "noCases": "No cases for this client",
-      "noInvoices": "No invoices for this client"
+      "noInvoices": "No invoices for this client",
+      "edit": {
+        "button": "Edit",
+        "title": "Edit Client",
+        "description": "Update contact details and notes.",
+        "fields": {
+          "name": "Full name",
+          "namePlaceholder": "Eleanor Vance",
+          "company": "Company",
+          "companyPlaceholder": "Vance Enterprises",
+          "email": "Email",
+          "emailPlaceholder": "eleanor@example.com",
+          "phone": "Phone",
+          "phonePlaceholder": "+66 81 234 5678",
+          "notes": "Notes",
+          "notesPlaceholder": "Internal notes about this client…"
+        },
+        "success": "Client updated."
+      }
     }
   },
   "users": {
