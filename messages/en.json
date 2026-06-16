@@ -224,7 +224,21 @@
       "noEvidence": "No evidence uploaded",
       "noEvidenceDescription": "Upload photos, videos or PDF files for this case.",
       "noReports": "No reports yet",
-      "noReportsDescription": "Use \"Generate AI Report\" to create one from the timeline."
+      "noReportsDescription": "Use \"Generate AI Report\" to create one from the timeline.",
+      "closeCase": {
+        "button": "Close Case",
+        "title": "Close this case",
+        "description": "Mark the case as closed and set the end date. This action can be reversed by reopening the case.",
+        "endDate": "End date",
+        "checklist": "Checklist",
+        "checkApprovedReport": "Approved report",
+        "checkInvoice": "Invoice created",
+        "checkNotDone": "Not done — you can still close",
+        "summary": "{timeline} timeline entries · {evidence} evidence files · {reports} reports",
+        "confirm": "Close Case",
+        "success": "Case closed.",
+        "alreadyClosed": "Case is already closed"
+      }
     },
     "createDialog": {
       "title": "Open a new case",

@@ -224,7 +224,21 @@
       "noEvidence": "ยังไม่มีหลักฐานอัปโหลด",
       "noEvidenceDescription": "อัปโหลดรูปภาพ วิดีโอ หรือไฟล์ PDF สำหรับคดีนี้",
       "noReports": "ยังไม่มีรายงาน",
-      "noReportsDescription": "ใช้ \"สร้างรายงาน AI\" เพื่อสร้างรายงานจากไทม์ไลน์"
+      "noReportsDescription": "ใช้ \"สร้างรายงาน AI\" เพื่อสร้างรายงานจากไทม์ไลน์",
+      "closeCase": {
+        "button": "ปิดคดี",
+        "title": "ปิดคดีนี้",
+        "description": "ทำเครื่องหมายคดีว่าปิดแล้วและกำหนดวันที่สิ้นสุด สามารถเปิดใหม่ได้ภายหลัง",
+        "endDate": "วันที่สิ้นสุด",
+        "checklist": "รายการตรวจสอบ",
+        "checkApprovedReport": "รายงานที่ได้รับอนุมัติ",
+        "checkInvoice": "สร้างใบแจ้งหนี้แล้ว",
+        "checkNotDone": "ยังไม่ดำเนินการ — ยังสามารถปิดได้",
+        "summary": "{timeline} รายการไทม์ไลน์ · {evidence} ไฟล์หลักฐาน · {reports} รายงาน",
+        "confirm": "ปิดคดี",
+        "success": "ปิดคดีแล้ว",
+        "alreadyClosed": "คดีถูกปิดแล้ว"
+      }
     },
     "createDialog": {
       "title": "เปิดคดีใหม่",

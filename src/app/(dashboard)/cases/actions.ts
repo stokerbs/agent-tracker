@@ -79,6 +79,20 @@ export async function updateCaseStatus(caseId: string, status: CaseStatus) {
   return { ok: true };
 }
 
+export async function closeCase(caseId: string, endDate: string) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cases")
+    .update({ status: "closed", end_date: endDate })
+    .eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/cases");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function assignAgent(caseId: string, agentId: string) {
   const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();

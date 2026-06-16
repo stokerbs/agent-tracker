@@ -32,6 +32,7 @@ import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidencePreview } from "@/components/evidence/evidence-preview";
 import { ReportCard } from "@/components/reports/report-card";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
+import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +80,7 @@ export default async function CaseDetailPage({
     { data: evidence },
     { data: reports },
     { data: clientRaw },
+    invoiceCountRes,
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -100,9 +102,14 @@ export default async function CaseDetailPage({
     c.client_id && staff
       ? supabase.from("clients").select("*").eq("id", c.client_id).single()
       : Promise.resolve({ data: null }),
+    staff
+      ? supabase.from("invoices").select("id", { count: "exact", head: true }).eq("case_id", id)
+      : Promise.resolve({ count: 0 }),
   ]);
 
   const caseClient = clientRaw as Client | null;
+  const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
+  const hasApprovedReport = (reports as Report[] ?? []).some((r) => r.status === "approved");
 
   // Agent roster is only needed by staff for the assign-agent dropdown.
   // Agents cannot manage assignments and must not receive other agents' GPS data.
@@ -200,6 +207,18 @@ export default async function CaseDetailPage({
                     {tInvoices("createFromCase")}
                   </Button>
                 }
+              />
+            )}
+            {staff && c.status !== "closed" && (
+              <CloseCaseDialog
+                caseId={c.id}
+                caseNumber={c.case_number}
+                clientName={c.client_name}
+                timelineCount={timelineEntries.length}
+                evidenceCount={(evidence ?? []).length}
+                reportCount={(reports ?? []).length}
+                hasApprovedReport={hasApprovedReport}
+                hasInvoice={hasInvoice}
               />
             )}
           </CardContent>
