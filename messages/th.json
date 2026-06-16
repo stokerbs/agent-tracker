@@ -94,7 +94,12 @@
       "resend": "ส่งรหัสใหม่"
     },
     "signOut": "ออกจากระบบ",
-    "brandDescription": "การประสานงานแบบเรียลไทม์ที่ปลอดภัยสำหรับทีมสืบสวนและสอดแนมเอกชน — ตั้งแต่เบาะแสแรกจนถึงรายงานฉบับสุดท้าย"
+    "brandDescription": "การประสานงานแบบเรียลไทม์ที่ปลอดภัยสำหรับทีมสืบสวนและสอดแนมเอกชน — ตั้งแต่เบาะแสแรกจนถึงรายงานฉบับสุดท้าย",
+    "features": {
+      "encrypted": "เข้ารหัส",
+      "realtime": "เรียลไทม์",
+      "secure": "ปลอดภัย"
+    }
   },
   "nav": {
     "sections": {
@@ -116,7 +121,9 @@
       "users": "ผู้ใช้งาน",
       "audit": "บันทึกตรวจสอบ",
       "settings": "การตั้งค่า"
-    }
+    },
+    "systemNominal": "ระบบทำงานปกติ",
+    "opsPrefix": "ปฏิบัติการ"
   },
   "header": {
     "navigation": "การนำทาง",
@@ -300,6 +307,13 @@
       "toast": {
         "success": "อัปโหลดหลักฐานเรียบร้อยแล้ว"
       }
+    },
+    "typeLabels": {
+      "photo": "IMG",
+      "video": "VID",
+      "pdf": "PDF",
+      "audio": "AUD",
+      "document": "DOC"
     }
   },
   "expenses": {
@@ -371,6 +385,12 @@
     "toast": {
       "generated": "สร้างรายงาน AI เรียบร้อยแล้ว",
       "approved": "อนุมัติรายงานเรียบร้อยแล้ว"
+    },
+    "statusBadge": {
+      "draft": "ร่าง",
+      "submitted": "รีวิว",
+      "approved": "อนุมัติ",
+      "rejected": "ปฏิเสธ"
     }
   },
   "emergency": {
@@ -411,7 +431,8 @@
     "noApiKeyTitle": "ยังไม่ได้ตั้งค่า Google Maps",
     "noApiKeyDescription": "ตั้งค่า NEXT_PUBLIC_GOOGLE_MAPS_API_KEY เพื่อเปิดใช้งานแผนที่ติดตามสด ตำแหน่งเจ้าหน้าที่ด้านล่างยังคงซิงค์จากฐานข้อมูล",
     "battery": "แบตเตอรี่",
-    "updated": "อัปเดต"
+    "updated": "อัปเดต",
+    "filters": "ตัวกรอง"
   },
   "clients": {
     "title": "ลูกค้า",
@@ -498,7 +519,10 @@
     "totalAgents": "เจ้าหน้าที่ทั้งหมด",
     "available": "พร้อมรับงาน",
     "onDuty": "ปฏิบัติหน้าที่ (ใช้งาน)",
-    "offline": "ออฟไลน์"
+    "offline": "ออฟไลน์",
+    "shortOn": "ว่าง",
+    "shortOps": "งาน",
+    "shortOff": "ออฟ"
   },
   "assignAgent": {
     "noAgentsAssigned": "ยังไม่มีเจ้าหน้าที่ที่มอบหมาย",

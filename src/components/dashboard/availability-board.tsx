@@ -70,9 +70,9 @@ export function AgentAvailabilityBoard({
         {/* Quick stats row */}
         <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/40 p-2">
           {[
-            { label: "ON", value: stats.available, accent: "text-success" },
-            { label: "OPS", value: stats.active - stats.available, accent: "text-primary" },
-            { label: "OFF", value: stats.offline, accent: "text-muted-foreground" },
+            { label: t("shortOn"), value: stats.available, accent: "text-success" },
+            { label: t("shortOps"), value: stats.active - stats.available, accent: "text-primary" },
+            { label: t("shortOff"), value: stats.offline, accent: "text-muted-foreground" },
           ].map(({ label, value, accent }) => (
             <div key={label} className="flex flex-col items-center py-1">
               <span className={`font-mono text-lg font-bold leading-none ${accent}`}>{value}</span>

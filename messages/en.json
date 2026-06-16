@@ -94,7 +94,12 @@
       "resend": "Send a new one"
     },
     "signOut": "Sign out",
-    "brandDescription": "Secure, real-time coordination for private investigation and surveillance teams — from the first lead to the final report."
+    "brandDescription": "Secure, real-time coordination for private investigation and surveillance teams — from the first lead to the final report.",
+    "features": {
+      "encrypted": "Encrypted",
+      "realtime": "Realtime",
+      "secure": "Secure"
+    }
   },
   "nav": {
     "sections": {
@@ -116,7 +121,9 @@
       "users": "Users",
       "audit": "Audit Log",
       "settings": "Settings"
-    }
+    },
+    "systemNominal": "System Nominal",
+    "opsPrefix": "Ops"
   },
   "header": {
     "navigation": "Navigation",
@@ -300,6 +307,13 @@
       "toast": {
         "success": "Evidence uploaded"
       }
+    },
+    "typeLabels": {
+      "photo": "IMG",
+      "video": "VID",
+      "pdf": "PDF",
+      "audio": "AUD",
+      "document": "DOC"
     }
   },
   "expenses": {
@@ -371,6 +385,12 @@
     "toast": {
       "generated": "AI report generated",
       "approved": "Report approved"
+    },
+    "statusBadge": {
+      "draft": "DRAFT",
+      "submitted": "REVIEW",
+      "approved": "APPROVED",
+      "rejected": "REJECTED"
     }
   },
   "emergency": {
@@ -411,7 +431,8 @@
     "noApiKeyTitle": "Google Maps key not configured",
     "noApiKeyDescription": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the live tracking map. Agent positions below are still synced from the database.",
     "battery": "Battery",
-    "updated": "Updated"
+    "updated": "Updated",
+    "filters": "Filters"
   },
   "clients": {
     "title": "Clients",
@@ -498,7 +519,10 @@
     "totalAgents": "Total agents",
     "available": "Available",
     "onDuty": "On Duty (Active)",
-    "offline": "Offline"
+    "offline": "Offline",
+    "shortOn": "ON",
+    "shortOps": "OPS",
+    "shortOff": "OFF"
   },
   "assignAgent": {
     "noAgentsAssigned": "No agents assigned yet.",

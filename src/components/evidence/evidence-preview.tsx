@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { getEvidenceUrl } from "@/app/(dashboard)/evidence/actions";
 import {
   Dialog,
@@ -32,12 +33,21 @@ const TYPE_META = {
 } as const;
 
 export function EvidencePreview({ item }: { item: Evidence }) {
+  const tEvidence = useTranslations("evidence");
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const meta = TYPE_META[item.type] ?? TYPE_META.document;
   const { Icon } = meta;
+  const typeLabels: Record<keyof typeof TYPE_META, string> = {
+    photo: tEvidence("typeLabels.photo"),
+    video: tEvidence("typeLabels.video"),
+    pdf: tEvidence("typeLabels.pdf"),
+    audio: tEvidence("typeLabels.audio"),
+    document: tEvidence("typeLabels.document"),
+  };
+  const label = typeLabels[item.type as keyof typeof TYPE_META] ?? typeLabels.document;
 
   async function openPreview() {
     setOpen(true);
@@ -81,7 +91,7 @@ export function EvidencePreview({ item }: { item: Evidence }) {
         <div className="p-3">
           <div className="flex items-center gap-1.5">
             <span className={cn("font-mono text-[9px] font-bold tracking-widest", meta.text)}>
-              {meta.label}
+              {label}
             </span>
             {item.category && (
               <>

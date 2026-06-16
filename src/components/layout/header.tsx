@@ -31,32 +31,51 @@ import { ROLE_META } from "@/lib/constants";
 import { cn, initials } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 
-const PAGE_LABELS: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/map": "Live Map",
-  "/cases": "Cases",
-  "/timeline": "Timeline",
-  "/agents": "Agents",
-  "/evidence": "Evidence",
-  "/reports": "Reports",
-  "/expenses": "Expenses",
-  "/emergency": "Emergency",
-  "/clients": "Clients",
-  "/users": "Users",
-  "/audit": "Audit Logs",
-  "/settings": "Settings",
+const PAGE_KEYS: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/map": "map",
+  "/cases": "cases",
+  "/timeline": "timeline",
+  "/agents": "agents",
+  "/evidence": "evidence",
+  "/reports": "reports",
+  "/expenses": "expenses",
+  "/emergency": "emergency",
+  "/clients": "clients",
+  "/users": "users",
+  "/audit": "audit",
+  "/settings": "settings",
 };
 
 function Breadcrumb() {
   const pathname = usePathname();
+  const tNav = useTranslations("nav");
   const parts = pathname.split("/").filter(Boolean);
   const topLevel = "/" + (parts[0] ?? "");
-  const label = PAGE_LABELS[topLevel] ?? parts[0] ?? "";
+  const navKey = PAGE_KEYS[topLevel];
+
+  const navLabels: Record<string, string> = {
+    dashboard: tNav("items.dashboard"),
+    map: tNav("items.map"),
+    cases: tNav("items.cases"),
+    timeline: tNav("items.timeline"),
+    agents: tNav("items.agents"),
+    evidence: tNav("items.evidence"),
+    reports: tNav("items.reports"),
+    expenses: tNav("items.expenses"),
+    emergency: tNav("items.emergency"),
+    clients: tNav("items.clients"),
+    users: tNav("items.users"),
+    audit: tNav("items.audit"),
+    settings: tNav("items.settings"),
+  };
+
+  const label = (navKey ? navLabels[navKey] : null) ?? parts[0] ?? "";
 
   return (
     <div className="hidden items-center gap-1.5 text-sm lg:flex">
       <span className="font-mono text-xs font-medium uppercase tracking-widest text-muted-foreground/50">
-        Ops
+        {tNav("opsPrefix")}
       </span>
       <span className="text-muted-foreground/30">/</span>
       <span className="font-medium text-foreground/90">{label}</span>
@@ -76,6 +95,7 @@ export function Header({ profile }: { profile: Profile }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const roleMeta = ROLE_META[profile.role];
   const t = useTranslations("header");
+  const tNav = useTranslations("nav");
   const tUsers = useTranslations("users.roles");
   const tAuth = useTranslations("auth");
 
@@ -154,7 +174,7 @@ export function Header({ profile }: { profile: Profile }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings" className="gap-2">
-                <Settings className="h-3.5 w-3.5" /> Settings
+                <Settings className="h-3.5 w-3.5" /> {tNav("items.settings")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

@@ -174,7 +174,7 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
         className={cn("h-8 gap-1.5 text-xs", filtersOpen && "bg-accent")}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
-        Filters
+        {t("filters")}
       </Button>
 
       <Button variant="outline" size="sm" onClick={refresh} className="h-8 gap-1.5 text-xs">

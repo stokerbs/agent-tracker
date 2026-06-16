@@ -46,9 +46,9 @@ export default async function AuthLayout({
           {/* Status indicators */}
           <div className="mt-8 grid grid-cols-3 gap-3">
             {[
-              { label: "Encrypted", color: "bg-primary" },
-              { label: "Realtime", color: "bg-success" },
-              { label: "Secure", color: "bg-warning" },
+              { label: t("features.encrypted"), color: "bg-primary" },
+              { label: t("features.realtime"), color: "bg-success" },
+              { label: t("features.secure"), color: "bg-warning" },
             ].map(({ label, color }) => (
               <div
                 key={label}

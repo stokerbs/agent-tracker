@@ -26,14 +26,11 @@ import {
 import { cn, formatDate } from "@/lib/utils";
 import type { Case, Report } from "@/lib/types";
 
-const STATUS_META: Record<
-  Report["status"],
-  { badge: string; label: string }
-> = {
-  draft:     { badge: "bg-slate-500/10 text-slate-400 border-slate-500/20",   label: "DRAFT" },
-  submitted: { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",   label: "REVIEW" },
-  approved:  { badge: "bg-success/10 text-success border-success/20",         label: "APPROVED" },
-  rejected:  { badge: "bg-destructive/10 text-destructive border-destructive/20", label: "REJECTED" },
+const STATUS_META: Record<Report["status"], { badge: string }> = {
+  draft:     { badge: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
+  submitted: { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  approved:  { badge: "bg-success/10 text-success border-success/20" },
+  rejected:  { badge: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 export function ReportCard({
@@ -53,6 +50,7 @@ export function ReportCard({
   const router = useRouter();
 
   const statusMeta = STATUS_META[report.status];
+  const statusLabel = t(`statusBadge.${report.status}` as Parameters<typeof t>[0]);
 
   const exportRef = caseRecord
     ? {
@@ -94,7 +92,7 @@ export function ReportCard({
             statusMeta.badge,
           )}
         >
-          {statusMeta.label}
+          {statusLabel}
         </Badge>
       </div>
 
