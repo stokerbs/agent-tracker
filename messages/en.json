@@ -298,6 +298,31 @@
       "battery": "Battery",
       "lastActive": "Last Active"
     },
+    "detail": {
+      "back": "All agents",
+      "fieldStatus": "Field Status",
+      "memberSince": "Member Since",
+      "noGps": "No GPS signal",
+      "noCases": "No cases assigned",
+      "noExpenses": "No expenses recorded",
+      "stats": {
+        "totalCases": "Total Cases",
+        "openCases": "Open Cases",
+        "totalExpenses": "Total Expenses",
+        "completionRate": "Completion Rate"
+      },
+      "tabs": {
+        "cases": "Cases",
+        "expenses": "Expenses"
+      },
+      "expenseTable": {
+        "date": "Date",
+        "category": "Category",
+        "notes": "Notes",
+        "amount": "Amount",
+        "total": "Total"
+      }
+    },
     "createDialog": {
       "title": "Create field agent",
       "description": "Add an operative to the roster. Status and live position can be updated later.",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   Users,
   UserCheck,
@@ -85,7 +86,7 @@ export default async function AgentsPage() {
         <StaggerGrid className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {agents.map((a) => (
             <StaggerItem key={a.id}>
-              <div className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card p-4 transition-all duration-200 hover:border-border hover:shadow-sm">
+              <Link href={`/agents/${a.id}`} className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card p-4 transition-all duration-200 hover:border-border hover:shadow-sm">
                 {/* Avatar + status */}
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10 ring-2 ring-background">
@@ -133,7 +134,7 @@ export default async function AgentsPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             </StaggerItem>
           ))}
         </StaggerGrid>
