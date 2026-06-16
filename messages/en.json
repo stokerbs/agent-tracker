@@ -75,27 +75,22 @@
   },
   "auth": {
     "login": {
-      "title": "Welcome back",
-      "subtitle": "Sign in to your command center.",
+      "title": "Sign in",
+      "subtitle": "Enter your email to receive a one-time sign-in code.",
       "email": "Email",
       "emailPlaceholder": "agent@detectivepulse.io",
-      "password": "Password",
-      "signIn": "Sign in",
-      "createOne": "Create one",
-      "noAccount": "Don't have an account?"
+      "sendCode": "Send code"
     },
-    "register": {
-      "title": "Create your account",
-      "subtitle": "Join the operations command center.",
-      "fullName": "Full name",
-      "namePlaceholder": "James Holloway",
-      "email": "Email",
-      "emailPlaceholder": "agent@detectivepulse.io",
-      "password": "Password",
-      "passwordHint": "At least 8 characters",
-      "createAccount": "Create account",
-      "hasAccount": "Already have an account?",
-      "signIn": "Sign in"
+    "verify": {
+      "title": "Check your email",
+      "subtitle": "We sent a 6-digit code to your email.",
+      "subtitleWithEmail": "We sent a 6-digit code to {email}.",
+      "code": "One-time code",
+      "codePlaceholder": "000000",
+      "codeHint": "Enter the 6-digit code from your email. It expires in 10 minutes.",
+      "verify": "Verify and sign in",
+      "noCode": "Didn't receive the code?",
+      "resend": "Send a new one"
     },
     "signOut": "Sign out",
     "brandDescription": "Secure, real-time coordination for private investigation and surveillance teams — from the first lead to the final report."

@@ -15,7 +15,6 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 export default async function Home() {
   const t = await getTranslations("home");
   const tMeta = await getTranslations("meta");
-  const tAuth = await getTranslations("auth.login");
 
   const FEATURES = [
     { icon: MapPin, key: "gps" },
@@ -41,11 +40,8 @@ export default async function Home() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <ThemeToggle />
-          <Button asChild variant="ghost">
-            <Link href="/login">{tAuth("signIn")}</Link>
-          </Button>
           <Button asChild>
-            <Link href="/register">{t("launch")}</Link>
+            <Link href="/login">{t("signIn")}</Link>
           </Button>
         </div>
       </header>
@@ -67,10 +63,7 @@ export default async function Home() {
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Button asChild size="lg">
-              <Link href="/register">{t("launch")}</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/login">{tAuth("signIn")}</Link>
+              <Link href="/login">{t("launch")}</Link>
             </Button>
           </div>
         </section>

@@ -1,12 +1,11 @@
 "use client";
 
 import { Suspense } from "react";
-import Link from "next/link";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { signIn, type AuthState } from "../actions";
+import { requestOtp, type AuthState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +13,15 @@ import { Label } from "@/components/ui/label";
 function LoginForm() {
   const t = useTranslations("auth.login");
   const params = useSearchParams();
-  const next = params.get("next") ?? "/dashboard";
+  const prefillEmail = params.get("email") ?? "";
+
   const [state, action, pending] = useActionState<AuthState, FormData>(
-    signIn,
+    requestOtp,
     undefined,
   );
 
   return (
     <form action={action} className="mt-8 space-y-4">
-      <input type="hidden" name="next" value={next} />
       <div className="space-y-2">
         <Label htmlFor="email">{t("email")}</Label>
         <Input
@@ -31,17 +30,7 @@ function LoginForm() {
           type="email"
           placeholder={t("emailPlaceholder")}
           autoComplete="email"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">{t("password")}</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="••••••••"
-          autoComplete="current-password"
+          defaultValue={prefillEmail}
           required
         />
       </div>
@@ -53,8 +42,12 @@ function LoginForm() {
       )}
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        {t("signIn")}
+        {pending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Mail className="h-4 w-4" />
+        )}
+        {t("sendCode")}
       </Button>
     </form>
   );
@@ -67,16 +60,9 @@ export default function LoginPage() {
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 
-      <Suspense fallback={<div className="mt-8 h-48" />}>
+      <Suspense fallback={<div className="mt-8 h-32" />}>
         <LoginForm />
       </Suspense>
-
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t("noAccount")}{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
-          {t("createOne")}
-        </Link>
-      </p>
     </div>
   );
 }

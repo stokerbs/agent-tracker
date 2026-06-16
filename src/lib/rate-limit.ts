@@ -12,14 +12,18 @@
  */
 
 export const RATE_LIMITS = {
-  /** 10 sign-in attempts per minute per IP. */
-  login:    { limit: 10, windowMs: 60_000 },
-  /** 5 registrations per minute per IP. */
-  register: { limit:  5, windowMs: 60_000 },
+  /** 10 sign-in attempts per minute per IP (legacy password flow). */
+  login:      { limit: 10, windowMs:     60_000 },
+  /** 5 registrations per minute per IP (legacy). */
+  register:   { limit:  5, windowMs:     60_000 },
+  /** 3 OTP send requests per 5 minutes per IP — prevents email spam. */
+  otp:        { limit:  3, windowMs:  5 * 60_000 },
+  /** 5 OTP verification attempts per 5 minutes per IP — brute-force guard. */
+  otp_verify: { limit:  5, windowMs:  5 * 60_000 },
   /** 60 GPS pings per minute per authenticated user (≈ 1 per second). */
-  gps:      { limit: 60, windowMs: 60_000 },
+  gps:        { limit: 60, windowMs:     60_000 },
   /** 5 AI report generations per hour per authenticated user. */
-  report:   { limit:  5, windowMs: 3_600_000 },
+  report:     { limit:  5, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
