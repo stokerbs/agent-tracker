@@ -3,9 +3,9 @@
 import { Suspense } from "react";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Smartphone } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { requestOtp, type AuthState } from "../actions";
+import { requestSmsOtp, type AuthState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,26 +13,27 @@ import { Label } from "@/components/ui/label";
 function LoginForm() {
   const t = useTranslations("auth.login");
   const params = useSearchParams();
-  const prefillEmail = params.get("email") ?? "";
+  const prefillPhone = params.get("phone") ?? "";
 
   const [state, action, pending] = useActionState<AuthState, FormData>(
-    requestOtp,
+    requestSmsOtp,
     undefined,
   );
 
   return (
     <form action={action} className="mt-8 space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">{t("email")}</Label>
+        <Label htmlFor="phone">{t("phone")}</Label>
         <Input
-          id="email"
-          name="email"
-          type="email"
-          placeholder={t("emailPlaceholder")}
-          autoComplete="email"
-          defaultValue={prefillEmail}
+          id="phone"
+          name="phone"
+          type="tel"
+          placeholder={t("phonePlaceholder")}
+          autoComplete="tel"
+          defaultValue={prefillPhone}
           required
         />
+        <p className="text-xs text-muted-foreground">{t("phoneHint")}</p>
       </div>
 
       {state?.error && (
@@ -45,7 +46,7 @@ function LoginForm() {
         {pending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Mail className="h-4 w-4" />
+          <Smartphone className="h-4 w-4" />
         )}
         {t("sendCode")}
       </Button>

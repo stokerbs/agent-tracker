@@ -17,16 +17,35 @@ async function requestIp(): Promise<string> {
   );
 }
 
-function isValidEmail(v: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+/**
+ * Normalises a Thai mobile number to E.164 (+66XXXXXXXXX).
+ * Accepts: 0XXXXXXXXX | 66XXXXXXXXX | +66XXXXXXXXX (spaces/dashes stripped).
+ * Thai mobile prefixes after country code: 6x, 7x, 8x, 9x (9 digits total).
+ */
+function normalizeThaiPhone(raw: string): string | null {
+  const cleaned = raw.trim().replace(/[\s\-().]/g, "");
+
+  let national: string;
+  if (cleaned.startsWith("+66")) {
+    national = cleaned.slice(3);
+  } else if (cleaned.startsWith("66") && cleaned.length === 11) {
+    national = cleaned.slice(2);
+  } else if (cleaned.startsWith("0") && cleaned.length === 10) {
+    national = cleaned.slice(1);
+  } else {
+    return null;
+  }
+
+  if (!/^[6-9]\d{8}$/.test(national)) return null;
+  return `+66${national}`;
 }
 
 /**
- * Step 1 of OTP login: send a 6-digit code to the user's email.
+ * Step 1 of SMS OTP login: send a 6-digit code to the user's phone via SMS.
  * New users are automatically created (role='agent') via the handle_new_user trigger.
- * We never reveal whether the email belongs to an existing account.
+ * Rate-limited to 3 requests per IP per 5 minutes.
  */
-export async function requestOtp(
+export async function requestSmsOtp(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
@@ -37,33 +56,33 @@ export async function requestOtp(
     return { error: `Too many requests. Try again in ${s} second${s === 1 ? "" : "s"}.` };
   }
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!isValidEmail(email)) {
-    return { error: "Please enter a valid email address." };
+  const raw = String(formData.get("phone") ?? "").trim();
+  const phone = normalizeThaiPhone(raw);
+  if (!phone) {
+    return { error: "Please enter a valid Thai mobile number (e.g. 081 234 5678)." };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
-    email,
+    phone,
     options: { shouldCreateUser: true },
   });
 
   if (error) {
-    // Log internally but don't expose details to prevent email enumeration.
-    console.error("[auth] signInWithOtp error:", error.code, error.status);
-    // Still redirect — Supabase may return an error for rate limits on their side.
+    console.error("[auth] signInWithOtp (sms) error:", error.code, error.status);
     if (error.status === 429) {
       return { error: "Too many requests. Please wait a moment before trying again." };
     }
+    if (error.message?.toLowerCase().includes("sms")) {
+      return { error: "SMS delivery failed. Please check your number and try again." };
+    }
   }
 
-  // Always redirect regardless of whether the email exists; the code page
-  // simply says "if we have an account for this email, a code was sent."
-  redirect(`/login/verify?email=${encodeURIComponent(email)}`);
+  redirect(`/login/verify?phone=${encodeURIComponent(phone)}`);
 }
 
 /**
- * Step 2 of OTP login: verify the 6-digit code and create a session.
+ * Step 2 of SMS OTP login: verify the 6-digit code and create a session.
  */
 export async function verifyOtp(
   _prev: AuthState,
@@ -76,30 +95,30 @@ export async function verifyOtp(
     return { error: `Too many attempts. Try again in ${s} second${s === 1 ? "" : "s"}.` };
   }
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const raw = String(formData.get("phone") ?? "").trim();
+  const phone = normalizeThaiPhone(raw);
   const token = String(formData.get("token") ?? "").replace(/\D/g, "").slice(0, 6);
   const rawNext = String(formData.get("next") ?? "/dashboard");
   const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/dashboard";
 
-  if (!isValidEmail(email)) {
+  if (!phone) {
     return { error: "Session expired. Please request a new code." };
   }
   if (token.length !== 6) {
-    return { error: "Please enter the 6-digit code from your email." };
+    return { error: "Please enter the 6-digit code from your SMS." };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.verifyOtp({
-    email,
+    phone,
     token,
-    type: "email",
+    type: "sms",
   });
 
   if (error || !data.session) {
     return { error: "Invalid or expired code. Please try again or request a new one." };
   }
 
-  // Write audit log (non-fatal — use service client to bypass RLS).
   try {
     const service = createServiceClient();
     await service.from("audit_logs").insert({
@@ -107,7 +126,7 @@ export async function verifyOtp(
       action: "LOGIN",
       entity: "auth",
       entity_id: data.user?.id ?? null,
-      metadata: { method: "otp_email" },
+      metadata: { method: "otp_sms" },
       ip_address: ip === "unknown" ? null : ip,
     });
   } catch (auditErr) {

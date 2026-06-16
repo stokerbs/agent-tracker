@@ -76,18 +76,19 @@
   "auth": {
     "login": {
       "title": "Sign in",
-      "subtitle": "Enter your email to receive a one-time sign-in code.",
-      "email": "Email",
-      "emailPlaceholder": "agent@detectivepulse.io",
-      "sendCode": "Send code"
+      "subtitle": "Enter your Thai mobile number to receive a 6-digit SMS code.",
+      "phone": "Phone Number",
+      "phonePlaceholder": "081 234 5678",
+      "phoneHint": "Thai mobile number (+66). We'll send a 6-digit code by SMS.",
+      "sendCode": "Send SMS code"
     },
     "verify": {
-      "title": "Check your email",
-      "subtitle": "We sent a 6-digit code to your email.",
-      "subtitleWithEmail": "We sent a 6-digit code to {email}.",
+      "title": "Enter your code",
+      "subtitle": "We sent a 6-digit code to your phone.",
+      "subtitleWithPhone": "We sent a 6-digit code to {phone}.",
       "code": "One-time code",
       "codePlaceholder": "000000",
-      "codeHint": "Enter the 6-digit code from your email. It expires in 10 minutes.",
+      "codeHint": "Enter the 6-digit code from your SMS. It expires in 5 minutes.",
       "verify": "Verify and sign in",
       "noCode": "Didn't receive the code?",
       "resend": "Send a new one"
