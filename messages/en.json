@@ -349,6 +349,25 @@
       "toast": {
         "success": "Agent created"
       }
+    },
+    "editDialog": {
+      "button": "Edit agent",
+      "title": "Edit agent",
+      "description": "Update operative details. Agent ID is immutable:",
+      "fields": {
+        "fullName": "Full name",
+        "nickname": "Nickname",
+        "position": "Position",
+        "area": "Area",
+        "phone": "Phone",
+        "email": "Email",
+        "userPhone": "Re-link user account (phone)",
+        "userPhonePlaceholder": "Leave blank to keep current link",
+        "status": "Status"
+      },
+      "toast": {
+        "success": "Agent updated"
+      }
     }
   },
   "timeline": {

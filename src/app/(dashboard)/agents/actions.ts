@@ -124,6 +124,50 @@ export async function reportLocation(input: {
   return { ok: true };
 }
 
+export async function updateAgent(agentId: string, formData: FormData) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const payload: Record<string, unknown> = {
+    full_name: String(formData.get("full_name") ?? "").trim(),
+    nickname:  emptyToNull(formData.get("nickname")),
+    phone:     emptyToNull(formData.get("phone")),
+    email:     emptyToNull(formData.get("email")),
+    position:  emptyToNull(formData.get("position")),
+    area:      emptyToNull(formData.get("area")),
+    status:    (String(formData.get("status") ?? "offline") as AgentStatus),
+  };
+
+  // Re-link user account only when the caller provides a phone number.
+  // Empty field = leave the existing profile_id unchanged.
+  const rawUserPhone = emptyToNull(formData.get("user_phone"));
+  if (rawUserPhone) {
+    const normalised = rawUserPhone
+      .trim()
+      .replace(/[\s\-().]/g, "")
+      .replace(/^\+/, "")
+      .replace(/^0(\d{9})$/, "66$1");
+
+    const { data: linkedProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone", normalised)
+      .maybeSingle();
+
+    payload.profile_id = linkedProfile?.id ?? null;
+  }
+
+  const { error } = await supabase
+    .from("agents")
+    .update(payload)
+    .eq("id", agentId);
+
+  if (error) return { error: handleDbError(error, "agents") };
+  revalidatePath(`/agents/${agentId}`);
+  revalidatePath("/agents");
+  return { ok: true };
+}
+
 export async function deleteAgent(agentId: string) {
   await requireRole(["admin"]);
   const supabase = await createClient();
