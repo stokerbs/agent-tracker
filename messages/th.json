@@ -580,6 +580,27 @@
     "noTitle": "ยังไม่มีใบแจ้งหนี้",
     "noDescription": "สร้างใบแจ้งหนี้แรกเพื่อเริ่มเรียกเก็บเงินลูกค้า",
     "downloadPdf": "ดาวน์โหลด PDF",
+    "recordPayment": {
+      "button": "บันทึกการชำระเงิน",
+      "title": "บันทึกการชำระเงิน",
+      "description": "บันทึกวิธีและเวลาที่ชำระใบแจ้งหนี้นี้",
+      "paidAt": "วันที่ชำระ",
+      "method": "วิธีชำระเงิน",
+      "methodPlaceholder": "เลือกวิธี",
+      "methods": {
+        "bank_transfer": "โอนเงิน",
+        "cash": "เงินสด",
+        "credit_card": "บัตรเครดิต",
+        "cheque": "เช็ค",
+        "other": "อื่นๆ"
+      },
+      "reference": "อ้างอิง / หมายเหตุ",
+      "referencePlaceholder": "เช่น เลขที่อ้างอิงการโอน",
+      "confirm": "บันทึกการชำระเงิน",
+      "success": "บันทึกการชำระเงินแล้ว",
+      "paidOn": "ชำระเมื่อ {date}",
+      "via": "ผ่าน"
+    },
     "stats": {
       "totalInvoiced": "ยอดรวมที่เรียกเก็บ",
       "paid": "ชำระแล้ว",

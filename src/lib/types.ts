@@ -223,6 +223,9 @@ export interface Invoice {
   issued_date: string;
   due_date: string | null;
   notes: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_ref: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

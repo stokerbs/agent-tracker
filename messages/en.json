@@ -580,6 +580,27 @@
     "noTitle": "No invoices yet",
     "noDescription": "Create your first invoice to start billing clients.",
     "downloadPdf": "Download PDF",
+    "recordPayment": {
+      "button": "Record Payment",
+      "title": "Record Payment",
+      "description": "Log how and when this invoice was settled.",
+      "paidAt": "Payment date",
+      "method": "Payment method",
+      "methodPlaceholder": "Select method",
+      "methods": {
+        "bank_transfer": "Bank Transfer",
+        "cash": "Cash",
+        "credit_card": "Credit Card",
+        "cheque": "Cheque",
+        "other": "Other"
+      },
+      "reference": "Reference / note",
+      "referencePlaceholder": "e.g. transfer ref, receipt number",
+      "confirm": "Record Payment",
+      "success": "Payment recorded.",
+      "paidOn": "Paid {date}",
+      "via": "via"
+    },
     "stats": {
       "totalInvoiced": "Total Invoiced",
       "paid": "Paid",

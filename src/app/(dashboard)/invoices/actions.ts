@@ -39,3 +39,21 @@ export async function updateInvoiceStatus(id: string, status: string) {
   if (error) return { error: error.message };
   revalidatePath("/invoices");
 }
+
+export async function recordPayment(
+  id: string,
+  payload: { paid_at: string; payment_method: string; payment_ref: string },
+) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ status: "paid", ...payload })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/invoices");
+  revalidatePath("/portal");
+  return { ok: true };
+}

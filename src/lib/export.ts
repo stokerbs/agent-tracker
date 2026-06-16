@@ -260,6 +260,35 @@ export async function exportInvoicePdf({
     doc.setTextColor("#64748B");
     const noteLines = doc.splitTextToSize(invoice.notes, pageW - margin * 2);
     doc.text(noteLines, margin, y);
+    y += noteLines.length * 12 + 8;
+  }
+
+  // Payment record
+  if (invoice.status === "paid" && (invoice.paid_at || invoice.payment_method)) {
+    line();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor("#10B981");
+    doc.text("PAYMENT RECEIVED", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor("#334155");
+    const payParts: string[] = [];
+    if (invoice.paid_at) {
+      payParts.push(
+        new Date(invoice.paid_at).toLocaleDateString("en-GB", {
+          day: "numeric", month: "long", year: "numeric",
+        }),
+      );
+    }
+    if (invoice.payment_method) {
+      const labels: Record<string, string> = {
+        bank_transfer: "Bank Transfer", cash: "Cash",
+        credit_card: "Credit Card", cheque: "Cheque", other: "Other",
+      };
+      payParts.push(labels[invoice.payment_method] ?? invoice.payment_method);
+    }
+    if (invoice.payment_ref) payParts.push(`Ref: ${invoice.payment_ref}`);
+    doc.text(payParts.join("  ·  "), margin, y + 12);
   }
 
   doc.save(`${invoice.invoice_number}.pdf`);
