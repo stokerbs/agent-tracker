@@ -647,6 +647,13 @@
     "clientPortal": "Client Portal",
     "welcome": "Welcome, {name}",
     "subtitle": "Your approved surveillance reports and invoices.",
+    "overdueAlert": "You have {count} overdue invoice(s) totalling {total}. Please contact us to arrange payment.",
+    "stats": {
+      "openCases": "Open Cases",
+      "reports": "Reports",
+      "outstanding": "Outstanding",
+      "paid": "Total Paid"
+    },
     "tabs": {
       "reports": "Reports",
       "invoices": "Invoices"
