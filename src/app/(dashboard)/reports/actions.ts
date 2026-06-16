@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateReport } from "@/lib/ai-report";
+import { sendReportApprovedEmail } from "@/lib/email";
 import type { AiReportSections, Case, TimelineEntry } from "@/lib/types";
 
 /**
@@ -96,6 +97,40 @@ export async function approveReport(reportId: string, clientVisible: boolean) {
     })
     .eq("id", reportId);
   if (error) return { error: handleDbError(error, "reports") };
+
+  // If client-visible, email the client (non-blocking).
+  if (clientVisible) {
+    const { data: report } = await supabase
+      .from("reports")
+      .select("case_id")
+      .eq("id", reportId)
+      .single();
+
+    if (report?.case_id) {
+      const { data: caseRow } = await supabase
+        .from("cases")
+        .select("case_number,client_id")
+        .eq("id", report.case_id)
+        .single();
+
+      if (caseRow?.client_id) {
+        const { data: client } = await supabase
+          .from("clients")
+          .select("email,name")
+          .eq("id", caseRow.client_id)
+          .single();
+
+        if (client?.email) {
+          void sendReportApprovedEmail({
+            to: client.email,
+            clientName: client.name,
+            caseNumber: caseRow.case_number,
+          });
+        }
+      }
+    }
+  }
+
   revalidatePath("/reports");
   return { ok: true };
 }

@@ -11,6 +11,7 @@ import {
   createPhoneBlindIndex,
   encryptField,
 } from "@/lib/security/encryption";
+import { sendAssignmentEmail } from "@/lib/email";
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -106,6 +107,23 @@ export async function assignAgent(caseId: string, agentId: string) {
     .update({ status: "assigned" })
     .eq("id", caseId)
     .eq("status", "new");
+
+  // Fire assignment email (non-blocking — failure does not abort the action).
+  const [{ data: agentRow }, { data: caseRow }] = await Promise.all([
+    supabase.from("agents").select("email,full_name").eq("id", agentId).single(),
+    supabase.from("cases").select("case_number,case_type,client_name").eq("id", caseId).single(),
+  ]);
+  if (agentRow?.email && caseRow) {
+    void sendAssignmentEmail({
+      to: agentRow.email,
+      agentName: agentRow.full_name ?? "Agent",
+      caseNumber: caseRow.case_number,
+      caseType: caseRow.case_type,
+      clientName: caseRow.client_name,
+      caseId,
+    });
+  }
+
   revalidatePath(`/cases/${caseId}`);
   return { ok: true };
 }
