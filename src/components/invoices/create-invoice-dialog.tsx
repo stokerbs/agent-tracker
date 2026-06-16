@@ -36,16 +36,24 @@ const EMPTY_LINE = (): InvoiceLineItem => ({
 export function CreateInvoiceDialog({
   clients,
   cases,
+  defaultClientId,
+  defaultCaseId,
+  trigger,
 }: {
   clients: Client[];
   cases: Case[];
+  defaultClientId?: string;
+  defaultCaseId?: string;
+  trigger?: React.ReactNode;
 }) {
   const t = useTranslations("invoices");
   const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const [selectedClient, setSelectedClient] = useState("");
+  const [selectedClient, setSelectedClient] = useState(defaultClientId ?? "");
   const [lines, setLines] = useState<InvoiceLineItem[]>([EMPTY_LINE()]);
+
+  const locked = Boolean(defaultClientId);
 
   const clientCases = cases.filter((c) => c.client_id === selectedClient);
   const total = lines.reduce((s, l) => s + l.total, 0);
@@ -73,16 +81,18 @@ export function CreateInvoiceDialog({
       toast.success(t("createDialog.toast.success"));
       setOpen(false);
       setLines([EMPTY_LINE()]);
-      setSelectedClient("");
+      setSelectedClient(defaultClientId ?? "");
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="h-4 w-4" /> {t("newInvoice")}
-        </Button>
+        {trigger ?? (
+          <Button size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" /> {t("newInvoice")}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -95,7 +105,12 @@ export function CreateInvoiceDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("createDialog.fields.client")}</Label>
-              <Select value={selectedClient} onValueChange={setSelectedClient} required>
+              <Select
+                value={selectedClient}
+                onValueChange={locked ? undefined : setSelectedClient}
+                required
+                disabled={locked}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t("createDialog.fields.clientPlaceholder")} />
                 </SelectTrigger>
@@ -109,7 +124,11 @@ export function CreateInvoiceDialog({
             </div>
             <div className="space-y-1.5">
               <Label>{t("createDialog.fields.case")}</Label>
-              <Select name="case_id" disabled={!selectedClient}>
+              <Select
+                name="case_id"
+                defaultValue={defaultCaseId}
+                disabled={locked || !selectedClient}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t("createDialog.fields.casePlaceholder")} />
                 </SelectTrigger>

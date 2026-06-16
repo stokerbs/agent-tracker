@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Banknote,
   Car,
   Clock,
   FileText,
@@ -30,6 +31,7 @@ import { GenerateReportButton } from "@/components/cases/generate-report-button"
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidencePreview } from "@/components/evidence/evidence-preview";
 import { ReportCard } from "@/components/reports/report-card";
+import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +42,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils";
-import type { Agent, Case, Evidence, Report, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, Client, Evidence, Report, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,7 @@ export default async function CaseDetailPage({
   const profile = await requireProfile();
   const t = await getTranslations("cases.detail");
   const tCommon = await getTranslations("common");
+  const tInvoices = await getTranslations("invoices");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -75,6 +78,7 @@ export default async function CaseDetailPage({
     { data: timeline },
     { data: evidence },
     { data: reports },
+    { data: clientRaw },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -93,7 +97,12 @@ export default async function CaseDetailPage({
       .select("*")
       .eq("case_id", id)
       .order("created_at", { ascending: false }),
+    c.client_id && staff
+      ? supabase.from("clients").select("*").eq("id", c.client_id).single()
+      : Promise.resolve({ data: null }),
   ]);
+
+  const caseClient = clientRaw as Client | null;
 
   // Agent roster is only needed by staff for the assign-agent dropdown.
   // Agents cannot manage assignments and must not receive other agents' GPS data.
@@ -179,6 +188,20 @@ export default async function CaseDetailPage({
                 : t("reportingHintPlural", { count: timelineEntries.length })}
             </p>
             <GenerateReportButton caseId={id} />
+            {staff && caseClient && c.client_id && (
+              <CreateInvoiceDialog
+                clients={[caseClient]}
+                cases={[c]}
+                defaultClientId={c.client_id}
+                defaultCaseId={c.id}
+                trigger={
+                  <Button variant="outline" size="sm" className="w-full gap-2">
+                    <Banknote className="h-4 w-4" />
+                    {tInvoices("createFromCase")}
+                  </Button>
+                }
+              />
+            )}
           </CardContent>
         </Card>
       </div>

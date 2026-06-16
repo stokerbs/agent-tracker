@@ -477,9 +477,24 @@
       "actor": "Actor",
       "action": "Action",
       "entity": "Entity",
-      "record": "Record"
+      "record": "Record",
+      "details": "Details"
     },
-    "system": "System"
+    "system": "System",
+    "filters": {
+      "allActions": "All actions",
+      "allEntities": "All entities",
+      "allActors": "All actors",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "clearFilters": "Clear filters",
+      "resultsOf": "{count, plural, one {# result} other {# results}}"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {total}"
+    }
   },
   "settings": {
     "title": "System Settings",
@@ -519,6 +534,7 @@
     "title": "Invoices",
     "description": "Billing and payment tracking for client engagements.",
     "newInvoice": "New Invoice",
+    "createFromCase": "Invoice this case",
     "noTitle": "No invoices yet",
     "noDescription": "Create your first invoice to start billing clients.",
     "downloadPdf": "Download PDF",

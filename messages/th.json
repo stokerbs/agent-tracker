@@ -477,9 +477,24 @@
       "actor": "ผู้กระทำ",
       "action": "การดำเนินการ",
       "entity": "เอนทิตี",
-      "record": "บันทึก"
+      "record": "บันทึก",
+      "details": "รายละเอียด"
     },
-    "system": "ระบบ"
+    "system": "ระบบ",
+    "filters": {
+      "allActions": "ทุกการดำเนินการ",
+      "allEntities": "ทุกเอนทิตี",
+      "allActors": "ทุกผู้ใช้",
+      "dateFrom": "ตั้งแต่",
+      "dateTo": "ถึง",
+      "clearFilters": "ล้างตัวกรอง",
+      "resultsOf": "{count} รายการ"
+    },
+    "pagination": {
+      "prev": "ก่อนหน้า",
+      "next": "ถัดไป",
+      "page": "หน้า {page} จาก {total}"
+    }
   },
   "settings": {
     "title": "การตั้งค่าระบบ",
@@ -519,6 +534,7 @@
     "title": "ใบแจ้งหนี้",
     "description": "ติดตามการเรียกเก็บเงินและการชำระเงินสำหรับงานลูกค้า",
     "newInvoice": "ใบแจ้งหนี้ใหม่",
+    "createFromCase": "สร้างใบแจ้งหนี้สำหรับคดีนี้",
     "noTitle": "ยังไม่มีใบแจ้งหนี้",
     "noDescription": "สร้างใบแจ้งหนี้แรกเพื่อเริ่มเรียกเก็บเงินลูกค้า",
     "downloadPdf": "ดาวน์โหลด PDF",
