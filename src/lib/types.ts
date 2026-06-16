@@ -60,6 +60,7 @@ export interface Agent {
   current_lat: number | null;
   current_lng: number | null;
   battery_pct: number | null;
+  is_charging: boolean | null;
   created_at: string;
   updated_at: string;
 }

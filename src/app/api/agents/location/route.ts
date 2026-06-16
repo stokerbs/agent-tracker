@@ -8,6 +8,7 @@ const schema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   battery: z.number().min(0).max(100).optional(),
+  charging: z.boolean().optional(),
   status: z
     .enum(["available", "on_mission", "traveling", "break", "offline"])
     .optional(),
@@ -18,6 +19,9 @@ const schema = z.object({
  * Field devices report their GPS position + battery here every ~60s.
  * Auth is via the user's Supabase session; RLS "agents self update" enforces
  * that an agent can only update their own row.
+ *
+ * Auto-promotes status from offline → available on first GPS ping so the
+ * agent appears on the live map without manual status changes.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agent } = await supabase
     .from("agents")
-    .select("id")
+    .select("id, status")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -63,7 +67,13 @@ export async function POST(request: NextRequest) {
     last_active: new Date().toISOString(),
   };
   if (parsed.battery !== undefined) update.battery_pct = parsed.battery;
-  if (parsed.status) update.status = parsed.status;
+  if (parsed.charging !== undefined) update.is_charging = parsed.charging;
+  if (parsed.status) {
+    update.status = parsed.status;
+  } else if (agent.status === "offline") {
+    // Auto-promote to available on first GPS ping — agent is clearly online.
+    update.status = "available";
+  }
 
   const { error } = await supabase
     .from("agents")

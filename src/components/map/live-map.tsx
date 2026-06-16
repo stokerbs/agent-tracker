@@ -7,7 +7,7 @@ import {
   AdvancedMarker,
   InfoWindow,
 } from "@vis.gl/react-google-maps";
-import { BatteryMedium, MapPinOff, RefreshCw } from "lucide-react";
+import { BatteryCharging, BatteryMedium, MapPinOff, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
@@ -29,7 +29,7 @@ import {
 import { batteryColor, initials, timeAgo } from "@/lib/utils";
 import type { Agent, AgentStatus } from "@/lib/types";
 
-const MAP_ID = "detective-pulse-ops-map";
+const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "detective-pulse-ops-map";
 const AGENT_STATUSES = Object.keys(AGENT_STATUS_META) as AgentStatus[];
 
 export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
@@ -54,10 +54,40 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
     setLastSync(new Date());
   }
 
+  // Poll every 60 s as fallback.
   useEffect(() => {
     const id = setInterval(refresh, GPS_REFRESH_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Realtime subscription — instant updates when any agent row changes.
+  useEffect(() => {
+    const channel = supabase
+      .channel("live-agents")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agents" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setAgents((prev) => prev.filter((a) => a.id !== (payload.old as Agent).id));
+            return;
+          }
+          const updated = payload.new as Agent;
+          const visible = updated.status !== "offline" && updated.current_lat !== null;
+          setAgents((prev) => {
+            const exists = prev.some((a) => a.id === updated.id);
+            if (!exists && visible) return [...prev, updated];
+            if (exists && !visible) return prev.filter((a) => a.id !== updated.id);
+            if (exists && visible) return prev.map((a) => (a.id === updated.id ? updated : a));
+            return prev;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const areas = useMemo(
@@ -190,7 +220,8 @@ export function LiveMap({ initialAgents }: { initialAgents: Agent[] }) {
                     <AgentStatusBadge status={selected.status} />
                   </div>
                   <p className="mt-2 text-xs text-slate-600">
-                    {t("battery")}: {selected.battery_pct ?? "—"}% · {selected.area}
+                    {t("battery")}: {selected.battery_pct ?? "—"}%
+                    {selected.is_charging ? " ⚡" : ""} · {selected.area}
                   </p>
                   <p className="text-xs text-slate-600">
                     {t("updated")}: {timeAgo(selected.last_active)}
@@ -243,8 +274,10 @@ function AgentRow({ agent }: { agent: Agent }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className={`flex items-center gap-1 text-xs ${batteryColor(agent.battery_pct)}`}>
-          <BatteryMedium className="h-4 w-4" />
+        <span className={`flex items-center gap-1 text-xs ${agent.is_charging ? "text-emerald-500" : batteryColor(agent.battery_pct)}`}>
+          {agent.is_charging
+            ? <BatteryCharging className="h-4 w-4" />
+            : <BatteryMedium className="h-4 w-4" />}
           {agent.battery_pct ?? "—"}%
         </span>
         <AgentStatusBadge status={agent.status} />

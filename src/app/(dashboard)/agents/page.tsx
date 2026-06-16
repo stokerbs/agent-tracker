@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Users, UserCheck, Radio, PowerOff, BatteryMedium } from "lucide-react";
+import { Users, UserCheck, Radio, PowerOff, BatteryMedium, BatteryCharging } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { isStaff } from "@/lib/auth";
@@ -95,8 +95,10 @@ export default async function AgentsPage() {
                       <AgentStatusBadge status={a.status} />
                     </TableCell>
                     <TableCell>
-                      <span className={`flex items-center gap-1 text-sm ${batteryColor(a.battery_pct)}`}>
-                        <BatteryMedium className="h-4 w-4" />
+                      <span className={`flex items-center gap-1 text-sm ${a.is_charging ? "text-emerald-500" : batteryColor(a.battery_pct)}`}>
+                        {a.is_charging
+                          ? <BatteryCharging className="h-4 w-4" />
+                          : <BatteryMedium className="h-4 w-4" />}
                         {a.battery_pct ?? "—"}%
                       </span>
                     </TableCell>
