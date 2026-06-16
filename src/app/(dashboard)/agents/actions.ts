@@ -10,7 +10,7 @@ export async function createAgent(formData: FormData) {
   await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     agent_code: String(formData.get("agent_code") ?? "").trim(),
     full_name: String(formData.get("full_name") ?? "").trim(),
     nickname: emptyToNull(formData.get("nickname")),
@@ -21,6 +21,25 @@ export async function createAgent(formData: FormData) {
     status: (String(formData.get("status") ?? "offline") as AgentStatus),
     photo_url: emptyToNull(formData.get("photo_url")),
   };
+
+  // Optionally link to a user account by their login phone number.
+  // Profiles store phone as "66XXXXXXXXX" (no +); normalise the input.
+  const rawUserPhone = emptyToNull(formData.get("user_phone"));
+  if (rawUserPhone) {
+    const normalised = rawUserPhone
+      .trim()
+      .replace(/[\s\-().]/g, "")
+      .replace(/^\+/, "")               // "+66..." → "66..."
+      .replace(/^0(\d{9})$/, "66$1");   // "0XXXXXXXXX" → "66XXXXXXXXX"
+
+    const { data: linkedProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("phone", normalised)
+      .maybeSingle();
+
+    if (linkedProfile) payload.profile_id = linkedProfile.id;
+  }
 
   const { error } = await supabase.from("agents").insert(payload);
   if (error) return { error: handleDbError(error, "agents") };

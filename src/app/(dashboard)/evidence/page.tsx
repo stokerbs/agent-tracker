@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { EvidencePreview } from "@/components/evidence/evidence-preview";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Evidence } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Evidence" };
@@ -43,31 +42,33 @@ export default async function EvidencePage() {
           description={t("noDescription")}
         />
       ) : (
-        Object.entries(groups).map(([caseNum, list]) => (
-          <Card key={caseNum}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderLock className="h-4 w-4" />
+        <div className="space-y-8">
+          {Object.entries(groups).map(([caseNum, list]) => (
+            <section key={caseNum}>
+              {/* Case group header */}
+              <div className="mb-4 flex items-center gap-3">
+                <FolderLock className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Link
                   href={`/cases/${list[0].case_id}`}
-                  className="hover:underline"
+                  className="font-mono text-sm font-semibold text-primary hover:underline"
                 >
                   {caseNum}
                 </Link>
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({list.length === 1
-                    ? t("itemCount", { count: list.length })
-                    : t("itemCountPlural", { count: list.length })})
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {list.length}
                 </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {list.map((e) => (
-                <EvidencePreview key={e.id} item={e} />
-              ))}
-            </CardContent>
-          </Card>
-        ))
+                <div className="h-px flex-1 bg-border/50" />
+              </div>
+
+              {/* Gallery grid */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {list.map((e) => (
+                  <EvidencePreview key={e.id} item={e} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
     </div>
   );

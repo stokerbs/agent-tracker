@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/auth";
 import { SidebarNav } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { GpsReporter } from "@/components/layout/gps-reporter";
 
 export default async function DashboardLayout({
   children,
@@ -16,17 +17,18 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r bg-card lg:block">
-        <div className="sticky top-0 h-screen">
+      <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-card lg:flex lg:flex-col">
+        <div className="sticky top-0 h-screen overflow-hidden">
           <SidebarNav role={profile.role} />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header profile={profile} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-7">{children}</main>
+        <GpsReporter />
       </div>
     </div>
   );

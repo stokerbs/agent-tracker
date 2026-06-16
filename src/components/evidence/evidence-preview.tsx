@@ -8,8 +8,10 @@ import {
   Loader2,
   Music,
   Paperclip,
+  ZoomIn,
 } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 import { getEvidenceUrl } from "@/app/(dashboard)/evidence/actions";
 import {
   Dialog,
@@ -18,21 +20,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { Evidence } from "@/lib/types";
 
-const ICON = {
-  photo: ImageIcon,
-  video: Film,
-  pdf: FileText,
-  audio: Music,
-  document: Paperclip,
+const TYPE_META = {
+  photo:    { Icon: ImageIcon,  bg: "bg-blue-500/10",   text: "text-blue-400",   label: "IMG" },
+  video:    { Icon: Film,       bg: "bg-violet-500/10", text: "text-violet-400", label: "VID" },
+  pdf:      { Icon: FileText,   bg: "bg-red-500/10",    text: "text-red-400",    label: "PDF" },
+  audio:    { Icon: Music,      bg: "bg-amber-500/10",  text: "text-amber-400",  label: "AUD" },
+  document: { Icon: Paperclip,  bg: "bg-slate-500/10",  text: "text-slate-400",  label: "DOC" },
 } as const;
 
 export function EvidencePreview({ item }: { item: Evidence }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const Icon = ICON[item.type] ?? Paperclip;
+
+  const meta = TYPE_META[item.type] ?? TYPE_META.document;
+  const { Icon } = meta;
 
   async function openPreview() {
     setOpen(true);
@@ -49,25 +54,60 @@ export function EvidencePreview({ item }: { item: Evidence }) {
 
   return (
     <>
-      <button
+      <motion.button
         onClick={openPreview}
-        className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+        className={cn(
+          "group relative flex w-full flex-col overflow-hidden rounded-lg border border-border/60 bg-card text-left",
+          "transition-all duration-200 hover:border-border hover:shadow-sm focus-ring",
+        )}
+        whileHover={{ y: -2, transition: { duration: 0.15 } }}
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Icon className="h-5 w-5" />
+        {/* Thumbnail / type block */}
+        <div
+          className={cn(
+            "flex h-24 w-full items-center justify-center transition-colors",
+            meta.bg,
+          )}
+        >
+          <Icon className={cn("h-8 w-8 transition-transform group-hover:scale-110", meta.text)} />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm">
+              <ZoomIn className="h-4 w-4 text-foreground" />
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{item.file_name}</p>
-          <p className="text-xs text-muted-foreground">
-            {item.category ?? item.type} · {formatDate(item.uploaded_at)}
+
+        {/* Info */}
+        <div className="p-3">
+          <div className="flex items-center gap-1.5">
+            <span className={cn("font-mono text-[9px] font-bold tracking-widest", meta.text)}>
+              {meta.label}
+            </span>
+            {item.category && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="text-[10px] text-muted-foreground/70">{item.category}</span>
+              </>
+            )}
+          </div>
+          <p className="mt-0.5 truncate text-xs font-medium text-foreground/90">
+            {item.file_name}
+          </p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+            {formatDate(item.uploaded_at)}
           </p>
         </div>
-      </button>
+      </motion.button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="truncate">{item.file_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 truncate font-mono text-sm">
+              <span className={cn("text-xs font-bold tracking-widest", meta.text)}>
+                {meta.label}
+              </span>
+              {item.file_name}
+            </DialogTitle>
           </DialogHeader>
           {loading && (
             <div className="flex h-64 items-center justify-center">
@@ -75,7 +115,7 @@ export function EvidencePreview({ item }: { item: Evidence }) {
             </div>
           )}
           {url && !loading && (
-            <div className="overflow-hidden rounded-lg">
+            <div className="overflow-hidden rounded-lg border border-border/60">
               {item.type === "photo" && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={url} alt={item.file_name ?? ""} className="w-full" />
@@ -83,7 +123,11 @@ export function EvidencePreview({ item }: { item: Evidence }) {
               {item.type === "video" && (
                 <video src={url} controls className="w-full" />
               )}
-              {item.type === "audio" && <audio src={url} controls className="w-full" />}
+              {item.type === "audio" && (
+                <div className="bg-muted/30 p-6">
+                  <audio src={url} controls className="w-full" />
+                </div>
+              )}
               {(item.type === "pdf" || item.type === "document") && (
                 <iframe src={url} className="h-[70vh] w-full" title={item.file_name ?? ""} />
               )}

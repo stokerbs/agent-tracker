@@ -259,6 +259,8 @@
         "emailPlaceholder": "agent@dp.local",
         "area": "Area",
         "areaPlaceholder": "Downtown",
+        "userPhone": "Link to user account (phone)",
+        "userPhonePlaceholder": "0812345678 — links GPS login",
         "status": "Status"
       },
       "createButton": "Create agent",

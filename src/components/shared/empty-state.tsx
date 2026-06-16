@@ -10,19 +10,17 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-10 text-center">
+    <div className="flex flex-col items-center justify-center py-16 text-center">
       {icon && (
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/30 text-muted-foreground/50">
           {icon}
         </div>
       )}
-      <p className="font-medium">{title}</p>
+      <p className="text-sm font-medium text-muted-foreground">{title}</p>
       {description && (
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          {description}
-        </p>
+        <p className="mt-1 max-w-xs text-xs text-muted-foreground/60">{description}</p>
       )}
-      {action && <div className="mt-4">{action}</div>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }

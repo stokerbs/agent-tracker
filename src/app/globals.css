@@ -4,56 +4,57 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 0 0% 99%;
+    --foreground: 224 27% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 224 27% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --popover-foreground: 224 27% 10%;
+    --primary: 199 95% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 224 27% 15%;
+    --muted: 214 32% 94%;
+    --muted-foreground: 216 16% 50%;
+    --accent: 214 32% 93%;
+    --accent-foreground: 224 27% 15%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 71% 45%;
-    --success-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 60% 38%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 11%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
-    --radius: 0.6rem;
+    --warning-foreground: 38 92% 15%;
+    --border: 216 24% 88%;
+    --input: 216 24% 88%;
+    --ring: 199 95% 44%;
+    --radius: 0.5rem;
   }
 
+  /* ── Ops-Center dark theme ── */
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 44% 10%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 44% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 64% 42%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 11%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 224 76% 60%;
+    --background: 224 27% 4%;
+    --foreground: 210 28% 91%;
+    --card: 224 24% 6%;
+    --card-foreground: 210 28% 91%;
+    --popover: 224 24% 7%;
+    --popover-foreground: 210 28% 91%;
+    --primary: 199 95% 55%;
+    --primary-foreground: 224 27% 4%;
+    --secondary: 220 22% 12%;
+    --secondary-foreground: 210 28% 82%;
+    --muted: 222 22% 9%;
+    --muted-foreground: 216 16% 50%;
+    --accent: 220 22% 11%;
+    --accent-foreground: 210 28% 91%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 62% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 52%;
+    --warning-foreground: 224 27% 4%;
+    --border: 220 22% 14%;
+    --input: 220 22% 12%;
+    --ring: 199 95% 55%;
   }
 }
 
@@ -61,25 +62,75 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Monospace elements — agent codes, case IDs, coords */
+  .font-mono {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+
+  ::selection {
+    @apply bg-primary/30 text-foreground;
   }
 }
 
-/* Custom scrollbar */
+/* ── Custom scrollbar ── */
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
+    @apply rounded-full bg-border;
   }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+
+  /* Tactical grid background */
   .grid-bg {
     background-image:
-      linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
-    background-size: 28px 28px;
+      linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Live-data glow for primary-accent elements */
+  .glow-primary {
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.35);
+  }
+
+  /* Nav active — left-border accent */
+  .nav-item-active {
+    @apply relative text-primary;
+  }
+  .nav-item-active::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-0.5 rounded-r bg-primary;
+  }
+
+  /* Stat card accent bar */
+  .stat-bar-primary { @apply bg-primary; }
+  .stat-bar-success  { @apply bg-success; }
+  .stat-bar-warning  { @apply bg-warning; }
+  .stat-bar-destructive { @apply bg-destructive; }
+
+  /* Text glow on dark for live numbers */
+  .dark .text-glow-primary {
+    text-shadow: 0 0 20px hsl(var(--primary) / 0.6);
+  }
+
+  /* Better focus rings */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
   }
 }

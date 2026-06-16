@@ -259,6 +259,8 @@
         "emailPlaceholder": "agent@dp.local",
         "area": "พื้นที่",
         "areaPlaceholder": "ใจกลางเมือง",
+        "userPhone": "เชื่อมบัญชีผู้ใช้ (เบอร์โทร)",
+        "userPhonePlaceholder": "0812345678 — เชื่อมการติดตาม GPS",
         "status": "สถานะ"
       },
       "createButton": "สร้างเจ้าหน้าที่",

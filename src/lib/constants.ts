@@ -104,8 +104,8 @@ export const ROLE_META: Record<UserRole, { label: string; badge: string }> = {
   },
 };
 
-// Default map center (New York City) when no agents have coordinates.
-export const DEFAULT_MAP_CENTER = { lat: 40.7128, lng: -74.006 };
+// Default map center (Bangkok) when no agents have coordinates.
+export const DEFAULT_MAP_CENTER = { lat: 13.7563, lng: 100.5018 };
 
 // GPS auto-refresh interval (ms) — spec: every 60 seconds.
 export const GPS_REFRESH_MS = 60_000;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Briefcase } from "lucide-react";
+import { ArrowRight, Briefcase } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { getCases } from "@/lib/queries";
@@ -12,19 +12,19 @@ import {
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StaggerGrid, StaggerItem } from "@/components/shared/motion";
 import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Cases" };
 export const dynamic = "force-dynamic";
+
+const PRIORITY_STRIPE: Record<string, string> = {
+  critical: "bg-destructive",
+  high:     "bg-orange-500",
+  medium:   "bg-warning",
+  low:      "bg-muted-foreground/40",
+};
 
 export default async function CasesPage() {
   const profile = await requireProfile();
@@ -43,54 +43,67 @@ export default async function CasesPage() {
         )}
       </PageHeader>
 
-      <Card>
-        <CardContent className="p-0">
-          {cases.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={<Briefcase className="h-6 w-6" />}
-                title={t("noTitle")}
-                description={t("noDescription")}
-              />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("table.case")}</TableHead>
-                  <TableHead>{t("table.client")}</TableHead>
-                  <TableHead>{t("table.type")}</TableHead>
-                  <TableHead>{t("table.target")}</TableHead>
-                  <TableHead>{t("table.priority")}</TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
-                  <TableHead>{t("table.start")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cases.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer">
-                    <TableCell>
-                      <Link href={`/cases/${c.id}`} className="font-medium hover:underline">
+      {cases.length === 0 ? (
+        <EmptyState
+          icon={<Briefcase className="h-6 w-6" />}
+          title={t("noTitle")}
+          description={t("noDescription")}
+        />
+      ) : (
+        <StaggerGrid className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {cases.map((c) => {
+            const targetName = c.target_name_enc ? decryptField(c.target_name_enc) : null;
+            return (
+              <StaggerItem key={c.id}>
+                <Link
+                  href={`/cases/${c.id}`}
+                  className="group relative flex flex-col overflow-hidden rounded-lg border border-border/60 bg-card transition-all duration-200 hover:border-border hover:shadow-sm focus-ring"
+                >
+                  {/* Priority stripe */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 w-0.5 rounded-l-lg",
+                      PRIORITY_STRIPE[c.priority] ?? "bg-border",
+                    )}
+                  />
+
+                  <div className="p-4 pl-5">
+                    {/* Top row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-mono text-xs font-semibold tracking-wider text-primary">
                         {c.case_number}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm">{c.client_name ?? "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {c.case_type ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-sm">{c.target_name_enc ? decryptField(c.target_name_enc) : "—"}</TableCell>
-                    <TableCell><CasePriorityBadge priority={c.priority} /></TableCell>
-                    <TableCell><CaseStatusBadge status={c.status} /></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(c.start_date)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <CasePriorityBadge priority={c.priority} />
+                        <CaseStatusBadge status={c.status} />
+                      </div>
+                    </div>
+
+                    {/* Target / client */}
+                    <div className="mt-2 space-y-0.5">
+                      {targetName && (
+                        <p className="truncate text-sm font-medium">{targetName}</p>
+                      )}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.client_name ?? "—"}
+                        {c.case_type && (
+                          <span className="text-muted-foreground/60"> · {c.case_type}</span>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground/60">
+                      <span>{formatDate(c.start_date)}</span>
+                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                    </div>
+                  </div>
+                </Link>
+              </StaggerItem>
+            );
+          })}
+        </StaggerGrid>
+      )}
     </div>
   );
 }

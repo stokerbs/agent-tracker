@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { LiveMap } from "@/components/map/live-map";
 import { AgentAvailabilityBoard } from "@/components/dashboard/availability-board";
+import { FadeUp } from "@/components/shared/motion";
 import {
   Card,
   CardContent,
@@ -35,7 +36,7 @@ import {
   CasePriorityBadge,
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Operations Dashboard" };
 export const dynamic = "force-dynamic";
@@ -59,22 +60,26 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t("title", { name: firstName })}
-        description={t("description")}
-      />
+      <FadeUp>
+        <PageHeader
+          title={t("title", { name: firstName })}
+          description={t("description")}
+        />
+      </FadeUp>
 
       {/* Stat row — agent counts visible to staff only */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t("stats.openCases")} value={stats.openCases} icon={<Briefcase className="h-5 w-5" />} accent="text-blue-500" />
-        <StatCard label={t("stats.closedCases")} value={stats.closedCases} icon={<CheckCircle2 className="h-5 w-5" />} accent="text-emerald-500" />
-        {staff && (
-          <>
-            <StatCard label={t("stats.activeAgents")} value={stats.activeAgents} icon={<Radio className="h-5 w-5" />} accent="text-violet-500" />
-            <StatCard label={t("stats.availableAgents")} value={stats.availableAgents} icon={<UserCheck className="h-5 w-5" />} accent="text-emerald-500" />
-          </>
-        )}
-      </div>
+      <FadeUp delay={0.05}>
+        <div className={cn("grid gap-3", staff ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2")}>
+          <StatCard label={t("stats.openCases")} value={stats.openCases} icon={<Briefcase className="h-4 w-4" />} accent="text-primary" accentBar="primary" />
+          <StatCard label={t("stats.closedCases")} value={stats.closedCases} icon={<CheckCircle2 className="h-4 w-4" />} accent="text-success" accentBar="success" />
+          {staff && (
+            <>
+              <StatCard label={t("stats.activeAgents")} value={stats.activeAgents} icon={<Radio className="h-4 w-4" />} accent="text-primary" />
+              <StatCard label={t("stats.availableAgents")} value={stats.availableAgents} icon={<UserCheck className="h-4 w-4" />} accent="text-success" />
+            </>
+          )}
+        </div>
+      </FadeUp>
 
       {/* Emergency banner — staff only */}
       {staff && stats.emergencyAlerts > 0 && (

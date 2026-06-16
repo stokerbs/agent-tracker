@@ -69,6 +69,7 @@ export function CreateAgentDialog() {
           <Field label={t("fields.phone")} name="phone" type="tel" placeholder={t("fields.phonePlaceholder")} />
           <Field label={t("fields.email")} name="email" type="email" placeholder={t("fields.emailPlaceholder")} />
           <Field label={t("fields.area")} name="area" placeholder={t("fields.areaPlaceholder")} />
+          <Field label={t("fields.userPhone")} name="user_phone" type="tel" placeholder={t("fields.userPhonePlaceholder")} />
           <div className="space-y-2">
             <Label htmlFor="status">{t("fields.status")}</Label>
             <Select name="status" defaultValue="offline">
