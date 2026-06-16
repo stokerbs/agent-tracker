@@ -1,4 +1,4 @@
-import type { Report } from "@/lib/types";
+import type { Report, Invoice, Client } from "@/lib/types";
 
 interface ExportCaseRef {
   case_number?: string | null;
@@ -134,4 +134,133 @@ export async function exportReportDocx({ report, caseRecord }: ExportData) {
   a.download = `${caseRecord?.case_number ?? "report"}-surveillance-report.docx`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Generates and downloads a professional invoice PDF using jsPDF (client-side). */
+export async function exportInvoicePdf({
+  invoice,
+  client,
+}: {
+  invoice: Invoice;
+  client?: Client | null;
+}) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const margin = 56;
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = margin;
+
+  const line = (color = "#E2E8F0") => {
+    doc.setDrawColor(color);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageW - margin, y);
+    y += 12;
+  };
+
+  // Header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor("#0EA5E9");
+  doc.text("Detective Pulse", margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor("#94A3B8");
+  doc.text("Operations Command Center · Confidential", margin, y + 14);
+
+  // Invoice number top-right
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor("#0F172A");
+  doc.text(invoice.invoice_number, pageW - margin, y, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor("#64748B");
+  doc.text(`Status: ${invoice.status.toUpperCase()}`, pageW - margin, y + 14, { align: "right" });
+  y += 36;
+
+  line();
+
+  // Client + dates
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor("#0F172A");
+  doc.text("Bill To", margin, y);
+  doc.text("Date", pageW / 2, y);
+  doc.text("Due Date", pageW - margin, y, { align: "right" });
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#334155");
+  doc.text(client?.name ?? "—", margin, y);
+  if (client?.company) { doc.setFontSize(9); doc.setTextColor("#64748B"); doc.text(client.company, margin, y + 11); }
+  doc.setFontSize(10);
+  doc.setTextColor("#334155");
+  doc.text(invoice.issued_date, pageW / 2, y);
+  doc.text(invoice.due_date ?? "—", pageW - margin, y, { align: "right" });
+  y += 32;
+
+  line();
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor("#0F172A");
+  doc.text(invoice.title, margin, y);
+  y += 20;
+
+  // Line items header
+  doc.setFillColor("#F1F5F9");
+  doc.rect(margin, y - 10, pageW - margin * 2, 18, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor("#475569");
+  doc.text("DESCRIPTION", margin + 4, y + 1);
+  doc.text("QTY", pageW - margin - 160, y + 1);
+  doc.text("UNIT PRICE", pageW - margin - 90, y + 1);
+  doc.text("TOTAL", pageW - margin, y + 1, { align: "right" });
+  y += 18;
+
+  // Line items
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#1E293B");
+  for (const item of invoice.line_items) {
+    doc.text(item.description || "—", margin + 4, y);
+    doc.text(String(item.quantity), pageW - margin - 160, y);
+    doc.text(item.unit_price.toLocaleString(), pageW - margin - 90, y);
+    doc.text(item.total.toLocaleString(), pageW - margin, y, { align: "right" });
+    y += 16;
+    doc.setDrawColor("#F1F5F9");
+    doc.setLineWidth(0.3);
+    doc.line(margin, y - 4, pageW - margin, y - 4);
+  }
+
+  y += 8;
+  line();
+
+  // Total
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor("#0EA5E9");
+  doc.text("TOTAL", pageW - margin - 90, y);
+  doc.text(
+    `${invoice.amount.toLocaleString()} ${invoice.currency}`,
+    pageW - margin,
+    y,
+    { align: "right" },
+  );
+  y += 24;
+
+  // Notes
+  if (invoice.notes) {
+    line();
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor("#64748B");
+    const noteLines = doc.splitTextToSize(invoice.notes, pageW - margin * 2);
+    doc.text(noteLines, margin, y);
+  }
+
+  doc.save(`${invoice.invoice_number}.pdf`);
 }

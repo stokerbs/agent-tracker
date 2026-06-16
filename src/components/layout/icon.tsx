@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ScrollText,
   Settings,
+  Banknote,
   type LucideProps,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const ICONS = {
   ShieldCheck,
   ScrollText,
   Settings,
+  Banknote,
 } as const;
 
 export type IconName = keyof typeof ICONS;

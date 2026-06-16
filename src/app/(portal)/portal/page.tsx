@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ReportCard } from "@/components/reports/report-card";
+import { InvoiceCard } from "@/components/invoices/invoice-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   Tabs,
@@ -11,7 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import type { Case, Report } from "@/lib/types";
+import type { Case, Invoice, Report } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Client Portal" };
 export const dynamic = "force-dynamic";
@@ -21,12 +22,19 @@ export default async function PortalPage() {
   const t = await getTranslations("portal");
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("reports")
-    .select("*, cases(*)")
-    .order("created_at", { ascending: false });
+  const [{ data: reportsRaw }, { data: invoicesRaw }] = await Promise.all([
+    supabase
+      .from("reports")
+      .select("*, cases(*)")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("invoices")
+      .select("*")
+      .order("issued_date", { ascending: false }),
+  ]);
 
-  const reports = (data ?? []) as (Report & { cases: Case | null })[];
+  const reports = (reportsRaw ?? []) as (Report & { cases: Case | null })[];
+  const invoices = (invoicesRaw ?? []) as Invoice[];
   const firstName = profile.full_name?.split(" ")[0] ?? "Client";
 
   return (
@@ -67,12 +75,18 @@ export default async function PortalPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="invoices">
-          <EmptyState
-            icon={<Receipt className="h-6 w-6" />}
-            title={t("noInvoices")}
-            description={t("noInvoicesDescription")}
-          />
+        <TabsContent value="invoices" className="space-y-3">
+          {invoices.length === 0 ? (
+            <EmptyState
+              icon={<Receipt className="h-6 w-6" />}
+              title={t("noInvoices")}
+              description={t("noInvoicesDescription")}
+            />
+          ) : (
+            invoices.map((inv) => (
+              <InvoiceCard key={inv.id} invoice={inv} canManage={false} />
+            ))
+          )}
         </TabsContent>
       </Tabs>
     </div>

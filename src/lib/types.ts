@@ -25,6 +25,14 @@ export type ExpenseCategory =
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type ReportStatus = "draft" | "submitted" | "approved" | "rejected";
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
 export type NotificationType =
   | "emergency"
   | "case"
@@ -200,6 +208,24 @@ export interface AuditLog {
   metadata: Record<string, unknown> | null;
   ip_address: string | null;
   created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  client_id: string;
+  case_id: string | null;
+  title: string;
+  line_items: InvoiceLineItem[];
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  issued_date: string;
+  due_date: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AiReportSections {

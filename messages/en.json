@@ -120,7 +120,8 @@
       "clients": "Clients",
       "users": "Users",
       "audit": "Audit Log",
-      "settings": "Settings"
+      "settings": "Settings",
+      "invoices": "Invoices"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
@@ -513,6 +514,74 @@
     "noReportsDescription": "Approved reports for your cases will appear here. You can read and download each as a PDF.",
     "noInvoices": "No invoices yet",
     "noInvoicesDescription": "Invoices issued for your engagements will be listed here."
+  },
+  "invoices": {
+    "title": "Invoices",
+    "description": "Billing and payment tracking for client engagements.",
+    "newInvoice": "New Invoice",
+    "noTitle": "No invoices yet",
+    "noDescription": "Create your first invoice to start billing clients.",
+    "downloadPdf": "Download PDF",
+    "stats": {
+      "totalInvoiced": "Total Invoiced",
+      "paid": "Paid",
+      "outstanding": "Outstanding",
+      "count": "Invoices"
+    },
+    "table": {
+      "invoice": "Invoice",
+      "client": "Client",
+      "case": "Case",
+      "amount": "Amount",
+      "status": "Status",
+      "issued": "Issued",
+      "due": "Due"
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "paid": "Paid",
+      "overdue": "Overdue"
+    },
+    "statusBadge": {
+      "draft": "DRAFT",
+      "sent": "SENT",
+      "paid": "PAID",
+      "overdue": "OVERDUE"
+    },
+    "markAs": "Mark as",
+    "createDialog": {
+      "title": "Create invoice",
+      "description": "Bill a client for a completed surveillance engagement.",
+      "fields": {
+        "client": "Client",
+        "clientPlaceholder": "Select client",
+        "case": "Case (optional)",
+        "casePlaceholder": "Link to case",
+        "invoiceTitle": "Title",
+        "invoiceTitlePlaceholder": "Surveillance Services — June 2026",
+        "issuedDate": "Issued Date",
+        "dueDate": "Due Date",
+        "notes": "Notes",
+        "notesPlaceholder": "Payment terms, bank details…",
+        "lineItems": "Line Items",
+        "itemDescription": "Description",
+        "qty": "Qty",
+        "unitPrice": "Unit Price",
+        "total": "Total",
+        "addLine": "Add line",
+        "totalAmount": "Total Amount"
+      },
+      "createButton": "Create invoice",
+      "toast": {
+        "success": "Invoice created"
+      }
+    },
+    "updateStatus": {
+      "toast": {
+        "success": "Status updated"
+      }
+    }
   },
   "availability": {
     "title": "Agent Availability Board",
