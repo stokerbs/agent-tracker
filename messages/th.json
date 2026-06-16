@@ -706,6 +706,12 @@
       "paid": "ชำระแล้ว",
       "overdue": "เกินกำหนด"
     },
+    "filter": {
+      "all": "ทั้งหมด",
+      "searchPlaceholder": "ค้นหาตามเลขที่หรือหัวเรื่อง…",
+      "clear": "ล้าง",
+      "count": "{count} ใบแจ้งหนี้"
+    },
     "statusBadge": {
       "draft": "ร่าง",
       "sent": "ส่งแล้ว",

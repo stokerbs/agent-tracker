@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Banknote } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
@@ -9,19 +10,43 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FadeUp, StaggerGrid, StaggerItem } from "@/components/shared/motion";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { InvoiceCard } from "@/components/invoices/invoice-card";
-import type { Invoice, Client, Case } from "@/lib/types";
+import { InvoiceFilters } from "@/components/invoices/invoice-filters";
+import type { Invoice, Client, Case, InvoiceStatus } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Invoices" };
 export const dynamic = "force-dynamic";
 
-export default async function InvoicesPage() {
+const VALID_STATUSES: InvoiceStatus[] = ["draft", "sent", "paid", "overdue"];
+
+interface Props {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}
+
+export default async function InvoicesPage({ searchParams }: Props) {
   await requireRole(["admin", "supervisor"]);
+  const sp = await searchParams;
   const t = await getTranslations("invoices");
   const supabase = await createClient();
 
+  const statusFilter =
+    sp.status && VALID_STATUSES.includes(sp.status as InvoiceStatus)
+      ? (sp.status as InvoiceStatus)
+      : null;
+
   const [{ data: invoicesRaw }, { data: clientsRaw }, { data: casesRaw }] =
     await Promise.all([
-      supabase.from("invoices").select("*").order("created_at", { ascending: false }),
+      (() => {
+        let q = supabase
+          .from("invoices")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (sp.q) {
+          const like = `%${sp.q}%`;
+          q = q.or(`invoice_number.ilike.${like},title.ilike.${like}`);
+        }
+        if (statusFilter) q = q.eq("status", statusFilter);
+        return q;
+      })(),
       supabase.from("clients").select("*").order("name"),
       supabase.from("cases").select("id,case_number,client_id,client_name").order("case_number"),
     ]);
@@ -75,6 +100,10 @@ export default async function InvoicesPage() {
           />
         </div>
       </FadeUp>
+
+      <Suspense>
+        <InvoiceFilters count={invoices.length} />
+      </Suspense>
 
       {invoices.length === 0 ? (
         <EmptyState

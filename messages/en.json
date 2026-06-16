@@ -706,6 +706,12 @@
       "paid": "Paid",
       "overdue": "Overdue"
     },
+    "filter": {
+      "all": "All",
+      "searchPlaceholder": "Search by number or title…",
+      "clear": "Clear",
+      "count": "{count} invoices"
+    },
     "statusBadge": {
       "draft": "DRAFT",
       "sent": "SENT",
