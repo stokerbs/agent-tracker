@@ -594,7 +594,25 @@
       "user": "User",
       "role": "Role",
       "status": "Status",
-      "joined": "Joined"
+      "joined": "Joined",
+      "phone": "Phone",
+      "email": "Email",
+      "agentCode": "Agent Code",
+      "createdAt": "Registered",
+      "lastLogin": "Last Login",
+      "otpVerified": "OTP"
+    },
+    "search": {
+      "placeholder": "Name, phone, email, agent code…"
+    },
+    "drawer": {
+      "title": "User details",
+      "close": "Close",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "caseCount": "Cases",
+      "battery": "Battery",
+      "onlineStatus": "Field status"
     },
     "roleNote": "Role changes take effect immediately and are recorded in the audit log.",
     "roleUpdated": "Role updated successfully.",

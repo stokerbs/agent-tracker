@@ -231,6 +231,14 @@ export interface Invoice {
   updated_at: string;
 }
 
+export interface EnrichedUser extends Profile {
+  last_sign_in_at: string | null;
+  otp_verified: boolean;
+  agent_code: string | null;
+  agent_status: AgentStatus | null;
+  battery_pct: number | null;
+}
+
 export interface AiReportSections {
   executive_summary: string;
   chronological_report: string;

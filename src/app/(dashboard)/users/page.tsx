@@ -3,23 +3,12 @@ import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
-import { RoleSelect } from "@/components/users/role-select";
 import { UserRoleFilter } from "@/components/users/user-role-filter";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { initials, formatDate } from "@/lib/utils";
-import type { Profile, UserRole } from "@/lib/types";
+import { UserSearchBar } from "@/components/users/user-search-bar";
+import { UsersTable } from "@/components/users/users-table";
+import type { AgentStatus, EnrichedUser, Profile, UserRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Users" };
 export const dynamic = "force-dynamic";
@@ -27,7 +16,7 @@ export const dynamic = "force-dynamic";
 const VALID_ROLES: UserRole[] = ["admin", "supervisor", "agent", "client"];
 
 interface Props {
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; q?: string }>;
 }
 
 export default async function UsersPage({ searchParams }: Props) {
@@ -35,81 +24,98 @@ export default async function UsersPage({ searchParams }: Props) {
   const sp = await searchParams;
   const t = await getTranslations("users");
   const supabase = await createClient();
+  const serviceClient = createServiceClient();
 
-  const roleFilter = sp.role && VALID_ROLES.includes(sp.role as UserRole)
-    ? (sp.role as UserRole)
-    : null;
+  const roleFilter =
+    sp.role && VALID_ROLES.includes(sp.role as UserRole)
+      ? (sp.role as UserRole)
+      : null;
+  const search = sp.q?.trim().toLowerCase() ?? "";
 
-  let query = supabase
+  // ─── 1. Profiles ────────────────────────────────────────────────────────────
+  let profileQuery = supabase
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });
+  if (roleFilter) profileQuery = profileQuery.eq("role", roleFilter);
 
-  if (roleFilter) {
-    query = query.eq("role", roleFilter);
+  const { data: profilesRaw } = await profileQuery;
+  const profiles = (profilesRaw ?? []) as Profile[];
+
+  // ─── 2. Auth users (last_sign_in_at, otp_verified) ──────────────────────────
+  const { data: authData } = await serviceClient.auth.admin.listUsers({
+    perPage: 1000,
+    page: 1,
+  });
+  const authMap = new Map(
+    (authData?.users ?? []).map((u) => [
+      u.id,
+      {
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        otp_verified: !!(
+          u.phone_confirmed_at ??
+          u.email_confirmed_at ??
+          (u as any).confirmed_at
+        ),
+      },
+    ]),
+  );
+
+  // ─── 3. Agents (agent_code, status, battery for linked profiles) ────────────
+  const { data: agentsRaw } = await supabase
+    .from("agents")
+    .select("profile_id, agent_code, status, battery_pct")
+    .not("profile_id", "is", null);
+  const agentMap = new Map(
+    (agentsRaw ?? []).map((a) => [
+      a.profile_id as string,
+      {
+        agent_code: a.agent_code as string,
+        agent_status: a.status as AgentStatus,
+        battery_pct: a.battery_pct as number | null,
+      },
+    ]),
+  );
+
+  // ─── 4. Merge ────────────────────────────────────────────────────────────────
+  let enriched: EnrichedUser[] = profiles.map((p) => {
+    const auth = authMap.get(p.id);
+    const agent = agentMap.get(p.id);
+    return {
+      ...p,
+      last_sign_in_at: auth?.last_sign_in_at ?? null,
+      otp_verified: auth?.otp_verified ?? false,
+      agent_code: agent?.agent_code ?? null,
+      agent_status: agent?.agent_status ?? null,
+      battery_pct: agent?.battery_pct ?? null,
+    };
+  });
+
+  // ─── 5. Client-side-style search (all fields including agent_code) ───────────
+  if (search) {
+    enriched = enriched.filter(
+      (u) =>
+        u.full_name?.toLowerCase().includes(search) ||
+        u.phone?.toLowerCase().includes(search) ||
+        u.email?.toLowerCase().includes(search) ||
+        u.agent_code?.toLowerCase().includes(search),
+    );
   }
-
-  const { data } = await query;
-  const users = (data as Profile[]) ?? [];
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} />
 
-      <Suspense>
-        <UserRoleFilter count={users.length} />
-      </Suspense>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Suspense>
+          <UserRoleFilter count={enriched.length} />
+        </Suspense>
+        <Suspense>
+          <UserSearchBar />
+        </Suspense>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("table.user")}</TableHead>
-                <TableHead>{t("table.role")}</TableHead>
-                <TableHead>{t("table.status")}</TableHead>
-                <TableHead>{t("table.joined")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        {u.avatar_url && <AvatarImage src={u.avatar_url} />}
-                        <AvatarFallback>{initials(u.full_name)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{u.full_name ?? "—"}</p>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <RoleSelect userId={u.id} role={u.role} />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={u.is_active ? "default" : "destructive"}>
-                      {u.is_active ? t("statusActive") : t("statusDisabled")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(u.created_at)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {users.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                    {t("filter.empty")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <UsersTable users={enriched} />
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-3 w-3" />
