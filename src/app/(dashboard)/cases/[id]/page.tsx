@@ -1,3 +1,7 @@
+// AI report generation via Anthropic can take up to ~30s; raise the Vercel
+// function timeout so the Server Action is not killed mid-request.
+export const maxDuration = 60;
+
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,10 +12,10 @@ import {
   FolderLock,
   MapPin,
   Phone,
-  Trash2,
   User,
   Users,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { decryptField } from "@/lib/security/encryption";
@@ -47,6 +51,8 @@ export default async function CaseDetailPage({
 }) {
   const { id } = await params;
   const profile = await requireProfile();
+  const t = await getTranslations("cases.detail");
+  const tCommon = await getTranslations("common");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -102,7 +108,7 @@ export default async function CaseDetailPage({
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/cases">
-          <ArrowLeft className="h-4 w-4" /> All cases
+          <ArrowLeft className="h-4 w-4" /> {t("allCases")}
         </Link>
       </Button>
 
@@ -118,16 +124,20 @@ export default async function CaseDetailPage({
         {/* Case info */}
         <Card>
           <CardHeader>
-            <CardTitle>Case File</CardTitle>
+            <CardTitle>{t("caseFile")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <InfoRow icon={<User className="h-4 w-4" />} label="Target" value={targetName} />
-            <InfoRow icon={<Phone className="h-4 w-4" />} label="Target phone" value={targetPhone} />
-            <InfoRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={targetVehicle} />
-            <InfoRow icon={<Car className="h-4 w-4" />} label="License plate" value={licensePlate} />
-            <InfoRow icon={<MapPin className="h-4 w-4" />} label="Address" value={targetAddress} />
-            <InfoRow icon={<Clock className="h-4 w-4" />} label="Start" value={formatDate(c.start_date)} />
-            <InfoRow icon={<Clock className="h-4 w-4" />} label="End" value={c.end_date ? formatDate(c.end_date) : "Ongoing"} />
+            <InfoRow icon={<User className="h-4 w-4" />} label={t("infoLabels.target")} value={targetName} />
+            <InfoRow icon={<Phone className="h-4 w-4" />} label={t("infoLabels.phone")} value={targetPhone} />
+            <InfoRow icon={<Car className="h-4 w-4" />} label={t("infoLabels.vehicle")} value={targetVehicle} />
+            <InfoRow icon={<Car className="h-4 w-4" />} label={t("infoLabels.plate")} value={licensePlate} />
+            <InfoRow icon={<MapPin className="h-4 w-4" />} label={t("infoLabels.address")} value={targetAddress} />
+            <InfoRow icon={<Clock className="h-4 w-4" />} label={t("infoLabels.start")} value={formatDate(c.start_date)} />
+            <InfoRow
+              icon={<Clock className="h-4 w-4" />}
+              label={t("infoLabels.end")}
+              value={c.end_date ? formatDate(c.end_date) : t("infoLabels.ongoing")}
+            />
             {c.description && (
               <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
                 {c.description}
@@ -140,7 +150,7 @@ export default async function CaseDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4" /> Assigned Agents
+              <Users className="h-4 w-4" /> {t("assignedAgents")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -156,13 +166,13 @@ export default async function CaseDetailPage({
         {/* Quick actions */}
         <Card>
           <CardHeader>
-            <CardTitle>Reporting</CardTitle>
+            <CardTitle>{t("reporting")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Generate a professional AI surveillance report from the
-              {" "}{timelineEntries.length} logged timeline entr
-              {timelineEntries.length === 1 ? "y" : "ies"}.
+              {timelineEntries.length === 1
+                ? t("reportingHint", { count: timelineEntries.length })
+                : t("reportingHintPlural", { count: timelineEntries.length })}
             </p>
             <GenerateReportButton caseId={id} />
           </CardContent>
@@ -173,13 +183,13 @@ export default async function CaseDetailPage({
       <Tabs defaultValue="timeline">
         <TabsList>
           <TabsTrigger value="timeline">
-            <Clock className="mr-1 h-4 w-4" /> Timeline
+            <Clock className="mr-1 h-4 w-4" /> {t("tabs.timeline")}
           </TabsTrigger>
           <TabsTrigger value="evidence">
-            <FolderLock className="mr-1 h-4 w-4" /> Evidence
+            <FolderLock className="mr-1 h-4 w-4" /> {t("tabs.evidence")}
           </TabsTrigger>
           <TabsTrigger value="reports">
-            <FileText className="mr-1 h-4 w-4" /> Reports
+            <FileText className="mr-1 h-4 w-4" /> {t("tabs.reports")}
           </TabsTrigger>
         </TabsList>
 
@@ -188,28 +198,28 @@ export default async function CaseDetailPage({
           {timelineEntries.length === 0 ? (
             <EmptyState
               icon={<Clock className="h-6 w-6" />}
-              title="No timeline entries"
-              description="Add the first surveillance observation above."
+              title={t("noTimeline")}
+              description={t("noTimelineDescription")}
             />
           ) : (
             <div className="relative space-y-1 pl-4">
               <div className="absolute left-[7px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
-              {timelineEntries.map((t) => (
-                <div key={t.id} className="relative flex gap-4 pb-4">
+              {timelineEntries.map((entry) => (
+                <div key={entry.id} className="relative flex gap-4 pb-4">
                   <div className="absolute -left-[1px] mt-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
                   <div className="ml-4 flex-1 rounded-lg border bg-card p-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">
-                        {t.entry_date} · {t.entry_time}
+                        {entry.entry_date} · {entry.entry_time}
                       </p>
                       <span className="text-xs text-muted-foreground">
-                        {t.agents?.full_name ?? "Agent"}
+                        {entry.agents?.full_name ?? "Agent"}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm">{t.entry}</p>
-                    {t.location && (
+                    <p className="mt-1 text-sm">{entry.entry}</p>
+                    {entry.location && (
                       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" /> {t.location}
+                        <MapPin className="h-3 w-3" /> {entry.location}
                       </p>
                     )}
                   </div>
@@ -224,8 +234,8 @@ export default async function CaseDetailPage({
           {(evidence ?? []).length === 0 ? (
             <EmptyState
               icon={<FolderLock className="h-6 w-6" />}
-              title="No evidence uploaded"
-              description="Upload photos, videos or PDF files for this case."
+              title={t("noEvidence")}
+              description={t("noEvidenceDescription")}
             />
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -240,8 +250,8 @@ export default async function CaseDetailPage({
           {(reports ?? []).length === 0 ? (
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
-              title="No reports yet"
-              description="Use “Generate AI Report” to create one from the timeline."
+              title={t("noReports")}
+              description={t("noReportsDescription")}
             />
           ) : (
             (reports as Report[]).map((r) => (
