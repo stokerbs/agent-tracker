@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl";
 import { addTimelineEntry } from "@/app/(dashboard)/timeline/actions";
 import { updateAgentStatus } from "@/app/(dashboard)/agents/actions";
 import { triggerSos } from "@/app/(dashboard)/emergency/actions";
-import { AgentStatusBadge } from "@/components/shared/status-badges";
+import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -238,7 +238,10 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
             <p className="text-xs text-muted-foreground font-mono">{agent.agent_code}</p>
             {agent.area && <p className="text-xs text-muted-foreground mt-0.5">{agent.area}</p>}
           </div>
-          <AgentStatusBadge status={agent.status} />
+          <div className="flex flex-col items-end gap-1">
+            {agent.agent_role && <AgentRoleBadge role={agent.agent_role} />}
+            <AgentStatusBadge status={agent.status} />
+          </div>
         </CardContent>
       </Card>
 
