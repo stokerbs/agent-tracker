@@ -738,10 +738,10 @@ function AgentPopup({
 
             {/* Vehicle type */}
             {agent.vehicle_type && (
-              <p className="capitalize">
-                <span className="text-muted-foreground/60">{t("vehicle")}: </span>
-                {agent.vehicle_type.replace("_", " ")}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <VehicleIcon type={agent.vehicle_type} size={14} color="currentColor" />
+                <span className="capitalize">{agent.vehicle_type.replace("_", " ")}</span>
+              </div>
             )}
 
             {/* Phone (visible to all map users — page requires admin/supervisor) */}
