@@ -21,12 +21,15 @@ async function readBattery(): Promise<{ battery: number; charging: boolean } | n
 
 /**
  * Invisible background component that continuously reports the logged-in
- * agent's GPS position and battery level to /api/agents/location every ~55 s.
- * Runs for all authenticated users; silently no-ops when no agent profile is
- * linked (the API returns 404 which is ignored).
+ * agent's GPS position, speed, heading, and battery level to /api/agents/location
+ * every ~55 s. Runs for all authenticated users; silently no-ops when no agent
+ * profile is linked (the API returns 404 which is ignored).
  *
  * On first successful report the API auto-promotes status offline → available
  * so the agent appears on the live map without any manual action.
+ *
+ * Speed is derived from Geolocation API (m/s → km/h).
+ * Heading is the compass bearing in degrees (0 = north).
  */
 export function GpsReporter() {
   const lastReportRef = useRef<number>(0);
@@ -40,11 +43,23 @@ export function GpsReporter() {
       lastReportRef.current = now;
 
       const batteryInfo = await readBattery();
+      const { coords } = position;
 
       const body: Record<string, unknown> = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+        lat: coords.latitude,
+        lng: coords.longitude,
       };
+
+      // Speed: Geolocation API returns m/s (or null if unavailable)
+      if (coords.speed !== null && coords.speed >= 0) {
+        body.speed_kmh = Math.round(coords.speed * 3.6 * 10) / 10;
+      }
+
+      // Heading: compass degrees 0–359 (or null if stationary/unavailable)
+      if (coords.heading !== null && !isNaN(coords.heading)) {
+        body.heading = Math.round(coords.heading) % 360;
+      }
+
       if (batteryInfo) {
         body.battery = batteryInfo.battery;
         body.charging = batteryInfo.charging;

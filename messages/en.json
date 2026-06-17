@@ -603,18 +603,67 @@
     }
   },
   "map": {
-    "title": "Live GPS Tracking",
+    "title": "Live Map",
     "description": "Real-time field positions, auto-refreshed every 60 seconds.",
     "searchPlaceholder": "Search agents…",
     "areaAll": "All areas",
     "statusAll": "All statuses",
+    "vehicleAll": "All vehicles",
     "sync": "Sync",
     "agentCount": "{count} agents · {time}",
     "noApiKeyTitle": "Google Maps key not configured",
     "noApiKeyDescription": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the live tracking map. Agent positions below are still synced from the database.",
     "battery": "Battery",
     "updated": "Updated",
-    "filters": "Filters"
+    "filters": "Filters",
+    "area": "Area",
+    "vehicle": "Vehicle",
+    "speedLegend": "Speed ring",
+    "trailNote": "Click agent to view trail",
+    "speed": {
+      "stopped": "Stopped (0 km/h)",
+      "slow": "Slow (<20 km/h)",
+      "moving": "Moving (<60 km/h)",
+      "fast": "High speed (≥60 km/h)"
+    },
+    "trail": {
+      "toggle": "Trails",
+      "mins15": "15 min",
+      "mins30": "30 min",
+      "mins60": "60 min"
+    },
+    "ops": {
+      "title": "Operations",
+      "active": "Active",
+      "moving": "Moving",
+      "offline": "Offline",
+      "avgSpeed": "Avg speed"
+    },
+    "fence": {
+      "draw": "Draw Fence",
+      "drawing": "Drawing…",
+      "finish": "Finish Fence",
+      "cancel": "Cancel",
+      "back": "Back",
+      "save": "Save Fence",
+      "saveTitle": "Save Geofence",
+      "name": "Fence name",
+      "namePlaceholder": "e.g. North Surveillance Zone",
+      "description": "Description (optional)",
+      "descPlaceholder": "Purpose of this zone…",
+      "color": "Color",
+      "points": "points",
+      "pointCount": "{count} points drawn",
+      "saved": "Geofence saved",
+      "deleted": "Geofence deleted",
+      "delete": "Delete fence",
+      "clickToStart": "Click on the map to place the first point",
+      "clickToAdd": "{count} points — keep clicking to add more"
+    },
+    "emergency": {
+      "banner": "🚨 {agent} triggered an emergency alert ({count} active)",
+      "zoom": "Zoom to"
+    }
   },
   "clients": {
     "title": "Clients",

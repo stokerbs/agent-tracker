@@ -4,6 +4,7 @@ import type {
   Case,
   EmergencyAlert,
   Expense,
+  Geofence,
   TimelineEntry,
 } from "@/lib/types";
 import type {
@@ -188,4 +189,25 @@ export async function getExpenses(): Promise<Expense[]> {
     .select("*, agents(full_name)")
     .order("expense_date", { ascending: false });
   return (data as never) ?? [];
+}
+
+export async function getGeofences(): Promise<Geofence[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("geofences")
+    .select("*")
+    .eq("active", true)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  return (data as Geofence[]) ?? [];
+}
+
+export async function getActiveEmergencyAlerts(): Promise<EmergencyAlert[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("emergency_alerts")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+  return (data as EmergencyAlert[]) ?? [];
 }

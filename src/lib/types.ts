@@ -13,6 +13,16 @@ export type AgentStatus =
   | "break"
   | "offline";
 
+export type AgentVehicleType =
+  | "car"
+  | "motorcycle"
+  | "foot"
+  | "supervisor"
+  | "emergency";
+
+/** Derived display state shown on the live map (not stored in DB). */
+export type AgentMapStatus = "online" | "moving" | "idle" | "offline";
+
 export type CaseStatus = "new" | "assigned" | "active" | "pending" | "closed" | "cancelled";
 export type CasePriority = "low" | "medium" | "high" | "critical";
 export type EvidenceType = "photo" | "video" | "pdf" | "document" | "audio";
@@ -72,6 +82,9 @@ export interface Agent {
   current_lng: number | null;
   battery_pct: number | null;
   is_charging: boolean | null;
+  speed_kmh: number | null;
+  heading: number | null;
+  vehicle_type: AgentVehicleType | null;
   created_at: string;
   updated_at: string;
 }
@@ -280,4 +293,37 @@ export interface AiReportSections {
   chronological_report: string;
   observations: string;
   conclusion: string;
+}
+
+export interface AgentLocationHistory {
+  id: string;
+  agent_id: string;
+  lat: number;
+  lng: number;
+  speed_kmh: number | null;
+  heading: number | null;
+  recorded_at: string;
+}
+
+export interface Geofence {
+  id: string;
+  name: string;
+  description: string | null;
+  coordinates: Array<{ lat: number; lng: number }>;
+  color: string;
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface GeofenceEvent {
+  id: string;
+  geofence_id: string;
+  agent_id: string;
+  event_type: "enter" | "exit";
+  lat: number;
+  lng: number;
+  occurred_at: string;
 }

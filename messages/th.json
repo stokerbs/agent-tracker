@@ -603,18 +603,67 @@
     }
   },
   "map": {
-    "title": "ติดตาม GPS สด",
-    "description": "ตำแหน่งภาคสนามแบบเรียลไทม์ รีเฟรชอัตโนมัติทุก 60 วินาที",
+    "title": "แผนที่สด",
+    "description": "ตำแหน่งภาคสนามแบบเรียลไทม์ อัปเดตทุก 60 วินาที",
     "searchPlaceholder": "ค้นหาเจ้าหน้าที่…",
     "areaAll": "ทุกพื้นที่",
     "statusAll": "ทุกสถานะ",
+    "vehicleAll": "ทุกพาหนะ",
     "sync": "ซิงค์",
     "agentCount": "{count} คน · {time}",
     "noApiKeyTitle": "ยังไม่ได้ตั้งค่า Google Maps",
-    "noApiKeyDescription": "ตั้งค่า NEXT_PUBLIC_GOOGLE_MAPS_API_KEY เพื่อเปิดใช้งานแผนที่ติดตามสด ตำแหน่งเจ้าหน้าที่ด้านล่างยังคงซิงค์จากฐานข้อมูล",
+    "noApiKeyDescription": "ตั้งค่า NEXT_PUBLIC_GOOGLE_MAPS_API_KEY เพื่อเปิดใช้แผนที่ติดตามสด ตำแหน่งเจ้าหน้าที่ยังคงซิงค์จากฐานข้อมูล",
     "battery": "แบตเตอรี่",
     "updated": "อัปเดต",
-    "filters": "ตัวกรอง"
+    "filters": "ตัวกรอง",
+    "area": "พื้นที่",
+    "vehicle": "พาหนะ",
+    "speedLegend": "วงสี",
+    "trailNote": "คลิกเจ้าหน้าที่เพื่อดูเส้นทาง",
+    "speed": {
+      "stopped": "หยุดนิ่ง (0 km/h)",
+      "slow": "ช้า (<20 km/h)",
+      "moving": "กำลังเคลื่อนที่ (<60 km/h)",
+      "fast": "เร็วมาก (≥60 km/h)"
+    },
+    "trail": {
+      "toggle": "เส้นทาง",
+      "mins15": "15 นาที",
+      "mins30": "30 นาที",
+      "mins60": "60 นาที"
+    },
+    "ops": {
+      "title": "ปฏิบัติการ",
+      "active": "ออนไลน์",
+      "moving": "กำลังเคลื่อนที่",
+      "offline": "ออฟไลน์",
+      "avgSpeed": "ความเร็วเฉลี่ย"
+    },
+    "fence": {
+      "draw": "วาดพื้นที่",
+      "drawing": "กำลังวาด…",
+      "finish": "สำเร็จ",
+      "cancel": "ยกเลิก",
+      "back": "กลับ",
+      "save": "บันทึกพื้นที่",
+      "saveTitle": "บันทึกเขตเฝ้าระวัง",
+      "name": "ชื่อพื้นที่",
+      "namePlaceholder": "เช่น เขตเฝ้าระวังเหนือ",
+      "description": "คำอธิบาย (ไม่บังคับ)",
+      "descPlaceholder": "วัตถุประสงค์ของพื้นที่…",
+      "color": "สี",
+      "points": "จุด",
+      "pointCount": "วาดแล้ว {count} จุด",
+      "saved": "บันทึกเขตเฝ้าระวังสำเร็จ",
+      "deleted": "ลบเขตเฝ้าระวังสำเร็จ",
+      "delete": "ลบพื้นที่",
+      "clickToStart": "คลิกบนแผนที่เพื่อวางจุดแรก",
+      "clickToAdd": "{count} จุดแล้ว — คลิกเพิ่มต่อไป"
+    },
+    "emergency": {
+      "banner": "🚨 {agent} ส่งสัญญาณฉุกเฉิน ({count} รายการที่ใช้งานอยู่)",
+      "zoom": "ซูมไป"
+    }
   },
   "clients": {
     "title": "ลูกค้า",

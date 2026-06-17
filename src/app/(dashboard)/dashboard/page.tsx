@@ -204,7 +204,12 @@ export default async function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <LiveMap initialAgents={activeAgents} />
+              <LiveMap
+                initialAgents={activeAgents}
+                initialGeofences={[]}
+                emergencyAlerts={[]}
+                isAdmin={false}
+              />
             </CardContent>
           </Card>
 

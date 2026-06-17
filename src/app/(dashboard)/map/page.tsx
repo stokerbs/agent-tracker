@@ -4,19 +4,34 @@ import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { LiveMap } from "@/components/map/live-map";
 import { FadeUp } from "@/components/shared/motion";
-import { getActiveAgents } from "@/lib/queries";
+import {
+  getActiveAgents,
+  getActiveEmergencyAlerts,
+  getGeofences,
+} from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Live Map" };
 export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("map");
-  const agents = await getActiveAgents();
+
+  const [agents, geofences, emergencyAlerts] = await Promise.all([
+    getActiveAgents(),
+    getGeofences(),
+    getActiveEmergencyAlerts(),
+  ]);
+
   return (
     <FadeUp className="space-y-4">
       <PageHeader title={t("title")} description={t("description")} />
-      <LiveMap initialAgents={agents} />
+      <LiveMap
+        initialAgents={agents}
+        initialGeofences={geofences}
+        emergencyAlerts={emergencyAlerts}
+        isAdmin={profile.role === "admin"}
+      />
     </FadeUp>
   );
 }
