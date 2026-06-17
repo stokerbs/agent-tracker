@@ -20,7 +20,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { AgentStatusBadge, CasePriorityBadge, CaseStatusBadge } from "@/components/shared/status-badges";
+import { AgentRoleBadge, AgentStatusBadge, CasePriorityBadge, CaseStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,6 +105,7 @@ export default async function AgentDetailPage({
           title={agent.full_name}
           description={[agent.position, agent.area].filter(Boolean).join(" · ") || undefined}
         >
+          {agent.agent_role && <AgentRoleBadge role={agent.agent_role} />}
           <AgentStatusBadge status={agent.status} />
           <EditAgentDialog agent={agent} />
         </PageHeader>
