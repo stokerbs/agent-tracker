@@ -16,7 +16,7 @@ import { getAgents } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { CreateAgentDialog } from "@/components/agents/create-agent-dialog";
-import { AgentStatusBadge } from "@/components/shared/status-badges";
+import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StaggerGrid, StaggerItem } from "@/components/shared/motion";
@@ -104,7 +104,10 @@ export default async function AgentsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium">{a.full_name}</p>
-                    <AgentStatusBadge status={a.status} />
+                    <div className="flex shrink-0 items-center gap-1">
+                      {a.agent_role && <AgentRoleBadge role={a.agent_role} />}
+                      <AgentStatusBadge status={a.status} />
+                    </div>
                   </div>
 
                   <div className="mt-0.5 flex items-center gap-2">

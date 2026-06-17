@@ -3,11 +3,12 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
+  AGENT_ROLE_META,
   AGENT_STATUS_META,
   CASE_PRIORITY_META,
   CASE_STATUS_META,
 } from "@/lib/constants";
-import type { AgentStatus, CasePriority, CaseStatus } from "@/lib/types";
+import type { AgentRole, AgentStatus, CasePriority, CaseStatus } from "@/lib/types";
 
 export function AgentStatusBadge({ status }: { status: AgentStatus }) {
   const t = useTranslations("status.agent");
@@ -34,6 +35,21 @@ export function AgentStatusBadge({ status }: { status: AgentStatus }) {
         <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", meta.dot)} />
       </span>
       {t(status)}
+    </span>
+  );
+}
+
+export function AgentRoleBadge({ role }: { role: AgentRole }) {
+  const t = useTranslations("agents.roleTypes");
+  const meta = AGENT_ROLE_META[role];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider border border-transparent",
+        meta.badge,
+      )}
+    >
+      {t(role)}
     </span>
   );
 }
