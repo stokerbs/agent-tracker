@@ -457,7 +457,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
                 {t("noApiKey")}
               </div>
             ) : (
-              <APIProvider apiKey={apiKey}>
+              <APIProvider apiKey={apiKey} libraries={["visualization"]}>
                 <Map
                   mapId={MAP_ID}
                   defaultCenter={DEFAULT_CENTER}
@@ -552,7 +552,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
                 {t("noApiKey")}
               </div>
             ) : (
-              <APIProvider apiKey={apiKey}>
+              <APIProvider apiKey={apiKey} libraries={["visualization"]}>
                 <Map
                   mapId={MAP_ID}
                   defaultCenter={DEFAULT_CENTER}

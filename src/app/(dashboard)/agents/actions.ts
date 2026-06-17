@@ -19,9 +19,11 @@ export async function createAgent(formData: FormData) {
     position: emptyToNull(formData.get("position")),
     area: emptyToNull(formData.get("area")),
     status: (String(formData.get("status") ?? "offline") as AgentStatus),
-    vehicle_type: (emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null),
     photo_url: emptyToNull(formData.get("photo_url")),
   };
+
+  const vehicleType = emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
+  if (vehicleType !== null) payload.vehicle_type = vehicleType;
 
   // Optionally link to a user account by their login phone number.
   // Profiles store phone as "66XXXXXXXXX" (no +); normalise the input.
@@ -137,8 +139,10 @@ export async function updateAgent(agentId: string, formData: FormData) {
     position:  emptyToNull(formData.get("position")),
     area:      emptyToNull(formData.get("area")),
     status:    (String(formData.get("status") ?? "offline") as AgentStatus),
-    vehicle_type: (emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null),
   };
+
+  const vehicleType = emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
+  if (vehicleType !== null) payload.vehicle_type = vehicleType;
 
   // Re-link user account only when the caller provides a phone number.
   // Empty field = leave the existing profile_id unchanged.
