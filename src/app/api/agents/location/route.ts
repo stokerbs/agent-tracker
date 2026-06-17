@@ -39,13 +39,15 @@ function isInsideGeofence(
 /**
  * POST /api/agents/location
  * Field devices report their GPS position, speed, heading, and battery here every ~55 s.
- * Auth is via the user's Supabase session; RLS "agents self update" enforces
- * that an agent can only update their own row.
  *
- * After updating: inserts a location history entry (trail feature) and checks
- * geofence enter/exit transitions using the service role key.
+ * Auth flow:
+ *   1. Verify session via the user-session client (cookie-based JWT).
+ *   2. All subsequent DB operations use the service role key to avoid
+ *      RLS auth-context issues in Route Handlers — security is enforced
+ *      at the application layer by filtering on the verified user.id.
  */
 export async function POST(request: NextRequest) {
+  // Step 1: verify session — user-session client only for auth check
   const supabase = await createClient();
   const {
     data: { user },
@@ -70,7 +72,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const { data: agent } = await supabase
+  // Step 2: all DB work via service client — profile_id = user.id enforced here
+  const svc = createServiceClient();
+
+  const { data: agent } = await svc
     .from("agents")
     .select("id, status, current_lat, current_lng")
     .eq("profile_id", user.id)
@@ -99,10 +104,11 @@ export async function POST(request: NextRequest) {
     update.status = "available";
   }
 
-  const { error } = await supabase
+  const { error } = await svc
     .from("agents")
     .update(update)
-    .eq("id", agent.id);
+    .eq("id", agent.id)
+    .eq("profile_id", user.id); // redundant safety filter
 
   if (error) {
     return NextResponse.json(
@@ -113,7 +119,6 @@ export async function POST(request: NextRequest) {
 
   // ── Post-update: history + geofence checks (non-fatal) ──
   void (async () => {
-    const svc = createServiceClient();
 
     // 1. Insert location history entry for trail feature
     await svc.from("agent_location_history").insert({
