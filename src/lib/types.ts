@@ -7,21 +7,19 @@
 export type UserRole = "admin" | "supervisor" | "agent" | "client";
 
 export type AgentStatus =
-  | "available"
-  | "on_mission"
-  | "traveling"
-  | "break"
-  | "offline";
-
-export type AgentVehicleType =
-  | "car"
-  | "motorcycle"
-  | "foot"
-  | "supervisor"
+  | "online"
+  | "moving"
+  | "idle"
+  | "offline"
   | "emergency";
 
-/** Derived display state shown on the live map (not stored in DB). */
-export type AgentMapStatus = "online" | "moving" | "idle" | "offline";
+export type AgentRole =
+  | "field_agent"
+  | "supervisor"
+  | "team_leader"
+  | "operations";
+
+export type AgentVehicleType = "car" | "motorcycle" | "foot";
 
 export type CaseStatus = "new" | "assigned" | "active" | "pending" | "closed" | "cancelled";
 export type CasePriority = "low" | "medium" | "high" | "critical";
@@ -77,6 +75,7 @@ export interface Agent {
   position: string | null;
   area: string | null;
   status: AgentStatus;
+  agent_role: AgentRole | null;
   last_active: string | null;
   current_lat: number | null;
   current_lng: number | null;

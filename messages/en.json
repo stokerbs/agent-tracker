@@ -160,7 +160,7 @@
       "openCases": "Open Cases",
       "closedCases": "Closed Cases",
       "activeAgents": "Active Agents",
-      "availableAgents": "Available Agents"
+      "availableAgents": "Online Agents"
     },
     "emergencyBanner": {
       "one": "{count} active emergency alert",
@@ -422,7 +422,9 @@
         "userPhonePlaceholder": "0812345678 — links GPS login",
         "status": "Status",
         "vehicleType": "Vehicle Type",
-        "vehicleTypeNone": "Not specified"
+        "vehicleTypeNone": "Not specified",
+        "role": "Role",
+        "roleNone": "Not specified"
       },
       "createButton": "Create agent",
       "toast": {
@@ -444,7 +446,9 @@
         "userPhonePlaceholder": "Leave blank to keep current link",
         "status": "Status",
         "vehicleType": "Vehicle Type",
-        "vehicleTypeNone": "Not specified"
+        "vehicleTypeNone": "Not specified",
+        "role": "Role",
+        "roleNone": "Not specified"
       },
       "toast": {
         "success": "Agent updated"
@@ -453,9 +457,13 @@
     "vehicleTypes": {
       "car": "Car",
       "motorcycle": "Motorcycle",
-      "foot": "On Foot",
+      "foot": "On Foot"
+    },
+    "roleTypes": {
+      "field_agent": "Field Agent",
       "supervisor": "Supervisor",
-      "emergency": "Emergency"
+      "team_leader": "Team Leader",
+      "operations": "Operations"
     }
   },
   "timeline": {
@@ -722,7 +730,8 @@
     "emergency": {
       "banner": "🚨 {agent} triggered an emergency alert ({count} active)",
       "zoom": "Zoom to"
-    }
+    },
+    "roleAll": "All roles"
   },
   "clients": {
     "title": "Clients",
@@ -1007,7 +1016,7 @@
   "availability": {
     "title": "Agent Availability Board",
     "totalAgents": "Total agents",
-    "available": "Available",
+    "available": "Online",
     "onDuty": "On Duty (Active)",
     "offline": "Offline",
     "shortOn": "ON",
@@ -1024,11 +1033,11 @@
   },
   "status": {
     "agent": {
-      "available": "Available",
-      "on_mission": "On Mission",
-      "traveling": "Traveling",
-      "break": "Break",
-      "offline": "Offline"
+      "online": "Online",
+      "moving": "Moving",
+      "idle": "Idle",
+      "offline": "Offline",
+      "emergency": "Emergency"
     },
     "case": {
       "new": "New",

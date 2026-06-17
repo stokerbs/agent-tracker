@@ -12,7 +12,7 @@ const schema = z.object({
   speed_kmh: z.number().min(0).optional(),
   heading: z.number().min(0).max(359).optional(),
   status: z
-    .enum(["available", "on_mission", "traveling", "break", "offline"])
+    .enum(["online", "moving", "idle", "offline", "emergency"])
     .optional(),
 });
 
@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
   if (parsed.status) {
     update.status = parsed.status;
   } else if (agent.status === "offline") {
-    // Auto-promote to available on first GPS ping — agent is clearly online.
-    update.status = "available";
+    // Auto-promote to online on first GPS ping — agent is clearly connected.
+    update.status = "online";
   }
 
   const { error } = await svc

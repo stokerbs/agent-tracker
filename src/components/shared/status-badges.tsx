@@ -12,7 +12,7 @@ import type { AgentStatus, CasePriority, CaseStatus } from "@/lib/types";
 export function AgentStatusBadge({ status }: { status: AgentStatus }) {
   const t = useTranslations("status.agent");
   const meta = AGENT_STATUS_META[status];
-  const isLive = status === "available" || status === "on_mission";
+  const isLive = status === "online" || status === "moving";
 
   return (
     <span

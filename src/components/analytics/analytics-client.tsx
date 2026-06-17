@@ -7,7 +7,6 @@ import {
   Map,
   Polyline,
   useMap,
-  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import {
   AreaChart,
@@ -41,6 +40,16 @@ import type { Agent } from "@/lib/types";
 
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
 const DEFAULT_CENTER = { lat: 13.7563, lng: 100.5018 }; // Bangkok
+
+// Hotspot colour ramp — cool yellow → orange → red
+const HOTSPOT_COLOR_RANGE: [number, number, number][] = [
+  [255, 255, 178],
+  [254, 217, 118],
+  [254, 178, 76],
+  [253, 141, 60],
+  [227, 26, 28],
+  [177, 0, 38],
+];
 
 interface HistoryPoint {
   lat: number;
@@ -196,33 +205,75 @@ function RouteLayer({ points }: { points: HistoryPoint[] }) {
   );
 }
 
-// ── Heatmap layer (inside <Map>) ─────────────────────────────────────────────
+// ── Hexagon density overlay (deck.gl, inside <Map>) ─────────────────────────
+// Replaces the deprecated google.maps.visualization.HeatmapLayer (removed in
+// Maps JavaScript API v3.65). Uses deck.gl GoogleMapsOverlay + HexagonLayer
+// for a 2-D density / hotspot view of agent_location_history data.
 
-function HeatmapLayerInner({ points }: { points: HeatPoint[] }) {
+function HexagonOverlay({ points }: { points: HeatPoint[] }) {
   const map = useMap();
-  const vizLib = useMapsLibrary("visualization");
-  const layerRef = useRef<any>(null); // HeatmapLayer types incomplete in @types/google.maps
+  const overlayRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!map || !vizLib || points.length === 0) return;
+    if (!map) return;
 
-    layerRef.current?.setMap(null);
-    const Ctor = (vizLib as any).HeatmapLayer; // visualization lib types incomplete
-    layerRef.current = new Ctor({
-      data: points.map((p) => new google.maps.LatLng(p.lat, p.lng)),
-      map,
-      radius: 25,
-      opacity: 0.75,
-    });
+    // Clear overlay when there are no points
+    if (points.length === 0) {
+      overlayRef.current?.setMap(null);
+      overlayRef.current = null;
+      return;
+    }
 
-    const bounds = new google.maps.LatLngBounds();
-    points.forEach((p) => bounds.extend(p));
-    map.fitBounds(bounds, 40);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [{ GoogleMapsOverlay }, { HexagonLayer }] = await Promise.all([
+          import("@deck.gl/google-maps"),
+          import("@deck.gl/aggregation-layers"),
+        ]);
+
+        if (cancelled) return;
+
+        const layer = new HexagonLayer({
+          id: "hotspot-hexagon",
+          data: points,
+          getPosition: (d: HeatPoint) => [d.lng, d.lat] as [number, number],
+          radius: 250,          // 250 m hexagons — city-scale density
+          extruded: false,      // flat 2-D view (heatmap-style)
+          opacity: 0.72,
+          coverage: 0.88,       // slight gap between hexagons
+          colorRange: HOTSPOT_COLOR_RANGE,
+          lowerPercentile: 0,
+          upperPercentile: 98,  // clip outliers so colour ramp is useful
+        });
+
+        if (overlayRef.current) {
+          // Overlay already exists — just swap the layer
+          overlayRef.current.setProps({ layers: [layer] });
+        } else {
+          overlayRef.current = new GoogleMapsOverlay({
+            layers: [layer],
+            interleaved: false,
+          });
+          overlayRef.current.setMap(map);
+        }
+
+        // Fit map to data bounds
+        const bounds = new google.maps.LatLngBounds();
+        points.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+        map.fitBounds(bounds, 40);
+      } catch (err) {
+        console.error("[HexagonOverlay] deck.gl failed to initialise:", err);
+      }
+    })();
 
     return () => {
-      layerRef.current?.setMap(null);
+      cancelled = true;
+      overlayRef.current?.setMap(null);
+      overlayRef.current = null;
     };
-  }, [map, vizLib, points]);
+  }, [map, points]);
 
   return null;
 }
@@ -457,7 +508,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
                 {t("noApiKey")}
               </div>
             ) : (
-              <APIProvider apiKey={apiKey} libraries={["visualization"]}>
+              <APIProvider apiKey={apiKey}>
                 <Map
                   mapId={MAP_ID}
                   defaultCenter={DEFAULT_CENTER}
@@ -474,7 +525,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
         )}
       </TabsContent>
 
-      {/* ── Heatmap tab ────────────────────────────────────────────────── */}
+      {/* ── Hotspot Density tab ────────────────────────────────────────────── */}
       <TabsContent value="heatmap" className="space-y-4">
         {/* Controls */}
         <div className="flex flex-wrap items-end gap-3">
@@ -540,6 +591,21 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
           )}
         </div>
 
+        {/* Legend */}
+        {heatPoints !== null && heatPoints.length > 0 && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{t("heatmap.density.low")}</span>
+            <div
+              className="h-2.5 w-40 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(to right, #ffffb2, #fecc5c, #fd8d3c, #e31a1c, #b10026)",
+              }}
+            />
+            <span>{t("heatmap.density.high")}</span>
+          </div>
+        )}
+
         {/* Map */}
         {heatPoints !== null && (
           <div className="overflow-hidden rounded-xl border border-border/60">
@@ -552,7 +618,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
                 {t("noApiKey")}
               </div>
             ) : (
-              <APIProvider apiKey={apiKey} libraries={["visualization"]}>
+              <APIProvider apiKey={apiKey}>
                 <Map
                   mapId={MAP_ID}
                   defaultCenter={DEFAULT_CENTER}
@@ -561,7 +627,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
                   disableDefaultUI={false}
                   className="h-[520px] w-full"
                 >
-                  <HeatmapLayerInner points={heatPoints} />
+                  <HexagonOverlay points={heatPoints} />
                 </Map>
               </APIProvider>
             )}

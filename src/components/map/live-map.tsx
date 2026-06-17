@@ -66,6 +66,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AGENT_ROLE_META,
   AGENT_STATUS_META,
   DEFAULT_MAP_CENTER,
   GPS_REFRESH_MS,
@@ -75,6 +76,7 @@ import { cn } from "@/lib/utils";
 import { createGeofence, deleteGeofence } from "@/app/(dashboard)/map/actions";
 import type {
   Agent,
+  AgentRole,
   AgentStatus,
   AgentVehicleType,
   EmergencyAlert,
@@ -114,14 +116,13 @@ function speedRingClass(kmh: number): string {
   return "border-red-500";
 }
 
-function mapStatus(agent: Agent, now: number): "online" | "moving" | "idle" | "offline" {
+/** Returns the visual map state for an agent, factoring in staleness. */
+function mapDisplayStatus(agent: Agent, now: number): AgentStatus {
   const sinceActive = agent.last_active
     ? now - new Date(agent.last_active).getTime()
     : Infinity;
-  if (agent.status === "offline" || sinceActive > STALE_MS) return "offline";
-  if ((agent.speed_kmh ?? 0) > 1) return "moving";
-  if (sinceActive < STALE_MS) return "idle";
-  return "online";
+  if (sinceActive > STALE_MS) return "offline";
+  return agent.status;
 }
 
 // ─────────────────────────────────────────────
@@ -228,21 +229,6 @@ function VehicleIcon({
           <path d="M7 20h3M13 20h4" />
         </svg>
       );
-    case "supervisor":
-      return (
-        <svg {...shared}>
-          <path d="M12 3l8 4v5c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V7l8-4z" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
-      );
-    case "emergency":
-      return (
-        <svg {...shared} stroke="none">
-          <path fill="#ef4444" d="M12 2l9 5v6c0 5.5-4 10.5-9 12-5-1.5-9-6.5-9-12V7l9-5z" />
-          <rect fill="white" x="10.5" y="6" width="3" height="7" rx="1" />
-          <rect fill="white" x="10.5" y="15" width="3" height="3" rx="1" />
-        </svg>
-      );
     default:
       return (
         <svg {...shared}>
@@ -318,6 +304,8 @@ function AgentMarker({ agent, isEmergency, isSelected, now, onSelect }: AgentMar
             "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white",
             isStale || agent.status === "offline"
               ? "bg-slate-400"
+              : agent.status === "emergency"
+              ? "bg-red-500"
               : isMoving
               ? "bg-amber-500"
               : "bg-emerald-500",
@@ -483,15 +471,9 @@ function OpsPanel({
   now: number;
 }) {
   const t = useTranslations("map");
-  const active = agents.filter((a) => {
-    const s = mapStatus(a, now);
-    return s !== "offline";
-  }).length;
-  const moving = agents.filter((a) => (a.speed_kmh ?? 0) > 1).length;
-  const offline = agents.filter((a) => {
-    const s = mapStatus(a, now);
-    return s === "offline";
-  }).length;
+  const active = agents.filter((a) => mapDisplayStatus(a, now) !== "offline").length;
+  const moving = agents.filter((a) => a.status === "moving" || (a.speed_kmh ?? 0) > 1).length;
+  const offline = agents.filter((a) => mapDisplayStatus(a, now) === "offline").length;
   const movingSpeeds = agents
     .filter((a) => (a.speed_kmh ?? 0) > 1)
     .map((a) => a.speed_kmh ?? 0);
@@ -652,7 +634,8 @@ function AgentPopup({
     ? now - new Date(agent.last_active).getTime()
     : Infinity;
   const isStale = sinceActive > STALE_MS;
-  const ms = mapStatus(agent, now);
+  const ms = mapDisplayStatus(agent, now);
+  const roleMeta = agent.agent_role ? AGENT_ROLE_META[agent.agent_role] : null;
 
   if (!agent.current_lat || !agent.current_lng) return null;
 
@@ -694,21 +677,19 @@ function AgentPopup({
             </button>
           </div>
 
-          {/* Status badges */}
+          {/* Status + role badges */}
           <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
             <AgentStatusBadge status={agent.status} />
-            <Badge
-              className={cn(
-                "border text-[9px] font-bold uppercase tracking-widest",
-                ms === "moving"
-                  ? "border-amber-400/30 bg-amber-500/10 text-amber-600"
-                  : ms === "offline"
-                  ? "border-slate-400/30 bg-slate-500/10 text-slate-500"
-                  : "border-emerald-400/30 bg-emerald-500/10 text-emerald-600",
-              )}
-            >
-              {ms}
-            </Badge>
+            {roleMeta && (
+              <Badge
+                className={cn(
+                  "border border-transparent text-[9px] font-bold uppercase tracking-widest",
+                  roleMeta.badge,
+                )}
+              >
+                {roleMeta.label}
+              </Badge>
+            )}
           </div>
 
           {/* Info rows */}
@@ -966,6 +947,7 @@ export function LiveMap({
   const [statusFilter, setStatusFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [vehicleFilter, setVehicleFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   // ── Zoom target for emergency ──
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
@@ -1078,14 +1060,13 @@ export function LiveMap({
     [agents],
   );
 
-  const VEHICLE_TYPES: Array<AgentVehicleType> = [
-    "car", "motorcycle", "foot", "supervisor", "emergency",
-  ];
+  const VEHICLE_TYPES: Array<AgentVehicleType> = ["car", "motorcycle", "foot"];
 
   const filtered = agents.filter((a) => {
     if (areaFilter !== "all" && a.area !== areaFilter) return false;
     if (statusFilter !== "all" && a.status !== statusFilter) return false;
     if (vehicleFilter !== "all" && a.vehicle_type !== vehicleFilter) return false;
+    if (roleFilter !== "all" && a.agent_role !== roleFilter) return false;
     if (
       search &&
       !`${a.full_name} ${a.nickname ?? ""} ${a.agent_code}`
@@ -1204,7 +1185,7 @@ export function LiveMap({
             </Select>
 
             <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
-              <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectTrigger className="h-8 w-28 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1212,6 +1193,20 @@ export function LiveMap({
                 {VEHICLE_TYPES.map((v) => (
                   <SelectItem key={v} value={v} className="capitalize">
                     {v.replace("_", " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("roleAll")}</SelectItem>
+                {(["field_agent", "supervisor", "team_leader", "operations"] as AgentRole[]).map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {AGENT_ROLE_META[r].label}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -25,15 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AgentStatus, AgentVehicleType } from "@/lib/types";
+import type { AgentRole, AgentStatus, AgentVehicleType } from "@/lib/types";
 
-const AGENT_STATUSES: AgentStatus[] = ["available", "on_mission", "traveling", "break", "offline"];
-const VEHICLE_TYPES: AgentVehicleType[] = ["car", "motorcycle", "foot", "supervisor", "emergency"];
+const AGENT_STATUSES: AgentStatus[] = ["online", "moving", "idle", "offline", "emergency"];
+const VEHICLE_TYPES: AgentVehicleType[] = ["car", "motorcycle", "foot"];
+const AGENT_ROLES: AgentRole[] = ["field_agent", "supervisor", "team_leader", "operations"];
 
 export function CreateAgentDialog() {
   const t = useTranslations("agents.createDialog");
   const tStatus = useTranslations("status.agent");
   const tVehicle = useTranslations("agents.vehicleTypes");
+  const tRole = useTranslations("agents.roleTypes");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -58,7 +60,7 @@ export function CreateAgentDialog() {
           <Plus className="h-4 w-4" /> {t("createButton")}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
@@ -72,6 +74,26 @@ export function CreateAgentDialog() {
           <Field label={t("fields.email")} name="email" type="email" placeholder={t("fields.emailPlaceholder")} />
           <Field label={t("fields.area")} name="area" placeholder={t("fields.areaPlaceholder")} />
           <Field label={t("fields.userPhone")} name="user_phone" type="tel" placeholder={t("fields.userPhonePlaceholder")} />
+
+          {/* Role */}
+          <div className="space-y-2">
+            <Label htmlFor="agent_role">{t("fields.role")}</Label>
+            <Select name="agent_role" defaultValue="none">
+              <SelectTrigger id="agent_role">
+                <SelectValue placeholder={t("fields.roleNone")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("fields.roleNone")}</SelectItem>
+                {AGENT_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {tRole(r)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Vehicle Type */}
           <div className="space-y-2">
             <Label htmlFor="vehicle_type">{t("fields.vehicleType")}</Label>
             <Select name="vehicle_type" defaultValue="none">
@@ -88,7 +110,9 @@ export function CreateAgentDialog() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+
+          {/* Status */}
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="status">{t("fields.status")}</Label>
             <Select name="status" defaultValue="offline">
               <SelectTrigger id="status">
@@ -103,6 +127,7 @@ export function CreateAgentDialog() {
               </SelectContent>
             </Select>
           </div>
+
           <input type="hidden" name="photo_url" value="" />
           <DialogFooter className="sm:col-span-2">
             <Button type="submit" disabled={pending}>

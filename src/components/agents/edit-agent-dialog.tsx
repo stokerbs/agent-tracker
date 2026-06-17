@@ -25,20 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Agent, AgentStatus, AgentVehicleType } from "@/lib/types";
+import type { Agent, AgentRole, AgentStatus, AgentVehicleType } from "@/lib/types";
 
-const AGENT_STATUSES: AgentStatus[] = [
-  "available", "on_mission", "traveling", "break", "offline",
-];
-
-const VEHICLE_TYPES: AgentVehicleType[] = [
-  "car", "motorcycle", "foot", "supervisor", "emergency",
-];
+const AGENT_STATUSES: AgentStatus[] = ["online", "moving", "idle", "offline", "emergency"];
+const VEHICLE_TYPES: AgentVehicleType[] = ["car", "motorcycle", "foot"];
+const AGENT_ROLES: AgentRole[] = ["field_agent", "supervisor", "team_leader", "operations"];
 
 export function EditAgentDialog({ agent }: { agent: Agent }) {
   const t = useTranslations("agents.editDialog");
   const tStatus = useTranslations("status.agent");
   const tVehicle = useTranslations("agents.vehicleTypes");
+  const tRole = useTranslations("agents.roleTypes");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,39 +70,12 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
         </DialogHeader>
 
         <form action={onSubmit} className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label={t("fields.fullName")}
-            name="full_name"
-            defaultValue={agent.full_name}
-            required
-          />
-          <Field
-            label={t("fields.nickname")}
-            name="nickname"
-            defaultValue={agent.nickname ?? ""}
-          />
-          <Field
-            label={t("fields.position")}
-            name="position"
-            defaultValue={agent.position ?? ""}
-          />
-          <Field
-            label={t("fields.area")}
-            name="area"
-            defaultValue={agent.area ?? ""}
-          />
-          <Field
-            label={t("fields.phone")}
-            name="phone"
-            type="tel"
-            defaultValue={agent.phone ?? ""}
-          />
-          <Field
-            label={t("fields.email")}
-            name="email"
-            type="email"
-            defaultValue={agent.email ?? ""}
-          />
+          <Field label={t("fields.fullName")} name="full_name" defaultValue={agent.full_name} required />
+          <Field label={t("fields.nickname")} name="nickname" defaultValue={agent.nickname ?? ""} />
+          <Field label={t("fields.position")} name="position" defaultValue={agent.position ?? ""} />
+          <Field label={t("fields.area")} name="area" defaultValue={agent.area ?? ""} />
+          <Field label={t("fields.phone")} name="phone" type="tel" defaultValue={agent.phone ?? ""} />
+          <Field label={t("fields.email")} name="email" type="email" defaultValue={agent.email ?? ""} />
           <Field
             label={t("fields.userPhone")}
             name="user_phone"
@@ -114,6 +84,25 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
             placeholder={t("fields.userPhonePlaceholder")}
           />
 
+          {/* Role */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-agent-role">{t("fields.role")}</Label>
+            <Select name="agent_role" defaultValue={agent.agent_role ?? "none"}>
+              <SelectTrigger id="edit-agent-role">
+                <SelectValue placeholder={t("fields.roleNone")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("fields.roleNone")}</SelectItem>
+                {AGENT_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {tRole(r)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Vehicle Type */}
           <div className="space-y-2">
             <Label htmlFor="edit-vehicle-type">{t("fields.vehicleType")}</Label>
             <Select name="vehicle_type" defaultValue={agent.vehicle_type ?? "none"}>
@@ -131,7 +120,8 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
             </Select>
           </div>
 
-          <div className="space-y-2">
+          {/* Status */}
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="edit-status">{t("fields.status")}</Label>
             <Select name="status" defaultValue={agent.status}>
               <SelectTrigger id="edit-status">
@@ -148,11 +138,7 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
           </div>
 
           <DialogFooter className="sm:col-span-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={pending}>

@@ -59,7 +59,7 @@ export default async function AgentsPage() {
   const agents = await getAgents();
 
   const total = agents.length;
-  const available = agents.filter((a) => a.status === "available").length;
+  const available = agents.filter((a) => a.status === "online").length;
   const active = agents.filter((a) => a.status !== "offline").length;
   const offline = agents.filter((a) => a.status === "offline").length;
 

@@ -74,7 +74,7 @@ export async function getDashboardStats() {
 
   return {
     totalAgents: agentRows.length,
-    availableAgents: agentRows.filter((a) => a.status === "available").length,
+    availableAgents: agentRows.filter((a) => a.status === "online").length,
     activeAgents: agentRows.filter(
       (a) => a.status !== "offline",
     ).length,

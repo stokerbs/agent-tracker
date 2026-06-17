@@ -1,4 +1,5 @@
 import type {
+  AgentRole,
   AgentStatus,
   CasePriority,
   CaseStatus,
@@ -13,30 +14,52 @@ export const AGENT_STATUS_META: Record<
   AgentStatus,
   { label: string; dot: string; badge: string }
 > = {
-  available: {
-    label: "Available",
+  online: {
+    label: "Online",
     dot: "bg-emerald-500",
     badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
   },
-  on_mission: {
-    label: "On Mission",
-    dot: "bg-blue-500",
-    badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  },
-  traveling: {
-    label: "Traveling",
+  moving: {
+    label: "Moving",
     dot: "bg-amber-500",
     badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   },
-  break: {
-    label: "Break",
-    dot: "bg-violet-500",
-    badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  idle: {
+    label: "Idle",
+    dot: "bg-slate-400",
+    badge: "bg-slate-400/15 text-slate-500 dark:text-slate-400",
   },
   offline: {
     label: "Offline",
-    dot: "bg-slate-400",
+    dot: "bg-slate-500",
     badge: "bg-slate-500/15 text-slate-500 dark:text-slate-400",
+  },
+  emergency: {
+    label: "Emergency",
+    dot: "bg-red-500",
+    badge: "bg-red-500/15 text-red-600 dark:text-red-400",
+  },
+};
+
+export const AGENT_ROLE_META: Record<
+  AgentRole,
+  { label: string; badge: string }
+> = {
+  field_agent: {
+    label: "Field Agent",
+    badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  },
+  supervisor: {
+    label: "Supervisor",
+    badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  },
+  team_leader: {
+    label: "Team Leader",
+    badge: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+  },
+  operations: {
+    label: "Operations",
+    badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   },
 };
 

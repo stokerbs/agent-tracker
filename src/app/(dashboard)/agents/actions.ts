@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isStaff, requireProfile, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
-import type { AgentStatus, AgentVehicleType } from "@/lib/types";
+import type { AgentRole, AgentStatus, AgentVehicleType } from "@/lib/types";
 
 export async function createAgent(formData: FormData) {
   await requireRole(["admin", "supervisor"]);
@@ -24,6 +24,9 @@ export async function createAgent(formData: FormData) {
 
   const vehicleType = noneToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
   if (vehicleType !== null) payload.vehicle_type = vehicleType;
+
+  const agentRole = noneToNull(formData.get("agent_role")) as AgentRole | null;
+  if (agentRole !== null) payload.agent_role = agentRole;
 
   // Optionally link to a user account by their login phone number.
   // Profiles store phone as "66XXXXXXXXX" (no +); normalise the input.
@@ -143,6 +146,9 @@ export async function updateAgent(agentId: string, formData: FormData) {
 
   const vehicleType = noneToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
   if (vehicleType !== null) payload.vehicle_type = vehicleType;
+
+  const agentRole = noneToNull(formData.get("agent_role")) as AgentRole | null;
+  payload.agent_role = agentRole;
 
   // Re-link user account only when the caller provides a phone number.
   // Empty field = leave the existing profile_id unchanged.

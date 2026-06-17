@@ -160,7 +160,7 @@
       "openCases": "คดีที่เปิดอยู่",
       "closedCases": "คดีที่ปิดแล้ว",
       "activeAgents": "เจ้าหน้าที่ที่ปฏิบัติงาน",
-      "availableAgents": "เจ้าหน้าที่ที่พร้อมรับงาน"
+      "availableAgents": "สายสืบออนไลน์"
     },
     "emergencyBanner": {
       "one": "{count} การแจ้งเหตุฉุกเฉินที่ใช้งานอยู่",
@@ -422,7 +422,9 @@
         "userPhonePlaceholder": "0812345678 — เชื่อมการติดตาม GPS",
         "status": "สถานะ",
         "vehicleType": "ประเภทยานพาหนะ",
-        "vehicleTypeNone": "ไม่ระบุ"
+        "vehicleTypeNone": "ไม่ระบุ",
+        "role": "บทบาท",
+        "roleNone": "ไม่ระบุ"
       },
       "createButton": "สร้างเจ้าหน้าที่",
       "toast": {
@@ -444,7 +446,9 @@
         "userPhonePlaceholder": "เว้นว่างเพื่อคงการเชื่อมปัจจุบัน",
         "status": "สถานะ",
         "vehicleType": "ประเภทยานพาหนะ",
-        "vehicleTypeNone": "ไม่ระบุ"
+        "vehicleTypeNone": "ไม่ระบุ",
+        "role": "บทบาท",
+        "roleNone": "ไม่ระบุ"
       },
       "toast": {
         "success": "อัปเดตเจ้าหน้าที่เรียบร้อยแล้ว"
@@ -453,9 +457,13 @@
     "vehicleTypes": {
       "car": "รถยนต์",
       "motorcycle": "มอเตอร์ไซค์",
-      "foot": "เดินเท้า",
-      "supervisor": "หัวหน้าชุด",
-      "emergency": "ฉุกเฉิน"
+      "foot": "เดินเท้า"
+    },
+    "roleTypes": {
+      "field_agent": "สายสืบภาคสนาม",
+      "supervisor": "ผู้ควบคุม",
+      "team_leader": "หัวหน้าทีม",
+      "operations": "ฝ่ายปฏิบัติการ"
     }
   },
   "timeline": {
@@ -722,7 +730,8 @@
     "emergency": {
       "banner": "🚨 {agent} ส่งสัญญาณฉุกเฉิน ({count} รายการที่ใช้งานอยู่)",
       "zoom": "ซูมไป"
-    }
+    },
+    "roleAll": "ทุกบทบาท"
   },
   "clients": {
     "title": "ลูกค้า",
@@ -1007,7 +1016,7 @@
   "availability": {
     "title": "กระดานพร้อมปฏิบัติการเจ้าหน้าที่",
     "totalAgents": "เจ้าหน้าที่ทั้งหมด",
-    "available": "พร้อมรับงาน",
+    "available": "ออนไลน์",
     "onDuty": "ปฏิบัติหน้าที่ (ใช้งาน)",
     "offline": "ออฟไลน์",
     "shortOn": "ว่าง",
@@ -1024,11 +1033,11 @@
   },
   "status": {
     "agent": {
-      "available": "ว่าง",
-      "on_mission": "ปฏิบัติภารกิจ",
-      "traveling": "กำลังเดินทาง",
-      "break": "พัก",
-      "offline": "ออฟไลน์"
+      "online": "ออนไลน์",
+      "moving": "กำลังเคลื่อนที่",
+      "idle": "พักอยู่",
+      "offline": "ออฟไลน์",
+      "emergency": "ฉุกเฉิน"
     },
     "case": {
       "new": "ใหม่",
