@@ -505,6 +505,7 @@
     "noDescription": "Open a case and use \"Generate AI Report\" to produce one.",
     "generateButton": "Generate AI Report",
     "approveButton": "Approve & publish",
+    "editButton": "Edit",
     "visibleToClient": "Visible to client",
     "exportLabel": "Export",
     "downloadPdf": "Download PDF",
@@ -518,7 +519,7 @@
     },
     "status": {
       "draft": "Draft",
-      "submitted": "Submitted",
+      "review": "In Review",
       "approved": "Approved",
       "rejected": "Rejected"
     },
@@ -529,6 +530,7 @@
     },
     "statusBadge": {
       "draft": "DRAFT",
+      "review": "REVIEW",
       "submitted": "REVIEW",
       "approved": "APPROVED",
       "rejected": "REJECTED"

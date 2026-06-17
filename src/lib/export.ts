@@ -1,5 +1,6 @@
 import type { Report, Invoice, Client, ExpenseCategory } from "@/lib/types";
 import { stripProviderTag } from "@/lib/report-parser";
+import { htmlToPlainText, isHtmlContent } from "@/components/shared/rich-text-editor";
 
 export interface ExpenseRow {
   id: string;
@@ -31,9 +32,16 @@ function extractChronoForExport(rawBody: string | null): string {
   if (!rawBody) return "";
   const body = stripProviderTag(rawBody);
   if (body.includes("ลำดับเหตุการณ์")) {
-    return body.split("2. ลำดับเหตุการณ์")[1]?.split("\n3. ข้อสังเกต")[0]?.trim() ?? body;
+    const section = body.split("2. ลำดับเหตุการณ์")[1]?.split("\n3. ข้อสังเกต")[0]?.trim() ?? body;
+    return isHtmlContent(section) ? htmlToPlainText(section) : section;
   }
-  return body.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]?.split("3. OBSERVATIONS")[0]?.trim() ?? body;
+  const section = body.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]?.split("3. OBSERVATIONS")[0]?.trim() ?? body;
+  return isHtmlContent(section) ? htmlToPlainText(section) : section;
+}
+
+function toExportText(text: string | null | undefined): string {
+  if (!text) return "";
+  return isHtmlContent(text) ? htmlToPlainText(text) : text;
 }
 
 /** Generates and downloads a professional PDF using jsPDF (client-side). */
@@ -101,22 +109,22 @@ export async function exportReportPdf({ report, caseRecord }: ExportData) {
 
   if (thai) {
     addHeading("1. สรุปผลการปฏิบัติงาน");
-    addBody(report.executive_summary ?? "");
+    addBody(toExportText(report.executive_summary));
     addHeading("2. ลำดับเหตุการณ์");
     addBody(extractChronoForExport(report.body ?? null));
     addHeading("3. ข้อสังเกต");
-    addBody(report.observations ?? "");
+    addBody(toExportText(report.observations));
     addHeading("4. สรุป");
-    addBody(report.conclusion ?? "");
+    addBody(toExportText(report.conclusion));
   } else {
     addHeading("1. Executive Summary");
-    addBody(report.executive_summary ?? "");
+    addBody(toExportText(report.executive_summary));
     addHeading("2. Chronological Surveillance Report");
     addBody(extractChronoForExport(report.body ?? null));
     addHeading("3. Observations");
-    addBody(report.observations ?? "");
+    addBody(toExportText(report.observations));
     addHeading("4. Conclusion");
-    addBody(report.conclusion ?? "");
+    addBody(toExportText(report.conclusion));
   }
 
   doc.save(`${caseRecord?.case_number ?? "report"}-surveillance-report.pdf`);
@@ -153,16 +161,16 @@ export async function exportReportDocx({ report, caseRecord }: ExportData) {
           }),
           ...(thai
             ? [
-                ...section("1. สรุปผลการปฏิบัติงาน", report.executive_summary ?? ""),
+                ...section("1. สรุปผลการปฏิบัติงาน", toExportText(report.executive_summary)),
                 ...section("2. ลำดับเหตุการณ์", chrono),
-                ...section("3. ข้อสังเกต", report.observations ?? ""),
-                ...section("4. สรุป", report.conclusion ?? ""),
+                ...section("3. ข้อสังเกต", toExportText(report.observations)),
+                ...section("4. สรุป", toExportText(report.conclusion)),
               ]
             : [
-                ...section("1. Executive Summary", report.executive_summary ?? ""),
+                ...section("1. Executive Summary", toExportText(report.executive_summary)),
                 ...section("2. Chronological Surveillance Report", chrono),
-                ...section("3. Observations", report.observations ?? ""),
-                ...section("4. Conclusion", report.conclusion ?? ""),
+                ...section("3. Observations", toExportText(report.observations)),
+                ...section("4. Conclusion", toExportText(report.conclusion)),
               ]),
         ],
       },

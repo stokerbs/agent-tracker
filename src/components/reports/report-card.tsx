@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   Loader2,
+  Pencil,
   Shield,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,10 +30,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, formatDate } from "@/lib/utils";
 import type { Case, Report } from "@/lib/types";
+import Link from "next/link";
 
 const STATUS_META: Record<Report["status"], { badge: string }> = {
   draft:     { badge: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-  submitted: { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  review:    { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  submitted: { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" }, // legacy alias
   approved:  { badge: "bg-success/10 text-success border-success/20" },
   rejected:  { badge: "bg-destructive/10 text-destructive border-destructive/20" },
 };
@@ -157,6 +160,14 @@ export function ReportCard({
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2 px-5 pb-4 pt-3">
+        {canManage && (
+          <Link href={`/reports/${report.id}/edit`}>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+              <Pencil className="h-3.5 w-3.5" />
+              {t("editButton")}
+            </Button>
+          </Link>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -243,14 +254,22 @@ function Section({
   chrono?: boolean;
 }) {
   const text = chrono && body ? extractChrono(body) : (body ?? "");
+  const isHtml = text.trimStart().startsWith("<");
   return (
     <div>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </p>
-      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">
-        {text || "—"}
-      </p>
+      {isHtml ? (
+        <div
+          className="report-content text-sm leading-relaxed text-foreground/80"
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+      ) : (
+        <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+          {text || "—"}
+        </p>
+      )}
     </div>
   );
 }

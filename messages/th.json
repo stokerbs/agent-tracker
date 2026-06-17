@@ -505,6 +505,7 @@
     "noDescription": "เปิดคดีและใช้ \"สร้างรายงาน AI\" เพื่อสร้างรายงาน",
     "generateButton": "สร้างรายงาน AI",
     "approveButton": "อนุมัติ & เผยแพร่",
+    "editButton": "แก้ไข",
     "visibleToClient": "มองเห็นโดยลูกค้า",
     "exportLabel": "ส่งออก",
     "downloadPdf": "ดาวน์โหลด PDF",
@@ -518,7 +519,7 @@
     },
     "status": {
       "draft": "ร่าง",
-      "submitted": "ส่งแล้ว",
+      "review": "รอรีวิว",
       "approved": "อนุมัติแล้ว",
       "rejected": "ปฏิเสธแล้ว"
     },
@@ -529,6 +530,7 @@
     },
     "statusBadge": {
       "draft": "ร่าง",
+      "review": "รีวิว",
       "submitted": "รีวิว",
       "approved": "อนุมัติ",
       "rejected": "ปฏิเสธ"

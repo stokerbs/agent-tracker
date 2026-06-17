@@ -133,4 +133,31 @@
   .focus-ring {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
   }
+
+  /* ── Tiptap rich-text editor content ── */
+  .rte .tiptap {
+    @apply min-h-[inherit] outline-none;
+  }
+  .rte .tiptap p { @apply mb-2 leading-relaxed; }
+  .rte .tiptap p:last-child { @apply mb-0; }
+  .rte .tiptap strong { @apply font-semibold; }
+  .rte .tiptap em { @apply italic; }
+  .rte .tiptap ul { @apply mb-2 ml-4 list-disc space-y-0.5; }
+  .rte .tiptap ol { @apply mb-2 ml-4 list-decimal space-y-0.5; }
+  .rte .tiptap li { @apply leading-relaxed; }
+  .rte .tiptap hr { @apply my-3 border-border; }
+  .rte .tiptap .is-editor-empty:first-child::before {
+    @apply pointer-events-none float-left h-0 text-muted-foreground/50;
+    content: attr(data-placeholder);
+  }
+
+  /* Rendered HTML content (report view) */
+  .report-content p { @apply mb-2 leading-relaxed; }
+  .report-content p:last-child { @apply mb-0; }
+  .report-content strong { @apply font-semibold; }
+  .report-content em { @apply italic; }
+  .report-content ul { @apply mb-2 ml-4 list-disc space-y-0.5; }
+  .report-content ol { @apply mb-2 ml-4 list-decimal space-y-0.5; }
+  .report-content li { @apply leading-relaxed; }
+  .report-content hr { @apply my-3 border-border; }
 }

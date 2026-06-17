@@ -24,7 +24,8 @@ export type ExpenseCategory =
   | "hotel"
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
-export type ReportStatus = "draft" | "submitted" | "approved" | "rejected";
+// "submitted" kept for backward compatibility with rows created before migration 0021.
+export type ReportStatus = "draft" | "review" | "submitted" | "approved" | "rejected";
 export type ReportLanguage = "th" | "en";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
 
@@ -183,12 +184,28 @@ export interface Report {
   status: ReportStatus;
   pdf_url: string | null;
   generated_by: string | null;
+  edited_by: string | null;
+  edited_at: string | null;
   approved_by: string | null;
   approved_at: string | null;
   is_client_visible: boolean;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+}
+
+export interface ReportVersion {
+  id: string;
+  report_id: string;
+  version_number: number;
+  content: {
+    executive_summary?: string;
+    body?: string;
+    observations?: string;
+    conclusion?: string;
+  };
+  edited_by: string | null;
+  created_at: string;
 }
 
 export interface Notification {
