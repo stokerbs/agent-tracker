@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,19 +19,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { createClientRecord } from "@/app/(dashboard)/clients/actions";
 
 export function CreateClientDialog() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
   function handleSubmit(formData: FormData) {
     start(async () => {
-      try {
-        await createClientRecord(formData);
-        // createClientRecord redirects on success — toast shown before redirect
-        toast.success("Client created.");
-        setOpen(false);
-      } catch {
-        // redirect() throws — that's expected
-      }
+      const res = await createClientRecord(formData);
+      if (res?.error) { toast.error(res.error); return; }
+      toast.success("Client created.");
+      setOpen(false);
+      if (res?.id) router.push(`/clients/${res.id}`);
     });
   }
 

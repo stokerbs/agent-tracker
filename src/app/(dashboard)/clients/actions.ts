@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -31,8 +30,11 @@ export async function updateClient(id: string, formData: FormData) {
   return { ok: true };
 }
 
+// F-2 fix: return { ok, id } instead of calling redirect() — redirect() throws
+// NEXT_REDIRECT which is swallowed by the dialog's try/catch and navigation
+// never happens. The caller (CreateClientDialog) does router.push() on success.
 export async function createClientRecord(formData: FormData) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -48,13 +50,39 @@ export async function createClientRecord(formData: FormData) {
     .single();
 
   if (error) return { error: error.message };
+
+  // Audit: log client creation.
+  await supabase.from("audit_logs").insert({
+    actor_id:  profile.id,
+    action:    "client_created",
+    entity:    "clients",
+    entity_id: data.id,
+    metadata:  {},
+  });
+
   revalidatePath("/clients");
-  redirect(`/clients/${data.id}`);
+  return { ok: true, id: data.id };
 }
 
+// F-3 fix: validate that the target profile exists and has role='client'.
+// Linking a supervisor/agent profile to a client record would allow that
+// staff member's identity to be associated with client data, and their
+// profile_id to satisfy the portal ownership query.
 export async function linkClientProfile(clientId: string, profileId: string) {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin"]);
   const supabase = await createClient();
+
+  // Verify target profile is a client-role account.
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (!targetProfile) return { error: "Profile not found." };
+  if (targetProfile.role !== "client") {
+    return { error: "Only profiles with role='client' can be linked to a client record." };
+  }
 
   const { error } = await supabase
     .from("clients")
@@ -62,13 +90,30 @@ export async function linkClientProfile(clientId: string, profileId: string) {
     .eq("id", clientId);
 
   if (error) return { error: error.message };
+
+  // F-5 audit: portal linking is security-sensitive; always log it.
+  await supabase.from("audit_logs").insert({
+    actor_id:  actor.id,
+    action:    "client_portal_linked",
+    entity:    "clients",
+    entity_id: clientId,
+    metadata:  { profile_id: profileId },
+  });
+
   revalidatePath(`/clients/${clientId}`);
   return { ok: true };
 }
 
 export async function unlinkClientProfile(clientId: string) {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin"]);
   const supabase = await createClient();
+
+  // Read current profile_id before clearing it so we can audit who was unlinked.
+  const { data: existing } = await supabase
+    .from("clients")
+    .select("profile_id")
+    .eq("id", clientId)
+    .maybeSingle();
 
   const { error } = await supabase
     .from("clients")
@@ -76,6 +121,16 @@ export async function unlinkClientProfile(clientId: string) {
     .eq("id", clientId);
 
   if (error) return { error: error.message };
+
+  // Audit.
+  await supabase.from("audit_logs").insert({
+    actor_id:  actor.id,
+    action:    "client_portal_unlinked",
+    entity:    "clients",
+    entity_id: clientId,
+    metadata:  { former_profile_id: existing?.profile_id ?? null },
+  });
+
   revalidatePath(`/clients/${clientId}`);
   return { ok: true };
 }

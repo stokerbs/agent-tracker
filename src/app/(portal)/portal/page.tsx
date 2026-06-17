@@ -75,8 +75,8 @@ export default async function PortalPage() {
   }
 
   // ── Step 2: fetch cases + invoices in parallel ───────────────────────────────
-  // Both queries carry an explicit .eq("client_id", clientRow.id) filter.
-  // RLS enforces this too — the explicit filter is defence-in-depth.
+  // Both queries carry explicit ownership + visibility filters.
+  // RLS enforces the same constraints — the app-layer filters are defence-in-depth.
   const [{ data: casesRaw }, { data: invoicesRaw }] = await Promise.all([
     supabase
       .from("cases")
@@ -87,6 +87,7 @@ export default async function PortalPage() {
       .from("invoices")
       .select("*")
       .eq("client_id", clientRow.id)        // ← explicit ownership filter
+      .neq("status", "draft")              // ← F-4: mirror the RLS 'status != draft' gate
       .order("issued_date", { ascending: false }),
   ]);
 
@@ -103,6 +104,8 @@ export default async function PortalPage() {
         .from("reports")
         .select("*, cases(*)")
         .in("case_id", caseIds)              // ← explicit ownership filter
+        .eq("status", "approved")            // ← F-1: mirror the RLS status gate
+        .eq("is_client_visible", true)       // ← F-1: mirror the RLS visibility gate
         .order("created_at", { ascending: false })
     : { data: [] };
 
