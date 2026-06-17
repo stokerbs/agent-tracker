@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { notifyUsers } from "@/lib/notifications";
 
@@ -126,7 +126,10 @@ export async function updateInvoice(id: string, formData: FormData) {
 
 export async function deleteInvoice(id: string) {
   const profile = await requireRole(["admin"]);
-  const supabase = await createClient();
+  // Use service client: the SELECT policy's implicit WITH CHECK blocks setting
+  // deleted_at (new row has deleted_at IS NOT NULL, failing the IS NULL gate).
+  // Application-layer admin enforcement above keeps this secure.
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("invoices")
