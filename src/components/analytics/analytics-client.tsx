@@ -234,18 +234,25 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const supabase = createClient();
 
-  // Shift state
+  // Shift state — dates initialised client-side to avoid SSR/hydration mismatch
   const [shiftAgentId, setShiftAgentId] = useState(agents[0]?.id ?? "");
-  const [shiftDate, setShiftDate] = useState(todayStr());
+  const [shiftDate, setShiftDate] = useState("");
   const [shiftPoints, setShiftPoints] = useState<HistoryPoint[] | null>(null);
   const [shiftLoading, setShiftLoading] = useState(false);
 
   // Heatmap state
   const [heatAgentId, setHeatAgentId] = useState("all");
-  const [heatStart, setHeatStart] = useState(sevenDaysAgoStr());
-  const [heatEnd, setHeatEnd] = useState(todayStr());
+  const [heatStart, setHeatStart] = useState("");
+  const [heatEnd, setHeatEnd] = useState("");
   const [heatPoints, setHeatPoints] = useState<HeatPoint[] | null>(null);
   const [heatLoading, setHeatLoading] = useState(false);
+
+  // Set date defaults once in browser only
+  useEffect(() => {
+    setShiftDate(todayStr());
+    setHeatStart(sevenDaysAgoStr());
+    setHeatEnd(todayStr());
+  }, []);
 
   async function loadShift() {
     if (!shiftAgentId) return;
