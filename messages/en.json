@@ -123,7 +123,8 @@
       "audit": "Audit Log",
       "settings": "Settings",
       "invoices": "Invoices",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "field": "Field App"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
@@ -419,7 +420,9 @@
         "areaPlaceholder": "Downtown",
         "userPhone": "Link to user account (phone)",
         "userPhonePlaceholder": "0812345678 — links GPS login",
-        "status": "Status"
+        "status": "Status",
+        "vehicleType": "Vehicle Type",
+        "vehicleTypeNone": "Not specified"
       },
       "createButton": "Create agent",
       "toast": {
@@ -439,11 +442,20 @@
         "email": "Email",
         "userPhone": "Re-link user account (phone)",
         "userPhonePlaceholder": "Leave blank to keep current link",
-        "status": "Status"
+        "status": "Status",
+        "vehicleType": "Vehicle Type",
+        "vehicleTypeNone": "Not specified"
       },
       "toast": {
         "success": "Agent updated"
       }
+    },
+    "vehicleTypes": {
+      "car": "Car",
+      "motorcycle": "Motorcycle",
+      "foot": "On Foot",
+      "supervisor": "Supervisor",
+      "emergency": "Emergency"
     }
   },
   "timeline": {
@@ -695,7 +707,13 @@
       "deleted": "Geofence deleted",
       "delete": "Delete fence",
       "clickToStart": "Click on the map to place the first point",
-      "clickToAdd": "{count} points — keep clicking to add more"
+      "clickToAdd": "{count} points — keep clicking to add more",
+      "events": {
+        "title": "Geofence Events",
+        "entered": "{agent} entered {fence}",
+        "exited": "{agent} exited {fence}",
+        "none": "No geofence crossings yet"
+      }
     },
     "popup": {
       "call": "โทรออก",
@@ -1025,6 +1043,38 @@
       "medium": "Medium",
       "high": "High",
       "critical": "Critical"
+    }
+  },
+  "field": {
+    "noAgent": "Your account is not linked to a field agent profile. Ask an admin to link your account.",
+    "myStatus": "My Status",
+    "gpsSignal": "GPS Signal",
+    "gpsActive": "Active",
+    "gpsAcquiring": "Acquiring…",
+    "gpsIdle": "Waiting for GPS",
+    "gpsError": "GPS unavailable",
+    "lastPing": "Last ping: {time}",
+    "noPing": "Not yet pinged",
+    "ping": "Ping now",
+    "pingFailed": "Failed to send GPS ping",
+    "activeCases": "Active Cases",
+    "noActiveCases": "No active case assignments",
+    "cancel": "Cancel",
+    "log": {
+      "button": "Log Entry",
+      "title": "New timeline entry",
+      "description": "Log an observation to a case timeline.",
+      "case": "Case",
+      "noCase": "Select a case first",
+      "location": "Location",
+      "locationPlaceholder": "e.g. Corner of Sukhumvit Soi 11",
+      "entry": "Observation",
+      "entryPlaceholder": "What did you observe…",
+      "submit": "Save entry",
+      "success": "Timeline entry saved"
+    },
+    "sos": {
+      "button": "SOS"
     }
   }
 }

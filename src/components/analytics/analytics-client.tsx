@@ -247,11 +247,16 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
   const [heatPoints, setHeatPoints] = useState<HeatPoint[] | null>(null);
   const [heatLoading, setHeatLoading] = useState(false);
 
+  // today is kept in state so max= attributes never differ between SSR and client
+  const [today, setToday] = useState("");
+
   // Set date defaults once in browser only
   useEffect(() => {
-    setShiftDate(todayStr());
+    const t = todayStr();
+    setToday(t);
+    setShiftDate(t);
     setHeatStart(sevenDaysAgoStr());
-    setHeatEnd(todayStr());
+    setHeatEnd(t);
   }, []);
 
   async function loadShift() {
@@ -325,7 +330,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
             <input
               type="date"
               value={shiftDate}
-              max={todayStr()}
+              max={today || undefined}
               onChange={(e) => setShiftDate(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
@@ -509,7 +514,7 @@ export function AnalyticsClient({ agents }: { agents: Agent[] }) {
             <input
               type="date"
               value={heatEnd}
-              max={todayStr()}
+              max={today || undefined}
               onChange={(e) => setHeatEnd(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />

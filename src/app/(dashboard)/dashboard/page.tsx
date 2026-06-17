@@ -208,6 +208,7 @@ export default async function DashboardPage() {
                 initialAgents={activeAgents}
                 initialGeofences={[]}
                 emergencyAlerts={[]}
+                initialGeofenceEvents={[]}
                 isAdmin={false}
               />
             </CardContent>

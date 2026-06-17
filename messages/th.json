@@ -123,7 +123,8 @@
       "audit": "บันทึกตรวจสอบ",
       "settings": "การตั้งค่า",
       "invoices": "ใบแจ้งหนี้",
-      "analytics": "วิเคราะห์"
+      "analytics": "วิเคราะห์",
+      "field": "แอปภาคสนาม"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
@@ -419,7 +420,9 @@
         "areaPlaceholder": "ใจกลางเมือง",
         "userPhone": "เชื่อมบัญชีผู้ใช้ (เบอร์โทร)",
         "userPhonePlaceholder": "0812345678 — เชื่อมการติดตาม GPS",
-        "status": "สถานะ"
+        "status": "สถานะ",
+        "vehicleType": "ประเภทยานพาหนะ",
+        "vehicleTypeNone": "ไม่ระบุ"
       },
       "createButton": "สร้างเจ้าหน้าที่",
       "toast": {
@@ -439,11 +442,20 @@
         "email": "อีเมล",
         "userPhone": "เชื่อมบัญชีผู้ใช้ใหม่ (เบอร์โทร)",
         "userPhonePlaceholder": "เว้นว่างเพื่อคงการเชื่อมปัจจุบัน",
-        "status": "สถานะ"
+        "status": "สถานะ",
+        "vehicleType": "ประเภทยานพาหนะ",
+        "vehicleTypeNone": "ไม่ระบุ"
       },
       "toast": {
         "success": "อัปเดตเจ้าหน้าที่เรียบร้อยแล้ว"
       }
+    },
+    "vehicleTypes": {
+      "car": "รถยนต์",
+      "motorcycle": "มอเตอร์ไซค์",
+      "foot": "เดินเท้า",
+      "supervisor": "หัวหน้าชุด",
+      "emergency": "ฉุกเฉิน"
     }
   },
   "timeline": {
@@ -695,7 +707,13 @@
       "deleted": "ลบเขตเฝ้าระวังสำเร็จ",
       "delete": "ลบพื้นที่",
       "clickToStart": "คลิกบนแผนที่เพื่อวางจุดแรก",
-      "clickToAdd": "{count} จุดแล้ว — คลิกเพิ่มต่อไป"
+      "clickToAdd": "{count} จุดแล้ว — คลิกเพิ่มต่อไป",
+      "events": {
+        "title": "เหตุการณ์เขตเฝ้าระวัง",
+        "entered": "{agent} เข้า {fence}",
+        "exited": "{agent} ออก {fence}",
+        "none": "ยังไม่มีการผ่านเขตเฝ้าระวัง"
+      }
     },
     "popup": {
       "call": "โทรออก",
@@ -1025,6 +1043,38 @@
       "medium": "ปานกลาง",
       "high": "สูง",
       "critical": "วิกฤต"
+    }
+  },
+  "field": {
+    "noAgent": "บัญชีของคุณไม่ได้เชื่อมกับโปรไฟล์เจ้าหน้าที่ภาคสนาม กรุณาติดต่อผู้ดูแลระบบ",
+    "myStatus": "สถานะของฉัน",
+    "gpsSignal": "สัญญาณ GPS",
+    "gpsActive": "กำลังทำงาน",
+    "gpsAcquiring": "กำลังรับสัญญาณ…",
+    "gpsIdle": "รอสัญญาณ GPS",
+    "gpsError": "ไม่สามารถใช้ GPS ได้",
+    "lastPing": "ส่งล่าสุด: {time}",
+    "noPing": "ยังไม่ได้ส่งข้อมูล",
+    "ping": "ส่งตำแหน่ง",
+    "pingFailed": "ส่งตำแหน่ง GPS ไม่สำเร็จ",
+    "activeCases": "คดีที่รับผิดชอบ",
+    "noActiveCases": "ไม่มีคดีที่ได้รับมอบหมาย",
+    "cancel": "ยกเลิก",
+    "log": {
+      "button": "บันทึก",
+      "title": "บันทึกไทม์ไลน์ใหม่",
+      "description": "บันทึกการสังเกตการณ์ลงในไทม์ไลน์ของคดี",
+      "case": "คดี",
+      "noCase": "กรุณาเลือกคดีก่อน",
+      "location": "สถานที่",
+      "locationPlaceholder": "เช่น หน้าห้างสรรพสินค้าสยาม",
+      "entry": "การสังเกตการณ์",
+      "entryPlaceholder": "สิ่งที่พบเห็น…",
+      "submit": "บันทึก",
+      "success": "บันทึกไทม์ไลน์สำเร็จ"
+    },
+    "sos": {
+      "button": "SOS"
     }
   }
 }

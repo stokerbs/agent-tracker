@@ -8,6 +8,7 @@ import {
   getActiveAgents,
   getActiveEmergencyAlerts,
   getGeofences,
+  getRecentGeofenceEvents,
 } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Live Map" };
@@ -17,10 +18,11 @@ export default async function MapPage() {
   const profile = await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("map");
 
-  const [agents, geofences, emergencyAlerts] = await Promise.all([
+  const [agents, geofences, emergencyAlerts, geofenceEvents] = await Promise.all([
     getActiveAgents(),
     getGeofences(),
     getActiveEmergencyAlerts(),
+    getRecentGeofenceEvents(),
   ]);
 
   return (
@@ -30,6 +32,7 @@ export default async function MapPage() {
         initialAgents={agents}
         initialGeofences={geofences}
         emergencyAlerts={emergencyAlerts}
+        initialGeofenceEvents={geofenceEvents}
         isAdmin={profile.role === "admin"}
       />
     </FadeUp>

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isStaff, requireProfile, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
-import type { AgentStatus } from "@/lib/types";
+import type { AgentStatus, AgentVehicleType } from "@/lib/types";
 
 export async function createAgent(formData: FormData) {
   await requireRole(["admin", "supervisor"]);
@@ -19,6 +19,7 @@ export async function createAgent(formData: FormData) {
     position: emptyToNull(formData.get("position")),
     area: emptyToNull(formData.get("area")),
     status: (String(formData.get("status") ?? "offline") as AgentStatus),
+    vehicle_type: (emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null),
     photo_url: emptyToNull(formData.get("photo_url")),
   };
 
@@ -136,6 +137,7 @@ export async function updateAgent(agentId: string, formData: FormData) {
     position:  emptyToNull(formData.get("position")),
     area:      emptyToNull(formData.get("area")),
     status:    (String(formData.get("status") ?? "offline") as AgentStatus),
+    vehicle_type: (emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null),
   };
 
   // Re-link user account only when the caller provides a phone number.

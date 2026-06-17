@@ -25,13 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AgentStatus } from "@/lib/types";
+import type { AgentStatus, AgentVehicleType } from "@/lib/types";
 
 const AGENT_STATUSES: AgentStatus[] = ["available", "on_mission", "traveling", "break", "offline"];
+const VEHICLE_TYPES: AgentVehicleType[] = ["car", "motorcycle", "foot", "supervisor", "emergency"];
 
 export function CreateAgentDialog() {
   const t = useTranslations("agents.createDialog");
   const tStatus = useTranslations("status.agent");
+  const tVehicle = useTranslations("agents.vehicleTypes");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -70,6 +72,22 @@ export function CreateAgentDialog() {
           <Field label={t("fields.email")} name="email" type="email" placeholder={t("fields.emailPlaceholder")} />
           <Field label={t("fields.area")} name="area" placeholder={t("fields.areaPlaceholder")} />
           <Field label={t("fields.userPhone")} name="user_phone" type="tel" placeholder={t("fields.userPhonePlaceholder")} />
+          <div className="space-y-2">
+            <Label htmlFor="vehicle_type">{t("fields.vehicleType")}</Label>
+            <Select name="vehicle_type" defaultValue="">
+              <SelectTrigger id="vehicle_type">
+                <SelectValue placeholder={t("fields.vehicleTypeNone")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("fields.vehicleTypeNone")}</SelectItem>
+                {VEHICLE_TYPES.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {tVehicle(v)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="status">{t("fields.status")}</Label>
             <Select name="status" defaultValue="offline">

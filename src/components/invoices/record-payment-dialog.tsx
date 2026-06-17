@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -46,7 +46,8 @@ export function RecordPaymentDialog({
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [method, setMethod] = useState<string>("");
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().split("T")[0]);
+  const [paidAt, setPaidAt] = useState("");
+  useEffect(() => { setPaidAt(new Date().toISOString().split("T")[0]); }, []);
   const [ref, setRef] = useState("");
 
   function handleSubmit() {

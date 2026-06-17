@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -49,6 +49,8 @@ export function CreateInvoiceDialog({
   const t = useTranslations("invoices");
   const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
+  const [today, setToday] = useState("");
+  useEffect(() => { setToday(new Date().toISOString().split("T")[0]); }, []);
   const [pending, start] = useTransition();
   const [selectedClient, setSelectedClient] = useState(defaultClientId ?? "");
   const [lines, setLines] = useState<InvoiceLineItem[]>([EMPTY_LINE()]);
@@ -162,7 +164,7 @@ export function CreateInvoiceDialog({
                 id="issued_date"
                 name="issued_date"
                 type="date"
-                defaultValue={new Date().toISOString().split("T")[0]}
+                defaultValue={today}
                 required
               />
             </div>

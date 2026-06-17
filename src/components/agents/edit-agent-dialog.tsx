@@ -25,15 +25,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Agent, AgentStatus } from "@/lib/types";
+import type { Agent, AgentStatus, AgentVehicleType } from "@/lib/types";
 
 const AGENT_STATUSES: AgentStatus[] = [
   "available", "on_mission", "traveling", "break", "offline",
 ];
 
+const VEHICLE_TYPES: AgentVehicleType[] = [
+  "car", "motorcycle", "foot", "supervisor", "emergency",
+];
+
 export function EditAgentDialog({ agent }: { agent: Agent }) {
   const t = useTranslations("agents.editDialog");
   const tStatus = useTranslations("status.agent");
+  const tVehicle = useTranslations("agents.vehicleTypes");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -108,6 +113,23 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
             defaultValue=""
             placeholder={t("fields.userPhonePlaceholder")}
           />
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-vehicle-type">{t("fields.vehicleType")}</Label>
+            <Select name="vehicle_type" defaultValue={agent.vehicle_type ?? ""}>
+              <SelectTrigger id="edit-vehicle-type">
+                <SelectValue placeholder={t("fields.vehicleTypeNone")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("fields.vehicleTypeNone")}</SelectItem>
+                {VEHICLE_TYPES.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {tVehicle(v)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="edit-status">{t("fields.status")}</Label>

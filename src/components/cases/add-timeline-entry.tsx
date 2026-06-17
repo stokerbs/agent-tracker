@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -15,10 +15,14 @@ export function AddTimelineEntry({ caseId }: { caseId: string }) {
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
+  const [today, setToday] = useState("");
+  const [time, setTime] = useState("");
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const time = now.toTimeString().slice(0, 5);
+  useEffect(() => {
+    const now = new Date();
+    setToday(now.toISOString().slice(0, 10));
+    setTime(now.toTimeString().slice(0, 5));
+  }, []);
 
   function onSubmit(formData: FormData) {
     start(async () => {

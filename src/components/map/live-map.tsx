@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   BatteryCharging,
   BatteryMedium,
+  Bell,
   Car,
   ChevronDown,
   ChevronLeft,
@@ -28,6 +29,8 @@ import {
   Crosshair,
   Gauge,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   MapPinOff,
   Pencil,
   Phone,
@@ -77,6 +80,7 @@ import type {
   EmergencyAlert,
   Geofence,
 } from "@/lib/types";
+import type { GeofenceEventFeed } from "@/lib/queries";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -905,6 +909,7 @@ interface LiveMapProps {
   initialAgents: Agent[];
   initialGeofences: Geofence[];
   emergencyAlerts: EmergencyAlert[];
+  initialGeofenceEvents: GeofenceEventFeed[];
   isAdmin: boolean;
 }
 
@@ -912,6 +917,7 @@ export function LiveMap({
   initialAgents,
   initialGeofences,
   emergencyAlerts: initialAlerts,
+  initialGeofenceEvents,
   isAdmin,
 }: LiveMapProps) {
   const t = useTranslations("map");
@@ -922,8 +928,8 @@ export function LiveMap({
   // ── Agent state ──
   const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [lastSync, setLastSync] = useState<Date>(new Date());
-  const [now, setNow] = useState(() => Date.now());
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [now, setNow] = useState(0);
 
   // ── Geofences ──
   const [geofences, setGeofences] = useState<Geofence[]>(initialGeofences);
@@ -932,6 +938,10 @@ export function LiveMap({
   // ── Emergency ──
   const [emergencyAlerts] = useState<EmergencyAlert[]>(initialAlerts);
   const emergencyMode = emergencyAlerts.some((a) => a.status === "active");
+
+  // ── Geofence events feed ──
+  const [geofenceEvents, setGeofenceEvents] = useState<GeofenceEventFeed[]>(initialGeofenceEvents);
+  const [showEventLog, setShowEventLog] = useState(false);
   const emergencyAgentIds = new Set(
     emergencyAlerts.filter((a) => a.status === "active").map((a) => a.agent_id).filter(Boolean),
   );
@@ -961,8 +971,10 @@ export function LiveMap({
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapZoom, setMapZoom] = useState<number | null>(null);
 
-  // ── Tick clock every 30s for "X ago" labels ──
+  // ── Tick clock every 30s for "X ago" labels — also initialises on mount ──
   useEffect(() => {
+    setNow(Date.now());
+    setLastSync(new Date());
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
@@ -1017,6 +1029,45 @@ export function LiveMap({
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Geofence events realtime subscription ──
+  useEffect(() => {
+    const channel = supabase
+      .channel("geofence-events-feed")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "geofence_events" },
+        (payload) => {
+          const raw = payload.new as {
+            id: string; agent_id: string; geofence_id: string;
+            event_type: "enter" | "exit"; occurred_at: string;
+          };
+          setAgents((currentAgents) => {
+            setGeofences((currentFences) => {
+              const agentName = currentAgents.find((a) => a.id === raw.agent_id)?.full_name ?? "Agent";
+              const fenceName = currentFences.find((f) => f.id === raw.geofence_id)?.name ?? "zone";
+              const event: GeofenceEventFeed = {
+                id: raw.id, agent_id: raw.agent_id, geofence_id: raw.geofence_id,
+                event_type: raw.event_type, occurred_at: raw.occurred_at,
+                agentName, fenceName,
+              };
+              setGeofenceEvents((prev) => [event, ...prev].slice(0, 50));
+              toast(
+                raw.event_type === "enter"
+                  ? t("fence.events.entered", { agent: agentName, fence: fenceName })
+                  : t("fence.events.exited", { agent: agentName, fence: fenceName }),
+                { icon: raw.event_type === "enter" ? "🟢" : "🔴" },
+              );
+              return currentFences;
+            });
+            return currentAgents;
+          });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1268,12 +1319,14 @@ export function LiveMap({
         </span>
         <span className="font-mono">{filtered.length}</span>
         <span>
-          {t("agentCount", {
-            count: filtered.length,
-            time: timeAgo(lastSync),
-          })
-            .replace(/^\d+/, "")
-            .trim()}
+          {lastSync
+            ? t("agentCount", {
+                count: filtered.length,
+                time: timeAgo(lastSync),
+              })
+                .replace(/^\d+/, "")
+                .trim()
+            : null}
         </span>
       </div>
     </div>
@@ -1440,6 +1493,50 @@ export function LiveMap({
           </span>
         ))}
         <span className="ml-auto text-muted-foreground/60">{t("trailNote")}</span>
+      </div>
+
+      {/* Geofence events log */}
+      <div className="rounded-xl border border-border/60 bg-card">
+        <button
+          onClick={() => setShowEventLog((v) => !v)}
+          className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent/40"
+        >
+          <Bell className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>{t("fence.events.title")}</span>
+          {geofenceEvents.length > 0 && (
+            <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
+              {geofenceEvents.length}
+            </span>
+          )}
+          <ChevronDown
+            className={cn("ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform", showEventLog && "rotate-180")}
+          />
+        </button>
+        {showEventLog && (
+          <div className="border-t border-border/60 divide-y divide-border/40">
+            {geofenceEvents.length === 0 ? (
+              <p className="px-4 py-3 text-xs text-muted-foreground">{t("fence.events.none")}</p>
+            ) : (
+              geofenceEvents.slice(0, 15).map((ev) => (
+                <div key={ev.id} className="flex items-center gap-3 px-4 py-2">
+                  {ev.event_type === "enter" ? (
+                    <LogIn className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                  ) : (
+                    <LogOut className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                  )}
+                  <div className="min-w-0 flex-1 text-xs">
+                    <span className="font-medium">{ev.agentName}</span>
+                    <span className="mx-1 text-muted-foreground/60">·</span>
+                    <span className="text-muted-foreground">{ev.fenceName}</span>
+                  </div>
+                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/60">
+                    {timeAgo(ev.occurred_at)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Geofence save dialog */}

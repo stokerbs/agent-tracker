@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Lock, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -73,7 +73,8 @@ export function CloseCaseDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState("");
+  useEffect(() => { setEndDate(new Date().toISOString().split("T")[0]); }, []);
 
   function handleClose() {
     start(async () => {

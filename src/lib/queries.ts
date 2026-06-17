@@ -211,3 +211,32 @@ export async function getActiveEmergencyAlerts(): Promise<EmergencyAlert[]> {
     .order("created_at", { ascending: false });
   return (data as EmergencyAlert[]) ?? [];
 }
+
+export interface GeofenceEventFeed {
+  id: string;
+  agent_id: string;
+  geofence_id: string;
+  event_type: "enter" | "exit";
+  occurred_at: string;
+  agentName: string;
+  fenceName: string;
+}
+
+export async function getRecentGeofenceEvents(limit = 20): Promise<GeofenceEventFeed[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("geofence_events")
+    .select("id, agent_id, geofence_id, event_type, occurred_at, agents(full_name), geofences(name)")
+    .order("occurred_at", { ascending: false })
+    .limit(limit);
+
+  return ((data ?? []) as any[]).map((row) => ({
+    id: row.id,
+    agent_id: row.agent_id,
+    geofence_id: row.geofence_id,
+    event_type: row.event_type as "enter" | "exit",
+    occurred_at: row.occurred_at,
+    agentName: row.agents?.full_name ?? "Unknown agent",
+    fenceName: row.geofences?.name ?? "Unknown zone",
+  }));
+}

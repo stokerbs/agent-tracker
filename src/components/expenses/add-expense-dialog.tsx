@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +34,8 @@ export function AddExpenseDialog({ caseId }: { caseId?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
+  const [today, setToday] = useState("");
+  useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
 
   function onSubmit(formData: FormData) {
     start(async () => {
