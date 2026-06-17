@@ -201,15 +201,13 @@ function RouteLayer({ points }: { points: HistoryPoint[] }) {
 function HeatmapLayerInner({ points }: { points: HeatPoint[] }) {
   const map = useMap();
   const vizLib = useMapsLibrary("visualization");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const layerRef = useRef<any>(null);
+  const layerRef = useRef<any>(null); // HeatmapLayer types incomplete in @types/google.maps
 
   useEffect(() => {
     if (!map || !vizLib || points.length === 0) return;
 
     layerRef.current?.setMap(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Ctor = (vizLib as any).HeatmapLayer;
+    const Ctor = (vizLib as any).HeatmapLayer; // visualization lib types incomplete
     layerRef.current = new Ctor({
       data: points.map((p) => new google.maps.LatLng(p.lat, p.lng)),
       map,
