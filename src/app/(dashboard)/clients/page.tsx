@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { CreateClientDialog } from "@/components/clients/create-client-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -29,7 +30,9 @@ export default async function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader title={t("title")} description={t("description")}>
+        <CreateClientDialog />
+      </PageHeader>
       <Card>
         <CardContent className="p-0">
           {clients.length === 0 ? (

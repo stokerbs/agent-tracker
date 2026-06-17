@@ -19,6 +19,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { InvoiceCard } from "@/components/invoices/invoice-card";
 import { EditClientDialog } from "@/components/clients/edit-client-dialog";
+import { LinkProfileDialog } from "@/components/clients/link-profile-dialog";
 import {
   CasePriorityBadge,
   CaseStatusBadge,
@@ -49,12 +50,13 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireRole(["admin", "supervisor"]);
+  const currentProfile = await requireRole(["admin", "supervisor"]);
+  const isAdmin = currentProfile.role === "admin";
   const t = await getTranslations("clients.detail");
   const tCase = await getTranslations("cases");
   const supabase = await createClient();
 
-  const [{ data: clientRaw }, { data: casesRaw }, { data: invoicesRaw }] =
+  const [{ data: clientRaw }, { data: casesRaw }, { data: invoicesRaw }, { data: linkedProfileRows }, { data: clientProfileRows }] =
     await Promise.all([
       supabase.from("clients").select("*").eq("id", id).single(),
       supabase
@@ -67,6 +69,10 @@ export default async function ClientDetailPage({
         .select("*")
         .eq("client_id", id)
         .order("issued_date", { ascending: false }),
+      // All profile_ids already linked to any client record (to exclude from picker)
+      supabase.from("clients").select("profile_id").not("profile_id", "is", null),
+      // All client-role profiles (candidates for linking)
+      supabase.from("profiles").select("id, email, full_name").eq("role", "client").order("full_name"),
     ]);
 
   if (!clientRaw) notFound();
@@ -74,6 +80,14 @@ export default async function ClientDetailPage({
   const client = clientRaw as Client;
   const cases = (casesRaw ?? []) as Case[];
   const invoices = (invoicesRaw ?? []) as Invoice[];
+
+  // Profiles available for linking: client-role accounts not already linked to any client record.
+  const linkedIds = new Set(
+    (linkedProfileRows ?? []).map((r) => r.profile_id).filter(Boolean) as string[],
+  );
+  const availableProfiles = (clientProfileRows ?? []).filter(
+    (p) => !linkedIds.has(p.id),
+  );
 
   const openCases = cases.filter((c) => c.status !== "closed").length;
   const totalInvoiced = invoices.reduce((s, i) => s + i.amount, 0);
@@ -190,6 +204,12 @@ export default async function ClientDetailPage({
                   {client.profile_id}
                 </p>
               )}
+              <LinkProfileDialog
+                clientId={client.id}
+                isLinked={!!client.profile_id}
+                availableProfiles={availableProfiles}
+                isAdmin={isAdmin}
+              />
             </CardContent>
           </Card>
 
