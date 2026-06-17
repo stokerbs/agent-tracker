@@ -21,14 +21,27 @@ export default async function ReportEditPage({ params }: Props) {
 
   const { data: reportData } = await supabase
     .from("reports")
-    .select("*, cases(case_number, case_type, client_name)")
+    .select("*, cases(case_number, case_type, client_name, clients(name))")
     .eq("id", id)
     .single();
 
   if (!reportData) notFound();
 
   const report = reportData as Report;
-  const caseInfo = reportData.cases as { case_number: string; case_type: string | null; client_name: string | null } | null;
+  const caseInfoRaw = reportData.cases as {
+    case_number: string;
+    case_type: string | null;
+    client_name: string | null;
+    clients: { name: string } | null;
+  } | null;
+
+  // Prefer the joined clients.name (stays accurate) over the legacy client_name denorm.
+  const caseInfo = caseInfoRaw
+    ? {
+        ...caseInfoRaw,
+        displayClientName: caseInfoRaw.clients?.name ?? caseInfoRaw.client_name,
+      }
+    : null;
 
   const { data: versionsData } = await supabase
     .from("report_versions")
@@ -64,7 +77,7 @@ export default async function ReportEditPage({ params }: Props) {
             คดี{" "}
             <span className="font-mono font-semibold text-primary">{caseInfo.case_number}</span>
             {caseInfo.case_type && <span> · {caseInfo.case_type}</span>}
-            {caseInfo.client_name && <span> · ลูกค้า: {caseInfo.client_name}</span>}
+            {caseInfo.displayClientName && <span> · ลูกค้า: {caseInfo.displayClientName}</span>}
           </p>
         </div>
       )}

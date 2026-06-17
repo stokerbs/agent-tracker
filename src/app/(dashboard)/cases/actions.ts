@@ -144,7 +144,9 @@ export async function updateCase(caseId: string, formData: FormData) {
   const supabase = await createClient();
 
   const payload = {
-    client_name: emptyToNull(formData.get("client_name")),
+    // client_name is a legacy display denorm — NOT updated here.
+    // It is synced automatically by the trg_sync_client_name trigger when
+    // clients.name changes. Use the clients join for display.
     case_type:   emptyToNull(formData.get("case_type")),
     status:      String(formData.get("status") ?? "new") as CaseStatus,
     priority:    String(formData.get("priority") ?? "medium") as CasePriority,

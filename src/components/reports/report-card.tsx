@@ -199,21 +199,37 @@ export function ReportCard({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* Approve — split into internal-only vs publish-to-client.
+            is_client_visible is ONLY set to true via "Approve + Publish";
+            a plain approval keeps it false so clients cannot see it. */}
         {canApprove && report.status !== "approved" && (
-          <Button
-            variant="success"
-            size="sm"
-            onClick={() => approve(true)}
-            disabled={pending}
-            className="h-7 gap-1.5 text-xs"
-          >
-            {pending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            )}
-            {t("approveButton")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="success"
+                size="sm"
+                disabled={pending}
+                className="h-7 gap-1.5 text-xs"
+              >
+                {pending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                {t("approveButton")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => approve(false)}>
+                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                {t("approveInternal")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => approve(true)}>
+                <Shield className="mr-2 h-3.5 w-3.5" />
+                {t("approvePublish")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
         {report.status === "approved" && report.is_client_visible && (

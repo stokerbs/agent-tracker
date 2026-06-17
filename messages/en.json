@@ -541,7 +541,9 @@
     "noTitle": "No reports yet",
     "noDescription": "Open a case and use \"Generate AI Report\" to produce one.",
     "generateButton": "Generate AI Report",
-    "approveButton": "Approve & publish",
+    "approveButton": "Approve",
+    "approveInternal": "Approve (internal only)",
+    "approvePublish": "Approve + Publish to client",
     "editButton": "Edit",
     "visibleToClient": "Visible to client",
     "exportLabel": "Export",
@@ -775,7 +777,9 @@
     "noReports": "No reports available yet",
     "noReportsDescription": "Approved reports for your cases will appear here. You can read and download each as a PDF.",
     "noInvoices": "No invoices yet",
-    "noInvoicesDescription": "Invoices issued for your engagements will be listed here."
+    "noInvoicesDescription": "Invoices issued for your engagements will be listed here.",
+    "notLinked": "Account not yet linked",
+    "notLinkedDescription": "Your account has not been linked to a client profile yet. Please contact your account manager."
   },
   "invoices": {
     "title": "Invoices",

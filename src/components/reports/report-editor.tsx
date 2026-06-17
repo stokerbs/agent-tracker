@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  ChevronDown,
   Clock,
   Loader2,
   RefreshCw,
@@ -13,6 +14,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RichTextEditor, isHtmlContent, plainTextToHtml } from "@/components/shared/rich-text-editor";
 import { VersionHistoryPanel } from "@/components/reports/version-history-panel";
 import {
@@ -119,11 +126,11 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
     });
   }
 
-  function handleApprove() {
+  function handleApprove(clientVisible: boolean) {
     start(async () => {
-      const res = await approveReport(report.id, true);
+      const res = await approveReport(report.id, clientVisible);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("อนุมัติรายงานเรียบร้อยแล้ว");
+      toast.success(clientVisible ? "อนุมัติและเผยแพร่รายงานแล้ว" : "อนุมัติรายงาน (ภายใน) แล้ว");
       router.refresh();
     });
   }
@@ -236,21 +243,37 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
                 )}
               </>
             )}
+            {/* Approve — split button. is_client_visible only set to true via
+                "Approve + Publish". Plain approval keeps it false (internal). */}
             {canApprove && (isDraft || isReview) && (
-              <Button
-                variant="success"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={handleApprove}
-                disabled={pending}
-              >
-                {pending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-                อนุมัติรายงาน
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    disabled={pending}
+                  >
+                    {pending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    อนุมัติรายงาน
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleApprove(false)}>
+                    <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                    อนุมัติ (ภายใน)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleApprove(true)}>
+                    <Shield className="mr-2 h-3.5 w-3.5" />
+                    อนุมัติ + เผยแพร่ให้ลูกค้า
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {isApproved && (
               <span className="flex items-center gap-1 text-xs text-success">

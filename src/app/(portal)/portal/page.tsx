@@ -1,3 +1,26 @@
+/**
+ * Client Portal — data access model (R-2 documentation)
+ * ======================================================
+ * Clients may ONLY see:
+ *   - cases    : cases.client_id → clients.profile_id = their own profile
+ *   - reports  : status = 'approved' AND is_client_visible = true, scoped to
+ *                their own cases (inherits case ownership, no direct client_id)
+ *   - invoices : invoices.client_id → clients.profile_id = their own profile
+ *
+ * Clients CANNOT see (intentional, enforced by RLS with no client read policy):
+ *   - evidence         — raw surveillance files, operational security
+ *   - timeline_entries — internal agent log, may contain PII on tactics
+ *   - gps_devices      — tracker IMEI/SIM, operational security
+ *   - expenses         — internal cost records, not client-facing
+ *   - emergency_alerts — SOS records, internal only
+ *   - audit_logs       — admin read only, never client-facing
+ *
+ * Defence-in-depth: this file adds explicit .eq("client_id", clientRow.id)
+ * filters on every query IN ADDITION TO the RLS policies. Never remove these
+ * application-layer filters — if an RLS policy is misconfigured the filters
+ * are the last line of defence before data leaks across client accounts.
+ */
+
 import type { Metadata } from "next";
 import { AlertTriangle, Banknote, Briefcase, FileText, Receipt } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -10,7 +33,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency } from "@/lib/utils";
-import type { Case, Client, Invoice, Report } from "@/lib/types";
+import type { Case, Invoice, Report } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Client Portal" };
 export const dynamic = "force-dynamic";
@@ -20,36 +43,75 @@ export default async function PortalPage() {
   const t = await getTranslations("portal");
   const supabase = await createClient();
 
-  const [{ data: reportsRaw }, { data: invoicesRaw }, { data: casesRaw }, { data: clientRaw }] =
-    await Promise.all([
-      supabase
+  // ── Step 1: resolve client identity ─────────────────────────────────────────
+  // This is the anchor for all ownership filtering below.
+  // If there is no clients row linked to this profile we show an empty state
+  // rather than executing queries that RLS alone would need to scope.
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("id, name, company")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (!clientRow) {
+    // Profile is authenticated as 'client' role but has no clients row yet.
+    // This can happen in the window between registration and admin linking.
+    return (
+      <div className="space-y-6">
+        <FadeUp>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t("welcome", { name: profile.full_name?.split(" ")[0] ?? "Client" })}
+          </h1>
+        </FadeUp>
+        <FadeUp delay={0.04}>
+          <EmptyState
+            icon={<Briefcase className="h-6 w-6" />}
+            title={t("notLinked")}
+            description={t("notLinkedDescription")}
+          />
+        </FadeUp>
+      </div>
+    );
+  }
+
+  // ── Step 2: fetch cases + invoices in parallel ───────────────────────────────
+  // Both queries carry an explicit .eq("client_id", clientRow.id) filter.
+  // RLS enforces this too — the explicit filter is defence-in-depth.
+  const [{ data: casesRaw }, { data: invoicesRaw }] = await Promise.all([
+    supabase
+      .from("cases")
+      .select("id, status")
+      .eq("client_id", clientRow.id)        // ← explicit ownership filter
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("invoices")
+      .select("*")
+      .eq("client_id", clientRow.id)        // ← explicit ownership filter
+      .order("issued_date", { ascending: false }),
+  ]);
+
+  const cases    = (casesRaw    ?? []) as Pick<Case, "id" | "status">[];
+  const invoices = (invoicesRaw ?? []) as Invoice[];
+
+  // ── Step 3: fetch reports scoped to this client's case IDs ──────────────────
+  // Reports have no client_id column — ownership is inherited through case_id.
+  // We filter by the case IDs we already know belong to this client.
+  const caseIds = cases.map((c) => c.id);
+
+  const { data: reportsRaw } = caseIds.length > 0
+    ? await supabase
         .from("reports")
         .select("*, cases(*)")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("invoices")
-        .select("*")
-        .order("issued_date", { ascending: false }),
-      supabase
-        .from("cases")
-        .select("id,status")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("clients")
-        .select("name,company")
-        .eq("profile_id", profile.id)
-        .maybeSingle(),
-    ]);
+        .in("case_id", caseIds)              // ← explicit ownership filter
+        .order("created_at", { ascending: false })
+    : { data: [] };
 
-  const reports  = (reportsRaw  ?? []) as (Report & { cases: Case | null })[];
-  const invoices = (invoicesRaw ?? []) as Invoice[];
-  const cases    = (casesRaw    ?? []) as Pick<Case, "id" | "status">[];
-  const client   = clientRaw as Pick<Client, "name" | "company"> | null;
+  const reports = (reportsRaw ?? []) as (Report & { cases: Case | null })[];
 
-  const firstName   = profile.full_name?.split(" ")[0] ?? client?.name ?? "Client";
-  const companyLine = client?.company ?? null;
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  const firstName   = profile.full_name?.split(" ")[0] ?? clientRow.name;
+  const companyLine = clientRow.company ?? null;
 
-  // Stats
   const openCases   = cases.filter((c) => c.status !== "closed").length;
   const outstanding = invoices
     .filter((i) => i.status === "sent" || i.status === "overdue")
