@@ -98,3 +98,43 @@ export async function recordPayment(
   revalidatePath("/portal");
   return { ok: true };
 }
+
+export async function updateInvoice(id: string, formData: FormData) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const lineItems = JSON.parse((formData.get("line_items") as string) || "[]");
+  const amount = (lineItems as { total: number }[]).reduce((s, i) => s + i.total, 0);
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      title:     formData.get("title") as string,
+      line_items: lineItems,
+      amount,
+      due_date:  (formData.get("due_date") as string) || null,
+      notes:     (formData.get("notes") as string) || null,
+      status:    formData.get("status") as string,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/invoices");
+  revalidatePath("/portal");
+  return { ok: true };
+}
+
+export async function deleteInvoice(id: string) {
+  const profile = await requireRole(["admin"]);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: profile.id })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/invoices");
+  revalidatePath("/portal");
+  return { ok: true };
+}

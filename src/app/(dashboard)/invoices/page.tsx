@@ -23,7 +23,8 @@ interface Props {
 }
 
 export default async function InvoicesPage({ searchParams }: Props) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
+  const isAdmin = profile.role === "admin";
   const sp = await searchParams;
   const t = await getTranslations("invoices");
   const supabase = await createClient();
@@ -39,6 +40,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
         let q = supabase
           .from("invoices")
           .select("*")
+          .is("deleted_at", null)           // exclude soft-deleted
           .order("created_at", { ascending: false });
         if (sp.q) {
           const like = `%${sp.q}%`;
@@ -119,6 +121,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
                 invoice={invoice}
                 client={clientMap.get(invoice.client_id) ?? null}
                 canManage
+                isAdmin={isAdmin}
               />
             </StaggerItem>
           ))}

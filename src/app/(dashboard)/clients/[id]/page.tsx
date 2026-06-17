@@ -68,6 +68,7 @@ export default async function ClientDetailPage({
         .from("invoices")
         .select("*")
         .eq("client_id", id)
+        .is("deleted_at", null)
         .order("issued_date", { ascending: false }),
       // All profile_ids already linked to any client record (to exclude from picker)
       supabase.from("clients").select("profile_id").not("profile_id", "is", null),
@@ -297,6 +298,7 @@ export default async function ClientDetailPage({
                   invoice={inv}
                   client={client}
                   canManage
+                  isAdmin={isAdmin}
                 />
               ))
             )}

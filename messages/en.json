@@ -875,6 +875,25 @@
       "toast": {
         "success": "Status updated"
       }
+    },
+    "editDialog": {
+      "title": "Edit Invoice",
+      "description": "Update invoice details. Amount is recalculated from line items.",
+      "saveButton": "Save Changes",
+      "toast": {
+        "success": "Invoice updated"
+      }
+    },
+    "deleteConfirm": {
+      "title": "Delete Invoice",
+      "description": "This invoice will be soft-deleted and hidden from all views. Type DELETE to confirm.",
+      "toast": {
+        "success": "Invoice deleted"
+      }
+    },
+    "actions": {
+      "edit": "Edit invoice",
+      "delete": "Delete invoice"
     }
   },
   "availability": {
