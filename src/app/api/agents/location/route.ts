@@ -98,10 +98,23 @@ export async function POST(request: NextRequest) {
   if (parsed.battery !== undefined) update.battery_pct = parsed.battery;
   if (parsed.charging !== undefined) update.is_charging = parsed.charging;
   if (parsed.status) {
+    // Explicit status from client always wins.
     update.status = parsed.status;
-  } else if (agent.status === "offline") {
-    // Auto-promote to online on first GPS ping — agent is clearly connected.
-    update.status = "online";
+  } else if (agent.status === "emergency") {
+    // Never auto-clear an emergency — only the agent or ops can resolve it.
+  } else {
+    const speed = parsed.speed_kmh ?? 0;
+    if (agent.status === "offline") {
+      // First ping after going offline — agent is clearly connected.
+      update.status = speed > 1 ? "moving" : "online";
+    } else if (speed > 1) {
+      // Moving — auto-promote regardless of current state.
+      update.status = "moving";
+    } else if (agent.status === "moving") {
+      // Was moving, now stopped — snap back to online.
+      update.status = "online";
+    }
+    // idle / online stay as-is when stationary.
   }
 
   const { error } = await svc

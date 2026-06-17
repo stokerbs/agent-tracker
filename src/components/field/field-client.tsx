@@ -84,7 +84,10 @@ interface Props {
 export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }: Props) {
   const t = useTranslations("field");
   const tStatus = useTranslations("status.agent");
-  const STATUSES = Object.keys(AGENT_STATUS_META) as AgentStatus[];
+  // Emergency is set only via SOS — exclude it from the manual selector.
+  const STATUSES = (Object.keys(AGENT_STATUS_META) as AgentStatus[]).filter(
+    (s) => s !== "emergency",
+  );
 
   const [agent, setAgent] = useState<Agent | null>(initialAgent);
   const [gpsState, setGpsState] = useState<GpsState>("idle");
