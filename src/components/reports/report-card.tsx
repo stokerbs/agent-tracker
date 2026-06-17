@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Bot,
   CheckCircle2,
   ChevronDown,
+  Cpu,
   Download,
   FileText,
   Loader2,
@@ -15,6 +17,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { approveReport } from "@/app/(dashboard)/reports/actions";
 import { exportReportDocx, exportReportPdf } from "@/lib/export";
+import { readProviderTag, stripProviderTag } from "@/lib/report-parser";
+import { ReportActionMenu } from "@/components/reports/report-action-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +42,15 @@ export function ReportCard({
   caseRecord,
   subjectName,
   canApprove,
+  canManage = false,
+  isAdmin = false,
 }: {
   report: Report;
   caseRecord?: Case | null;
   subjectName?: string | null;
   canApprove: boolean;
+  canManage?: boolean;
+  isAdmin?: boolean;
 }) {
   const t = useTranslations("reports");
   const [expanded, setExpanded] = useState(false);
@@ -51,6 +59,7 @@ export function ReportCard({
 
   const statusMeta = STATUS_META[report.status];
   const statusLabel = t(`statusBadge.${report.status}` as Parameters<typeof t>[0]);
+  const provider = readProviderTag(report.body ?? null);
 
   const exportRef = caseRecord
     ? {
@@ -86,14 +95,38 @@ export function ReportCard({
             </p>
           </div>
         </div>
-        <Badge
-          className={cn(
-            "shrink-0 border text-[9px] font-bold uppercase tracking-widest",
-            statusMeta.badge,
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex items-center gap-1">
+            <Badge
+              className={cn(
+                "border text-[9px] font-bold uppercase tracking-widest",
+                statusMeta.badge,
+              )}
+            >
+              {statusLabel}
+            </Badge>
+            {canManage && (
+              <ReportActionMenu
+                reportId={report.id}
+                reportTitle={report.title}
+                isArchived={!!report.archived_at}
+                isAdmin={isAdmin}
+              />
+            )}
+          </div>
+          {provider === "claude" && (
+            <span className="flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-400">
+              <Bot className="h-2.5 w-2.5" />
+              Claude AI
+            </span>
           )}
-        >
-          {statusLabel}
-        </Badge>
+          {provider === "template" && (
+            <span className="flex items-center gap-1 rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              <Cpu className="h-2.5 w-2.5" />
+              Template
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Summary */}
@@ -183,6 +216,23 @@ export function ReportCard({
   );
 }
 
+function extractChrono(rawBody: string): string {
+  const body = stripProviderTag(rawBody);
+  // Thai: "2. ลำดับเหตุการณ์\n...\n3. ข้อสังเกต"
+  if (body.includes("ลำดับเหตุการณ์")) {
+    return (
+      body.split("2. ลำดับเหตุการณ์")[1]?.split("\n3. ข้อสังเกต")[0]?.trim() ??
+      body
+    );
+  }
+  // English: "2. CHRONOLOGICAL SURVEILLANCE REPORT\n...\n3. OBSERVATIONS"
+  return (
+    body.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]
+      ?.split("3. OBSERVATIONS")[0]
+      ?.trim() ?? body
+  );
+}
+
 function Section({
   title,
   body,
@@ -192,13 +242,7 @@ function Section({
   body: string | null;
   chrono?: boolean;
 }) {
-  let text = body ?? "";
-  if (chrono && body) {
-    text =
-      body.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]
-        ?.split("3. OBSERVATIONS")[0]
-        ?.trim() ?? body;
-  }
+  const text = chrono && body ? extractChrono(body) : (body ?? "");
   return (
     <div>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

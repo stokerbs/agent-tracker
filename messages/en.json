@@ -865,7 +865,8 @@
       "assigned": "Assigned",
       "active": "Active",
       "pending": "Pending",
-      "closed": "Closed"
+      "closed": "Closed",
+      "cancelled": "Cancelled"
     },
     "priority": {
       "low": "Low",

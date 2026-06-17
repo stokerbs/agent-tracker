@@ -61,6 +61,10 @@ export const CASE_STATUS_META: Record<
     label: "Closed",
     badge: "bg-slate-500/15 text-slate-500 dark:text-slate-400",
   },
+  cancelled: {
+    label: "Cancelled",
+    badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+  },
 };
 
 export const CASE_PRIORITY_META: Record<

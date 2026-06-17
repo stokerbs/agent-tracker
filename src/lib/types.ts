@@ -13,7 +13,7 @@ export type AgentStatus =
   | "break"
   | "offline";
 
-export type CaseStatus = "new" | "assigned" | "active" | "pending" | "closed";
+export type CaseStatus = "new" | "assigned" | "active" | "pending" | "closed" | "cancelled";
 export type CasePriority = "low" | "medium" | "high" | "critical";
 export type EvidenceType = "photo" | "video" | "pdf" | "document" | "audio";
 export type ExpenseCategory =
@@ -25,6 +25,7 @@ export type ExpenseCategory =
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type ReportStatus = "draft" | "submitted" | "approved" | "rejected";
+export type ReportLanguage = "th" | "en";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
 
 export interface InvoiceLineItem {
@@ -108,6 +109,7 @@ export interface Case {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 }
 
 export interface CaseWithAgents extends Case {
@@ -186,6 +188,7 @@ export interface Report {
   is_client_visible: boolean;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 }
 
 export interface Notification {

@@ -12,7 +12,9 @@
 
 BEGIN;
 
-DROP POLICY IF EXISTS "agents read authed" ON public.agents;
+DROP POLICY IF EXISTS "agents read authed"    ON public.agents;
+DROP POLICY IF EXISTS "agents staff read all" ON public.agents;
+DROP POLICY IF EXISTS "agents self read"      ON public.agents;
 
 CREATE POLICY "agents staff read all" ON public.agents
   FOR SELECT TO authenticated

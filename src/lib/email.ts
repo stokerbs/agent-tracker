@@ -103,6 +103,64 @@ export async function sendAssignmentEmail(params: AssignmentEmailParams): Promis
   }
 }
 
+interface InvoiceEmailParams {
+  to: string;
+  clientName: string;
+  invoiceNumber: string;
+  invoiceTitle: string;
+  amount: number;
+  currency: string;
+  dueDate: string | null;
+}
+
+export async function sendInvoiceEmail(params: InvoiceEmailParams): Promise<void> {
+  const { to, clientName, invoiceNumber, invoiceTitle, amount, currency, dueDate } = params;
+  if (!process.env.RESEND_API_KEY) return;
+
+  const portalUrl = `${APP_URL}/portal`;
+  const amountFormatted = `${amount.toLocaleString("th-TH")} ${currency}`;
+  const dueLine = dueDate
+    ? `<p style="margin:0 0 20px;font-size:14px;color:#CBD5E1;line-height:1.6;">
+        Payment is due by <strong style="color:#F1F5F9;">${new Date(dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>.
+       </p>`
+    : "";
+
+  const html = layout(`
+    <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#F1F5F9;">Invoice ${invoiceNumber}</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#94A3B8;">Dear ${clientName},</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#CBD5E1;line-height:1.6;">
+      An invoice has been issued for <strong style="color:#F1F5F9;">${invoiceTitle}</strong>.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#0F172A;border-radius:8px;border:1px solid #334155;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 4px;font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px;">Amount Due</p>
+          <p style="margin:0;font-size:28px;font-weight:700;color:#0EA5E9;font-family:monospace;">${amountFormatted}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#64748B;">${mono(invoiceNumber)}</p>
+        </td>
+      </tr>
+    </table>
+    ${dueLine}
+    <p style="margin:0;font-size:14px;color:#94A3B8;">
+      Log in to your client portal to view and download the full invoice.
+    </p>
+    ${button(portalUrl, "View Invoice in Portal")}
+  `);
+
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Invoice ${invoiceNumber} — ${amountFormatted}`,
+      html,
+    });
+  } catch (err) {
+    console.error("[email] sendInvoiceEmail failed:", err);
+  }
+}
+
 interface ReportApprovedEmailParams {
   to: string;
   clientName: string;

@@ -1,4 +1,5 @@
 import type { Report, Invoice, Client, ExpenseCategory } from "@/lib/types";
+import { stripProviderTag } from "@/lib/report-parser";
 
 export interface ExpenseRow {
   id: string;
@@ -22,6 +23,19 @@ interface ExportData {
   caseRecord?: ExportCaseRef | null;
 }
 
+function isThaiBod(report: { body?: string | null }): boolean {
+  return report.body?.includes("ลำดับเหตุการณ์") ?? false;
+}
+
+function extractChronoForExport(rawBody: string | null): string {
+  if (!rawBody) return "";
+  const body = stripProviderTag(rawBody);
+  if (body.includes("ลำดับเหตุการณ์")) {
+    return body.split("2. ลำดับเหตุการณ์")[1]?.split("\n3. ข้อสังเกต")[0]?.trim() ?? body;
+  }
+  return body.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]?.split("3. OBSERVATIONS")[0]?.trim() ?? body;
+}
+
 /** Generates and downloads a professional PDF using jsPDF (client-side). */
 export async function exportReportPdf({ report, caseRecord }: ExportData) {
   const { jsPDF } = await import("jspdf");
@@ -29,6 +43,7 @@ export async function exportReportPdf({ report, caseRecord }: ExportData) {
   const margin = 56;
   const width = doc.internal.pageSize.getWidth();
   let y = margin;
+  const thai = isThaiBod(report);
 
   const addHeading = (text: string, size = 13) => {
     if (y > doc.internal.pageSize.getHeight() - margin) {
@@ -59,17 +74,21 @@ export async function exportReportPdf({ report, caseRecord }: ExportData) {
   // Title block
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("CONFIDENTIAL SURVEILLANCE REPORT", margin, y);
+  doc.text(
+    thai ? "รายงานการสอดแนม (ลับ)" : "CONFIDENTIAL SURVEILLANCE REPORT",
+    margin,
+    y,
+  );
   y += 24;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(110);
   doc.text(
     [
-      `Case: ${caseRecord?.case_number ?? "—"}`,
-      `Client: ${caseRecord?.client_name ?? "—"}`,
-      `Subject: ${caseRecord?.target_name ?? "—"}`,
-      `Generated: ${new Date().toLocaleString()}`,
+      `${thai ? "คดี" : "Case"}: ${caseRecord?.case_number ?? "—"}`,
+      `${thai ? "ลูกค้า" : "Client"}: ${caseRecord?.client_name ?? "—"}`,
+      `${thai ? "เป้าหมาย" : "Subject"}: ${caseRecord?.target_name ?? "—"}`,
+      `${thai ? "สร้างเมื่อ" : "Generated"}: ${new Date().toLocaleString()}`,
     ].join("    |    "),
     margin,
     y,
@@ -80,17 +99,25 @@ export async function exportReportPdf({ report, caseRecord }: ExportData) {
   doc.line(margin, y, width - margin, y);
   y += 24;
 
-  addHeading("1. Executive Summary");
-  addBody(report.executive_summary ?? "");
-  addHeading("2. Chronological Surveillance Report");
-  addBody(
-    report.body?.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]?.split("3. OBSERVATIONS")[0]?.trim() ??
-      "",
-  );
-  addHeading("3. Observations");
-  addBody(report.observations ?? "");
-  addHeading("4. Conclusion");
-  addBody(report.conclusion ?? "");
+  if (thai) {
+    addHeading("1. สรุปผลการปฏิบัติงาน");
+    addBody(report.executive_summary ?? "");
+    addHeading("2. ลำดับเหตุการณ์");
+    addBody(extractChronoForExport(report.body ?? null));
+    addHeading("3. ข้อสังเกต");
+    addBody(report.observations ?? "");
+    addHeading("4. สรุป");
+    addBody(report.conclusion ?? "");
+  } else {
+    addHeading("1. Executive Summary");
+    addBody(report.executive_summary ?? "");
+    addHeading("2. Chronological Surveillance Report");
+    addBody(extractChronoForExport(report.body ?? null));
+    addHeading("3. Observations");
+    addBody(report.observations ?? "");
+    addHeading("4. Conclusion");
+    addBody(report.conclusion ?? "");
+  }
 
   doc.save(`${caseRecord?.case_number ?? "report"}-surveillance-report.pdf`);
 }
@@ -98,6 +125,7 @@ export async function exportReportPdf({ report, caseRecord }: ExportData) {
 /** Generates and downloads a DOCX using the docx library (client-side). */
 export async function exportReportDocx({ report, caseRecord }: ExportData) {
   const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import("docx");
+  const thai = isThaiBod(report);
 
   const section = (title: string, content: string) => [
     new Paragraph({ text: title, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 } }),
@@ -107,31 +135,35 @@ export async function exportReportDocx({ report, caseRecord }: ExportData) {
     ),
   ];
 
-  const chrono =
-    report.body?.split("2. CHRONOLOGICAL SURVEILLANCE REPORT")[1]?.split("3. OBSERVATIONS")[0]?.trim() ?? "";
+  const chrono = extractChronoForExport(report.body ?? null);
+
+  const docTitle = thai ? "รายงานการสอดแนม (ลับ)" : "CONFIDENTIAL SURVEILLANCE REPORT";
+  const metaText = thai
+    ? `คดี ${caseRecord?.case_number ?? "—"} · ลูกค้า ${caseRecord?.client_name ?? "—"} · เป้าหมาย ${caseRecord?.target_name ?? "—"}`
+    : `Case ${caseRecord?.case_number ?? "—"} · Client ${caseRecord?.client_name ?? "—"} · Subject ${caseRecord?.target_name ?? "—"}`;
 
   const doc = new Document({
     sections: [
       {
         children: [
+          new Paragraph({ text: docTitle, heading: HeadingLevel.TITLE }),
           new Paragraph({
-            text: "CONFIDENTIAL SURVEILLANCE REPORT",
-            heading: HeadingLevel.TITLE,
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Case ${caseRecord?.case_number ?? "—"} · Client ${caseRecord?.client_name ?? "—"} · Subject ${caseRecord?.target_name ?? "—"}`,
-                italics: true,
-                color: "666666",
-              }),
-            ],
+            children: [new TextRun({ text: metaText, italics: true, color: "666666" })],
             spacing: { after: 240 },
           }),
-          ...section("1. Executive Summary", report.executive_summary ?? ""),
-          ...section("2. Chronological Surveillance Report", chrono),
-          ...section("3. Observations", report.observations ?? ""),
-          ...section("4. Conclusion", report.conclusion ?? ""),
+          ...(thai
+            ? [
+                ...section("1. สรุปผลการปฏิบัติงาน", report.executive_summary ?? ""),
+                ...section("2. ลำดับเหตุการณ์", chrono),
+                ...section("3. ข้อสังเกต", report.observations ?? ""),
+                ...section("4. สรุป", report.conclusion ?? ""),
+              ]
+            : [
+                ...section("1. Executive Summary", report.executive_summary ?? ""),
+                ...section("2. Chronological Surveillance Report", chrono),
+                ...section("3. Observations", report.observations ?? ""),
+                ...section("4. Conclusion", report.conclusion ?? ""),
+              ]),
         ],
       },
     ],

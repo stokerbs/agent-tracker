@@ -12,6 +12,7 @@ import {
   encryptField,
 } from "@/lib/security/encryption";
 import { sendAssignmentEmail } from "@/lib/email";
+import { notifyUsers } from "@/lib/notifications";
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -108,20 +109,30 @@ export async function assignAgent(caseId: string, agentId: string) {
     .eq("id", caseId)
     .eq("status", "new");
 
-  // Fire assignment email (non-blocking — failure does not abort the action).
+  // Fire email + in-app notification (non-blocking — failure does not abort the action).
   const [{ data: agentRow }, { data: caseRow }] = await Promise.all([
-    supabase.from("agents").select("email,full_name").eq("id", agentId).single(),
+    supabase.from("agents").select("email,full_name,profile_id").eq("id", agentId).single(),
     supabase.from("cases").select("case_number,case_type,client_name").eq("id", caseId).single(),
   ]);
-  if (agentRow?.email && caseRow) {
-    void sendAssignmentEmail({
-      to: agentRow.email,
-      agentName: agentRow.full_name ?? "Agent",
-      caseNumber: caseRow.case_number,
-      caseType: caseRow.case_type,
-      clientName: caseRow.client_name,
-      caseId,
-    });
+  if (caseRow) {
+    if (agentRow?.email) {
+      void sendAssignmentEmail({
+        to: agentRow.email,
+        agentName: agentRow.full_name ?? "Agent",
+        caseNumber: caseRow.case_number,
+        caseType: caseRow.case_type,
+        clientName: caseRow.client_name,
+        caseId,
+      });
+    }
+    if (agentRow?.profile_id) {
+      void notifyUsers([agentRow.profile_id], {
+        type: "assignment",
+        title: "New case assignment",
+        body: `You have been assigned to case ${caseRow.case_number}.`,
+        link: `/cases/${caseId}`,
+      });
+    }
   }
 
   revalidatePath(`/cases/${caseId}`);
@@ -159,5 +170,69 @@ export async function unassignAgent(caseId: string, agentId: string) {
     .eq("agent_id", agentId);
   if (error) return { error: handleDbError(error, "cases") };
   revalidatePath(`/cases/${caseId}`);
+  return { ok: true };
+}
+
+export async function archiveCase(caseId: string) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cases")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+  revalidatePath("/cases");
+  return { ok: true };
+}
+
+export async function unarchiveCase(caseId: string) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cases")
+    .update({ archived_at: null })
+    .eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+  revalidatePath("/cases");
+  return { ok: true };
+}
+
+export async function cancelCase(caseId: string) {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cases")
+    .update({ status: "cancelled" })
+    .eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/cases");
+  return { ok: true };
+}
+
+export async function deleteCase(caseId: string) {
+  const profile = await requireRole(["admin"]);
+  const supabase = await createClient();
+
+  // Fetch case info for audit log before deletion.
+  const { data: caseRecord } = await supabase
+    .from("cases")
+    .select("case_number, client_name")
+    .eq("id", caseId)
+    .single();
+
+  const { error } = await supabase.from("cases").delete().eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+
+  // Log the hard delete.
+  await supabase.from("audit_logs").insert({
+    actor_id: profile.id,
+    action: "hard_delete",
+    entity: "cases",
+    entity_id: caseId,
+    metadata: { case_number: caseRecord?.case_number, client_name: caseRecord?.client_name },
+  });
+
+  revalidatePath("/cases");
   return { ok: true };
 }
