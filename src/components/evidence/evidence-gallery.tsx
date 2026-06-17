@@ -7,11 +7,17 @@ import type { Evidence } from "@/lib/types";
 
 interface Props {
   items: Evidence[];
+  thumbnailUrls?: Record<string, string>;
+  uploaderNames?: Record<string, string>;
+  isAdmin?: boolean;
   columns?: string;
 }
 
 export function EvidenceGallery({
   items,
+  thumbnailUrls = {},
+  uploaderNames = {},
+  isAdmin = false,
   columns = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
 }: Props) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
@@ -30,7 +36,14 @@ export function EvidenceGallery({
     <>
       <div className={`grid gap-3 ${columns}`}>
         {items.map((item, i) => (
-          <EvidencePreview key={item.id} item={item} onOpen={() => setOpenIdx(i)} />
+          <EvidencePreview
+            key={item.id}
+            item={item}
+            onOpen={() => setOpenIdx(i)}
+            thumbnailUrl={thumbnailUrls[item.storage_path]}
+            uploaderName={item.uploaded_by ? uploaderNames[item.uploaded_by] : undefined}
+            isAdmin={isAdmin}
+          />
         ))}
       </div>
 
@@ -41,6 +54,8 @@ export function EvidenceGallery({
           onClose={close}
           onPrev={prev}
           onNext={next}
+          thumbnailUrls={thumbnailUrls}
+          uploaderNames={uploaderNames}
         />
       )}
     </>

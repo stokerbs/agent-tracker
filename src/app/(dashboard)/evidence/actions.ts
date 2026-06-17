@@ -100,6 +100,38 @@ export async function uploadEvidence(formData: FormData) {
   return { ok: true };
 }
 
+/** Hard-delete evidence (admin only) — removes Storage object + DB row + audit log. */
+export async function deleteEvidence(id: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "admin") return { error: "Admins only" };
+  const supabase = await createClient();
+
+  const { data: row } = await supabase
+    .from("evidence")
+    .select("storage_path, case_id, file_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!row) return { error: "Evidence not found" };
+
+  // Delete Storage object first; if it fails the DB row is left intact.
+  await supabase.storage.from(BUCKETS.evidence).remove([row.storage_path]);
+
+  const { error } = await supabase.from("evidence").delete().eq("id", id);
+  if (error) return { error: handleDbError(error, "evidence") };
+
+  await supabase.from("audit_logs").insert({
+    actor_id: profile.id,
+    action: "hard_delete",
+    entity: "evidence",
+    entity_id: id,
+    metadata: { file_name: row.file_name, case_id: row.case_id },
+  });
+
+  revalidatePath(`/cases/${row.case_id}`);
+  revalidatePath("/evidence");
+  return { ok: true };
+}
+
 /** Returns a short-lived signed URL for previewing/downloading evidence. */
 export async function getEvidenceUrl(storagePath: string) {
   await requireProfile();

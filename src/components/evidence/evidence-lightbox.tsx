@@ -31,15 +31,25 @@ interface Props {
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
+  thumbnailUrls?: Record<string, string>;
+  uploaderNames?: Record<string, string>;
 }
 
-export function EvidenceLightbox({ items, index, onClose, onPrev, onNext }: Props) {
+export function EvidenceLightbox({
+  items,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+  thumbnailUrls = {},
+  uploaderNames = {},
+}: Props) {
   const t = useTranslations("evidence.lightbox");
   const item = items[index];
   const meta = TYPE_META[item.type as keyof typeof TYPE_META] ?? TYPE_META.document;
 
-  // URL cache: storage_path -> signed url
-  const urlCache = useRef<Record<string, string>>({});
+  // URL cache: storage_path -> signed url (pre-seeded from gallery thumbnail URLs)
+  const urlCache = useRef<Record<string, string>>({ ...thumbnailUrls });
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [zoomed, setZoomed] = useState(false);
@@ -224,6 +234,9 @@ export function EvidenceLightbox({ items, index, onClose, onPrev, onNext }: Prop
       {/* Footer — metadata */}
       <div className="shrink-0 border-t border-border/60 px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {item.uploaded_by && uploaderNames[item.uploaded_by] && (
+            <span className="font-medium text-foreground/70">{uploaderNames[item.uploaded_by]}</span>
+          )}
           <span>{formatDate(item.uploaded_at)}</span>
           {item.category && <span className="capitalize">{item.category}</span>}
           {item.file_size && <span>{formatBytes(item.file_size)}</span>}
