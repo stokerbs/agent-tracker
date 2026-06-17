@@ -122,7 +122,8 @@
       "users": "Users",
       "audit": "Audit Log",
       "settings": "Settings",
-      "invoices": "Invoices"
+      "invoices": "Invoices",
+      "analytics": "Analytics"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
@@ -602,6 +603,42 @@
       "resolved": "Resolved"
     }
   },
+  "analytics": {
+    "title": "Analytics",
+    "description": "Movement intelligence from the last 7 days of field data.",
+    "tabs": {
+      "shift": "Shift Summary",
+      "heatmap": "Heatmap"
+    },
+    "agent": "Agent",
+    "allAgents": "All agents",
+    "date": "Date",
+    "dateStart": "From",
+    "dateEnd": "To",
+    "load": "Load",
+    "loading": "Loading…",
+    "noData": "No GPS pings recorded for this agent on this date.",
+    "noHeatData": "No location data found for the selected period.",
+    "noApiKey": "Google Maps API key not configured.",
+    "metrics": {
+      "distance": "Distance",
+      "duration": "Active time",
+      "avgSpeed": "Avg speed",
+      "maxSpeed": "Max speed",
+      "pings": "Pings"
+    },
+    "chart": {
+      "title": "Speed over time",
+      "speed": "Speed (km/h)"
+    },
+    "heatmap": {
+      "points": "{count} data points"
+    },
+    "route": {
+      "start": "Start",
+      "end": "End"
+    }
+  },
   "map": {
     "title": "Live Map",
     "description": "Real-time field positions, auto-refreshed every 60 seconds.",
@@ -659,6 +696,10 @@
       "delete": "Delete fence",
       "clickToStart": "Click on the map to place the first point",
       "clickToAdd": "{count} points — keep clicking to add more"
+    },
+    "popup": {
+      "call": "โทรออก",
+      "noPhone": "ไม่พบหมายเลขโทรศัพท์ของ Agent"
     },
     "emergency": {
       "banner": "🚨 {agent} triggered an emergency alert ({count} active)",

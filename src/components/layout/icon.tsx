@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart2,
   LayoutDashboard,
   MapPin,
   Briefcase,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 const ICONS = {
+  BarChart2,
   LayoutDashboard,
   MapPin,
   Briefcase,

@@ -11,7 +11,6 @@ import {
 import {
   APIProvider,
   AdvancedMarker,
-  InfoWindow,
   Map,
   Polygon,
   Polyline,
@@ -31,6 +30,7 @@ import {
   LayoutDashboard,
   MapPinOff,
   Pencil,
+  Phone,
   RefreshCw,
   Shield,
   SlidersHorizontal,
@@ -630,15 +630,17 @@ function EmergencyBanner({
 }
 
 // ─────────────────────────────────────────────
-// InfoWindow content
+// Agent popup (AdvancedMarker-based, full dark-mode support)
 // ─────────────────────────────────────────────
 
-function AgentInfoContent({
+function AgentPopup({
   agent,
   now,
+  onClose,
 }: {
   agent: Agent;
   now: number;
+  onClose: () => void;
 }) {
   const t = useTranslations("map");
   const speed = agent.speed_kmh ?? 0;
@@ -648,91 +650,143 @@ function AgentInfoContent({
   const isStale = sinceActive > STALE_MS;
   const ms = mapStatus(agent, now);
 
+  if (!agent.current_lat || !agent.current_lng) return null;
+
+  function handleCall() {
+    if (!agent.phone) {
+      toast(t("popup.noPhone"));
+      return;
+    }
+    window.location.href = `tel:${agent.phone}`;
+  }
+
   return (
-    <div className="min-w-[220px] p-1 font-sans text-slate-800 dark:text-slate-100">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Avatar className="h-8 w-8">
-          {agent.photo_url && <img src={agent.photo_url} alt="" className="h-full w-full rounded-full object-cover" />}
-          <AvatarFallback className="text-xs">{initials(agent.full_name)}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{agent.full_name}</p>
-          <p className="font-mono text-xs text-slate-500">{agent.agent_code}</p>
+    <AdvancedMarker
+      position={{ lat: agent.current_lat, lng: agent.current_lng }}
+      zIndex={2000}
+    >
+      {/* pointer-events-none on wrapper so the map still receives clicks outside */}
+      <div className="pointer-events-none flex flex-col items-center select-none">
+        {/* Popup card */}
+        <div className="pointer-events-auto min-w-[240px] max-w-[280px] overflow-hidden rounded-xl border border-border/60 bg-white/95 shadow-xl backdrop-blur-sm dark:bg-slate-900/95">
+          {/* Header: avatar · name · close */}
+          <div className="flex items-center gap-2.5 px-3 pb-2 pt-3">
+            <Avatar className="h-9 w-9 shrink-0">
+              {agent.photo_url && (
+                <AvatarImage src={agent.photo_url} alt={agent.full_name} className="object-cover" />
+              )}
+              <AvatarFallback className="text-xs">{initials(agent.full_name)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">{agent.full_name}</p>
+              <p className="font-mono text-xs text-muted-foreground">{agent.agent_code}</p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-gray-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Status badges */}
+          <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+            <AgentStatusBadge status={agent.status} />
+            <Badge
+              className={cn(
+                "border text-[9px] font-bold uppercase tracking-widest",
+                ms === "moving"
+                  ? "border-amber-400/30 bg-amber-500/10 text-amber-600"
+                  : ms === "offline"
+                  ? "border-slate-400/30 bg-slate-500/10 text-slate-500"
+                  : "border-emerald-400/30 bg-emerald-500/10 text-emerald-600",
+              )}
+            >
+              {ms}
+            </Badge>
+          </div>
+
+          {/* Info rows */}
+          <div className="space-y-1.5 px-3 pb-2 text-xs text-muted-foreground">
+            {/* Speed */}
+            <div className="flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5 shrink-0" style={{ color: speedColor(speed) }} />
+              <span style={{ color: speedColor(speed) }} className="font-mono font-semibold">
+                {speed.toFixed(1)} km/h
+              </span>
+              {agent.heading != null && speed > 1 && (
+                <span className="ml-1 text-muted-foreground/60">{headingLabel(agent.heading)}</span>
+              )}
+            </div>
+
+            {/* Last update */}
+            <div className={cn("flex items-center gap-1.5", isStale && "text-amber-600")}>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>{timeAgo(agent.last_active)}</span>
+              {isStale && <span className="font-medium">(stale)</span>}
+            </div>
+
+            {/* Battery */}
+            <div
+              className={cn(
+                "flex items-center gap-1.5",
+                agent.is_charging ? "text-emerald-600" : batteryColor(agent.battery_pct),
+              )}
+            >
+              {agent.is_charging ? (
+                <BatteryCharging className="h-3.5 w-3.5" />
+              ) : (
+                <BatteryMedium className="h-3.5 w-3.5" />
+              )}
+              <span className="font-mono">{agent.battery_pct ?? "—"}%</span>
+              {agent.is_charging && <Zap className="h-3 w-3" />}
+            </div>
+
+            {/* Area */}
+            {agent.area && (
+              <p className="truncate">
+                <span className="text-muted-foreground/60">{t("area")}: </span>
+                {agent.area}
+              </p>
+            )}
+
+            {/* Vehicle type */}
+            {agent.vehicle_type && (
+              <p className="capitalize">
+                <span className="text-muted-foreground/60">{t("vehicle")}: </span>
+                {agent.vehicle_type.replace("_", " ")}
+              </p>
+            )}
+
+            {/* Phone (visible to all map users — page requires admin/supervisor) */}
+            {agent.phone && (
+              <div className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-mono">{agent.phone}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Call button */}
+          <div className="border-t border-border/40 px-3 pb-3 pt-2.5">
+            <button
+              onClick={handleCall}
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700"
+            >
+              <Phone className="h-4 w-4" />
+              {t("popup.call")}
+            </button>
+          </div>
         </div>
+
+        {/* Connector line */}
+        <div className="h-3 w-px bg-border/60" />
+
+        {/* Spacer to sit above the AgentMarker (h-11 = 44px + status dot) */}
+        <div className="h-14" />
       </div>
-
-      {/* Status */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <AgentStatusBadge status={agent.status} />
-        <Badge
-          className={cn(
-            "border text-[9px] font-bold uppercase tracking-widest",
-            ms === "moving"
-              ? "border-amber-400/30 bg-amber-500/10 text-amber-600"
-              : ms === "offline"
-              ? "border-slate-400/30 bg-slate-500/10 text-slate-500"
-              : "border-emerald-400/30 bg-emerald-500/10 text-emerald-600",
-          )}
-        >
-          {ms}
-        </Badge>
-      </div>
-
-      <div className="mt-2.5 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-        {/* Speed */}
-        <div className="flex items-center gap-1.5">
-          <Gauge className="h-3.5 w-3.5 shrink-0" style={{ color: speedColor(speed) }} />
-          <span style={{ color: speedColor(speed) }} className="font-mono font-semibold">
-            {speed.toFixed(1)} km/h
-          </span>
-          {agent.heading != null && speed > 1 && (
-            <span className="ml-1 text-slate-400">
-              {headingLabel(agent.heading)}
-            </span>
-          )}
-        </div>
-
-        {/* Last update */}
-        <div className={cn("flex items-center gap-1.5", isStale && "text-amber-600")}>
-          <Clock className="h-3.5 w-3.5 shrink-0" />
-          <span>{timeAgo(agent.last_active)}</span>
-          {isStale && <span className="font-medium">(stale)</span>}
-        </div>
-
-        {/* Battery */}
-        <div
-          className={cn(
-            "flex items-center gap-1.5",
-            agent.is_charging ? "text-emerald-600" : batteryColor(agent.battery_pct),
-          )}
-        >
-          {agent.is_charging ? (
-            <BatteryCharging className="h-3.5 w-3.5" />
-          ) : (
-            <BatteryMedium className="h-3.5 w-3.5" />
-          )}
-          <span className="font-mono">{agent.battery_pct ?? "—"}%</span>
-          {agent.is_charging && <Zap className="h-3 w-3" />}
-        </div>
-
-        {/* Area */}
-        {agent.area && (
-          <p className="truncate">
-            <span className="text-slate-400">{t("area")}: </span>
-            {agent.area}
-          </p>
-        )}
-
-        {/* Vehicle type */}
-        {agent.vehicle_type && (
-          <p className="capitalize">
-            <span className="text-slate-400">{t("vehicle")}: </span>
-            {agent.vehicle_type.replace("_", " ")}
-          </p>
-        )}
-      </div>
-    </div>
+    </AdvancedMarker>
   );
 }
 
@@ -1354,20 +1408,14 @@ export function LiveMap({
               }}
             />
 
-            {/* Info window */}
-            {selectedAgent &&
-              selectedAgent.current_lat &&
-              selectedAgent.current_lng && (
-                <InfoWindow
-                  position={{
-                    lat: selectedAgent.current_lat,
-                    lng: selectedAgent.current_lng,
-                  }}
-                  onCloseClick={() => setSelectedAgent(null)}
-                >
-                  <AgentInfoContent agent={selectedAgent} now={now} />
-                </InfoWindow>
-              )}
+            {/* Agent popup */}
+            {selectedAgent && (
+              <AgentPopup
+                agent={selectedAgent}
+                now={now}
+                onClose={() => setSelectedAgent(null)}
+              />
+            )}
           </Map>
         </APIProvider>
       </div>

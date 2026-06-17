@@ -124,14 +124,14 @@ export async function POST(request: NextRequest) {
       heading: parsed.heading ?? null,
     });
 
-    // 2. Clean up history older than 24 hours to keep the table lean
+    // 2. Clean up history older than 7 days (analytics retention window)
     await svc
       .from("agent_location_history")
       .delete()
       .eq("agent_id", agent.id)
       .lt(
         "recorded_at",
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       );
 
     // 3. Geofence enter/exit detection

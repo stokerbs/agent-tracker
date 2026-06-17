@@ -35,6 +35,7 @@ import type { Profile } from "@/lib/types";
 const PAGE_KEYS: Record<string, string> = {
   "/dashboard": "dashboard",
   "/map": "map",
+  "/analytics": "analytics",
   "/cases": "cases",
   "/timeline": "timeline",
   "/agents": "agents",
@@ -58,6 +59,7 @@ function Breadcrumb() {
   const navLabels: Record<string, string> = {
     dashboard: tNav("items.dashboard"),
     map: tNav("items.map"),
+    analytics: tNav("items.analytics"),
     cases: tNav("items.cases"),
     timeline: tNav("items.timeline"),
     agents: tNav("items.agents"),
