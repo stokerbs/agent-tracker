@@ -24,6 +24,7 @@ export type ExpenseCategory =
   | "hotel"
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
+export type GpsProvider = "AIS" | "TRUE" | "DTAC";
 // "submitted" kept for backward compatibility with rows created before migration 0021.
 export type ReportStatus = "draft" | "review" | "submitted" | "approved" | "rejected";
 export type ReportLanguage = "th" | "en";
@@ -111,6 +112,19 @@ export interface Case {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+}
+
+export interface GpsDevice {
+  id: string;
+  case_id: string;
+  imei: string | null;
+  phone_number: string | null;
+  provider: GpsProvider | null;
+  notes: string | null;
+  created_by: string | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CaseWithAgents extends Case {

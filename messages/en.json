@@ -20,7 +20,8 @@
     "allCases": "All cases",
     "upload": "Upload",
     "export": "Export",
-    "download": "Download"
+    "download": "Download",
+    "optional": "optional"
   },
   "lang": {
     "switcher": "Language",
@@ -314,6 +315,42 @@
       "toast": {
         "success": "Case updated"
       }
+    },
+    "gps": {
+      "addDevice": "Add GPS Tracker",
+      "addTitle": "Add GPS Tracker",
+      "addDescription": "Register a GPS tracking device for this case. All fields are optional.",
+      "editTitle": "Edit GPS Tracker",
+      "editDescription": "Update the GPS device information.",
+      "copyImei": "Copy IMEI",
+      "copySim": "Copy SIM Number",
+      "fields": {
+        "imei": "IMEI",
+        "imeiHint": "15-digit identifier printed on the device",
+        "phoneNumber": "GPS SIM Number",
+        "provider": "Mobile Provider",
+        "providerPlaceholder": "Select provider",
+        "notes": "Notes",
+        "notesPlaceholder": "Installed on target vehicle…"
+      },
+      "deleteDialog": {
+        "title": "ยืนยันการลบ GPS",
+        "message": "คุณต้องการลบอุปกรณ์ GPS นี้หรือไม่",
+        "irreversible": "การดำเนินการนี้ไม่สามารถย้อนกลับได้",
+        "cancel": "ยกเลิก",
+        "confirm": "ลบ GPS"
+      },
+      "toast": {
+        "created": "Added GPS tracker",
+        "updated": "GPS tracker updated",
+        "deleted": "GPS tracker removed",
+        "imeiCopied": "คัดลอก IMEI แล้ว",
+        "simCopied": "คัดลอกเบอร์ซิมแล้ว"
+      }
+    },
+    "gpsSection": {
+      "title": "GPS Tracker Information",
+      "noDevices": "No GPS devices registered for this case."
     }
   },
   "agents": {

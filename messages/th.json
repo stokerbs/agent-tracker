@@ -20,7 +20,8 @@
     "allCases": "คดีทั้งหมด",
     "upload": "อัปโหลด",
     "export": "ส่งออก",
-    "download": "ดาวน์โหลด"
+    "download": "ดาวน์โหลด",
+    "optional": "ไม่บังคับ"
   },
   "lang": {
     "switcher": "ภาษา",
@@ -314,6 +315,42 @@
       "toast": {
         "success": "อัปเดตคดีเรียบร้อยแล้ว"
       }
+    },
+    "gps": {
+      "addDevice": "เพิ่มอุปกรณ์ GPS",
+      "addTitle": "เพิ่มอุปกรณ์ GPS",
+      "addDescription": "ลงทะเบียนอุปกรณ์ GPS สำหรับคดีนี้ ทุกช่องเป็นตัวเลือก",
+      "editTitle": "แก้ไขอุปกรณ์ GPS",
+      "editDescription": "อัปเดตข้อมูลอุปกรณ์ GPS",
+      "copyImei": "คัดลอก IMEI",
+      "copySim": "คัดลอกเบอร์ซิม",
+      "fields": {
+        "imei": "IMEI",
+        "imeiHint": "หมายเลข 15 หลักที่พิมพ์บนอุปกรณ์",
+        "phoneNumber": "เบอร์ซิม GPS",
+        "provider": "ผู้ให้บริการมือถือ",
+        "providerPlaceholder": "เลือกผู้ให้บริการ",
+        "notes": "หมายเหตุ",
+        "notesPlaceholder": "ติดตั้งบนยานพาหนะเป้าหมาย…"
+      },
+      "deleteDialog": {
+        "title": "ยืนยันการลบ GPS",
+        "message": "คุณต้องการลบอุปกรณ์ GPS นี้หรือไม่",
+        "irreversible": "การดำเนินการนี้ไม่สามารถย้อนกลับได้",
+        "cancel": "ยกเลิก",
+        "confirm": "ลบ GPS"
+      },
+      "toast": {
+        "created": "เพิ่มอุปกรณ์ GPS แล้ว",
+        "updated": "อัปเดตอุปกรณ์ GPS แล้ว",
+        "deleted": "ลบอุปกรณ์ GPS แล้ว",
+        "imeiCopied": "คัดลอก IMEI แล้ว",
+        "simCopied": "คัดลอกเบอร์ซิมแล้ว"
+      }
+    },
+    "gpsSection": {
+      "title": "ข้อมูล GPS Tracker",
+      "noDevices": "ยังไม่มีอุปกรณ์ GPS ที่ลงทะเบียนสำหรับคดีนี้"
     }
   },
   "agents": {

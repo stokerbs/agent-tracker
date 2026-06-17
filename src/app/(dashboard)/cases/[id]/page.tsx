@@ -15,6 +15,7 @@ import {
   FolderLock,
   MapPin,
   Phone,
+  Radio,
   Receipt,
   User,
   Users,
@@ -39,6 +40,8 @@ import { ReportCard } from "@/components/reports/report-card";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
+import { GpsDeviceCard } from "@/components/cases/gps-device-card";
+import { GpsDeviceFormDialog } from "@/components/cases/gps-device-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,7 +55,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, Client, Evidence, Expense, Report, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, Client, Evidence, Expense, GpsDevice, Report, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +119,7 @@ export default async function CaseDetailPage({
     { data: expenses },
     { data: clientRaw },
     invoiceCountRes,
+    { data: gpsDevicesRaw },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -145,6 +149,12 @@ export default async function CaseDetailPage({
     staff
       ? supabase.from("invoices").select("id", { count: "exact", head: true }).eq("case_id", id)
       : Promise.resolve({ count: 0 }),
+    supabase
+      .from("gps_devices")
+      .select("*")
+      .eq("case_id", id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true }),
   ]);
 
   const caseClient = clientRaw as Client | null;
@@ -167,6 +177,10 @@ export default async function CaseDetailPage({
   const caseExpenses  = (expenses  ?? []) as (Expense & { agents?: { full_name: string } | null })[];
 
   const totalExpenses = caseExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
+
+  const isAdmin = profile.role === "admin";
+  const isSupervisor = profile.role === "supervisor";
 
   return (
     <div className="space-y-6">
@@ -316,6 +330,41 @@ export default async function CaseDetailPage({
           </Card>
         </div>
       </FadeUp>
+
+      {/* GPS Tracker Information — visible to staff + assigned agents, hidden from clients */}
+      {!profile.role.startsWith("client") && (gpsDevices.length > 0 || staff) && (
+        <FadeUp delay={0.09}>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-emerald-500" />
+                  {t("gpsSection.title")}
+                </CardTitle>
+                {isAdmin && <GpsDeviceFormDialog caseId={id} />}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {gpsDevices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("gpsSection.noDevices")}</p>
+              ) : (
+                <div className="space-y-3">
+                  {gpsDevices.map((device, i) => (
+                    <GpsDeviceCard
+                      key={device.id}
+                      device={device}
+                      index={i}
+                      caseId={id}
+                      canEdit={isAdmin || isSupervisor}
+                      canDelete={isAdmin}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </FadeUp>
+      )}
 
       {/* Tabs */}
       <FadeUp delay={0.1}>
