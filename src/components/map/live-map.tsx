@@ -46,7 +46,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { AgentStatusBadge } from "@/components/shared/status-badges";
+import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -876,6 +876,7 @@ function AgentRow({ agent }: { agent: Agent }) {
           )}
           <span className="font-mono">{agent.battery_pct ?? "—"}%</span>
         </span>
+        {agent.agent_role && <AgentRoleBadge role={agent.agent_role} />}
         <AgentStatusBadge status={agent.status} />
       </div>
     </div>
