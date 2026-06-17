@@ -36,13 +36,14 @@ export function EditCaseDialog({ caseRecord, clients }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const [selectedClientId, setSelectedClientId] = useState(caseRecord.client_id ?? "");
+  const [selectedClientId, setSelectedClientId] = useState(caseRecord.client_id ?? "none");
 
   const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null;
 
   function onSubmit(formData: FormData) {
     // Inject the client FK + display denorm.
-    formData.set("client_id", selectedClientId);
+    // "none" is the UI sentinel — send empty string so the action's emptyToNull() converts it to null.
+    formData.set("client_id", selectedClientId === "none" ? "" : selectedClientId);
     formData.set("client_name", selectedClient?.name ?? caseRecord.client_name ?? "");
     start(async () => {
       const res = await updateCase(caseRecord.id, formData);
@@ -80,7 +81,7 @@ export function EditCaseDialog({ caseRecord, clients }: Props) {
                 <SelectValue placeholder="— No client —" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— No client —</SelectItem>
+                <SelectItem value="none">— No client —</SelectItem>
                 {clients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}

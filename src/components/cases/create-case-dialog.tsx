@@ -42,21 +42,23 @@ export function CreateCaseDialog({ suggestedNumber, clients }: Props) {
   const tPriority = useTranslations("status.priority");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("none");
   const router = useRouter();
 
   const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null;
 
   function onSubmit(formData: FormData) {
     // Inject the client FK + display denorm so the server action receives both.
-    formData.set("client_id", selectedClientId);
+    // "none" is the UI sentinel for no client — send empty string so the action's
+    // emptyToNull() converts it to null.
+    formData.set("client_id", selectedClientId === "none" ? "" : selectedClientId);
     formData.set("client_name", selectedClient?.name ?? "");
     start(async () => {
       const res = await createCase(formData);
       if (res?.error) { toast.error(res.error); return; }
       toast.success(t("toast.success"));
       setOpen(false);
-      setSelectedClientId("");
+      setSelectedClientId("none");
       router.refresh();
       if (res?.id) router.push(`/cases/${res.id}`);
     });
@@ -85,7 +87,7 @@ export function CreateCaseDialog({ suggestedNumber, clients }: Props) {
                 <SelectValue placeholder="— No client —" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— No client —</SelectItem>
+                <SelectItem value="none">— No client —</SelectItem>
                 {clients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}

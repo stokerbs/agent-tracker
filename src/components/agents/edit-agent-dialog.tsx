@@ -116,12 +116,12 @@ export function EditAgentDialog({ agent }: { agent: Agent }) {
 
           <div className="space-y-2">
             <Label htmlFor="edit-vehicle-type">{t("fields.vehicleType")}</Label>
-            <Select name="vehicle_type" defaultValue={agent.vehicle_type ?? ""}>
+            <Select name="vehicle_type" defaultValue={agent.vehicle_type ?? "none"}>
               <SelectTrigger id="edit-vehicle-type">
                 <SelectValue placeholder={t("fields.vehicleTypeNone")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t("fields.vehicleTypeNone")}</SelectItem>
+                <SelectItem value="none">{t("fields.vehicleTypeNone")}</SelectItem>
                 {VEHICLE_TYPES.map((v) => (
                   <SelectItem key={v} value={v}>
                     {tVehicle(v)}

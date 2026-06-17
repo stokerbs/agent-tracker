@@ -22,7 +22,7 @@ export async function createAgent(formData: FormData) {
     photo_url: emptyToNull(formData.get("photo_url")),
   };
 
-  const vehicleType = emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
+  const vehicleType = noneToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
   if (vehicleType !== null) payload.vehicle_type = vehicleType;
 
   // Optionally link to a user account by their login phone number.
@@ -141,7 +141,7 @@ export async function updateAgent(agentId: string, formData: FormData) {
     status:    (String(formData.get("status") ?? "offline") as AgentStatus),
   };
 
-  const vehicleType = emptyToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
+  const vehicleType = noneToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
   if (vehicleType !== null) payload.vehicle_type = vehicleType;
 
   // Re-link user account only when the caller provides a phone number.
@@ -186,4 +186,10 @@ export async function deleteAgent(agentId: string) {
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
   return s.length ? s : null;
+}
+
+/** Treats both empty string and the UI sentinel "none" as null. */
+function noneToNull(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? "").trim();
+  return s.length && s !== "none" ? s : null;
 }
