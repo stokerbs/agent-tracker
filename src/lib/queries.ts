@@ -74,10 +74,10 @@ export async function getDashboardStats() {
 
   return {
     totalAgents: agentRows.length,
-    availableAgents: agentRows.filter((a) => a.status === "online").length,
-    activeAgents: agentRows.filter(
-      (a) => a.status !== "offline",
+    availableAgents: agentRows.filter((a) =>
+      a.status === "online" || a.status === "moving" || a.status === "idle",
     ).length,
+    activeAgents: agentRows.filter((a) => a.status !== "offline").length,
     offlineAgents: agentRows.filter((a) => a.status === "offline").length,
     openCases: caseRows.filter((c) => c.status !== "closed").length,
     closedCases: caseRows.filter((c) => c.status === "closed").length,
