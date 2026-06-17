@@ -161,9 +161,14 @@ export default async function CaseDetailPage({
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
   const hasApprovedReport = (reports as Report[] ?? []).some((r) => r.status === "approved");
 
-  const allAgents: Agent[] = staff
-    ? ((await supabase.from("agents").select("*").order("full_name")).data as Agent[] ?? [])
-    : [];
+  const [allAgents, allClients] = await Promise.all([
+    staff
+      ? supabase.from("agents").select("*").order("full_name").then((r) => (r.data as Agent[] ?? []))
+      : Promise.resolve([] as Agent[]),
+    staff
+      ? supabase.from("clients").select("id, name").order("name").then((r) => (r.data as Pick<Client, "id" | "name">[] ?? []))
+      : Promise.resolve([] as Pick<Client, "id" | "name">[]),
+  ]);
 
   const assignedAgents = ((caseAgentRows ?? []) as unknown as { agents: Agent }[])
     .map((r) => r.agents)
@@ -197,7 +202,7 @@ export default async function CaseDetailPage({
         >
           <CasePriorityBadge priority={c.priority} />
           <CaseStatusBadge status={c.status} />
-          {staff && <EditCaseDialog caseRecord={c} />}
+          {staff && <EditCaseDialog caseRecord={c} clients={allClients} />}
         </PageHeader>
       </FadeUp>
 

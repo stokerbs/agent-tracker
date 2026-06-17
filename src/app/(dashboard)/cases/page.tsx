@@ -17,7 +17,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { StaggerGrid, StaggerItem } from "@/components/shared/motion";
 import { formatDate, cn } from "@/lib/utils";
-import type { Case, CasePriority, CaseStatus } from "@/lib/types";
+import type { Case, CasePriority, CaseStatus, Client } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Cases" };
 export const dynamic = "force-dynamic";
@@ -73,11 +73,15 @@ export default async function CasesPage({ searchParams }: Props) {
   const cases = (data ?? []) as Case[];
 
   const year = new Date().getFullYear();
-  const { count: totalCount } = await supabase
-    .from("cases")
-    .select("id", { count: "exact", head: true });
+  const [{ count: totalCount }, { data: clientsRaw }] = await Promise.all([
+    supabase.from("cases").select("id", { count: "exact", head: true }),
+    isStaff(profile.role)
+      ? supabase.from("clients").select("id, name").order("name")
+      : Promise.resolve({ data: [] }),
+  ]);
   const seq = String((totalCount ?? 0) + 1).padStart(4, "0");
   const suggestedNumber = `CASE-${year}-${seq}`;
+  const clients = (clientsRaw ?? []) as Pick<Client, "id" | "name">[];
 
   return (
     <div className="space-y-6">
@@ -96,7 +100,7 @@ export default async function CasesPage({ searchParams }: Props) {
             {showArchived ? "ดูคดีที่ใช้งาน" : "เก็บถาวร"}
           </Link>
           {isStaff(profile.role) && !showArchived && (
-            <CreateCaseDialog suggestedNumber={suggestedNumber} />
+            <CreateCaseDialog suggestedNumber={suggestedNumber} clients={clients} />
           )}
         </div>
       </PageHeader>

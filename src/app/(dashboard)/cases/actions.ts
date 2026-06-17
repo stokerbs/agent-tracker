@@ -39,7 +39,8 @@ export async function createCase(formData: FormData) {
 
   const payload = {
     case_number:  String(formData.get("case_number") ?? "").trim(),
-    client_name:  emptyToNull(formData.get("client_name")),
+    client_id:    emptyToNull(formData.get("client_id")),   // FK to clients
+    client_name:  emptyToNull(formData.get("client_name")), // display denorm
     case_type:    emptyToNull(formData.get("case_type")),
     target_name_enc:    enc(target_name),
     target_name_bidx:   bidx(target_name,   createNameBlindIndex),
@@ -143,10 +144,10 @@ export async function updateCase(caseId: string, formData: FormData) {
   await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
 
-  const payload = {
-    // client_name is a legacy display denorm — NOT updated here.
-    // It is synced automatically by the trg_sync_client_name trigger when
-    // clients.name changes. Use the clients join for display.
+  const clientId = emptyToNull(formData.get("client_id"));
+  const payload: Record<string, unknown> = {
+    client_id:   clientId,               // FK — may be null to unlink
+    client_name: emptyToNull(formData.get("client_name")), // display denorm
     case_type:   emptyToNull(formData.get("case_type")),
     status:      String(formData.get("status") ?? "new") as CaseStatus,
     priority:    String(formData.get("priority") ?? "medium") as CasePriority,

@@ -26,25 +26,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CasePriority, CaseStatus } from "@/lib/types";
+import type { CasePriority, CaseStatus, Client } from "@/lib/types";
 
 const CASE_STATUSES: CaseStatus[] = ["new", "assigned", "active", "pending", "closed"];
 const CASE_PRIORITIES: CasePriority[] = ["low", "medium", "high", "critical"];
 
-export function CreateCaseDialog({ suggestedNumber }: { suggestedNumber: string }) {
+interface Props {
+  suggestedNumber: string;
+  clients: Pick<Client, "id" | "name">[];
+}
+
+export function CreateCaseDialog({ suggestedNumber, clients }: Props) {
   const t = useTranslations("cases.createDialog");
   const tStatus = useTranslations("status.case");
   const tPriority = useTranslations("status.priority");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const [selectedClientId, setSelectedClientId] = useState("");
   const router = useRouter();
 
+  const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null;
+
   function onSubmit(formData: FormData) {
+    // Inject the client FK + display denorm so the server action receives both.
+    formData.set("client_id", selectedClientId);
+    formData.set("client_name", selectedClient?.name ?? "");
     start(async () => {
       const res = await createCase(formData);
       if (res?.error) { toast.error(res.error); return; }
       toast.success(t("toast.success"));
       setOpen(false);
+      setSelectedClientId("");
       router.refresh();
       if (res?.id) router.push(`/cases/${res.id}`);
     });
@@ -64,7 +76,23 @@ export function CreateCaseDialog({ suggestedNumber }: { suggestedNumber: string 
         </DialogHeader>
         <form action={onSubmit} className="grid gap-4 sm:grid-cols-2">
           <Field label={t("fields.caseNumber")} name="case_number" defaultValue={suggestedNumber} required />
-          <Field label={t("fields.clientName")} name="client_name" placeholder={t("fields.clientNamePlaceholder")} />
+
+          {/* Client selector — submits client_id + client_name via onSubmit */}
+          <div className="space-y-2">
+            <Label>{t("fields.clientName")}</Label>
+            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="— No client —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— No client —</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Field label={t("fields.caseType")} name="case_type" placeholder={t("fields.caseTypePlaceholder")} />
           <Field label={t("fields.targetName")} name="target_name" placeholder={t("fields.targetNamePlaceholder")} />
           <Field label={t("fields.targetPhone")} name="target_phone" type="tel" />
