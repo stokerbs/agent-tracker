@@ -19,6 +19,8 @@ export interface EnrichedDevice {
   lastSeen:    string | null;
   syncedAt:    string;
   linkedCases: LinkedCase[];
+  phoneNumber: string | null;  // from gps_devices.phone_number (first linked row)
+  provider:    string | null;  // from gps_devices.provider (first linked row)
 }
 
 export interface CaseOption  { id: string; case_number: string }

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Gauge,
   MapPin,
+  Phone,
   Radio,
   Satellite,
   XCircle,
@@ -40,9 +41,9 @@ function timeAgo(ts: string | null): string {
 
 const PROVIDER_COLORS: Record<string, string> = {
   GPS903: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  AIS:    "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-  TRUE:   "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-  DTAC:   "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  AIS:    "bg-green-500/10  text-green-600  dark:text-green-400  border-green-500/20",
+  TRUE:   "bg-red-500/10    text-red-600    dark:text-red-400    border-red-500/20",
+  DTAC:   "bg-blue-500/10   text-blue-600   dark:text-blue-400   border-blue-500/20",
 };
 
 export default async function GpsDevicesPage() {
@@ -53,7 +54,7 @@ export default async function GpsDevicesPage() {
   const { data: rows } = await supabase
     .from("gps_devices")
     .select(`
-      id, imei, gps903_device_id, notes, provider, case_id,
+      id, imei, phone_number, gps903_device_id, notes, provider, case_id,
       last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_seen_at, agent_id,
       cases ( case_number ),
       agents ( id, full_name, agent_code, status )
@@ -150,10 +151,16 @@ export default async function GpsDevicesPage() {
                     </div>
                   </div>
 
-                  {/* IMEI */}
-                  <p className="font-mono text-[11px] text-muted-foreground/70">
-                    IMEI: {d.imei ?? "—"}
-                  </p>
+                  {/* IMEI + SIM info */}
+                  <div className="space-y-0.5">
+                    <p className="font-mono text-[11px] text-muted-foreground/70">
+                      IMEI: {d.imei ?? "—"}
+                    </p>
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      <span className="font-mono">{d.phone_number ?? "—"}</span>
+                    </div>
+                  </div>
 
                   {/* Agent row */}
                   <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">

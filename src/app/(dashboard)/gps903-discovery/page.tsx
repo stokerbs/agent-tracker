@@ -37,7 +37,7 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
     ? await svc
         .from("gps_devices")
         .select(`
-          id, gps903_device_id, case_id, agent_id,
+          id, gps903_device_id, case_id, agent_id, phone_number, provider,
           cases ( case_number ),
           agents ( id, full_name, agent_code )
         `)
@@ -49,9 +49,13 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
 
   // Build map: gps903_device_id → LinkedCase[]
   const linkedMap = new Map<number, LinkedCase[]>();
+  // Build map: gps903_device_id → first-row SIM info (phone_number + provider)
+  const simMap    = new Map<number, { phoneNumber: string | null; provider: string | null }>();
+
   for (const row of opRows) {
     const gId: number = row.gps903_device_id as number;
     const r = row as Record<string, any>;
+
     const entry: LinkedCase = {
       gpsDeviceId: r.id,
       caseId:      r.case_id,
@@ -63,6 +67,10 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
     const existing = linkedMap.get(gId) ?? [];
     existing.push(entry);
     linkedMap.set(gId, existing);
+
+    if (!simMap.has(gId)) {
+      simMap.set(gId, { phoneNumber: r.phone_number ?? null, provider: r.provider ?? null });
+    }
   }
 
   // 3. Enrich and filter
@@ -75,6 +83,8 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
     lastSeen:    d.last_seen,
     syncedAt:    d.synced_at,
     linkedCases: linkedMap.get(d.gps903_device_id) ?? [],
+    phoneNumber: simMap.get(d.gps903_device_id)?.phoneNumber ?? null,
+    provider:    simMap.get(d.gps903_device_id)?.provider    ?? null,
   }));
 
   const displayed =

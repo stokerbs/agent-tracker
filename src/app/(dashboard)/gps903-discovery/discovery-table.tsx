@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Phone, Search, Signal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,23 @@ import {
 import { ImportToCaseDialog } from "@/components/gps903/import-to-case-dialog";
 import { RelinkAgentDialog } from "@/components/gps903/relink-agent-dialog";
 import type { AgentOption, CaseOption, EnrichedDevice } from "./types";
+
+const PROVIDER_CFG: Record<string, string> = {
+  AIS:    "bg-green-500/10 text-green-400  border-green-500/20",
+  TRUE:   "bg-red-500/10   text-red-400    border-red-500/20",
+  DTAC:   "bg-blue-500/10  text-blue-400   border-blue-500/20",
+  GPS903: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+};
+
+function ProviderBadge({ provider }: { provider: string }) {
+  const cls = PROVIDER_CFG[provider] ?? "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider ${cls}`}>
+      <Signal className="h-2.5 w-2.5" />
+      {provider}
+    </span>
+  );
+}
 
 function timeAgo(ts: string | null): string {
   if (!ts) return "—";
@@ -41,9 +58,11 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
     const q = search.toLowerCase();
     return (
       String(d.gps903Id).includes(q) ||
-      (d.deviceName?.toLowerCase().includes(q) ?? false) ||
-      (d.imei?.toLowerCase().includes(q) ?? false) ||
-      (d.model?.toLowerCase().includes(q) ?? false)
+      (d.deviceName?.toLowerCase().includes(q)  ?? false) ||
+      (d.imei?.toLowerCase().includes(q)         ?? false) ||
+      (d.model?.toLowerCase().includes(q)        ?? false) ||
+      (d.phoneNumber?.toLowerCase().includes(q)  ?? false) ||
+      (d.provider?.toLowerCase().includes(q)     ?? false)
     );
   });
 
@@ -52,7 +71,7 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search name, IMEI, model…"
+          placeholder="Search name, IMEI, model, phone, provider…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-8 text-sm"
@@ -103,9 +122,16 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                       </div>
                     </TableCell>
 
-                    {/* IMEI */}
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {d.imei ?? "—"}
+                    {/* IMEI + SIM info */}
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="font-mono text-xs text-muted-foreground">{d.imei ?? "—"}</p>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                          <Phone className="h-3 w-3 shrink-0" />
+                          <span className="font-mono">{d.phoneNumber ?? "—"}</span>
+                        </div>
+                        {d.provider && <ProviderBadge provider={d.provider} />}
+                      </div>
                     </TableCell>
 
                     {/* Model */}
