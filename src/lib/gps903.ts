@@ -184,6 +184,36 @@ export interface TrackingResult {
   ignition:    boolean;              // ACC on/off (from dataContext[0])
   fixTime:     string;               // deviceUtcDate as-is
   locateMode:  "gps" | "lbs" | "unknown"; // gps = satellite fix; lbs = cell tower; unknown = field absent
+  stopMinutes: number | null;        // minutes stopped (stopTimeMinute or parsed stopTime string)
+}
+
+/**
+ * Parse GPS903 stop-time strings like "3Hour20Minute" → 200 (total minutes).
+ * Falls back to numeric conversion for plain number strings.
+ */
+function parseGps903StopString(s: string): number | null {
+  const asNum = Number(s);
+  if (!isNaN(asNum)) return asNum >= 0 ? asNum : null;
+  const h = s.match(/(\d+)\s*[Hh]our/)?.[1];
+  const m = s.match(/(\d+)\s*[Mm]inute/)?.[1];
+  if (h === undefined && m === undefined) return null;
+  return (parseInt(h ?? "0", 10) * 60) + parseInt(m ?? "0", 10);
+}
+
+/**
+ * Convert a GPS903 device UTC date string to an ISO 8601 timestamp for PostgreSQL.
+ * GPS903 format is typically "YYYY-MM-DD HH:MM:SS" (space-separated, no timezone).
+ * We treat it as UTC to match the "deviceUtcDate" field name.
+ */
+function gps903DateToIso(fixTime: string): string | null {
+  if (!fixTime) return null;
+  if (fixTime.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(fixTime)) {
+    const d = new Date(fixTime);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const normalized = fixTime.replace(/\//g, "-").replace(" ", "T") + "Z";
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 /**
@@ -307,15 +337,31 @@ export async function gps903GetTracking(
     else if (s.includes("LBS")) { locateMode = "lbs"; locateModeSource = `status="${data.status}"`; }
   }
 
+  // Stop duration — try stopTimeMinute (numeric, confirmed in GetDevicesHistory) then stopTime (string)
+  let stopMinutes: number | null = null;
+  if ("stopTimeMinute" in data && data.stopTimeMinute !== null && data.stopTimeMinute !== "") {
+    const n = Number(data.stopTimeMinute);
+    if (!isNaN(n) && n >= 0) stopMinutes = n;
+  }
+  if (stopMinutes === null) {
+    const stopRaw = data.stopTime ?? data.stopDuration ?? data.stoppedTime;
+    if (stopRaw !== undefined && stopRaw !== null && stopRaw !== "") {
+      stopMinutes = typeof stopRaw === "number"
+        ? (stopRaw >= 0 ? stopRaw : null)
+        : parseGps903StopString(String(stopRaw));
+    }
+  }
+
   const result: TrackingResult = {
     lat,
     lng,
-    speed:      parseFloat(String(data.speed)) || 0,
-    course:     Number(data.course) || 0,
+    speed:       parseFloat(String(data.speed)) || 0,
+    course:      Number(data.course) || 0,
     battery,
     ignition,
-    fixTime:    String(data.deviceUtcDate ?? new Date().toISOString()),
+    fixTime:     String(data.deviceUtcDate ?? new Date().toISOString()),
     locateMode,
+    stopMinutes,
   };
 
   console.log(
@@ -733,6 +779,10 @@ export async function applyPositionToDevice(
     last_locate_mode: pos.locateMode,
   };
   if (pos.battery !== null) deviceUpdate.last_battery_pct = pos.battery;
+
+  const positionTime = gps903DateToIso(pos.fixTime);
+  if (positionTime) deviceUpdate.last_position_time = positionTime;
+  if (pos.stopMinutes !== null) deviceUpdate.last_stop_minutes = pos.stopMinutes;
 
   await Promise.all([
     svc.from("gps_device_positions").insert(posRow),

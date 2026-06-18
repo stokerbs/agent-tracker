@@ -22,6 +22,7 @@ import {
   BatteryCharging,
   BatteryMedium,
   Bell,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ import {
   Satellite,
   Shield,
   SlidersHorizontal,
+  Timer,
   Trash2,
   User,
   Users,
@@ -698,6 +700,29 @@ function LocateModeBadge({
   );
 }
 
+function formatPositionTime(ts: string | null | undefined): string {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    const day  = d.getUTCDate().toString().padStart(2, "0");
+    const mon  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+    const hh   = d.getUTCHours().toString().padStart(2, "0");
+    const mm   = d.getUTCMinutes().toString().padStart(2, "0");
+    const ss   = d.getUTCSeconds().toString().padStart(2, "0");
+    return `${day} ${mon} ${d.getUTCFullYear()} ${hh}:${mm}:${ss}`;
+  } catch { return "—"; }
+}
+
+function formatStopMinutes(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined || minutes < 0) return "—";
+  if (minutes === 0) return "0m";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 // ─────────────────────────────────────────────
 // GPS Device popup — Device info · no agent data
 // ─────────────────────────────────────────────
@@ -764,6 +789,18 @@ function GpsDevicePopup({
               <span className="font-mono" style={{ color: speedColor(speed) }}>
                 {speed.toFixed(1)} km/h
               </span>
+            </div>
+
+            {/* Position time — UTC timestamp of the last GPS fix */}
+            <div className="flex items-center gap-1.5">
+              <CalendarClock className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+              <span className="font-mono">{formatPositionTime(device.last_position_time)}</span>
+            </div>
+
+            {/* Stop time */}
+            <div className="flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <span className="font-mono">{formatStopMinutes(device.last_stop_minutes)}</span>
             </div>
 
             {/* Last seen */}

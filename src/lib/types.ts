@@ -145,7 +145,9 @@ export interface GpsDevice {
   last_heading:      number | null;
   last_battery_pct:  number | null;
   last_seen_at:      string | null;
-  last_locate_mode:  "gps" | "lbs" | "offline" | "unknown" | null;
+  last_locate_mode:   "gps" | "lbs" | "offline" | "unknown" | null;
+  last_position_time: string | null;  // UTC timestamp of the GPS fix (deviceUtcDate)
+  last_stop_minutes:  number | null;  // minutes the device has been stopped (stopTimeMinute)
   created_by: string | null;
   deleted_at: string | null;
   created_at: string;

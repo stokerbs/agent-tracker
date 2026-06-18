@@ -7,6 +7,7 @@ import {
   Battery,
   BatteryLow,
   Briefcase,
+  CalendarClock,
   CheckCircle2,
   Clock,
   Compass,
@@ -17,6 +18,7 @@ import {
   Radio,
   Satellite,
   Signal,
+  Timer,
   User,
   XCircle,
 } from "lucide-react";
@@ -66,6 +68,29 @@ function timeAgo(ts: string | null): string {
 
 function fmtCoord(n: number | null): string {
   return n == null ? "—" : n.toFixed(6);
+}
+
+function formatPositionTime(ts: string | null): string {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    const day  = d.getUTCDate().toString().padStart(2, "0");
+    const mon  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+    const hh   = d.getUTCHours().toString().padStart(2, "0");
+    const mm   = d.getUTCMinutes().toString().padStart(2, "0");
+    const ss   = d.getUTCSeconds().toString().padStart(2, "0");
+    return `${day} ${mon} ${d.getUTCFullYear()} ${hh}:${mm}:${ss}`;
+  } catch { return "—"; }
+}
+
+function formatStopMinutes(minutes: number | null): string {
+  if (minutes === null || minutes < 0) return "—";
+  if (minutes === 0) return "0m";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 function BatteryDisplay({ pct }: { pct: number | null }) {
@@ -133,7 +158,8 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
       .select(`
         id, imei, phone_number, gps903_device_id, provider, notes, case_id,
         last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_heading,
-        last_lat, last_lng, last_seen_at, agent_id, created_at,
+        last_lat, last_lng, last_seen_at, last_locate_mode, last_position_time, last_stop_minutes,
+        agent_id, created_at,
         cases ( id, case_number ),
         agents ( id, full_name, agent_code, status, photo_url )
       `)
@@ -329,6 +355,22 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                 </span>
                 <span className="font-mono text-sm font-medium">
                   {device.last_heading != null ? `${device.last_heading}°` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <CalendarClock className="h-3.5 w-3.5" /> Position time
+                </span>
+                <span className="font-mono text-xs font-medium">
+                  {formatPositionTime(device.last_position_time ?? null)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Timer className="h-3.5 w-3.5" /> Stop time
+                </span>
+                <span className="font-mono text-sm font-medium">
+                  {formatStopMinutes(device.last_stop_minutes ?? null)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
