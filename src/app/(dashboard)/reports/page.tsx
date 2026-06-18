@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Archive, FileText } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { ReportCard } from "@/components/reports/report-card";
+import { ReportFilters } from "@/components/reports/report-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import type { Case, Report } from "@/lib/types";
@@ -14,8 +16,10 @@ export const metadata: Metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: Promise<{ show_archived?: string }>;
+  searchParams: Promise<{ show_archived?: string; q?: string; status?: string }>;
 }
+
+const VALID_STATUSES = new Set(["draft", "review", "approved", "rejected"]);
 
 export default async function ReportsPage({ searchParams }: Props) {
   const profile = await requireProfile();
@@ -24,7 +28,10 @@ export default async function ReportsPage({ searchParams }: Props) {
   const staff = isStaff(profile.role);
   const isAdmin = profile.role === "admin";
   const supabase = await createClient();
+
   const showArchived = sp.show_archived === "1";
+  const search = sp.q?.toLowerCase().trim() ?? "";
+  const statusFilter = VALID_STATUSES.has(sp.status ?? "") ? sp.status! : null;
 
   let query = supabase
     .from("reports")
@@ -37,8 +44,20 @@ export default async function ReportsPage({ searchParams }: Props) {
     query = query.is("archived_at", null);
   }
 
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  }
+
   const { data } = await query;
-  const reports = (data ?? []) as (Report & { cases: Case | null })[];
+  const allReports = (data ?? []) as (Report & { cases: Case | null })[];
+
+  const reports = search
+    ? allReports.filter((r) => {
+        const title = r.title.toLowerCase();
+        const caseNum = (r.cases?.case_number ?? "").toLowerCase();
+        return title.includes(search) || caseNum.includes(search);
+      })
+    : allReports;
 
   return (
     <div className="space-y-6">
@@ -57,11 +76,15 @@ export default async function ReportsPage({ searchParams }: Props) {
         </Link>
       </PageHeader>
 
+      <Suspense>
+        <ReportFilters count={reports.length} />
+      </Suspense>
+
       {reports.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title={showArchived ? "ไม่มีรายงานที่เก็บถาวร" : t("noTitle")}
-          description={showArchived ? "ยังไม่มีรายงานที่ถูกเก็บถาวร" : t("noDescription")}
+          title={search || statusFilter ? t("filters.noResults") : showArchived ? "ไม่มีรายงานที่เก็บถาวร" : t("noTitle")}
+          description={search || statusFilter ? t("filters.noResultsDescription") : showArchived ? "ยังไม่มีรายงานที่ถูกเก็บถาวร" : t("noDescription")}
         />
       ) : (
         <div className="grid gap-4">

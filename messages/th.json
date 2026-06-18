@@ -600,6 +600,14 @@
       "submitted": "รีวิว",
       "approved": "อนุมัติ",
       "rejected": "ปฏิเสธ"
+    },
+    "filters": {
+      "searchPlaceholder": "ค้นหาชื่อหรือหมายเลขคดี…",
+      "allStatuses": "ทุกสถานะ",
+      "clearFilters": "ล้างตัวกรอง",
+      "results": "{count} รายงาน",
+      "noResults": "ไม่พบรายงานที่ตรงกัน",
+      "noResultsDescription": "ลองค้นหาด้วยคำอื่นหรือเปลี่ยนตัวกรองสถานะ"
     }
   },
   "emergency": {

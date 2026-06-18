@@ -600,6 +600,14 @@
       "submitted": "REVIEW",
       "approved": "APPROVED",
       "rejected": "REJECTED"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by title or case…",
+      "allStatuses": "All statuses",
+      "clearFilters": "Clear filters",
+      "results": "{count} reports",
+      "noResults": "No reports match",
+      "noResultsDescription": "Try a different search or status filter."
     }
   },
   "emergency": {
