@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, Loader2, Plus, Satellite, Settings2, Trash2, XCircle, Zap } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Satellite,
+  Settings2,
+  Trash2,
+  XCircle,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +23,7 @@ import {
   toggleCredentialActive,
   deleteCredential,
   testCredential,
+  type TestResult,
 } from "./actions";
 
 interface Props {
@@ -53,11 +64,7 @@ export function CredentialsClient({ credentials }: Props) {
             </Button>
           </CardContent>
         </Card>
-        <CredentialFormDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          mode="add"
-        />
+        <CredentialFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
       </>
     );
   }
@@ -77,22 +84,22 @@ export function CredentialsClient({ credentials }: Props) {
         ))}
       </div>
 
-      <CredentialFormDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        mode="add"
-      />
+      <CredentialFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </>
   );
 }
 
 function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
-  const [editOpen, setEditOpen]         = useState(false);
-  const [testResult, setTestResult]     = useState<string | null>(null);
-  const [, startTransition]             = useTransition();
-  const [toggling, setToggling]         = useState(false);
-  const [testing, setTesting]           = useState(false);
-  const [deleting, setDeleting]         = useState(false);
+  const [editOpen, setEditOpen]     = useState(false);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [, startTransition]         = useTransition();
+  const [toggling, setToggling]     = useState(false);
+  const [testing, setTesting]       = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+
+  // Track device ID optimistically after detection so row updates without reload
+  const [detectedId, setDetectedId] = useState<number | null>(null);
+  const displayId = detectedId ?? cred.gps903_device_id;
 
   function handleToggle() {
     setToggling(true);
@@ -110,13 +117,21 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
     startTransition(async () => {
       const res = await testCredential(cred.id);
       setTesting(false);
-      if (res.error) {
-        setTestResult(`✗ ${res.error}`);
+      setTestResult(res);
+
+      if (res.ok) {
+        if (res.device_id && !cred.gps903_device_id) {
+          setDetectedId(res.device_id);
+        }
+        toast.success(
+          res.device_id && !cred.gps903_device_id
+            ? `Device ID #${res.device_id} detected — position confirmed`
+            : "Device is online",
+        );
+      } else if (res.loginOk) {
+        toast.warning("Login succeeded — enter Device ID manually via Edit");
+      } else if (res.error) {
         toast.error(res.error);
-      } else {
-        const msg = `✓ ${res.lat?.toFixed(5)}, ${res.lng?.toFixed(5)} · ${res.speed} km/h · ${res.battery ?? "?"}% battery`;
-        setTestResult(msg);
-        toast.success("Device is online");
       }
     });
   }
@@ -132,6 +147,8 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
     });
   }
 
+  const hasDeviceId = displayId != null;
+
   return (
     <>
       <div
@@ -143,13 +160,14 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
         <div className="flex flex-wrap items-start gap-3">
           {/* Icon */}
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/30">
-            <Satellite className="h-4.5 w-4.5 text-emerald-500" />
+            <Satellite className="h-4 w-4 text-emerald-500" />
           </div>
 
           {/* Info */}
-          <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold">{cred.device_name}</span>
+
               <Badge
                 variant="secondary"
                 className={cn(
@@ -161,38 +179,79 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               >
                 {cred.is_active ? "Active" : "Inactive"}
               </Badge>
-              {cred.last_sync_ok === true && (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+
+              {!hasDeviceId && (
+                <Badge
+                  variant="secondary"
+                  className="gap-0.5 border border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
+                >
+                  <AlertCircle className="h-2.5 w-2.5" />
+                  No Device ID — click Test
+                </Badge>
               )}
-              {cred.last_sync_ok === false && (
-                <XCircle className="h-3.5 w-3.5 text-red-500" />
-              )}
+
+              {cred.last_sync_ok === true  && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+              {cred.last_sync_ok === false && <XCircle      className="h-3.5 w-3.5 text-red-500" />}
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
               <span className="font-mono">IMEI {maskImei(cred.imei)}</span>
-              <span className="font-mono">ID #{cred.gps903_device_id}</span>
+              {hasDeviceId ? (
+                <span className="font-mono">
+                  ID #{displayId}
+                  {detectedId && !cred.gps903_device_id && (
+                    <span className="ml-1 text-emerald-600 dark:text-emerald-400">(just detected)</span>
+                  )}
+                </span>
+              ) : (
+                <span className="font-mono text-muted-foreground/50">ID unknown</span>
+              )}
               <span>Last sync: {timeAgo(cred.last_synced_at)}</span>
             </div>
 
+            {/* Test result banner */}
             {testResult && (
-              <p
+              <div
                 className={cn(
-                  "mt-1 font-mono text-xs",
-                  testResult.startsWith("✓") ? "text-emerald-600 dark:text-emerald-400" : "text-red-500",
+                  "mt-1 flex items-start gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-xs",
+                  testResult.ok
+                    ? "bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                    : testResult.loginOk
+                    ? "bg-amber-500/5 text-amber-700 dark:text-amber-400"
+                    : "bg-red-500/5 text-red-600",
                 )}
               >
-                {testResult}
-              </p>
+                {testResult.ok ? (
+                  <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
+                ) : (
+                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                )}
+                <span>
+                  {testResult.ok ? (
+                    <>
+                      {testResult.device_id && `#${testResult.device_id} · `}
+                      {testResult.lat != null && (
+                        <>
+                          {testResult.lat.toFixed(5)}, {testResult.lng!.toFixed(5)}
+                          {testResult.speed != null && <> · {Math.round(testResult.speed)} km/h</>}
+                          {testResult.battery != null && <> · {testResult.battery}%</>}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    testResult.error
+                  )}
+                </span>
+              </div>
             )}
           </div>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             <Button
-              variant="ghost"
+              variant={!hasDeviceId ? "default" : "ghost"}
               size="sm"
-              className="h-8 gap-1 text-xs"
+              className={cn("h-8 gap-1 text-xs", !hasDeviceId && "bg-amber-500 hover:bg-amber-600 text-white")}
               onClick={handleTest}
               disabled={testing}
             >
@@ -201,7 +260,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               ) : (
                 <Zap className="h-3.5 w-3.5" />
               )}
-              Test
+              {testing ? "Testing…" : "Test"}
             </Button>
 
             <Button
@@ -221,7 +280,9 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               onClick={handleToggle}
               disabled={toggling}
             >
-              {toggling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (cred.is_active ? "Disable" : "Enable")}
+              {toggling
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : (cred.is_active ? "Disable" : "Enable")}
             </Button>
 
             <Button
@@ -231,7 +292,9 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              {deleting
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </div>

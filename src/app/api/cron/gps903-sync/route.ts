@@ -34,11 +34,12 @@ export async function GET(request: NextRequest) {
   const { data: credentials, error: credErr } = await svc
     .from("gps903_credentials")
     .select("id, imei, device_password, gps903_device_id, device_name")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .not("gps903_device_id", "is", null);
 
   if (credErr) return NextResponse.json({ error: credErr.message }, { status: 500 });
   if (!credentials?.length) {
-    return NextResponse.json({ ok: true, skipped: "no active credentials" });
+    return NextResponse.json({ ok: true, skipped: "no active credentials with a known device ID" });
   }
 
   const now = new Date().toISOString();

@@ -197,7 +197,7 @@ export interface Gps903Credential {
   device_name:      string;
   imei:             string;
   // device_password intentionally absent — never sent to the browser
-  gps903_device_id: number;
+  gps903_device_id: number | null;  // null until auto-detected via Test Connection
   is_active:        boolean;
   last_synced_at:   string | null;
   last_sync_ok:     boolean | null;

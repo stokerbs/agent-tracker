@@ -319,6 +319,80 @@ export async function gps903GetHistory(
     .filter((p) => !isNaN(p.lat) && !isNaN(p.lng));
 }
 
+// ── Device ID auto-detection ─────────────────────────────────────────────────
+
+/**
+ * Attempt to extract the GPS903 integer Device ID from the tracking page.
+ *
+ * After an IMEI login, GPS903 scopes the session to the logged-in device.
+ * The tracking page embeds the device ID in JavaScript globals or data attrs.
+ * We parse those patterns rather than requiring the operator to look it up manually.
+ *
+ * Returns the detected device ID, or null if parsing fails (falls back to manual entry).
+ */
+export async function detectGps903DeviceId(sessionCookie: string): Promise<number | null> {
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+
+  // Pages to probe, in preference order
+  const candidates = [
+    `${GPS903_BASE}/Track.aspx?language=en-us`,
+    `${GPS903_BASE}/Default.aspx`,
+    `${GPS903_BASE}/`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers:  { "Cookie": sessionCookie, "User-Agent": ua },
+        redirect: "follow",
+        signal:   withTimeout(FETCH_TIMEOUT),
+      });
+
+      if (!res.ok) {
+        console.log(`[GPS903] detectDeviceId — ${url} → HTTP ${res.status}, skipping`);
+        continue;
+      }
+
+      const html = await res.text();
+      console.log(`[GPS903] detectDeviceId — ${url} (${html.length} bytes)`);
+
+      // GPS903 embeds the device ID as a JS integer in various forms.
+      // Ordered from most specific to broadest to minimise false positives.
+      const patterns = [
+        /["']DeviceID["']\s*[,:]\s*(\d{5,8})/gi,
+        /DeviceID\s*=\s*(\d{5,8})/gi,
+        /["']deviceId["']\s*[,:]\s*(\d{5,8})/gi,
+        /deviceId\s*=\s*(\d{5,8})/gi,
+        /var\s+(?:deviceID|DeviceID|deviceId)\s*=\s*(\d{5,8})/gi,
+        /GetTracking[^}]{0,120}?(\d{5,8})/gi,
+        /DeviceID[^\d]{1,8}(\d{5,8})/gi,
+      ];
+
+      const freq = new Map<number, number>();
+      for (const pattern of patterns) {
+        for (const match of html.matchAll(pattern)) {
+          const id = Number(match[1]);
+          if (id > 0) freq.set(id, (freq.get(id) ?? 0) + 1);
+        }
+      }
+
+      if (freq.size > 0) {
+        const [[bestId]] = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+        console.log(
+          `[GPS903] detectDeviceId — found ${bestId} ` +
+          `(${freq.get(bestId)} pattern matches across ${freq.size} candidate(s))`,
+        );
+        return bestId;
+      }
+    } catch (e) {
+      console.warn(`[GPS903] detectDeviceId — ${url} error:`, String(e));
+    }
+  }
+
+  console.log("[GPS903] detectDeviceId — no device ID found in any page");
+  return null;
+}
+
 // ── Per-credential session cache ─────────────────────────────────────────────
 // Each GPS903 device has its own IMEI login → distinct ASP.NET session.
 // Sessions are cached in gps903_credential_sessions keyed by credential UUID.

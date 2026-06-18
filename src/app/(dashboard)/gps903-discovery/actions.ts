@@ -22,15 +22,16 @@ export async function syncGps903Devices(): Promise<{
   const { data: credentials, error: credErr } = await svc
     .from("gps903_credentials")
     .select("id, imei, device_password, gps903_device_id, device_name")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .not("gps903_device_id", "is", null);
 
   if (credErr) return { error: handleDbError(credErr, "gps903_credentials") };
 
   if (!credentials?.length) {
     return {
       error:
-        "No active GPS903 credentials found. " +
-        "Add at least one device in GPS Credentials before syncing.",
+        "No active GPS903 credentials with a detected Device ID. " +
+        "Go to GPS Credentials, click Test on each device to auto-detect the Device ID, then retry.",
     };
   }
 

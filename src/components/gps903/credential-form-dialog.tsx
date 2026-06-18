@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, TriangleAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { Gps903Credential } from "@/lib/types";
-import { createCredential, updateCredential } from "@/app/(dashboard)/gps903-credentials/actions";
+import {
+  createCredential,
+  updateCredential,
+  testRawCredential,
+  type TestResult,
+} from "@/app/(dashboard)/gps903-credentials/actions";
 
 interface Props {
   open:         boolean;
@@ -27,23 +33,26 @@ const EMPTY = {
   device_name:      "",
   imei:             "",
   device_password:  "",
-  gps903_device_id: "" as unknown as number,
+  gps903_device_id: "" as string,
   is_active:        true,
 };
 
 export function CredentialFormDialog({ open, onOpenChange, mode, credential }: Props) {
-  const [form, setForm]       = useState(EMPTY);
-  const [pending, startTransition] = useTransition();
+  const [form, setForm]             = useState(EMPTY);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [saving, startSave]         = useTransition();
+  const [testing, startTest]        = useTransition();
 
   useEffect(() => {
     if (open) {
+      setTestResult(null);
       setForm(
         mode === "edit" && credential
           ? {
               device_name:      credential.device_name,
               imei:             credential.imei,
-              device_password:  "",           // never pre-filled — blank = keep existing
-              gps903_device_id: credential.gps903_device_id,
+              device_password:  "",   // never pre-filled
+              gps903_device_id: credential.gps903_device_id?.toString() ?? "",
               is_active:        credential.is_active,
             }
           : EMPTY,
@@ -51,18 +60,44 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
     }
   }, [open, mode, credential]);
 
-  function set(field: string, value: string | number | boolean) {
+  function set(field: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    // Clear test result when credentials change
+    if (field === "imei" || field === "device_password") setTestResult(null);
+  }
+
+  function handleTest() {
+    if (!/^\d{15}$/.test(form.imei.trim())) {
+      toast.error("Enter a valid 15-digit IMEI before testing");
+      return;
+    }
+    if (!form.device_password) {
+      toast.error("Enter the device password before testing");
+      return;
+    }
+
+    startTest(async () => {
+      const res = await testRawCredential(form.imei.trim(), form.device_password);
+      setTestResult(res);
+
+      // Auto-fill detected device ID into the form
+      if (res.device_id) {
+        setForm((prev) => ({ ...prev, gps903_device_id: String(res.device_id) }));
+      }
+
+      if (res.ok) {
+        toast.success(`Device ID #${res.device_id} detected — position confirmed`);
+      } else if (res.loginOk) {
+        toast.warning("Login succeeded — enter Device ID manually");
+      } else if (res.error) {
+        toast.error(res.error);
+      }
+    });
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const deviceId = Number(form.gps903_device_id);
-    if (isNaN(deviceId) || deviceId <= 0) {
-      toast.error("GPS903 Device ID must be a positive number");
-      return;
-    }
     if (!/^\d{15}$/.test(form.imei.trim())) {
       toast.error("IMEI must be exactly 15 digits");
       return;
@@ -72,7 +107,14 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
       return;
     }
 
-    startTransition(async () => {
+    const rawId = form.gps903_device_id.trim();
+    const deviceId = rawId ? Number(rawId) : null;
+    if (rawId && (isNaN(deviceId!) || deviceId! <= 0)) {
+      toast.error("Device ID must be a positive number");
+      return;
+    }
+
+    startSave(async () => {
       const payload = {
         device_name:      form.device_name.trim(),
         imei:             form.imei.trim(),
@@ -95,6 +137,8 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
     });
   }
 
+  const canTest = form.imei.length === 15 && form.device_password.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -105,6 +149,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Device Name */}
           <div className="space-y-1.5">
             <Label htmlFor="device_name">Device Name</Label>
             <Input
@@ -116,21 +161,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="gps903_device_id">GPS903 Device ID</Label>
-            <Input
-              id="gps903_device_id"
-              type="number"
-              placeholder="e.g. 3315745"
-              value={form.gps903_device_id || ""}
-              onChange={(e) => set("gps903_device_id", e.target.value)}
-              required
-            />
-            <p className="text-[11px] text-muted-foreground">
-              The integer device ID from the GPS903 platform.
-            </p>
-          </div>
-
+          {/* IMEI */}
           <div className="space-y-1.5">
             <Label htmlFor="imei">IMEI</Label>
             <Input
@@ -143,6 +174,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
             />
           </div>
 
+          {/* Password */}
           <div className="space-y-1.5">
             <Label htmlFor="device_password">
               Device Password
@@ -162,6 +194,86 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
             />
           </div>
 
+          {/* Test Connection */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={handleTest}
+              disabled={testing || !canTest}
+            >
+              {testing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="h-3.5 w-3.5" />
+              )}
+              {testing ? "Testing…" : "Test Connection & Auto-Detect Device ID"}
+            </Button>
+
+            {/* Test result */}
+            {testResult && (
+              <div
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs",
+                  testResult.ok
+                    ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                    : testResult.loginOk
+                    ? "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400"
+                    : "border-red-500/30 bg-red-500/5 text-red-600",
+                )}
+              >
+                {testResult.ok && <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                {(testResult.loginOk || (!testResult.ok && testResult.error)) && (
+                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                )}
+                <span>
+                  {testResult.ok ? (
+                    <>
+                      Login OK · Device ID{" "}
+                      <span className="font-mono font-bold">#{testResult.device_id}</span>{" "}
+                      detected
+                      {testResult.lat != null && (
+                        <>
+                          {" "}· {testResult.lat.toFixed(5)}, {testResult.lng!.toFixed(5)}
+                          {testResult.speed != null && <> · {Math.round(testResult.speed)} km/h</>}
+                          {testResult.battery != null && <> · {testResult.battery}% battery</>}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    testResult.error
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Device ID (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="gps903_device_id">
+              GPS903 Device ID
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                (auto-detected above, or enter manually)
+              </span>
+            </Label>
+            <Input
+              id="gps903_device_id"
+              type="number"
+              placeholder="Auto-detected by Test Connection"
+              value={form.gps903_device_id}
+              onChange={(e) => set("gps903_device_id", e.target.value)}
+              min={1}
+            />
+            {!form.gps903_device_id && (
+              <p className="text-[11px] text-muted-foreground">
+                The device won&apos;t be polled until a Device ID is detected or entered.
+              </p>
+            )}
+          </div>
+
+          {/* Active toggle */}
           <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
             <div>
               <p className="text-sm font-medium">Active</p>
@@ -181,8 +293,8 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending} className="gap-1.5">
-              {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <Button type="submit" disabled={saving} className="gap-1.5">
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {mode === "add" ? "Add Device" : "Save Changes"}
             </Button>
           </DialogFooter>
