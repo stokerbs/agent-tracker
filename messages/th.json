@@ -124,7 +124,8 @@
       "settings": "การตั้งค่า",
       "invoices": "ใบแจ้งหนี้",
       "analytics": "วิเคราะห์",
-      "field": "แอปภาคสนาม"
+      "field": "แอปภาคสนาม",
+      "gpsDevices": "อุปกรณ์ GPS"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
@@ -333,7 +334,13 @@
         "provider": "ผู้ให้บริการมือถือ",
         "providerPlaceholder": "เลือกผู้ให้บริการ",
         "notes": "หมายเหตุ",
-        "notesPlaceholder": "ติดตั้งบนยานพาหนะเป้าหมาย…"
+        "notesPlaceholder": "ติดตั้งบนยานพาหนะเป้าหมาย…",
+        "linkedAgent": "เจ้าหน้าที่ที่เชื่อมต่อ (แผนที่สด)",
+        "linkedAgentPlaceholder": "เลือกเจ้าหน้าที่",
+        "linkedAgentHint": "สัญญาณ GPS903 สำหรับ IMEI นี้จะอัปเดตตำแหน่งของเจ้าหน้าที่บนแผนที่สด",
+        "noAgent": "ไม่มี (ไม่อัปเดตแผนที่สด)",
+        "gps903DeviceId": "GPS903 Device ID",
+        "gps903DeviceIdHint": "หมายเลข Device ID จากแพลตฟอร์ม GPS903 จำเป็นสำหรับการอัปเดตแผนที่สด"
       },
       "deleteDialog": {
         "title": "ยืนยันการลบ GPS",
@@ -686,6 +693,33 @@
       "active": "ใช้งานอยู่",
       "acknowledged": "รับทราบแล้ว",
       "resolved": "แก้ไขแล้ว"
+    }
+  },
+  "gpsDevices": {
+    "title": "อุปกรณ์ GPS",
+    "description": "สถานะสดของอุปกรณ์ GPS903 ทั้งหมดและเจ้าหน้าที่ที่เชื่อมต่อ",
+    "refresh": "รีเฟรช",
+    "tableTitle": "รายการอุปกรณ์",
+    "empty": "ยังไม่มีอุปกรณ์ GPS903 ที่ตั้งค่าไว้",
+    "emptyHint": "เปิดคดี เพิ่ม GPS Tracker เลือก GPS903 เป็น Provider ใส่ Device ID และเชื่อมต่อกับเจ้าหน้าที่",
+    "unlinked": "ไม่ได้เชื่อมต่อ",
+    "viewOnMap": "ดูบนแผนที่",
+    "pollingNote": "ตำแหน่งอัปเดตทุก 1 นาที ผ่านการ polling GPS903 แผนที่สดอัปเดตแบบเรียลไทม์ผ่าน Supabase Realtime",
+    "stats": {
+      "total": "อุปกรณ์ทั้งหมด",
+      "linked": "เชื่อมต่อกับเจ้าหน้าที่",
+      "live": "สด (< 10 นาที)",
+      "stale": "หมดอายุ"
+    },
+    "col": {
+      "device": "อุปกรณ์",
+      "imei": "IMEI",
+      "linkedAgent": "เจ้าหน้าที่",
+      "case": "คดี",
+      "battery": "แบตเตอรี่",
+      "speed": "ความเร็ว",
+      "lastSeen": "พบล่าสุด",
+      "status": "สถานะ"
     }
   },
   "analytics": {

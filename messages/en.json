@@ -124,7 +124,8 @@
       "settings": "Settings",
       "invoices": "Invoices",
       "analytics": "Analytics",
-      "field": "Field App"
+      "field": "Field App",
+      "gpsDevices": "GPS Devices"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
@@ -333,7 +334,13 @@
         "provider": "Mobile Provider",
         "providerPlaceholder": "Select provider",
         "notes": "Notes",
-        "notesPlaceholder": "Installed on target vehicle…"
+        "notesPlaceholder": "Installed on target vehicle…",
+        "linkedAgent": "Linked Agent (Live Map)",
+        "linkedAgentPlaceholder": "Select agent",
+        "linkedAgentHint": "GPS903 pings for this IMEI will update this agent's position on the Live Map.",
+        "noAgent": "None (no Live Map update)",
+        "gps903DeviceId": "GPS903 Device ID",
+        "gps903DeviceIdHint": "Integer device ID from the GPS903 platform. Required for Live Map polling."
       },
       "deleteDialog": {
         "title": "ยืนยันการลบ GPS",
@@ -686,6 +693,33 @@
       "active": "Active",
       "acknowledged": "Acknowledged",
       "resolved": "Resolved"
+    }
+  },
+  "gpsDevices": {
+    "title": "GPS Devices",
+    "description": "Live status of all GPS903-connected devices and their linked agents.",
+    "refresh": "Refresh",
+    "tableTitle": "Device Fleet",
+    "empty": "No GPS903 devices configured yet.",
+    "emptyHint": "Open a case, add a GPS tracker, set the provider to GPS903, enter the Device ID, and link it to an agent.",
+    "unlinked": "Not linked",
+    "viewOnMap": "View on map",
+    "pollingNote": "Positions update every minute via GPS903 polling. Live Map updates in real time via Supabase Realtime.",
+    "stats": {
+      "total": "Total Devices",
+      "linked": "Linked to Agent",
+      "live": "Live (< 10 min)",
+      "stale": "Stale"
+    },
+    "col": {
+      "device": "Device",
+      "imei": "IMEI",
+      "linkedAgent": "Agent",
+      "case": "Case",
+      "battery": "Battery",
+      "speed": "Speed",
+      "lastSeen": "Last Seen",
+      "status": "Status"
     }
   },
   "analytics": {

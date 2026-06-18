@@ -21,16 +21,17 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { GpsDevice, GpsProvider } from "@/lib/types";
+import type { Agent, GpsDevice, GpsProvider } from "@/lib/types";
 
-const PROVIDERS: GpsProvider[] = ["AIS", "TRUE", "DTAC"];
+const PROVIDERS: GpsProvider[] = ["AIS", "TRUE", "DTAC", "GPS903"];
 
 interface Props {
   caseId: string;
   device?: GpsDevice;
+  agents?: Pick<Agent, "id" | "full_name" | "agent_code">[];
 }
 
-export function GpsDeviceFormDialog({ caseId, device }: Props) {
+export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
   const t = useTranslations("cases.gps");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -124,6 +125,48 @@ export function GpsDeviceFormDialog({ caseId, device }: Props) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Agent link (GPS903 Live Map) */}
+          {agents.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="gps-agent">
+                {t("fields.linkedAgent")}
+                <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
+              </Label>
+              <Select name="agent_id" defaultValue={device?.agent_id ?? "none"}>
+                <SelectTrigger id="gps-agent">
+                  <SelectValue placeholder={t("fields.linkedAgentPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("fields.noAgent")}</SelectItem>
+                  {agents.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.full_name} ({a.agent_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">{t("fields.linkedAgentHint")}</p>
+            </div>
+          )}
+
+          {/* GPS903 Device ID (for web API polling) */}
+          <div className="space-y-2">
+            <Label htmlFor="gps-gps903id">
+              {t("fields.gps903DeviceId")}
+              <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
+            </Label>
+            <Input
+              id="gps-gps903id"
+              name="gps903_device_id"
+              type="number"
+              min={1}
+              placeholder="12345"
+              defaultValue={device?.gps903_device_id ?? ""}
+              inputMode="numeric"
+            />
+            <p className="text-[11px] text-muted-foreground">{t("fields.gps903DeviceIdHint")}</p>
           </div>
 
           {/* Notes */}

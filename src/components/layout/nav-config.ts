@@ -22,6 +22,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { labelKey: "dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ALL },
       { labelKey: "field", href: "/field", icon: "Radio", roles: ALL },
       { labelKey: "map", href: "/map", icon: "MapPin", roles: STAFF },
+      { labelKey: "gpsDevices", href: "/gps-devices", icon: "Satellite", roles: STAFF },
       { labelKey: "analytics", href: "/analytics", icon: "BarChart2", roles: STAFF },
       { labelKey: "cases", href: "/cases", icon: "Briefcase", roles: ALL },
       { labelKey: "timeline", href: "/timeline", icon: "Clock", roles: ALL },

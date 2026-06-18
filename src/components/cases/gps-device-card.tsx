@@ -14,12 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { GpsDevice } from "@/lib/types";
+import type { Agent, GpsDevice } from "@/lib/types";
 
 const PROVIDER_COLORS: Record<string, string> = {
-  AIS:  "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-  TRUE: "bg-red-500/10  text-red-600  dark:text-red-400  border-red-500/20",
-  DTAC: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  AIS:    "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  TRUE:   "bg-red-500/10  text-red-600  dark:text-red-400  border-red-500/20",
+  DTAC:   "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  GPS903: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
 };
 
 interface Props {
@@ -28,9 +29,11 @@ interface Props {
   caseId: string;
   canEdit: boolean;
   canDelete: boolean;
+  agents?: Pick<Agent, "id" | "full_name" | "agent_code">[];
 }
 
-export function GpsDeviceCard({ device, index, caseId, canEdit, canDelete }: Props) {
+export function GpsDeviceCard({ device, index, caseId, canEdit, canDelete, agents = [] }: Props) {
+  const linkedAgent = agents.find((a) => a.id === device.agent_id) ?? null;
   const t = useTranslations("cases.gps");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -78,7 +81,7 @@ export function GpsDeviceCard({ device, index, caseId, canEdit, canDelete }: Pro
           {/* Actions */}
           <div className="flex items-center gap-1">
             {canEdit && (
-              <GpsDeviceFormDialog caseId={caseId} device={device} />
+              <GpsDeviceFormDialog caseId={caseId} device={device} agents={agents} />
             )}
             {canDelete && (
               <Button
@@ -115,6 +118,17 @@ export function GpsDeviceCard({ device, index, caseId, canEdit, canDelete }: Pro
           </Field>
 
           <Field label={t("fields.provider")} value={device.provider ?? null} />
+
+          {device.gps903_device_id != null && (
+            <Field label={t("fields.gps903DeviceId")} value={String(device.gps903_device_id)} />
+          )}
+
+          {linkedAgent && (
+            <Field
+              label={t("fields.linkedAgent")}
+              value={`${linkedAgent.full_name} (${linkedAgent.agent_code})`}
+            />
+          )}
 
           {device.notes && (
             <div className="sm:col-span-2">

@@ -348,7 +348,7 @@ export default async function CaseDetailPage({
                   <Radio className="h-4 w-4 text-emerald-500" />
                   {t("gpsSection.title")}
                 </CardTitle>
-                {isAdmin && <GpsDeviceFormDialog caseId={id} />}
+                {isAdmin && <GpsDeviceFormDialog caseId={id} agents={allAgents} />}
               </div>
             </CardHeader>
             <CardContent>
@@ -364,6 +364,7 @@ export default async function CaseDetailPage({
                       caseId={id}
                       canEdit={isAdmin || isSupervisor}
                       canDelete={isAdmin}
+                      agents={allAgents}
                     />
                   ))}
                 </div>

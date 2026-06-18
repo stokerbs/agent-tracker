@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import type { GpsProvider } from "@/lib/types";
 
-const GPS_PROVIDERS: GpsProvider[] = ["AIS", "TRUE", "DTAC"];
+const GPS_PROVIDERS: GpsProvider[] = ["AIS", "TRUE", "DTAC", "GPS903"];
 
 function parseProvider(v: FormDataEntryValue | null): GpsProvider | null {
   const s = String(v ?? "").trim();
@@ -36,13 +36,17 @@ export async function createGpsDevice(caseId: string, formData: FormData) {
     return { error: (e as Error).message };
   }
 
+  const agentIdRaw     = String(formData.get("agent_id") ?? "").trim();
+  const gps903DeviceId = parseInt(String(formData.get("gps903_device_id") ?? ""), 10);
   const payload = {
-    case_id:      caseId,
+    case_id:          caseId,
     imei,
-    phone_number: parsePhone(formData.get("phone_number")),
-    provider:     parseProvider(formData.get("provider")),
-    notes:        String(formData.get("notes") ?? "").trim() || null,
-    created_by:   profile.id,
+    phone_number:     parsePhone(formData.get("phone_number")),
+    provider:         parseProvider(formData.get("provider")),
+    notes:            String(formData.get("notes") ?? "").trim() || null,
+    agent_id:         agentIdRaw && agentIdRaw !== "none" ? agentIdRaw : null,
+    gps903_device_id: isNaN(gps903DeviceId) ? null : gps903DeviceId,
+    created_by:       profile.id,
   };
 
   const { error } = await supabase.from("gps_devices").insert(payload);
@@ -70,11 +74,15 @@ export async function updateGpsDevice(deviceId: string, caseId: string, formData
     return { error: (e as Error).message };
   }
 
+  const agentIdRaw     = String(formData.get("agent_id") ?? "").trim();
+  const gps903DeviceId = parseInt(String(formData.get("gps903_device_id") ?? ""), 10);
   const payload = {
     imei,
-    phone_number: parsePhone(formData.get("phone_number")),
-    provider:     parseProvider(formData.get("provider")),
-    notes:        String(formData.get("notes") ?? "").trim() || null,
+    phone_number:     parsePhone(formData.get("phone_number")),
+    provider:         parseProvider(formData.get("provider")),
+    notes:            String(formData.get("notes") ?? "").trim() || null,
+    agent_id:         agentIdRaw && agentIdRaw !== "none" ? agentIdRaw : null,
+    gps903_device_id: isNaN(gps903DeviceId) ? null : gps903DeviceId,
   };
 
   const { error } = await supabase

@@ -17,6 +17,7 @@ import {
   ScrollText,
   Settings,
   Banknote,
+  Satellite,
   type LucideProps,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const ICONS = {
   ScrollText,
   Settings,
   Banknote,
+  Satellite,
 } as const;
 
 export type IconName = keyof typeof ICONS;

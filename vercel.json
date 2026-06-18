@@ -1,4 +1,9 @@
 {
   "regions": ["sin1"],
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/gps903-sync",
+      "schedule": "* * * * *"
+    }
+  ]
 }
