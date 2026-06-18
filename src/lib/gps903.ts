@@ -1,6 +1,10 @@
 /**
  * Shared GPS903 Web API client.
  * Used by: /api/cron/gps903-sync  and  /gps-devices server actions.
+ *
+ * Login mode: IMEI No. tab (txtImeiNo / txtImeiPassword / btnLoginImei).
+ * Successful login → HTTP 302 redirect + Set-Cookie with session + auth ticket.
+ * Failed login    → HTTP 200 (login page again) — session ID extracted would be unauthenticated.
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
@@ -25,11 +29,58 @@ function extractHiddenInput(html: string, name: string): string {
   return m?.[1] ?? "";
 }
 
+/**
+ * Extract all meaningful cookies (name=value pairs) from a Response.
+ * Uses getSetCookie() (Node 20+ standard) for correct multi-header handling,
+ * with a regex fallback for the joined Set-Cookie string.
+ * Returns a full Cookie header value, e.g. "ASP.NET_SessionId=abc; .ASPXAUTH=xyz"
+ * or null if no session-relevant cookies are found.
+ */
+function extractAllCookies(response: Response): string | null {
+  const cookies: string[] = [];
+
+  // getSetCookie() is available in Node 20+ and returns each Set-Cookie header separately
+  if (typeof (response.headers as unknown as Record<string, unknown>).getSetCookie === "function") {
+    const setCookies = (response.headers as unknown as { getSetCookie(): string[] }).getSetCookie();
+    for (const header of setCookies) {
+      const nameValue = header.split(";")[0]?.trim() ?? "";
+      if (nameValue.includes("=")) cookies.push(nameValue);
+    }
+  } else {
+    // Fallback: parse the (potentially joined) Set-Cookie header value
+    const combined = response.headers.get("set-cookie") ?? "";
+    for (const pattern of [/ASP\.NET_SessionId=[^;,]+/i, /\.ASPXAUTH=[^;,]+/i]) {
+      const m = combined.match(pattern);
+      if (m) cookies.push(m[0]);
+    }
+  }
+
+  if (cookies.length === 0) return null;
+  return cookies.join("; ");
+}
+
+/** Diagnostic snapshot of GPS903-related env vars (values never logged). */
+export function gps903EnvCheck() {
+  return {
+    GPS903_IMEI:            !!process.env.GPS903_IMEI,
+    GPS903_DEVICE_PASSWORD: !!process.env.GPS903_DEVICE_PASSWORD,
+    CRON_SECRET:            !!process.env.CRON_SECRET,
+  };
+}
+
 // ── Login ─────────────────────────────────────────────────────────────────────
 
 /**
- * POST Login.aspx using the IMEI No. tab (confirmed live: txtImeiNo / txtImeiPassword / btnLoginImei).
- * Returns the ASP.NET_SessionId value on success, null on failure.
+ * POST Login.aspx using the IMEI No. tab.
+ *
+ * Form fields confirmed from live inspection:
+ *   txtImeiNo, txtImeiPassword, btnLoginImei
+ *
+ * Success indicator: HTTP 302 redirect (server redirects to dashboard).
+ * Failure indicator: HTTP 200 (server returns login page again).
+ *
+ * Returns a full Cookie header string (e.g. "ASP.NET_SessionId=…; .ASPXAUTH=…")
+ * or null on failure.
  */
 export async function gps903Login(
   imei: string,
@@ -38,20 +89,32 @@ export async function gps903Login(
   const loginUrl = `${GPS903_BASE}/Login.aspx?language=en-us`;
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
+  console.log(`[GPS903] Login attempt — IMEI prefix: ${imei.slice(0, 6)}***`);
+
+  // Step 1: GET the login page to extract ASP.NET hidden form fields
   let html: string;
+  let getRes: Response;
   try {
-    const r = await fetch(loginUrl, {
+    getRes = await fetch(loginUrl, {
       headers: { "User-Agent": ua },
       redirect: "manual",
       signal: withTimeout(FETCH_TIMEOUT),
     });
-    html = await r.text();
-  } catch {
+    html = await getRes.text();
+    console.log(`[GPS903] Login page GET — HTTP ${getRes.status}, ${html.length} bytes`);
+  } catch (e) {
+    console.error("[GPS903] Login page GET failed:", String(e));
+    return null;
+  }
+
+  const viewState = extractHiddenInput(html, "__VIEWSTATE");
+  if (!viewState) {
+    console.error("[GPS903] Login aborted — could not extract __VIEWSTATE from login page");
     return null;
   }
 
   const body = new URLSearchParams({
-    __VIEWSTATE:          extractHiddenInput(html, "__VIEWSTATE"),
+    __VIEWSTATE:          viewState,
     __VIEWSTATEGENERATOR: extractHiddenInput(html, "__VIEWSTATEGENERATOR"),
     __EVENTVALIDATION:    extractHiddenInput(html, "__EVENTVALIDATION"),
     txtImeiNo:            imei,
@@ -59,22 +122,45 @@ export async function gps903Login(
     btnLoginImei:         "",
   });
 
+  // Step 2: POST the IMEI login form
   let postRes: Response;
   try {
     postRes = await fetch(loginUrl, {
-      method:  "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": ua },
-      body:    body.toString(),
+      method:   "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent":   ua,
+      },
+      body:     body.toString(),
       redirect: "manual",
-      signal:  withTimeout(FETCH_TIMEOUT),
+      signal:   withTimeout(FETCH_TIMEOUT),
     });
-  } catch {
+    console.log(`[GPS903] Login POST — HTTP ${postRes.status}`);
+  } catch (e) {
+    console.error("[GPS903] Login POST failed:", String(e));
     return null;
   }
 
-  const setCookie = postRes.headers.get("set-cookie") ?? "";
-  const match     = setCookie.match(/ASP\.NET_SessionId=([^;]+)/i);
-  return match?.[1] ?? null;
+  // GPS903 returns HTTP 302 on success, HTTP 200 on failure.
+  // A 200 here means wrong credentials — even though it sets ASP.NET_SessionId,
+  // that session is unauthenticated and API calls will return empty/error data.
+  if (postRes.status !== 302) {
+    console.error(`[GPS903] Login failed — expected HTTP 302, got ${postRes.status} (wrong IMEI or password)`);
+    return null;
+  }
+
+  // Step 3: Extract all session cookies from the redirect response
+  const fullCookie = extractAllCookies(postRes);
+  const redacted   = fullCookie?.replace(/=([^;]+)/g, "=***") ?? "none";
+  console.log(`[GPS903] Cookies from login response: ${redacted}`);
+
+  if (!fullCookie) {
+    console.error("[GPS903] Login response was 302 but contained no session cookies");
+    return null;
+  }
+
+  console.log("[GPS903] Login successful");
+  return fullCookie;
 }
 
 // ── GetTracking ───────────────────────────────────────────────────────────────
@@ -99,26 +185,34 @@ export async function gps903GetTracking(
       method:  "POST",
       headers: {
         "Content-Type": "application/json",
-        "Cookie":        `ASP.NET_SessionId=${sessionCookie}`,
+        "Cookie":        sessionCookie,
       },
       body:   JSON.stringify({ DeviceID: deviceId, TimeZone: GPS903_TIMEZONE }),
       signal: withTimeout(FETCH_TIMEOUT),
     });
-  } catch {
+  } catch (e) {
+    console.error(`[GPS903] GetTracking device ${deviceId} fetch error:`, String(e));
     return null;
   }
 
+  console.log(`[GPS903] GetTracking device ${deviceId} — HTTP ${res.status}`);
   if (!res.ok) return null;
 
   let json: { d?: string };
   try { json = await res.json(); } catch { return null; }
-  if (!json.d) return null;
+  if (!json.d) {
+    console.log(`[GPS903] GetTracking device ${deviceId} — empty response (session may be expired)`);
+    return null;
+  }
 
   let data: Record<string, unknown>;
   try { data = JSON.parse(json.d); } catch { return null; }
 
   // Guard: Number(null)===0 which passes isNaN, so check for null first
-  if (data.lat == null || data.lng == null) return null;
+  if (data.lat == null || data.lng == null) {
+    console.log(`[GPS903] GetTracking device ${deviceId} — null coordinates`);
+    return null;
+  }
   const lat = Number(data.lat);
   const lng = Number(data.lng);
   if (isNaN(lat) || isNaN(lng)) return null;
@@ -134,7 +228,7 @@ export async function gps903GetTracking(
     if (!isNaN(raw) && raw >= 0 && raw <= 100) battery = raw;
   }
 
-  return {
+  const result: TrackingResult = {
     lat,
     lng,
     speed:    Number(data.speed)  || 0,
@@ -143,6 +237,13 @@ export async function gps903GetTracking(
     ignition,
     fixTime:  String(data.deviceUtcDate ?? new Date().toISOString()),
   };
+
+  console.log(
+    `[GPS903] GetTracking device ${deviceId} — lat:${lat.toFixed(5)} lng:${lng.toFixed(5)} ` +
+    `speed:${result.speed} battery:${battery ?? "?"} ignition:${ignition}`,
+  );
+
+  return result;
 }
 
 // ── GetDevicesHistory ─────────────────────────────────────────────────────────
@@ -168,7 +269,7 @@ export async function gps903GetHistory(
       method:  "POST",
       headers: {
         "Content-Type": "application/json",
-        "Cookie":        `ASP.NET_SessionId=${sessionCookie}`,
+        "Cookie":        sessionCookie,
       },
       body: JSON.stringify({
         DeviceID: deviceId, Start: start, End: end,
@@ -213,7 +314,19 @@ export async function getCachedSession(svc: SvcClient): Promise<string | null> {
     .maybeSingle();
 
   if (!data) return null;
-  if (new Date(data.expires_at) <= new Date()) return null;
+  if (new Date(data.expires_at) <= new Date()) {
+    console.log("[GPS903] Cached session expired");
+    return null;
+  }
+
+  // Backward compat: old format stored just the session ID value (no "=").
+  // New format stores the full cookie string. Discard old-format entries.
+  if (!data.session_cookie.includes("=")) {
+    console.log("[GPS903] Cached session is in legacy format — forcing re-login");
+    return null;
+  }
+
+  console.log("[GPS903] Using cached session");
   return data.session_cookie;
 }
 
@@ -226,19 +339,36 @@ export async function cacheSession(svc: SvcClient, cookie: string): Promise<void
   });
 }
 
-/** Returns a valid session or null if login fails / credentials missing. */
+/** Returns a valid session cookie string or null if login fails / credentials missing. */
 export async function getOrRefreshSession(svc: SvcClient): Promise<string | null> {
   const cached = await getCachedSession(svc);
   if (cached) return cached;
 
   const imei           = process.env.GPS903_IMEI;
   const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
-  if (!imei || !devicePassword) return null;
 
+  // Log env var status on every cache miss (visible in Vercel function logs)
+  console.log("[GPS903] Env check:", {
+    GPS903_IMEI:            !!imei,
+    GPS903_DEVICE_PASSWORD: !!devicePassword,
+    CRON_SECRET:            !!process.env.CRON_SECRET,
+  });
+
+  if (!imei || !devicePassword) {
+    console.error("[GPS903] Cannot login — GPS903_IMEI or GPS903_DEVICE_PASSWORD not set in environment");
+    return null;
+  }
+
+  console.log("[GPS903] Session cache miss — attempting fresh login");
   const fresh = await gps903Login(imei, devicePassword);
-  if (!fresh) return null;
+
+  if (!fresh) {
+    console.error("[GPS903] Fresh login failed — check IMEI and device password");
+    return null;
+  }
 
   await cacheSession(svc, fresh);
+  console.log("[GPS903] Session refreshed and cached");
   return fresh;
 }
 
@@ -266,7 +396,7 @@ export async function gps903GetDevicesByUserID(
       method:  "POST",
       headers: {
         "Content-Type": "application/json",
-        "Cookie":        `ASP.NET_SessionId=${sessionCookie}`,
+        "Cookie":        sessionCookie,
       },
       body:   JSON.stringify({ UserID: 0 }),
       signal: withTimeout(FETCH_TIMEOUT),
@@ -275,6 +405,7 @@ export async function gps903GetDevicesByUserID(
     return [];
   }
 
+  console.log(`[GPS903] GetDevicesByUserID — HTTP ${res.status}`);
   if (!res.ok) return [];
 
   let json: { d?: string };
@@ -285,7 +416,7 @@ export async function gps903GetDevicesByUserID(
   try { data = JSON.parse(json.d); } catch { return []; }
   if (!Array.isArray(data)) return [];
 
-  return (data as Record<string, unknown>[])
+  const devices = (data as Record<string, unknown>[])
     .filter((d) => d.DeviceID != null)
     .map((d) => ({
       gps903DeviceId: Number(d.DeviceID),
@@ -295,6 +426,9 @@ export async function gps903GetDevicesByUserID(
       lastSeen:       d.DeviceUtcDate ? String(d.DeviceUtcDate) : null,
     }))
     .filter((d) => !isNaN(d.gps903DeviceId));
+
+  console.log(`[GPS903] GetDevicesByUserID — ${devices.length} devices returned`);
+  return devices;
 }
 
 // ── Agent position update ─────────────────────────────────────────────────────
