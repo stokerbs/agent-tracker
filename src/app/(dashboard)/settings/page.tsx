@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Database, KeyRound, MapPin, Settings as SettingsIcon, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Database, KeyRound, MapPin, Settings as SettingsIcon, Sparkles } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -69,6 +70,31 @@ export default async function SettingsPage() {
               </Badge>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-500" /> AI Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Link
+            href="/settings/ai-prompts"
+            className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/40"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-violet-500/10 text-violet-500">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">AI Prompt Management</p>
+                <p className="text-xs text-muted-foreground">Edit system prompts for report generation</p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
         </CardContent>
       </Card>
 

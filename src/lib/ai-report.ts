@@ -6,6 +6,7 @@ import {
   validateReportOutput,
 } from "@/lib/security/prompt-injection";
 import { decryptField } from "@/lib/security/encryption";
+import { getAiPromptText } from "@/lib/ai-prompts";
 import type { ReportSource } from "@/lib/report-parser";
 
 export type { ReportSource };
@@ -71,11 +72,17 @@ async function generateWithAnthropic(
   const targetName = caseRecord.target_name_enc
     ? decryptField(caseRecord.target_name_enc)
     : null;
+
+  // Load system prompt from DB; falls back to hardcoded default if missing.
+  const promptKey = `surveillance_report_${language}`;
+  const systemOverride = await getAiPromptText(promptKey, "");
+
   const { system, user } = buildSecureReportPrompt(
     caseRecord,
     entries,
     targetName,
     language,
+    systemOverride || undefined,
   );
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {

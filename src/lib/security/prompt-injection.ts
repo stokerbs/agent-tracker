@@ -103,6 +103,7 @@ export function buildSecureReportPrompt(
   entries: TimelineEntry[],
   targetName: string | null = null,
   language: "th" | "en" = "th",
+  systemOverride?: string,
 ): { system: string; user: string } {
   const logLines = entries
     .map((e) => {
@@ -117,7 +118,7 @@ export function buildSecureReportPrompt(
     })
     .join("\n");
 
-  const system =
+  const defaultSystem =
     language === "th"
       ? [
           "คุณคือนักสืบเอกชนมืออาชีพที่ได้รับใบอนุญาตในประเทศไทย กำลังเขียนรายงานการสอดแนมอย่างเป็นทางการเพื่อส่งมอบให้ลูกค้าและใช้เป็นหลักฐานในชั้นศาล",
@@ -151,6 +152,8 @@ export function buildSecureReportPrompt(
           "Use formal, objective, court-appropriate language. Write in English only.",
           "Do not fabricate facts beyond the data provided.",
         ].join("\n");
+
+  const system = systemOverride?.trim() || defaultSystem;
 
   let user = [
     "<case_data>",
