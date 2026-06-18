@@ -227,6 +227,13 @@ export async function gps903GetTracking(
   const data = parseGps903Value(envelope.d) as Record<string, unknown> | null;
   if (!data || Array.isArray(data)) return null;
 
+  // Log every raw field so we can identify the locate-mode field name in production logs.
+  // GPS903 firmware versions differ; we need to see the real payload once to confirm.
+  console.log(
+    `[GPS903] GetTracking device ${deviceId} raw fields: ` +
+    Object.entries(data).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" "),
+  );
+
   // GPS903 uses latitude/longitude (strings), not lat/lng
   if (data.latitude == null || data.longitude == null) {
     console.log(`[GPS903] GetTracking device ${deviceId} — no coordinates`);
@@ -247,13 +254,57 @@ export async function gps903GetTracking(
     if (!isNaN(raw) && raw >= 0 && raw <= 100) battery = raw;
   }
 
-  // GPS903 reports locate mode via isLBS:
-  //   isLBS === 0  → GPS satellite fix
-  //   isLBS === 1  → LBS cell-tower fallback (less accurate)
-  //   field absent → unknown (treat conservatively as unknown)
+  // ── Locate mode detection ────────────────────────────────────────────────
+  //
+  // GPS903 firmware encodes fix type differently across versions.
+  // We try every known variant in priority order and log which one fires.
+  //
+  // isLBS / IsLBS / isLbs  : numeric 0=GPS, 1=LBS  (most common)
+  // locType / loctype       : numeric 0=GPS, 1=LBS
+  // isGPS  / isGps          : numeric 1=GPS, 0=LBS  (inverted flag)
+  // type                    : string  "GPS" | "LBS"
+  // status                  : string  may contain "GPS" or "LBS" as substring
+  //                           e.g. "GPS Stop", "LBS Moving"
+  //
+  // If none of the above resolves it, we emit "unknown" and the full field
+  // list is already in the log line above for diagnosis.
   let locateMode: "gps" | "lbs" | "unknown" = "unknown";
-  if ("isLBS" in data) {
-    locateMode = Number(data.isLBS) === 1 ? "lbs" : "gps";
+  let locateModeSource = "none";
+
+  // Numeric: isLBS / locType (0=GPS, 1=LBS)
+  const lbsFlagFields = ["isLBS", "IsLBS", "isLbs", "locType", "loctype", "posType"];
+  for (const f of lbsFlagFields) {
+    if (f in data && data[f] !== null && data[f] !== undefined && data[f] !== "") {
+      locateMode       = Number(data[f]) === 1 ? "lbs" : "gps";
+      locateModeSource = `${f}=${data[f]}`;
+      break;
+    }
+  }
+
+  // Numeric inverted: isGPS (1=GPS, 0=LBS)
+  if (locateMode === "unknown") {
+    const gpsFlag = ["isGPS", "isGps", "isGps"];
+    for (const f of gpsFlag) {
+      if (f in data && data[f] !== null && data[f] !== undefined && data[f] !== "") {
+        locateMode       = Number(data[f]) === 1 ? "gps" : "lbs";
+        locateModeSource = `${f}=${data[f]}`;
+        break;
+      }
+    }
+  }
+
+  // String type field
+  if (locateMode === "unknown" && "type" in data) {
+    const t = String(data.type ?? "").trim().toUpperCase();
+    if (t === "GPS" || t === "1") { locateMode = "gps"; locateModeSource = `type="${data.type}"`; }
+    else if (t === "LBS" || t === "0") { locateMode = "lbs"; locateModeSource = `type="${data.type}"`; }
+  }
+
+  // Status string contains "GPS" or "LBS" (e.g. "GPS Stop", "LBS Moving")
+  if (locateMode === "unknown" && data.status) {
+    const s = String(data.status).toUpperCase();
+    if (s.includes("GPS")) { locateMode = "gps"; locateModeSource = `status="${data.status}"`; }
+    else if (s.includes("LBS")) { locateMode = "lbs"; locateModeSource = `status="${data.status}"`; }
   }
 
   const result: TrackingResult = {
@@ -270,7 +321,7 @@ export async function gps903GetTracking(
   console.log(
     `[GPS903] GetTracking device ${deviceId} — lat:${lat.toFixed(5)} lng:${lng.toFixed(5)} ` +
     `speed:${result.speed} battery:${battery ?? "?"} ignition:${ignition} ` +
-    `locateMode:${locateMode} status:${data.status ?? "?"}`,
+    `locateMode:${locateMode} (source:${locateModeSource}) status:${data.status ?? "?"}`,
   );
 
   return result;

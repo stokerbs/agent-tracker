@@ -16,7 +16,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { gps903Login, runGps903Discovery } from "@/lib/gps903";
+import { gps903Login, gps903GetTracking, runGps903Discovery } from "@/lib/gps903";
 
 export const maxDuration = 60;
 export const dynamic     = "force-dynamic";
@@ -69,11 +69,31 @@ export async function GET(request: NextRequest) {
     if (!cred) {
       loginTestResult = `credential ${credId} not found`;
     } else if (testId && !discoverId) {
-      // Basic test only
+      // Basic test: login + GetTracking to see raw locate mode fields
       const cookie = await gps903Login(cred.imei, cred.device_password);
-      loginTestResult = cookie
-        ? { ok: true, cookies: cookie.split(";").map((c) => c.split("=")[0].trim()) }
-        : { ok: false, error: "Login failed — wrong IMEI or device password" };
+      if (!cookie) {
+        loginTestResult = { ok: false, error: "Login failed — wrong IMEI or device password" };
+      } else if (!cred.gps903_device_id) {
+        loginTestResult = {
+          ok: true,
+          cookies: cookie.split(";").map((c) => c.split("=")[0].trim()),
+          note: "No device_id stored — cannot call GetTracking. Use ?discover= to detect it.",
+        };
+      } else {
+        const pos = await gps903GetTracking(cookie, cred.gps903_device_id);
+        loginTestResult = pos
+          ? {
+              ok:          true,
+              lat:         pos.lat,
+              lng:         pos.lng,
+              speed:       pos.speed,
+              battery:     pos.battery,
+              locateMode:  pos.locateMode,
+              fixTime:     pos.fixTime,
+              note:        "Check server logs for raw field dump from GPS903 response",
+            }
+          : { ok: false, error: "Login OK but GetTracking returned null — check server logs" };
+      }
     } else if (discoverId) {
       // Full discovery run
       const cookie = await gps903Login(cred.imei, cred.device_password);

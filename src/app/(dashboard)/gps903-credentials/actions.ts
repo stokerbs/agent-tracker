@@ -21,14 +21,15 @@ export interface CredentialFormData {
 }
 
 export interface TestResult {
-  ok?:        boolean;
-  loginOk?:   boolean; // true when credentials are valid but device ID not yet detected
-  device_id?: number;  // auto-detected (and saved) GPS903 device ID
-  lat?:       number;
-  lng?:       number;
-  speed?:     number;
-  battery?:   number | null;
-  error?:     string;
+  ok?:          boolean;
+  loginOk?:     boolean; // true when credentials are valid but device ID not yet detected
+  device_id?:   number;  // auto-detected (and saved) GPS903 device ID
+  lat?:         number;
+  lng?:         number;
+  speed?:       number;
+  battery?:     number | null;
+  locateMode?:  "gps" | "lbs" | "unknown";
+  error?:       string;
 }
 
 export async function createCredential(
@@ -132,12 +133,13 @@ export async function testRawCredential(
 
   const pos = await gps903GetTracking(session, deviceId);
   return {
-    ok:       true,
-    device_id: deviceId,
-    lat:      pos?.lat,
-    lng:      pos?.lng,
-    speed:    pos?.speed,
-    battery:  pos?.battery ?? null,
+    ok:          true,
+    device_id:   deviceId,
+    lat:         pos?.lat,
+    lng:         pos?.lng,
+    speed:       pos?.speed,
+    battery:     pos?.battery ?? null,
+    locateMode:  pos?.locateMode,
   };
 }
 
@@ -196,11 +198,12 @@ export async function testCredential(id: string): Promise<TestResult> {
 
   const pos = await gps903GetTracking(session, deviceId);
   return {
-    ok:        true,
-    device_id: deviceId,
-    lat:       pos?.lat,
-    lng:       pos?.lng,
-    speed:     pos?.speed,
-    battery:   pos?.battery ?? null,
+    ok:         true,
+    device_id:  deviceId,
+    lat:        pos?.lat,
+    lng:        pos?.lng,
+    speed:      pos?.speed,
+    battery:    pos?.battery ?? null,
+    locateMode: pos?.locateMode,
   };
 }
