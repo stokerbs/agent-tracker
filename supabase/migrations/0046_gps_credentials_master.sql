@@ -37,10 +37,10 @@ WHERE d.imei IS NOT NULL
 UPDATE public.gps903_credentials c
 SET
   phone_number = COALESCE(c.phone_number, d.phone_number),
-  provider     = COALESCE(c.provider,     d.provider)
+  provider     = COALESCE(c.provider,     d.provider::TEXT)
 FROM (
   SELECT DISTINCT ON (credential_id)
-    credential_id, phone_number, provider
+    credential_id, phone_number, provider::TEXT AS provider
   FROM public.gps_devices
   WHERE deleted_at IS NULL
     AND credential_id IS NOT NULL
