@@ -209,6 +209,7 @@ export default async function DashboardPage() {
                 initialGeofences={[]}
                 emergencyAlerts={[]}
                 initialGeofenceEvents={[]}
+                initialGpsDevices={[]}
                 isAdmin={false}
               />
             </CardContent>

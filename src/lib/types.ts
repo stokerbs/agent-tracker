@@ -138,10 +138,41 @@ export interface GpsDevice {
   gps903_device_id: number | null;
   last_polled_at: string | null;
   last_poll_ok: boolean | null;
+  // Denormalized last-known position (updated by GPS903 polling, not by agents)
+  last_lat:         number | null;
+  last_lng:         number | null;
+  last_speed_kmh:   number | null;
+  last_heading:     number | null;
+  last_battery_pct: number | null;
+  last_seen_at:     string | null;
   created_by: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface GpsDevicePosition {
+  id:            string;
+  gps_device_id: string;
+  lat:           number;
+  lng:           number;
+  speed_kmh:     number;
+  heading:       number;
+  battery_pct:   number | null;
+  recorded_at:   string;
+}
+
+export interface GpsDeviceAccess {
+  id:            string;
+  gps_device_id: string;
+  agent_id:      string;
+  granted_by:    string | null;
+  created_at:    string;
+}
+
+/** GpsDevice extended with case_number for map display. */
+export interface GpsDeviceForMap extends GpsDevice {
+  case_number: string | null;
 }
 
 export interface Gps903Device {

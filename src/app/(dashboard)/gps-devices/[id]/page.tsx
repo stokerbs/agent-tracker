@@ -17,7 +17,6 @@ import {
   Satellite,
   User,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -93,13 +92,10 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
       .from("gps_devices")
       .select(`
         id, imei, phone_number, gps903_device_id, provider, notes, case_id,
-        last_polled_at, last_poll_ok, agent_id, created_at,
+        last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_heading,
+        last_lat, last_lng, last_seen_at, agent_id, created_at,
         cases ( id, case_number ),
-        agents (
-          id, full_name, agent_code, status, photo_url,
-          speed_kmh, heading, battery_pct, is_charging, last_active,
-          current_lat, current_lng
-        )
+        agents ( id, full_name, agent_code, status, photo_url )
       `)
       .eq("id", id)
       .is("deleted_at", null)
@@ -117,20 +113,18 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
   const allAgents = (agentsRes.data ?? []) as { id: string; full_name: string; agent_code: string }[];
   const agent     = device.agents as any;
   const now       = Date.now();
-  const stale     = !agent || now - new Date(agent.last_active ?? 0).getTime() >= STALE_MS;
+  const stale     = !device.last_seen_at || now - new Date(device.last_seen_at).getTime() >= STALE_MS;
 
-  // Last 48h of location history for the linked agent
-  const historyRes = agent
-    ? await supabase
-        .from("agent_location_history")
-        .select("lat, lng, speed_kmh, heading, recorded_at")
-        .eq("agent_id", agent.id)
-        .gte("recorded_at", new Date(now - 48 * 60 * 60 * 1000).toISOString())
-        .order("recorded_at", { ascending: false })
-        .limit(100)
-    : null;
+  // Last 48h of position history from gps_device_positions
+  const historyRes = await supabase
+    .from("gps_device_positions")
+    .select("lat, lng, speed_kmh, heading, recorded_at")
+    .eq("gps_device_id", device.id)
+    .gte("recorded_at", new Date(now - 48 * 60 * 60 * 1000).toISOString())
+    .order("recorded_at", { ascending: false })
+    .limit(100);
 
-  const history = (historyRes?.data ?? []) as any[];
+  const history = (historyRes.data ?? []) as any[];
 
   const pollOk = device.last_poll_ok;
 
@@ -226,7 +220,7 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
           </CardContent>
         </Card>
 
-        {/* Live telemetry */}
+        {/* Live telemetry — sourced from gps_devices.last_* */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -237,19 +231,14 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Battery</span>
-              <BatteryDisplay pct={agent?.battery_pct ?? null} />
+              <BatteryDisplay pct={device.last_battery_pct ?? null} />
             </div>
-            {agent?.is_charging && (
-              <div className="flex items-center gap-1 text-xs text-amber-500">
-                <Zap className="h-3 w-3" /> Charging
-              </div>
-            )}
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <Gauge className="h-3.5 w-3.5" /> Speed
               </span>
               <span className="font-mono text-sm font-medium">
-                {agent?.speed_kmh != null ? `${Math.round(agent.speed_kmh)} km/h` : "—"}
+                {device.last_speed_kmh != null ? `${Math.round(device.last_speed_kmh)} km/h` : "—"}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -257,30 +246,30 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
                 <Compass className="h-3.5 w-3.5" /> Heading
               </span>
               <span className="font-mono text-sm font-medium">
-                {agent?.heading != null ? `${agent.heading}°` : "—"}
+                {device.last_heading != null ? `${device.last_heading}°` : "—"}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5" /> Latitude
               </span>
-              <span className="font-mono text-xs">{fmtCoord(agent?.current_lat ?? null)}</span>
+              <span className="font-mono text-xs">{fmtCoord(device.last_lat ?? null)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5" /> Longitude
               </span>
-              <span className="font-mono text-xs">{fmtCoord(agent?.current_lng ?? null)}</span>
+              <span className="font-mono text-xs">{fmtCoord(device.last_lng ?? null)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" /> Last seen
               </span>
-              <span className={`text-xs font-medium ${stale && agent ? "text-amber-500" : ""}`}>
-                {timeAgo(agent?.last_active ?? null)}
+              <span className={`text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
+                {timeAgo(device.last_seen_at ?? null)}
               </span>
             </div>
-            {agent?.current_lat != null && (
+            {device.last_lat != null && (
               <Button asChild variant="outline" size="sm" className="mt-1 w-full gap-1.5 text-xs">
                 <Link href="/map">
                   <MapPin className="h-3 w-3" />
@@ -311,7 +300,7 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
                     <p className="font-mono text-xs text-muted-foreground">{agent.agent_code}</p>
                   </div>
                 </div>
-                <AgentStatusBadge status={stale ? "offline" : agent.status} />
+                <AgentStatusBadge status={agent.status} />
                 <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
                   <Link href={`/agents/${agent.id}`}>
                     <User className="h-3 w-3" />
@@ -324,7 +313,7 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
                 <User className="h-8 w-8 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">{t("unlinked")}</p>
                 <p className="text-[11px] text-muted-foreground/60">
-                  Link an agent above to enable Live Map updates.
+                  Link an agent above to enable GPS device access.
                 </p>
               </div>
             )}
@@ -348,7 +337,7 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Clock className="h-6 w-6 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">
-                {agent ? t("detail.noHistory") : t("detail.noAgentHistory")}
+                {t("detail.noHistory")}
               </p>
             </div>
           ) : (

@@ -448,55 +448,51 @@ export async function getOrRefreshSession(svc: SvcClient): Promise<string | null
   return fresh;
 }
 
-// ── Agent position update ─────────────────────────────────────────────────────
+// ── Device position update ────────────────────────────────────────────────────
 
 /**
- * Applies a GPS tracking result to the linked agent row.
- * Mirrors the mobile GPS reporter status-transition logic.
+ * Write a GPS tracking result to the device position history and update
+ * the denormalized last-known position on gps_devices.
+ *
+ * GPS devices are independent entities — this does NOT update the agents table.
+ * Agent locations come from the agent's own mobile GPS reporter or Traccar.
  */
-export async function applyPositionToAgent(
+export async function applyPositionToDevice(
   svc: SvcClient,
-  agentId: string,
+  gpsDeviceId: string,
   pos: TrackingResult,
 ): Promise<void> {
-  const { data: agent } = await svc
-    .from("agents")
-    .select("status")
-    .eq("id", agentId)
-    .maybeSingle();
-
-  const currentStatus = agent?.status ?? "offline";
-  let newStatus = currentStatus;
-
-  if (currentStatus !== "emergency") {
-    if (currentStatus === "offline") {
-      newStatus = pos.speed > 1 ? "moving" : "online";
-    } else if (pos.speed > 1) {
-      newStatus = "moving";
-    } else if (currentStatus === "moving") {
-      newStatus = "online";
-    }
-  }
-
   const heading = Math.round(pos.course) % 360;
-  const update: Record<string, unknown> = {
-    current_lat: pos.lat,
-    current_lng: pos.lng,
-    last_active: new Date().toISOString(),
-    speed_kmh:   pos.speed,
+  const now     = new Date().toISOString();
+
+  const posRow: Record<string, unknown> = {
+    gps_device_id: gpsDeviceId,
+    lat:           pos.lat,
+    lng:           pos.lng,
+    speed_kmh:     pos.speed,
     heading,
-    status:      newStatus,
+    recorded_at:   now,
   };
-  if (pos.battery !== null) update.battery_pct = pos.battery;
+  if (pos.battery !== null) posRow.battery_pct = pos.battery;
+
+  const deviceUpdate: Record<string, unknown> = {
+    last_lat:        pos.lat,
+    last_lng:        pos.lng,
+    last_speed_kmh:  pos.speed,
+    last_heading:    heading,
+    last_seen_at:    now,
+    last_polled_at:  now,
+    last_poll_ok:    true,
+  };
+  if (pos.battery !== null) deviceUpdate.last_battery_pct = pos.battery;
 
   await Promise.all([
-    svc.from("agents").update(update).eq("id", agentId),
-    svc.from("agent_location_history").insert({
-      agent_id:  agentId,
-      lat:       pos.lat,
-      lng:       pos.lng,
-      speed_kmh: pos.speed,
-      heading,
-    }),
+    svc.from("gps_device_positions").insert(posRow),
+    svc.from("gps_devices").update(deviceUpdate).eq("id", gpsDeviceId),
   ]);
+
+  console.log(
+    `[GPS903] Position written — device ${gpsDeviceId} ` +
+    `lat:${pos.lat.toFixed(5)} lng:${pos.lng.toFixed(5)} speed:${pos.speed} battery:${pos.battery ?? "?"}`,
+  );
 }

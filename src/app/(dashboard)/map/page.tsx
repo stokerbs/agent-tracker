@@ -7,6 +7,7 @@ import { FadeUp } from "@/components/shared/motion";
 import {
   getActiveAgents,
   getActiveEmergencyAlerts,
+  getActiveGpsDevices,
   getGeofences,
   getRecentGeofenceEvents,
 } from "@/lib/queries";
@@ -18,11 +19,12 @@ export default async function MapPage() {
   const profile = await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("map");
 
-  const [agents, geofences, emergencyAlerts, geofenceEvents] = await Promise.all([
+  const [agents, geofences, emergencyAlerts, geofenceEvents, gpsDevices] = await Promise.all([
     getActiveAgents(),
     getGeofences(),
     getActiveEmergencyAlerts(),
     getRecentGeofenceEvents(),
+    getActiveGpsDevices(),
   ]);
 
   return (
@@ -33,6 +35,7 @@ export default async function MapPage() {
         initialGeofences={geofences}
         emergencyAlerts={emergencyAlerts}
         initialGeofenceEvents={geofenceEvents}
+        initialGpsDevices={gpsDevices}
         isAdmin={profile.role === "admin"}
       />
     </FadeUp>

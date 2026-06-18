@@ -5,17 +5,20 @@ import {
   gps903Login,
   cacheSession,
   gps903GetTracking,
-  applyPositionToAgent,
+  applyPositionToDevice,
 } from "@/lib/gps903";
 
 export const maxDuration = 30;
 
-// ── Cron handler ──────────────────────────────────────────────────────────────
-
 /**
  * GET /api/cron/gps903-sync
  * Vercel Cron calls this every minute with Authorization: Bearer <CRON_SECRET>.
- * All devices are polled in parallel (Promise.allSettled).
+ *
+ * Polls ALL active GPS903 devices. Position data is written to:
+ *   - gps_device_positions  (history)
+ *   - gps_devices.last_*    (denormalized current state for map display)
+ *
+ * Agents are NOT updated. GPS device telemetry is independent of agent data.
  */
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -37,11 +40,11 @@ export async function GET(request: NextRequest) {
 
   const svc = createServiceClient();
 
+  // Poll ALL active GPS903 devices — no agent_id requirement
   const { data: devices, error: devErr } = await svc
     .from("gps_devices")
-    .select("id, gps903_device_id, agent_id")
+    .select("id, gps903_device_id")
     .not("gps903_device_id", "is", null)
-    .not("agent_id", "is", null)
     .is("deleted_at", null);
 
   if (devErr) return NextResponse.json({ error: devErr.message }, { status: 500 });
@@ -55,12 +58,12 @@ export async function GET(request: NextRequest) {
   const settled = await Promise.allSettled(
     devices.map(async (device) => {
       const gps903Id = device.gps903_device_id as number;
-      const agentId  = device.agent_id as string;
       const deviceId = device.id as string;
 
       let pos = await gps903GetTracking(session!, gps903Id);
       let freshSession: string | undefined;
 
+      // Session may have expired mid-run — retry with a fresh login
       if (!pos) {
         const fresh = await gps903Login(imei, devicePassword);
         if (fresh) {
@@ -69,17 +72,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const pollOk = pos !== null;
+      if (pos) {
+        await applyPositionToDevice(svc, deviceId, pos);
+      } else {
+        // Record poll failure
+        await svc.from("gps_devices").update({
+          last_polled_at: new Date().toISOString(),
+          last_poll_ok:   false,
+        }).eq("id", deviceId);
+      }
 
-      // Write poll status regardless of position result
-      void svc.from("gps_devices").update({
-        last_polled_at: new Date().toISOString(),
-        last_poll_ok:   pollOk,
-      }).eq("id", deviceId);
-
-      if (pos) await applyPositionToAgent(svc, agentId, pos);
-
-      return { deviceId: gps903Id, ok: pollOk, freshSession };
+      return { deviceId: gps903Id, ok: pos !== null, freshSession };
     }),
   );
 

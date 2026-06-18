@@ -54,12 +54,9 @@ export default async function GpsDevicesPage() {
     .from("gps_devices")
     .select(`
       id, imei, gps903_device_id, notes, provider, case_id,
-      last_polled_at, last_poll_ok, agent_id,
+      last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_seen_at, agent_id,
       cases ( case_number ),
-      agents (
-        id, full_name, agent_code, status,
-        speed_kmh, battery_pct, last_active, current_lat, current_lng
-      )
+      agents ( id, full_name, agent_code, status )
     `)
     .not("gps903_device_id", "is", null)
     .is("deleted_at", null)
@@ -71,7 +68,7 @@ export default async function GpsDevicesPage() {
   const total  = devices.length;
   const linked = devices.filter((d) => d.agent_id).length;
   const live   = devices.filter(
-    (d) => d.agents && now - new Date(d.agents.last_active ?? 0).getTime() < STALE_MS,
+    (d) => d.last_seen_at && now - new Date(d.last_seen_at).getTime() < STALE_MS,
   ).length;
   const errors = devices.filter((d) => d.last_poll_ok === false).length;
 
@@ -109,8 +106,8 @@ export default async function GpsDevicesPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {devices.map((d) => {
             const agent   = d.agents;
-            const stale   = !agent || now - new Date(agent.last_active ?? 0).getTime() >= STALE_MS;
-            const battery = agent?.battery_pct ?? null;
+            const stale   = !d.last_seen_at || now - new Date(d.last_seen_at).getTime() >= STALE_MS;
+            const battery = d.last_battery_pct as number | null;
             const pollOk  = d.last_poll_ok;
 
             return (
@@ -166,14 +163,14 @@ export default async function GpsDevicesPage() {
                           <p className="truncate text-xs font-medium">{agent.full_name}</p>
                           <p className="font-mono text-[10px] text-muted-foreground">{agent.agent_code}</p>
                         </div>
-                        <AgentStatusBadge status={stale ? "offline" : agent.status} />
+                        <AgentStatusBadge status={agent.status} />
                       </>
                     ) : (
                       <p className="text-xs text-muted-foreground/50">{t("unlinked")}</p>
                     )}
                   </div>
 
-                  {/* Telemetry row */}
+                  {/* Telemetry row — sourced from device last_* fields */}
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     {/* Battery */}
                     {battery !== null ? (
@@ -192,12 +189,12 @@ export default async function GpsDevicesPage() {
                     {/* Speed */}
                     <span className="flex items-center gap-1">
                       <Gauge className="h-3 w-3" />
-                      {agent?.speed_kmh != null ? `${Math.round(agent.speed_kmh)} km/h` : "—"}
+                      {d.last_speed_kmh != null ? `${Math.round(d.last_speed_kmh)} km/h` : "—"}
                     </span>
 
                     {/* Last seen */}
-                    <span className={`ml-auto ${stale && agent ? "text-amber-500" : ""}`}>
-                      {timeAgo(agent?.last_active ?? null)}
+                    <span className={`ml-auto ${stale && d.last_seen_at ? "text-amber-500" : ""}`}>
+                      {timeAgo(d.last_seen_at ?? null)}
                     </span>
                   </div>
 

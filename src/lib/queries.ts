@@ -5,6 +5,7 @@ import type {
   EmergencyAlert,
   Expense,
   Geofence,
+  GpsDeviceForMap,
   TimelineEntry,
 } from "@/lib/types";
 import type {
@@ -238,5 +239,21 @@ export async function getRecentGeofenceEvents(limit = 20): Promise<GeofenceEvent
     occurred_at: row.occurred_at,
     agentName: row.agents?.full_name ?? "Unknown agent",
     fenceName: row.geofences?.name ?? "Unknown zone",
+  }));
+}
+
+/** GPS devices that have received at least one position fix, with their case number. */
+export async function getActiveGpsDevices(): Promise<GpsDeviceForMap[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("gps_devices")
+    .select("*, cases(case_number)")
+    .not("last_lat", "is", null)
+    .is("deleted_at", null)
+    .order("last_seen_at", { ascending: false });
+
+  return ((data ?? []) as unknown as Array<GpsDeviceForMap & { cases: { case_number: string } | null }>).map((row) => ({
+    ...row,
+    case_number: row.cases?.case_number ?? null,
   }));
 }

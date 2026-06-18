@@ -9,7 +9,7 @@ import {
   gps903Login,
   cacheSession,
   gps903GetTracking,
-  applyPositionToAgent,
+  applyPositionToDevice,
 } from "@/lib/gps903";
 
 /** Trigger an immediate GPS903 poll for a single device. */
@@ -24,13 +24,12 @@ export async function pollDeviceNow(deviceId: string) {
 
   const { data: device } = await svc
     .from("gps_devices")
-    .select("gps903_device_id, agent_id")
+    .select("gps903_device_id")
     .eq("id", deviceId)
     .is("deleted_at", null)
     .maybeSingle();
 
   if (!device?.gps903_device_id) return { error: "Device has no GPS903 Device ID configured" };
-  if (!device?.agent_id)         return { error: "Device is not linked to an agent" };
 
   let session = await getOrRefreshSession(svc);
   if (!session) {
@@ -51,18 +50,15 @@ export async function pollDeviceNow(deviceId: string) {
     }
   }
 
-  await svc.from("gps_devices").update({
-    last_polled_at: new Date().toISOString(),
-    last_poll_ok:   pos !== null,
-  }).eq("id", deviceId);
-
-  if (!pos) return { error: "GPS903 returned no position for this device" };
-
-  try {
-    await applyPositionToAgent(svc, device.agent_id as string, pos);
-  } catch (e) {
-    return { error: String(e) };
+  if (!pos) {
+    await svc.from("gps_devices").update({
+      last_polled_at: new Date().toISOString(),
+      last_poll_ok:   false,
+    }).eq("id", deviceId);
+    return { error: "GPS903 returned no position for this device" };
   }
+
+  await applyPositionToDevice(svc, deviceId, pos);
 
   revalidatePath("/gps-devices");
   revalidatePath(`/gps-devices/${deviceId}`);
