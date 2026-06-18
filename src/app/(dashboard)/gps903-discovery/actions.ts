@@ -16,11 +16,11 @@ export async function syncGps903Devices(): Promise<{
   const svc = createServiceClient();
 
   const session = await getOrRefreshSession(svc);
-  if (!session) return { error: "GPS903 login failed — check credentials" };
+  if (!session) return { error: "GPS903 login failed — check IMEI credentials" };
 
   const devices = await gps903GetDevicesByUserID(session);
   if (devices.length === 0)
-    return { error: "No devices returned from GPS903 — check credentials or account has no devices" };
+    return { error: "No devices returned from GPS903 — check IMEI credentials or account has no devices" };
 
   const now = new Date().toISOString();
   const rows = devices.map((d) => {

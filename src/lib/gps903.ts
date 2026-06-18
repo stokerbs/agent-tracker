@@ -28,13 +28,12 @@ function extractHiddenInput(html: string, name: string): string {
 // ── Login ─────────────────────────────────────────────────────────────────────
 
 /**
- * POST Login.aspx with account credentials.
+ * POST Login.aspx using the IMEI No. tab (confirmed live: txtImeiNo / txtImeiPassword / btnLoginImei).
  * Returns the ASP.NET_SessionId value on success, null on failure.
- * Field names confirmed from live page source inspection.
  */
 export async function gps903Login(
-  username: string,
-  password: string,
+  imei: string,
+  devicePassword: string,
 ): Promise<string | null> {
   const loginUrl = `${GPS903_BASE}/Login.aspx?language=en-us`;
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
@@ -55,9 +54,9 @@ export async function gps903Login(
     __VIEWSTATE:          extractHiddenInput(html, "__VIEWSTATE"),
     __VIEWSTATEGENERATOR: extractHiddenInput(html, "__VIEWSTATEGENERATOR"),
     __EVENTVALIDATION:    extractHiddenInput(html, "__EVENTVALIDATION"),
-    txtUserName:          username,
-    txtAccountPassword:   password,
-    btnLoginAccount:      "",
+    txtImeiNo:            imei,
+    txtImeiPassword:      devicePassword,
+    btnLoginImei:         "",
   });
 
   let postRes: Response;
@@ -232,11 +231,11 @@ export async function getOrRefreshSession(svc: SvcClient): Promise<string | null
   const cached = await getCachedSession(svc);
   if (cached) return cached;
 
-  const username = process.env.GPS903_USERNAME;
-  const password = process.env.GPS903_PASSWORD;
-  if (!username || !password) return null;
+  const imei           = process.env.GPS903_IMEI;
+  const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
+  if (!imei || !devicePassword) return null;
 
-  const fresh = await gps903Login(username, password);
+  const fresh = await gps903Login(imei, devicePassword);
   if (!fresh) return null;
 
   await cacheSession(svc, fresh);

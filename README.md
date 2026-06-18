@@ -159,6 +159,8 @@ Register the first account at `/register` and pick the **Administrator** role.
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
    - `ANTHROPIC_API_KEY` *(optional)*, `AI_REPORT_MODEL` *(optional)*
    - `NEXT_PUBLIC_APP_URL` → your Vercel URL
+   - `GPS903_IMEI` + `GPS903_DEVICE_PASSWORD` → GPS903 IMEI login credentials *(optional)*
+   - `CRON_SECRET` → Bearer token Vercel sends to `/api/cron/*` *(optional)*
 4. In Supabase **Auth → URL Configuration**, set the Site URL and add
    `https://<your-app>.vercel.app/auth/callback` as a redirect URL.
 5. **Deploy.** Health check: `GET /api/health`.
@@ -171,6 +173,19 @@ POST /api/agents/location
 ```
 Authenticated via the agent's Supabase session; RLS guarantees an agent can only
 update their own record.
+
+### GPS903 Web API polling
+Detective Pulse polls the GPS903 platform every minute (Vercel Cron) using the
+**IMEI No. login** tab — not the Account tab.
+
+| Env var | Description |
+|---|---|
+| `GPS903_IMEI` | 15-digit IMEI of the login device |
+| `GPS903_DEVICE_PASSWORD` | Device password set in the GPS903 portal |
+
+Sessions are cached in the `gps903_session` Supabase table (25-minute TTL) so
+the login form is only hit on expiry. Use **GPS903 Discovery** (`/gps903-discovery`)
+to sync the device catalog and import devices into cases.
 
 ---
 

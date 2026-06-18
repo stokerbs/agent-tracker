@@ -16,9 +16,9 @@ import {
 export async function pollDeviceNow(deviceId: string) {
   await requireRole(["admin", "supervisor"]);
 
-  const username = process.env.GPS903_USERNAME;
-  const password = process.env.GPS903_PASSWORD;
-  if (!username || !password) return { error: "GPS903 credentials not configured" };
+  const imei           = process.env.GPS903_IMEI;
+  const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
+  if (!imei || !devicePassword) return { error: "GPS903 IMEI credentials not configured" };
 
   const svc = createServiceClient();
 
@@ -38,13 +38,13 @@ export async function pollDeviceNow(deviceId: string) {
       last_polled_at: new Date().toISOString(),
       last_poll_ok:   false,
     }).eq("id", deviceId);
-    return { error: "GPS903 login failed — check credentials" };
+    return { error: "GPS903 login failed — check IMEI credentials" };
   }
 
   let pos = await gps903GetTracking(session, device.gps903_device_id as number);
 
   if (!pos) {
-    const fresh = await gps903Login(username, password);
+    const fresh = await gps903Login(imei, devicePassword);
     if (fresh) {
       await cacheSession(svc, fresh);
       pos = await gps903GetTracking(fresh, device.gps903_device_id as number);

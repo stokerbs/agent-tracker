@@ -26,11 +26,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const username = process.env.GPS903_USERNAME;
-  const password = process.env.GPS903_PASSWORD;
-  if (!username || !password) {
+  const imei           = process.env.GPS903_IMEI;
+  const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
+  if (!imei || !devicePassword) {
     return NextResponse.json(
-      { error: "GPS903_USERNAME / GPS903_PASSWORD not configured" },
+      { error: "GPS903_IMEI / GPS903_DEVICE_PASSWORD not configured" },
       { status: 500 },
     );
   }
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   let session = await getOrRefreshSession(svc);
   if (!session) {
-    return NextResponse.json({ error: "GPS903 login failed — check credentials" }, { status: 502 });
+    return NextResponse.json({ error: "GPS903 login failed — check IMEI credentials" }, { status: 502 });
   }
 
   const settled = await Promise.allSettled(
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       let freshSession: string | undefined;
 
       if (!pos) {
-        const fresh = await gps903Login(username, password);
+        const fresh = await gps903Login(imei, devicePassword);
         if (fresh) {
           freshSession = fresh;
           pos = await gps903GetTracking(fresh, gps903Id);
