@@ -7,6 +7,7 @@ import {
   BatteryCharging,
   BatteryLow,
   BatteryMedium,
+  Clock,
   Mail,
   MapPin,
   Phone,
@@ -29,7 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FadeUp, StaggerGrid, StaggerItem } from "@/components/shared/motion";
 import { EditAgentDialog } from "@/components/agents/edit-agent-dialog";
 import { batteryColor, cn, formatCurrency, formatDate, initials, timeAgo } from "@/lib/utils";
-import type { Agent, Case, Expense } from "@/lib/types";
+import type { Agent, Case, Expense, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function AgentDetailPage({
   const tCase = await getTranslations("cases");
   const supabase = await createClient();
 
-  const [{ data: agentRaw }, { data: caseAgentRows }, { data: expensesRaw }] =
+  const [{ data: agentRaw }, { data: caseAgentRows }, { data: expensesRaw }, { data: timelineRaw }] =
     await Promise.all([
       supabase.from("agents").select("*").eq("id", id).single(),
       supabase
@@ -72,6 +73,13 @@ export default async function AgentDetailPage({
         .select("*")
         .eq("agent_id", id)
         .order("expense_date", { ascending: false }),
+      supabase
+        .from("timeline_entries")
+        .select("*, cases(case_number)")
+        .eq("agent_id", id)
+        .order("entry_date", { ascending: false })
+        .order("entry_time", { ascending: false })
+        .limit(100),
     ]);
 
   if (!agentRaw) notFound();
@@ -81,6 +89,7 @@ export default async function AgentDetailPage({
     .map((r: any) => r.cases)
     .filter(Boolean)) as Case[];
   const expenses = (expensesRaw ?? []) as Expense[];
+  const timeline = ((timelineRaw ?? []) as (TimelineEntry & { cases: { case_number: string } | null })[]);
 
   const openCases = cases.filter((c) => c.status !== "closed").length;
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -272,6 +281,10 @@ export default async function AgentDetailPage({
               <Receipt className="mr-1.5 h-4 w-4" />
               {t("tabs.expenses")} ({expenses.length})
             </TabsTrigger>
+            <TabsTrigger value="timeline">
+              <Clock className="mr-1.5 h-4 w-4" />
+              {t("tabs.timeline")} ({timeline.length})
+            </TabsTrigger>
           </TabsList>
 
           {/* Cases tab */}
@@ -364,6 +377,77 @@ export default async function AgentDetailPage({
                   </Table>
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+
+          {/* Timeline tab */}
+          <TabsContent value="timeline" className="mt-4">
+            {timeline.length === 0 ? (
+              <EmptyState
+                icon={<Clock className="h-6 w-6" />}
+                title={t("noTimeline")}
+                description=""
+              />
+            ) : (
+              <div className="relative space-y-0 pl-5">
+                {/* Vertical rule */}
+                <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border/60" />
+                {timeline.map((entry, i) => {
+                  const prev = timeline[i - 1];
+                  const showDate = i === 0 || entry.entry_date !== prev?.entry_date;
+                  return (
+                    <div key={entry.id}>
+                      {showDate && (
+                        <p className={cn(
+                          "relative z-10 mb-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground",
+                          i !== 0 && "mt-5",
+                        )}>
+                          {formatDate(entry.entry_date)}
+                        </p>
+                      )}
+                      <div className="relative mb-3 flex gap-3">
+                        {/* Dot */}
+                        <div className="absolute -left-5 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-border ring-1 ring-border" />
+
+                        <div className="flex-1 rounded-lg border border-border/60 bg-card p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm leading-snug">{entry.entry}</p>
+                            <span className="shrink-0 font-mono text-[10px] text-muted-foreground/60">
+                              {entry.entry_time?.slice(0, 5)}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                            {entry.cases?.case_number && (
+                              <Link
+                                href={`/cases/${entry.case_id}`}
+                                className="font-mono text-[10px] font-semibold text-primary hover:underline"
+                              >
+                                {entry.cases.case_number}
+                              </Link>
+                            )}
+                            {entry.location && (
+                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <MapPin className="h-2.5 w-2.5" />
+                                {entry.location}
+                              </span>
+                            )}
+                            {entry.photo_url && (
+                              <a
+                                href={entry.photo_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-primary hover:underline"
+                              >
+                                📷 Photo
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </TabsContent>
         </Tabs>

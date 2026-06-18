@@ -382,6 +382,7 @@
       "noGps": "No GPS signal",
       "noCases": "No cases assigned",
       "noExpenses": "No expenses recorded",
+      "noTimeline": "No timeline entries for this agent",
       "stats": {
         "totalCases": "Total Cases",
         "openCases": "Open Cases",
@@ -390,7 +391,8 @@
       },
       "tabs": {
         "cases": "Cases",
-        "expenses": "Expenses"
+        "expenses": "Expenses",
+        "timeline": "Timeline"
       },
       "expenseTable": {
         "date": "Date",
