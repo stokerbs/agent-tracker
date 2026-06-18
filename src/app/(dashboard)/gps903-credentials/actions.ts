@@ -8,6 +8,7 @@ import {
   gps903Login,
   gps903GetTracking,
   detectGps903DeviceId,
+  runGps903Discovery,
   getOrRefreshCredentialSession,
 } from "@/lib/gps903";
 
@@ -119,7 +120,7 @@ export async function testRawCredential(
     return { error: "Login failed — check IMEI and device password" };
   }
 
-  const deviceId = await detectGps903DeviceId(session);
+  const deviceId = await detectGps903DeviceId(session, imei.trim());
   if (!deviceId) {
     return {
       loginOk: true,
@@ -174,7 +175,7 @@ export async function testCredential(id: string): Promise<TestResult> {
   // If device ID not yet known, detect and save it
   let deviceId = cred.gps903_device_id as number | null;
   if (!deviceId) {
-    deviceId = await detectGps903DeviceId(session);
+    deviceId = await detectGps903DeviceId(session, cred.imei);
     if (deviceId) {
       await svc
         .from("gps903_credentials")
