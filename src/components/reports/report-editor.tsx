@@ -13,6 +13,7 @@ import {
   Save,
   SendHorizonal,
   Shield,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,7 @@ export function ReportEditor({ report, versions, canApprove, language = "th", ca
   const isDraft = report.status === "draft";
   const isReview = report.status === "review";
   const isApproved = report.status === "approved";
+  const isRejected = report.status === "rejected";
 
   function buildBody(es: string, body: string, obs: string, conc: string): string {
     const isThai = language === "th";
@@ -222,6 +224,20 @@ export function ReportEditor({ report, versions, canApprove, language = "th", ca
           </span>
         )}
       </div>
+
+      {/* Rejection feedback */}
+      {report.status === "rejected" && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <div>
+            <p className="text-sm font-medium text-destructive">รายงานถูกปฏิเสธ</p>
+            {report.rejection_notes && (
+              <p className="mt-0.5 text-sm text-destructive/80">{report.rejection_notes}</p>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">แก้ไขรายงานแล้วส่งเพื่อรีวิวอีกครั้ง</p>
+          </div>
+        </div>
+      )}
 
       {/* Case context */}
       {caseInfo && (

@@ -358,6 +358,56 @@ export async function approveReport(reportId: string, clientVisible: boolean) {
   return { ok: true };
 }
 
+// ── Rejection ─────────────────────────────────────────────────────────────────
+
+export async function rejectReport(reportId: string, notes: string) {
+  const profile = await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const { data: report } = await supabase
+    .from("reports")
+    .select("generated_by, case_id, cases(case_number)")
+    .eq("id", reportId)
+    .single();
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("reports")
+    .update({
+      status: "rejected",
+      rejected_by: profile.id,
+      rejected_at: now,
+      rejection_notes: notes.trim() || null,
+    })
+    .eq("id", reportId);
+  if (error) return { error: handleDbError(error, "reports") };
+
+  const caseNumber = (report?.cases as unknown as { case_number: string } | null)?.case_number ?? "unknown";
+
+  await supabase.from("audit_logs").insert({
+    actor_id: profile.id,
+    action: "report_rejected",
+    entity: "reports",
+    entity_id: reportId,
+    metadata: { case_number: caseNumber, notes: notes.trim() || null },
+  });
+
+  if (report?.generated_by && report.generated_by !== profile.id) {
+    void notifyUsers([report.generated_by], {
+      type: "report",
+      title: "Report rejected",
+      body: notes.trim()
+        ? `Your report for case ${caseNumber} was rejected: ${notes.trim()}`
+        : `Your report for case ${caseNumber} was rejected.`,
+      link: report.case_id ? `/reports/${reportId}/edit` : "/reports",
+    });
+  }
+
+  revalidatePath(`/reports/${reportId}/edit`);
+  revalidatePath("/reports");
+  return { ok: true };
+}
+
 // ── Archive / delete ──────────────────────────────────────────────────────────
 
 export async function archiveReport(reportId: string) {

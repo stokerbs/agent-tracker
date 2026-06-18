@@ -214,6 +214,9 @@ export interface Report {
   edited_at: string | null;
   approved_by: string | null;
   approved_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_notes: string | null;
   is_client_visible: boolean;
   created_at: string;
   updated_at: string;

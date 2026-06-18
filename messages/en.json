@@ -618,9 +618,18 @@
       "rejected": "Rejected"
     },
     "generated": "Generated {date}",
+    "rejectButton": "Reject",
+    "rejectDialog": {
+      "title": "Reject Report",
+      "description": "Provide feedback so the agent knows what to fix. The report will be returned to draft.",
+      "notesPlaceholder": "Explain why this report is being rejected…",
+      "cancel": "Cancel",
+      "confirm": "Reject report"
+    },
     "toast": {
       "generated": "AI report generated",
-      "approved": "Report approved"
+      "approved": "Report approved",
+      "rejected": "Report rejected"
     },
     "statusBadge": {
       "draft": "DRAFT",

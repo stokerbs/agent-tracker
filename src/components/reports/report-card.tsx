@@ -12,22 +12,32 @@ import {
   Loader2,
   Pencil,
   Shield,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { approveReport } from "@/app/(dashboard)/reports/actions";
+import { approveReport, rejectReport } from "@/app/(dashboard)/reports/actions";
 import { exportReportDocx, exportReportPdf } from "@/lib/export";
 import { readProviderTag, stripProviderTag } from "@/lib/report-parser";
 import { ReportActionMenu } from "@/components/reports/report-action-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
 import { cn, formatDate } from "@/lib/utils";
 import type { Case, Report } from "@/lib/types";
 import Link from "next/link";
@@ -58,6 +68,8 @@ export function ReportCard({
   const t = useTranslations("reports");
   const [expanded, setExpanded] = useState(false);
   const [pending, start] = useTransition();
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectNotes, setRejectNotes] = useState("");
   const router = useRouter();
 
   const statusMeta = STATUS_META[report.status];
@@ -78,6 +90,17 @@ export function ReportCard({
       const res = await approveReport(report.id, clientVisible);
       if (res?.error) { toast.error(res.error); return; }
       toast.success(t("toast.approved"));
+      router.refresh();
+    });
+  }
+
+  function handleReject() {
+    start(async () => {
+      const res = await rejectReport(report.id, rejectNotes);
+      if (res?.error) { toast.error(res.error); return; }
+      toast.success(t("toast.rejected"));
+      setRejectOpen(false);
+      setRejectNotes("");
       router.refresh();
     });
   }
@@ -131,6 +154,14 @@ export function ReportCard({
           )}
         </div>
       </div>
+
+      {/* Rejection notes */}
+      {report.status === "rejected" && report.rejection_notes && (
+        <div className="mx-5 mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+          <p className="text-xs leading-relaxed text-destructive/90">{report.rejection_notes}</p>
+        </div>
+      )}
 
       {/* Summary */}
       {report.executive_summary && (
@@ -202,34 +233,47 @@ export function ReportCard({
         {/* Approve — split into internal-only vs publish-to-client.
             is_client_visible is ONLY set to true via "Approve + Publish";
             a plain approval keeps it false so clients cannot see it. */}
-        {canApprove && report.status !== "approved" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="success"
-                size="sm"
-                disabled={pending}
-                className="h-7 gap-1.5 text-xs"
-              >
-                {pending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-                {t("approveButton")}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => approve(false)}>
-                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                {t("approveInternal")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => approve(true)}>
-                <Shield className="mr-2 h-3.5 w-3.5" />
-                {t("approvePublish")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {canApprove && (report.status === "review" || report.status === "submitted") && (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="success"
+                  size="sm"
+                  disabled={pending}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  {pending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  )}
+                  {t("approveButton")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => approve(false)}>
+                  <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                  {t("approveInternal")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => approve(true)}>
+                  <Shield className="mr-2 h-3.5 w-3.5" />
+                  {t("approvePublish")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              className="h-7 gap-1.5 border-destructive/40 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
+              onClick={() => setRejectOpen(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              {t("rejectButton")}
+            </Button>
+          </>
         )}
 
         {report.status === "approved" && report.is_client_visible && (
@@ -239,6 +283,35 @@ export function ReportCard({
           </div>
         )}
       </div>
+
+      {/* Reject dialog */}
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("rejectDialog.title")}</DialogTitle>
+            <DialogDescription>{t("rejectDialog.description")}</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder={t("rejectDialog.notesPlaceholder")}
+            value={rejectNotes}
+            onChange={(e) => setRejectNotes(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={pending}>
+              {t("rejectDialog.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReject}
+              disabled={pending}
+            >
+              {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+              {t("rejectDialog.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
