@@ -144,6 +144,18 @@ export interface GpsDevice {
   updated_at: string;
 }
 
+export interface Gps903Device {
+  id:               string;
+  gps903_device_id: number;
+  device_name:      string | null;
+  imei:             string | null;
+  model:            string | null;
+  last_seen:        string | null;
+  synced_at:        string;
+  created_at:       string;
+  updated_at:       string;
+}
+
 export interface CaseWithAgents extends Case {
   agents?: Agent[];
 }

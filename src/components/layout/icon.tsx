@@ -18,6 +18,7 @@ import {
   Settings,
   Banknote,
   Satellite,
+  ScanSearch,
   type LucideProps,
 } from "lucide-react";
 
@@ -39,6 +40,7 @@ const ICONS = {
   Settings,
   Banknote,
   Satellite,
+  ScanSearch,
 } as const;
 
 export type IconName = keyof typeof ICONS;

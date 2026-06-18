@@ -43,6 +43,7 @@ import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { GpsDeviceFormDialog } from "@/components/cases/gps-device-form-dialog";
+import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -348,7 +349,12 @@ export default async function CaseDetailPage({
                   <Radio className="h-4 w-4 text-emerald-500" />
                   {t("gpsSection.title")}
                 </CardTitle>
-                {isAdmin && <GpsDeviceFormDialog caseId={id} agents={allAgents} />}
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <ImportFromGps903Dialog caseId={id} />
+                    <GpsDeviceFormDialog caseId={id} agents={allAgents} />
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>

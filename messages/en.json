@@ -125,7 +125,8 @@
       "invoices": "Invoices",
       "analytics": "Analytics",
       "field": "Field App",
-      "gpsDevices": "GPS Devices"
+      "gpsDevices": "GPS Devices",
+      "gps903Discovery": "Device Discovery"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
@@ -693,6 +694,25 @@
       "active": "Active",
       "acknowledged": "Acknowledged",
       "resolved": "Resolved"
+    }
+  },
+  "gps903Discovery": {
+    "title": "GPS903 Device Discovery",
+    "description": "Automatically discover and import all GPS devices from your GPS903 account.",
+    "syncDevices": "Sync Devices",
+    "syncing": "Syncing…",
+    "neverSynced": "Never synced",
+    "filterAll": "All",
+    "filterLinked": "Linked",
+    "filterUnlinked": "Unlinked",
+    "empty": "No GPS903 devices found.",
+    "emptyHint": "Click Sync Devices to discover all GPS devices registered in your GPS903 account.",
+    "noResults": "No devices match your search.",
+    "stats": {
+      "total": "Total Devices",
+      "linked": "Linked to Case",
+      "unlinked": "Unlinked",
+      "lastSync": "Last Sync"
     }
   },
   "gpsDevices": {

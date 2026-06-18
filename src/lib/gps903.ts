@@ -243,6 +243,61 @@ export async function getOrRefreshSession(svc: SvcClient): Promise<string | null
   return fresh;
 }
 
+// ── Device catalog ────────────────────────────────────────────────────────────
+
+export interface Gps903DeviceCatalog {
+  gps903DeviceId: number;
+  deviceName:     string | null;
+  imei:           string | null;
+  model:          string | null;
+  lastSeen:       string | null;
+}
+
+/**
+ * Fetch all devices registered under the current GPS903 account.
+ * Calls GetDevicesByUserID (UserID=0 → current session user).
+ * Returns [] on any error.
+ */
+export async function gps903GetDevicesByUserID(
+  sessionCookie: string,
+): Promise<Gps903DeviceCatalog[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${GPS903_BASE}/Ajax/DevicesAjax.asmx/GetDevicesByUserID`, {
+      method:  "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie":        `ASP.NET_SessionId=${sessionCookie}`,
+      },
+      body:   JSON.stringify({ UserID: 0 }),
+      signal: withTimeout(FETCH_TIMEOUT),
+    });
+  } catch {
+    return [];
+  }
+
+  if (!res.ok) return [];
+
+  let json: { d?: string };
+  try { json = await res.json(); } catch { return []; }
+  if (!json.d) return [];
+
+  let data: unknown;
+  try { data = JSON.parse(json.d); } catch { return []; }
+  if (!Array.isArray(data)) return [];
+
+  return (data as Record<string, unknown>[])
+    .filter((d) => d.DeviceID != null)
+    .map((d) => ({
+      gps903DeviceId: Number(d.DeviceID),
+      deviceName:     d.DeviceName    ? String(d.DeviceName)    : null,
+      imei:           d.IMEI          ? String(d.IMEI)          : null,
+      model:          d.Model         ? String(d.Model)         : null,
+      lastSeen:       d.DeviceUtcDate ? String(d.DeviceUtcDate) : null,
+    }))
+    .filter((d) => !isNaN(d.gps903DeviceId));
+}
+
 // ── Agent position update ─────────────────────────────────────────────────────
 
 /**

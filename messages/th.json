@@ -125,7 +125,8 @@
       "invoices": "ใบแจ้งหนี้",
       "analytics": "วิเคราะห์",
       "field": "แอปภาคสนาม",
-      "gpsDevices": "อุปกรณ์ GPS"
+      "gpsDevices": "อุปกรณ์ GPS",
+      "gps903Discovery": "ค้นหาอุปกรณ์"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
@@ -693,6 +694,25 @@
       "active": "ใช้งานอยู่",
       "acknowledged": "รับทราบแล้ว",
       "resolved": "แก้ไขแล้ว"
+    }
+  },
+  "gps903Discovery": {
+    "title": "ค้นหาอุปกรณ์ GPS903",
+    "description": "ค้นพบและนำเข้าอุปกรณ์ GPS ทั้งหมดจากบัญชี GPS903 ของคุณโดยอัตโนมัติ",
+    "syncDevices": "ซิงค์อุปกรณ์",
+    "syncing": "กำลังซิงค์…",
+    "neverSynced": "ยังไม่เคยซิงค์",
+    "filterAll": "ทั้งหมด",
+    "filterLinked": "เชื่อมต่อแล้ว",
+    "filterUnlinked": "ยังไม่เชื่อมต่อ",
+    "empty": "ไม่พบอุปกรณ์ GPS903",
+    "emptyHint": "คลิก ซิงค์อุปกรณ์ เพื่อค้นหาอุปกรณ์ GPS ที่ลงทะเบียนในบัญชี GPS903 ของคุณ",
+    "noResults": "ไม่พบอุปกรณ์ที่ตรงกับการค้นหา",
+    "stats": {
+      "total": "อุปกรณ์ทั้งหมด",
+      "linked": "เชื่อมต่อกับคดี",
+      "unlinked": "ยังไม่เชื่อมต่อ",
+      "lastSync": "ซิงค์ล่าสุด"
     }
   },
   "gpsDevices": {
