@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2 } from "lucide-react";
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CreateClientDialog } from "@/components/clients/create-client-dialog";
+import { ClientSearch } from "@/components/clients/client-search";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -21,26 +23,50 @@ import type { Client } from "@/lib/types";
 export const metadata: Metadata = { title: "Clients" };
 export const dynamic = "force-dynamic";
 
-export default async function ClientsPage() {
+interface Props {
+  searchParams: Promise<{ q?: string }>;
+}
+
+export default async function ClientsPage({ searchParams }: Props) {
   await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("clients");
+  const { q } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("clients").select("*").order("name");
-  const clients = (data as Client[]) ?? [];
+  const all = (data as Client[]) ?? [];
+
+  const search = q?.toLowerCase().trim() ?? "";
+  const clients = search
+    ? all.filter((c) =>
+        `${c.name} ${c.company ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(search),
+      )
+    : all;
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")}>
         <CreateClientDialog />
       </PageHeader>
+
+      <div className="flex items-center justify-between gap-3">
+        <Suspense>
+          <ClientSearch defaultValue={q ?? ""} />
+        </Suspense>
+        {search && (
+          <span className="text-xs text-muted-foreground">
+            {clients.length} of {all.length}
+          </span>
+        )}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {clients.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 icon={<Building2 className="h-6 w-6" />}
-                title={t("noTitle")}
-                description={t("noDescription")}
+                title={search ? "No clients match" : t("noTitle")}
+                description={search ? "Try a different search term." : t("noDescription")}
               />
             </div>
           ) : (
