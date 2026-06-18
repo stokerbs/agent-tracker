@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   Users,
   UserCheck,
@@ -20,6 +21,7 @@ import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-bad
 import { EmptyState } from "@/components/shared/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StaggerGrid, StaggerItem } from "@/components/shared/motion";
+import { AgentSearch } from "@/components/agents/agent-search";
 import { batteryColor, initials, timeAgo } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { AGENT_ROLE_META } from "@/lib/constants";
@@ -60,11 +62,11 @@ function BatteryBar({ pct, charging }: { pct: number | null; charging: boolean |
 export default async function AgentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; q?: string }>;
 }) {
   await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("agents");
-  const { role: roleFilter } = await searchParams;
+  const { role: roleFilter, q } = await searchParams;
 
   const agents = await getAgents();
 
@@ -76,7 +78,13 @@ export default async function AgentsPage({
   const offline = agents.filter((a) => a.status === "offline").length;
 
   const activeRole = ROLES.includes(roleFilter as AgentRole) ? (roleFilter as AgentRole) : null;
-  const filtered = activeRole ? agents.filter((a) => a.agent_role === activeRole) : agents;
+  const search = q?.toLowerCase().trim() ?? "";
+
+  const filtered = agents.filter((a) => {
+    if (activeRole && a.agent_role !== activeRole) return false;
+    if (search && !`${a.full_name} ${a.nickname ?? ""} ${a.agent_code} ${a.area ?? ""}`.toLowerCase().includes(search)) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -91,10 +99,13 @@ export default async function AgentsPage({
         <StatCard label={t("stats.offline")} value={offline} icon={<PowerOff className="h-4 w-4" />} accent="text-muted-foreground" />
       </div>
 
-      {/* Role filter pills */}
+      {/* Search + role filter pills */}
       <div className="flex flex-wrap items-center gap-2">
+        <Suspense>
+          <AgentSearch defaultValue={q ?? ""} />
+        </Suspense>
         <Link
-          href="/agents"
+          href={search ? `/agents?q=${encodeURIComponent(search)}` : "/agents"}
           className={cn(
             "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
             !activeRole
@@ -104,30 +115,35 @@ export default async function AgentsPage({
         >
           All roles
         </Link>
-        {ROLES.map((r) => (
-          <Link
-            key={r}
-            href={`/agents?role=${r}`}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              activeRole === r
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
-            )}
-          >
-            {AGENT_ROLE_META[r].label}
-            <span className="ml-1.5 font-mono text-[10px] opacity-60">
-              {agents.filter((a) => a.agent_role === r).length}
-            </span>
-          </Link>
-        ))}
+        {ROLES.map((r) => {
+          const href = search
+            ? `/agents?role=${r}&q=${encodeURIComponent(search)}`
+            : `/agents?role=${r}`;
+          return (
+            <Link
+              key={r}
+              href={href}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                activeRole === r
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+              )}
+            >
+              {AGENT_ROLE_META[r].label}
+              <span className="ml-1.5 font-mono text-[10px] opacity-60">
+                {agents.filter((a) => a.agent_role === r).length}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Users className="h-6 w-6" />}
-          title={activeRole ? "No agents with this role" : t("noTitle")}
-          description={activeRole ? "Try a different role filter or create an agent with this role." : t("noDescription")}
+          title={search || activeRole ? "No agents match" : t("noTitle")}
+          description={search || activeRole ? "Try a different search or role filter." : t("noDescription")}
         />
       ) : (
         <StaggerGrid className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
