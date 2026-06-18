@@ -709,7 +709,7 @@
       "total": "Total Devices",
       "linked": "Linked to Agent",
       "live": "Live (< 10 min)",
-      "stale": "Stale"
+      "errors": "Poll Errors"
     },
     "col": {
       "device": "Device",
@@ -720,6 +720,21 @@
       "speed": "Speed",
       "lastSeen": "Last Seen",
       "status": "Status"
+    },
+    "detail": {
+      "deviceInfo": "Device Info",
+      "telemetry": "Live Telemetry",
+      "linkedAgent": "Linked Agent",
+      "history": "Location History",
+      "noHistory": "No location history in the last 48 hours.",
+      "noAgentHistory": "Link an agent to this device to see location history.",
+      "histCol": {
+        "time": "Time",
+        "lat": "Latitude",
+        "lng": "Longitude",
+        "speed": "Speed",
+        "heading": "Heading"
+      }
     }
   },
   "analytics": {

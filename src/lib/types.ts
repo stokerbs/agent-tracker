@@ -136,6 +136,8 @@ export interface GpsDevice {
   agent_id: string | null;
   traccar_id: number | null;
   gps903_device_id: number | null;
+  last_polled_at: string | null;
+  last_poll_ok: boolean | null;
   created_by: string | null;
   deleted_at: string | null;
   created_at: string;
