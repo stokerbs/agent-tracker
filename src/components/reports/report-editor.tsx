@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   Clock,
+  FileText,
   Loader2,
   RefreshCw,
   Save,
@@ -35,9 +37,14 @@ interface ReportEditorProps {
   versions: ReportVersion[];
   canApprove: boolean;
   language?: "th" | "en";
+  caseInfo?: {
+    case_number: string;
+    case_type: string | null;
+    displayClientName: string | null | undefined;
+  } | null;
 }
 
-export function ReportEditor({ report, versions, canApprove, language = "th" }: ReportEditorProps) {
+export function ReportEditor({ report, versions, canApprove, language = "th", caseInfo }: ReportEditorProps) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [regenLang, setRegenLang] = useState<"th" | "en">(language);
@@ -56,6 +63,37 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
   const [conclusion, setConclusion] = useState(() =>
     plainTextToHtml(report.conclusion ?? ""),
   );
+
+  // Dirty-state tracking — snapshot is updated after every successful save.
+  const savedSnapshot = useRef({
+    execSummary: plainTextToHtml(report.executive_summary ?? ""),
+    chronoBody: plainTextToHtml(_extractChrono(report.body ?? "")),
+    observations: plainTextToHtml(report.observations ?? ""),
+    conclusion: plainTextToHtml(report.conclusion ?? ""),
+  });
+
+  const isDirty =
+    execSummary !== savedSnapshot.current.execSummary ||
+    chronoBody !== savedSnapshot.current.chronoBody ||
+    observations !== savedSnapshot.current.observations ||
+    conclusion !== savedSnapshot.current.conclusion;
+
+  function syncSnapshot() {
+    savedSnapshot.current = { execSummary, chronoBody, observations, conclusion };
+  }
+
+  // Warn before browser-level navigation (close tab, browser back, refresh).
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  function handleBack() {
+    if (isDirty && !window.confirm("มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก\nต้องการออกจากหน้านี้หรือไม่?")) return;
+    router.push("/reports");
+  }
 
   const isDraft = report.status === "draft";
   const isReview = report.status === "review";
@@ -102,6 +140,7 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
       };
       const res = await saveReportDraft(report.id, content);
       if (res?.error) { toast.error(res.error); return; }
+      syncSnapshot();
       toast.success("บันทึกร่างเรียบร้อยแล้ว");
       router.refresh();
     });
@@ -109,7 +148,6 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
 
   function handleSubmitForReview() {
     start(async () => {
-      // Save content first.
       const content = {
         executive_summary: execSummary,
         body: buildBody(execSummary, chronoBody, observations, conclusion),
@@ -118,6 +156,7 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
       };
       const saveRes = await saveReportDraft(report.id, content);
       if (saveRes?.error) { toast.error(saveRes.error); return; }
+      syncSnapshot();
 
       const res = await submitReportForReview(report.id);
       if (res?.error) { toast.error(res.error); return; }
@@ -153,12 +192,49 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
       setObservations(plainTextToHtml(content.observations ?? ""));
     if (content.conclusion !== undefined)
       setConclusion(plainTextToHtml(content.conclusion ?? ""));
+    // Restored content differs from snapshot — mark dirty so the user saves explicitly.
     toast.info("โหลดเวอร์ชันนี้แล้ว — กด \"บันทึกร่าง\" เพื่อบันทึก");
   }
 
   const editable = !isApproved;
 
   return (
+    <div className="space-y-6">
+      {/* Breadcrumb with dirty-aware back button */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          รายงานทั้งหมด
+        </button>
+        <span className="text-muted-foreground/40">/</span>
+        <div className="flex items-center gap-1.5 text-sm">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-foreground">{report.title}</span>
+        </div>
+        {isDirty && (
+          <span className="ml-1 flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            ยังไม่ได้บันทึก
+          </span>
+        )}
+      </div>
+
+      {/* Case context */}
+      {caseInfo && (
+        <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5">
+          <p className="text-xs text-muted-foreground">
+            คดี{" "}
+            <span className="font-mono font-semibold text-primary">{caseInfo.case_number}</span>
+            {caseInfo.case_type && <span> · {caseInfo.case_type}</span>}
+            {caseInfo.displayClientName && <span> · ลูกค้า: {caseInfo.displayClientName}</span>}
+          </p>
+        </div>
+      )}
+
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       {/* Main editor */}
       <div className="space-y-5">
@@ -329,6 +405,7 @@ export function ReportEditor({ report, versions, canApprove, language = "th" }: 
           />
         </div>
       </aside>
+    </div>
     </div>
   );
 }
