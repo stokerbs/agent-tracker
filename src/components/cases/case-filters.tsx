@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useRef } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function CaseFilters({ count }: { count: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function push(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
@@ -33,6 +35,11 @@ export function CaseFilters({ count }: { count: number }) {
       params.delete(key);
     }
     router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function pushDebounced(key: string, value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => push(key, value), 300);
   }
 
   function clearAll() {
@@ -50,7 +57,7 @@ export function CaseFilters({ count }: { count: number }) {
           className="h-8 w-52 pl-8 text-xs"
           placeholder={t("searchPlaceholder")}
           defaultValue={sp.get("q") ?? ""}
-          onChange={(e) => push("q", e.target.value)}
+          onChange={(e) => pushDebounced("q", e.target.value)}
         />
       </div>
 
