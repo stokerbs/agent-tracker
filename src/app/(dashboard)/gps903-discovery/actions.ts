@@ -20,7 +20,11 @@ export async function syncGps903Devices(): Promise<{
 
   const devices = await gps903GetDevicesByUserID(session);
   if (devices.length === 0)
-    return { error: "No devices returned from GPS903 — check IMEI credentials or account has no devices" };
+    return {
+      error:
+        "No devices found. Set GPS903_DEVICE_ID=<id> in env to register a known device, " +
+        "or set GPS903_USERNAME + GPS903_PASSWORD for full account-level discovery.",
+    };
 
   const now = new Date().toISOString();
   const rows = devices.map((d) => {

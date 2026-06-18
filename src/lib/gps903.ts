@@ -335,11 +335,175 @@ export interface Gps903DeviceCatalog {
 }
 
 /**
+ * Account-level login using the username/password tab (NOT the IMEI tab).
+ * Requires GPS903_USERNAME + GPS903_PASSWORD env vars.
+ * Returns a session cookie string or null on failure.
+ *
+ * Use this session for GetDevicesByUserID (IMEI sessions return HTTP 500 there).
+ */
+export async function gps903AccountLogin(
+  username: string,
+  password: string,
+): Promise<string | null> {
+  const loginUrl = `${GPS903_BASE}/Login.aspx?language=en-us`;
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+
+  console.log(`[GPS903] Account login attempt — user: ${username.slice(0, 3)}***`);
+
+  // GET login page — extract hidden ASP.NET form fields
+  let html: string;
+  let getRes: Response;
+  try {
+    getRes = await fetch(loginUrl, {
+      headers: { "User-Agent": ua },
+      redirect: "manual",
+      signal: withTimeout(FETCH_TIMEOUT),
+    });
+    html = await getRes.text();
+    console.log(`[GPS903] Account login GET — HTTP ${getRes.status}, ${html.length} bytes`);
+  } catch (e) {
+    console.error("[GPS903] Account login GET failed:", String(e));
+    return null;
+  }
+
+  const viewState = extractHiddenInput(html, "__VIEWSTATE");
+  if (!viewState) {
+    console.error("[GPS903] Account login aborted — could not extract __VIEWSTATE");
+    return null;
+  }
+
+  // GPS903 main login tab field names (username/password tab, not IMEI tab)
+  const body = new URLSearchParams({
+    __VIEWSTATE:          viewState,
+    __VIEWSTATEGENERATOR: extractHiddenInput(html, "__VIEWSTATEGENERATOR"),
+    __EVENTVALIDATION:    extractHiddenInput(html, "__EVENTVALIDATION"),
+    txtUserName:          username,
+    txtPassword:          password,
+    btnLogin:             "",
+  });
+
+  let postRes: Response;
+  try {
+    postRes = await fetch(loginUrl, {
+      method:  "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": ua },
+      body:    body.toString(),
+      redirect: "manual",
+      signal:  withTimeout(FETCH_TIMEOUT),
+    });
+    console.log(`[GPS903] Account login POST — HTTP ${postRes.status}`);
+  } catch (e) {
+    console.error("[GPS903] Account login POST failed:", String(e));
+    return null;
+  }
+
+  const fullCookie = extractAllCookies(postRes);
+  const names = fullCookie?.split(";").map((c) => c.trim().split("=")[0]).join(", ") ?? "none";
+  console.log(`[GPS903] Account login cookies: ${names}`);
+
+  if (!hasAuthTicket(fullCookie)) {
+    console.error("[GPS903] Account login failed — .ASPXAUTH not set (wrong username or password)");
+    return null;
+  }
+
+  console.log("[GPS903] Account login successful — .ASPXAUTH confirmed");
+  return fullCookie!;
+}
+
+/**
+ * Build a minimal device catalog from GPS903_DEVICE_ID + GPS903_IMEI env vars.
+ *
+ * Used as a fallback when GetDevicesByUserID fails (IMEI sessions are device-scoped
+ * and always return HTTP 500 from that endpoint). Calls GetTracking once to confirm
+ * the device is live and capture its last-seen timestamp.
+ *
+ * Set GPS903_DEVICE_ID=<id> in env to enable this path.
+ * Multiple comma-separated IDs are supported: GPS903_DEVICE_ID=3315745,3315746
+ */
+async function gps903FallbackCatalog(
+  sessionCookie: string,
+): Promise<Gps903DeviceCatalog[]> {
+  const deviceIdsStr = process.env.GPS903_DEVICE_ID;
+  const imei         = process.env.GPS903_IMEI;
+
+  if (!deviceIdsStr) {
+    console.log("[GPS903] FallbackCatalog — GPS903_DEVICE_ID not set, nothing to return");
+    return [];
+  }
+
+  const deviceIds = deviceIdsStr
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => !isNaN(n) && n > 0);
+
+  if (deviceIds.length === 0) {
+    console.log("[GPS903] FallbackCatalog — GPS903_DEVICE_ID invalid");
+    return [];
+  }
+
+  console.log(`[GPS903] FallbackCatalog — building catalog for device IDs: ${deviceIds.join(", ")}`);
+
+  const results = await Promise.all(
+    deviceIds.map(async (deviceId) => {
+      const tracking = await gps903GetTracking(sessionCookie, deviceId);
+      const entry: Gps903DeviceCatalog = {
+        gps903DeviceId: deviceId,
+        deviceName:     `GPS903-${deviceId}`,
+        // Only include IMEI on the first device when there's exactly one configured
+        imei:           deviceIds.length === 1 ? (imei ?? null) : null,
+        model:          null,
+        lastSeen:       tracking?.fixTime ?? null,
+      };
+      console.log(
+        `[GPS903] FallbackCatalog — device ${deviceId}: ` +
+        (tracking ? `live (lat:${tracking.lat.toFixed(4)})` : "no fix / offline"),
+      );
+      return entry;
+    }),
+  );
+
+  return results;
+}
+
+/**
  * Fetch all devices registered under the current GPS903 account.
- * NOTE: This endpoint returns HTTP 500 for IMEI-scoped sessions (device-level login).
- * It requires an account-level session. Returns [] gracefully on any error.
+ *
+ * Strategy:
+ *   1. If GPS903_USERNAME + GPS903_PASSWORD are set, try an account-level login
+ *      which gives access to GetDevicesByUserID (returns the full device list).
+ *   2. Otherwise fall back to an IMEI session. GetDevicesByUserID returns HTTP 500
+ *      for IMEI-scoped sessions, so we call gps903FallbackCatalog() instead —
+ *      it builds a minimal catalog from GPS903_DEVICE_ID env var + GetTracking.
  */
 export async function gps903GetDevicesByUserID(
+  imeiSessionCookie: string,
+): Promise<Gps903DeviceCatalog[]> {
+  // ── Path A: account-level login ──────────────────────────────────────────────
+  const accountUser = process.env.GPS903_USERNAME;
+  const accountPass = process.env.GPS903_PASSWORD;
+
+  if (accountUser && accountPass) {
+    console.log("[GPS903] GPS903_USERNAME set — attempting account-level login for discovery");
+    const accountSession = await gps903AccountLogin(accountUser, accountPass);
+    if (accountSession) {
+      return gps903GetDevicesByUserIDWithSession(accountSession);
+    }
+    console.log("[GPS903] Account login failed — falling back to IMEI-based catalog");
+  }
+
+  // ── Path B: IMEI session fallback via GetDevicesByUserID ─────────────────────
+  // Try GetDevicesByUserID with the IMEI session anyway — some GPS903 configurations
+  // may allow it. Returns [] on HTTP 500 (normal for IMEI-scoped sessions).
+  const fromApi = await gps903GetDevicesByUserIDWithSession(imeiSessionCookie);
+  if (fromApi.length > 0) return fromApi;
+
+  // ── Path C: Env-var fallback catalog ─────────────────────────────────────────
+  // IMEI session can't enumerate devices — build catalog from GPS903_DEVICE_ID env var.
+  console.log("[GPS903] GetDevicesByUserID unavailable — using GPS903_DEVICE_ID fallback catalog");
+  return gps903FallbackCatalog(imeiSessionCookie);
+}
+
+async function gps903GetDevicesByUserIDWithSession(
   sessionCookie: string,
 ): Promise<Gps903DeviceCatalog[]> {
   let res: Response;
@@ -362,10 +526,16 @@ export async function gps903GetDevicesByUserID(
 
   let envelope: { d?: string };
   try { envelope = await res.json() as { d?: string }; } catch { return []; }
+
+  console.log("[GPS903] GetDevicesByUserID raw envelope.d (first 200 chars):", envelope.d?.slice(0, 200));
+
   if (!envelope.d) return [];
 
   const data = parseGps903Value(envelope.d);
-  if (!Array.isArray(data)) return [];
+  if (!Array.isArray(data)) {
+    console.log("[GPS903] GetDevicesByUserID — parsed value is not an array:", typeof data);
+    return [];
+  }
 
   const devices = (data as Record<string, unknown>[])
     .filter((d) => d.DeviceID != null)
@@ -378,7 +548,7 @@ export async function gps903GetDevicesByUserID(
     }))
     .filter((d) => !isNaN(d.gps903DeviceId));
 
-  console.log(`[GPS903] GetDevicesByUserID — ${devices.length} devices`);
+  console.log(`[GPS903] GetDevicesByUserID — ${devices.length} devices parsed`);
   return devices;
 }
 
