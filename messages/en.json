@@ -484,6 +484,16 @@
       "toast": {
         "success": "Timeline entry added"
       }
+    },
+    "filters": {
+      "searchPlaceholder": "Case number or entry…",
+      "allAgents": "All agents",
+      "from": "From date",
+      "to": "To date",
+      "clearFilters": "Clear filters",
+      "results": "{count} entries",
+      "noResults": "No entries match",
+      "noResultsDescription": "Try a different search, agent, or date range."
     }
   },
   "evidence": {

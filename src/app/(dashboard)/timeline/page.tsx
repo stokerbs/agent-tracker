@@ -1,28 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Clock, MapPin } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
+import { TimelineFilters } from "@/components/timeline/timeline-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 
 export const metadata: Metadata = { title: "Timeline" };
 export const dynamic = "force-dynamic";
 
-export default async function TimelinePage() {
+interface Props {
+  searchParams: Promise<{ q?: string; agent_id?: string; from?: string; to?: string }>;
+}
+
+export default async function TimelinePage({ searchParams }: Props) {
   await requireProfile();
   const t = await getTranslations("timeline");
   const locale = await getLocale();
+  const sp = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("timeline_entries")
-    .select("*, agents(full_name), cases(case_number)")
-    .order("entry_date", { ascending: false })
-    .order("entry_time", { ascending: false })
-    .limit(200);
 
-  const entries = (data ?? []) as any[];
+  const [agentsResult, entriesResult] = await Promise.all([
+    supabase.from("agents").select("id, full_name, agent_code").order("full_name"),
+    (() => {
+      let q = supabase
+        .from("timeline_entries")
+        .select("*, agents(full_name), cases(case_number)")
+        .order("entry_date", { ascending: false })
+        .order("entry_time", { ascending: false })
+        .limit(200);
+      if (sp.agent_id) q = q.eq("agent_id", sp.agent_id);
+      if (sp.from) q = q.gte("entry_date", sp.from);
+      if (sp.to) q = q.lte("entry_date", sp.to);
+      return q;
+    })(),
+  ]);
+
+  const agents = (agentsResult.data ?? []) as { id: string; full_name: string; agent_code: string }[];
+
+  // Case number search is in-memory (joined column).
+  const search = sp.q?.toLowerCase().trim() ?? "";
+  const allEntries = (entriesResult.data ?? []) as any[];
+  const entries = search
+    ? allEntries.filter((e) =>
+        (e.cases?.case_number ?? "").toLowerCase().includes(search) ||
+        (e.entry ?? "").toLowerCase().includes(search),
+      )
+    : allEntries;
 
   const groups = entries.reduce<Record<string, any[]>>((acc, e) => {
     (acc[e.entry_date] ??= []).push(e);
@@ -41,11 +68,15 @@ export default async function TimelinePage() {
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} />
 
+      <Suspense>
+        <TimelineFilters agents={agents} count={entries.length} />
+      </Suspense>
+
       {entries.length === 0 ? (
         <EmptyState
           icon={<Clock className="h-6 w-6" />}
-          title={t("noTitle")}
-          description={t("noDescription")}
+          title={search || sp.agent_id || sp.from || sp.to ? t("filters.noResults") : t("noTitle")}
+          description={search || sp.agent_id || sp.from || sp.to ? t("filters.noResultsDescription") : t("noDescription")}
         />
       ) : (
         <div className="space-y-8">
