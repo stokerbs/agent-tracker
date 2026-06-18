@@ -49,8 +49,9 @@ export async function pollDeviceNow(deviceId: string) {
 
   if (!pos) {
     await svc.from("gps_devices").update({
-      last_polled_at: new Date().toISOString(),
-      last_poll_ok:   false,
+      last_polled_at:   new Date().toISOString(),
+      last_poll_ok:     false,
+      last_locate_mode: "offline",
     }).eq("id", deviceId);
     return { error: "GPS903 returned no position for this device" };
   }

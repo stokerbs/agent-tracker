@@ -176,13 +176,14 @@ export async function gps903Login(
 // ── GetTracking ───────────────────────────────────────────────────────────────
 
 export interface TrackingResult {
-  lat:      number;
-  lng:      number;
-  speed:    number;        // km/h
-  course:   number;        // degrees 0–360
-  battery:  number | null; // percent (from dataContext[1])
-  ignition: boolean;       // ACC on/off (from dataContext[0])
-  fixTime:  string;        // deviceUtcDate as-is
+  lat:         number;
+  lng:         number;
+  speed:       number;               // km/h
+  course:      number;               // degrees 0–360
+  battery:     number | null;        // percent (from dataContext[1])
+  ignition:    boolean;              // ACC on/off (from dataContext[0])
+  fixTime:     string;               // deviceUtcDate as-is
+  locateMode:  "gps" | "lbs" | "unknown"; // gps = satellite fix; lbs = cell tower; unknown = field absent
 }
 
 /**
@@ -246,19 +247,30 @@ export async function gps903GetTracking(
     if (!isNaN(raw) && raw >= 0 && raw <= 100) battery = raw;
   }
 
+  // GPS903 reports locate mode via isLBS:
+  //   isLBS === 0  → GPS satellite fix
+  //   isLBS === 1  → LBS cell-tower fallback (less accurate)
+  //   field absent → unknown (treat conservatively as unknown)
+  let locateMode: "gps" | "lbs" | "unknown" = "unknown";
+  if ("isLBS" in data) {
+    locateMode = Number(data.isLBS) === 1 ? "lbs" : "gps";
+  }
+
   const result: TrackingResult = {
     lat,
     lng,
-    speed:    parseFloat(String(data.speed)) || 0,
-    course:   Number(data.course) || 0,
+    speed:      parseFloat(String(data.speed)) || 0,
+    course:     Number(data.course) || 0,
     battery,
     ignition,
-    fixTime:  String(data.deviceUtcDate ?? new Date().toISOString()),
+    fixTime:    String(data.deviceUtcDate ?? new Date().toISOString()),
+    locateMode,
   };
 
   console.log(
     `[GPS903] GetTracking device ${deviceId} — lat:${lat.toFixed(5)} lng:${lng.toFixed(5)} ` +
-    `speed:${result.speed} battery:${battery ?? "?"} ignition:${ignition} status:${data.status ?? "?"}`,
+    `speed:${result.speed} battery:${battery ?? "?"} ignition:${ignition} ` +
+    `locateMode:${locateMode} status:${data.status ?? "?"}`,
   );
 
   return result;
@@ -660,13 +672,14 @@ export async function applyPositionToDevice(
   if (pos.battery !== null) posRow.battery_pct = pos.battery;
 
   const deviceUpdate: Record<string, unknown> = {
-    last_lat:        pos.lat,
-    last_lng:        pos.lng,
-    last_speed_kmh:  pos.speed,
-    last_heading:    heading,
-    last_seen_at:    now,
-    last_polled_at:  now,
-    last_poll_ok:    true,
+    last_lat:         pos.lat,
+    last_lng:         pos.lng,
+    last_speed_kmh:   pos.speed,
+    last_heading:     heading,
+    last_seen_at:     now,
+    last_polled_at:   now,
+    last_poll_ok:     true,
+    last_locate_mode: pos.locateMode,
   };
   if (pos.battery !== null) deviceUpdate.last_battery_pct = pos.battery;
 

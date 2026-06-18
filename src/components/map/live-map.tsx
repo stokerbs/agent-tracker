@@ -666,6 +666,39 @@ function AgentPopup({
 }
 
 // ─────────────────────────────────────────────
+// Locate mode badge
+// ─────────────────────────────────────────────
+
+function LocateModeBadge({
+  mode, isStale,
+}: {
+  mode: "gps" | "lbs" | "offline" | "unknown" | null;
+  isStale: boolean;
+}) {
+  const effective = isStale ? "offline" : (mode ?? "unknown");
+  const cfg = {
+    gps:     { label: "GPS",     cls: "bg-emerald-500/10 text-emerald-400" },
+    lbs:     { label: "LBS",     cls: "bg-amber-500/10 text-amber-400" },
+    offline: { label: "OFFLINE", cls: "bg-red-500/10 text-red-400" },
+    unknown: { label: "UNKNOWN", cls: "bg-slate-500/10 text-slate-400" },
+  } as const;
+  const { label, cls } = cfg[effective] ?? cfg.unknown;
+
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider", cls)}>
+      <span className={cn(
+        "inline-block h-1.5 w-1.5 rounded-full",
+        effective === "gps"     ? "bg-emerald-400"
+        : effective === "lbs"   ? "bg-amber-400"
+        : effective === "offline" ? "bg-red-400"
+        : "bg-slate-400",
+      )} />
+      {label}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────
 // GPS Device popup — Device info · no agent data
 // ─────────────────────────────────────────────
 
@@ -704,6 +737,10 @@ function GpsDevicePopup({
               <p className="font-mono text-xs text-muted-foreground">
                 {device.imei ?? "—"}
               </p>
+              {/* Locate mode badge — below IMEI */}
+              <div className="mt-1">
+                <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={isStale} />
+              </div>
             </div>
             <button
               onClick={onClose} aria-label="Close"

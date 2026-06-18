@@ -92,8 +92,9 @@ export async function GET(request: NextRequest) {
       } else {
         if (linked) {
           await svc.from("gps_devices").update({
-            last_polled_at: now,
-            last_poll_ok:   false,
+            last_polled_at:   now,
+            last_poll_ok:     false,
+            last_locate_mode: "offline",
           }).eq("id", linked.id);
         }
 

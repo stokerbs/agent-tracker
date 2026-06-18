@@ -139,12 +139,13 @@ export interface GpsDevice {
   last_polled_at: string | null;
   last_poll_ok: boolean | null;
   // Denormalized last-known position (updated by GPS903 polling, not by agents)
-  last_lat:         number | null;
-  last_lng:         number | null;
-  last_speed_kmh:   number | null;
-  last_heading:     number | null;
-  last_battery_pct: number | null;
-  last_seen_at:     string | null;
+  last_lat:          number | null;
+  last_lng:          number | null;
+  last_speed_kmh:    number | null;
+  last_heading:      number | null;
+  last_battery_pct:  number | null;
+  last_seen_at:      string | null;
+  last_locate_mode:  "gps" | "lbs" | "offline" | "unknown" | null;
   created_by: string | null;
   deleted_at: string | null;
   created_at: string;

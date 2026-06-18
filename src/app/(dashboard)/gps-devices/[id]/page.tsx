@@ -16,6 +16,7 @@ import {
   Navigation,
   Radio,
   Satellite,
+  Signal,
   User,
   XCircle,
 } from "lucide-react";
@@ -74,6 +75,26 @@ function BatteryDisplay({ pct }: { pct: number | null }) {
   return (
     <span className={`flex items-center gap-1.5 font-mono text-sm font-medium ${color}`}>
       <Icon className="h-4 w-4" /> {pct}%
+    </span>
+  );
+}
+
+type LocateMode = "gps" | "lbs" | "offline" | "unknown" | null;
+
+const LOCATE_MODE_CFG: Record<string, { label: string; cls: string }> = {
+  gps:     { label: "GPS",     cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
+  lbs:     { label: "LBS",     cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
+  offline: { label: "OFFLINE", cls: "bg-red-500/10 text-red-500 border-red-500/20" },
+  unknown: { label: "UNKNOWN", cls: "bg-muted text-muted-foreground border-border" },
+};
+
+function LocateModeBadge({ mode, isStale }: { mode: LocateMode; isStale: boolean }) {
+  const key = isStale ? "offline" : (mode ?? "unknown");
+  const cfg = LOCATE_MODE_CFG[key] ?? LOCATE_MODE_CFG.unknown;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wider ${cfg.cls}`}>
+      <Signal className="h-3 w-3" />
+      {cfg.label}
     </span>
   );
 }
@@ -202,6 +223,7 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
               {device.provider}
             </span>
           )}
+          <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={stale} />
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
             pollOk === true  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
             pollOk === false ? "bg-red-500/10 text-red-500" :
@@ -328,6 +350,12 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                 <span className={`text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
                   {timeAgo(device.last_seen_at ?? null)}
                 </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Signal className="h-3.5 w-3.5" /> Locate mode
+                </span>
+                <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={stale} />
               </div>
               {device.last_lat != null && (
                 <Button asChild variant="outline" size="sm" className="mt-1 w-full gap-1.5 text-xs">
