@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { useEffect } from "react";
 import { Bold, Italic, List, ListOrdered, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,11 @@ export function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
 
   if (!editor) return null;
 
