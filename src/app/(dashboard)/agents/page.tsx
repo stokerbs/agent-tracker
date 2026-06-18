@@ -22,9 +22,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StaggerGrid, StaggerItem } from "@/components/shared/motion";
 import { batteryColor, initials, timeAgo } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { AGENT_ROLE_META } from "@/lib/constants";
+import type { AgentRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Agents" };
 export const dynamic = "force-dynamic";
+
+const ROLES: AgentRole[] = ["field_agent", "supervisor", "team_leader", "operations"];
 
 function BatteryBar({ pct, charging }: { pct: number | null; charging: boolean | null }) {
   const level = pct ?? 0;
@@ -53,9 +57,15 @@ function BatteryBar({ pct, charging }: { pct: number | null; charging: boolean |
   );
 }
 
-export default async function AgentsPage() {
+export default async function AgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>;
+}) {
   await requireRole(["admin", "supervisor"]);
   const t = await getTranslations("agents");
+  const { role: roleFilter } = await searchParams;
+
   const agents = await getAgents();
 
   const total = agents.length;
@@ -64,6 +74,9 @@ export default async function AgentsPage() {
   ).length;
   const active = agents.filter((a) => a.status !== "offline").length;
   const offline = agents.filter((a) => a.status === "offline").length;
+
+  const activeRole = ROLES.includes(roleFilter as AgentRole) ? (roleFilter as AgentRole) : null;
+  const filtered = activeRole ? agents.filter((a) => a.agent_role === activeRole) : agents;
 
   return (
     <div className="space-y-6">
@@ -78,18 +91,50 @@ export default async function AgentsPage() {
         <StatCard label={t("stats.offline")} value={offline} icon={<PowerOff className="h-4 w-4" />} accent="text-muted-foreground" />
       </div>
 
-      {agents.length === 0 ? (
+      {/* Role filter pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href="/agents"
+          className={cn(
+            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+            !activeRole
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+          )}
+        >
+          All roles
+        </Link>
+        {ROLES.map((r) => (
+          <Link
+            key={r}
+            href={`/agents?role=${r}`}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              activeRole === r
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+            )}
+          >
+            {AGENT_ROLE_META[r].label}
+            <span className="ml-1.5 font-mono text-[10px] opacity-60">
+              {agents.filter((a) => a.agent_role === r).length}
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
         <EmptyState
           icon={<Users className="h-6 w-6" />}
-          title={t("noTitle")}
-          description={t("noDescription")}
+          title={activeRole ? "No agents with this role" : t("noTitle")}
+          description={activeRole ? "Try a different role filter or create an agent with this role." : t("noDescription")}
         />
       ) : (
         <StaggerGrid className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {agents.map((a) => (
+          {filtered.map((a) => (
             <StaggerItem key={a.id}>
               <Link href={`/agents/${a.id}`} className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card p-4 transition-all duration-200 hover:border-border hover:shadow-sm">
-                {/* Avatar + status */}
+                {/* Avatar + status dot */}
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10 ring-2 ring-background">
                     {a.photo_url && <AvatarImage src={a.photo_url} />}

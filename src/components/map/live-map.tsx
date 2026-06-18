@@ -623,10 +623,14 @@ function AgentPopup({
   agent,
   now,
   onClose,
+  trailMinutes,
+  onTrailMinutesChange,
 }: {
   agent: Agent;
   now: number;
   onClose: () => void;
+  trailMinutes: 15 | 30 | 60;
+  onTrailMinutesChange: (m: 15 | 30 | 60) => void;
 }) {
   const t = useTranslations("map");
   const speed = agent.speed_kmh ?? 0;
@@ -751,6 +755,28 @@ function AgentPopup({
                 <span className="font-mono">{agent.phone}</span>
               </div>
             )}
+          </div>
+
+          {/* Trail duration */}
+          <div className="flex items-center gap-2 border-t border-border/40 px-3 py-2">
+            <Clock className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+            <span className="text-xs text-muted-foreground">Trail</span>
+            <div className="ml-auto flex gap-1">
+              {([15, 30, 60] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => onTrailMinutesChange(m)}
+                  className={cn(
+                    "rounded px-1.5 py-0.5 font-mono text-[10px] font-medium transition-colors",
+                    trailMinutes === m
+                      ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                      : "text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Call button */}
@@ -1428,15 +1454,15 @@ export function LiveMap({
                 />
               ))}
 
-            {/* Trail for selected agent */}
-            {showTrails && selectedAgent?.id && (
+            {/* Trail for selected agent — always shown when popup is open */}
+            {selectedAgent?.id && (
               <TrailLayer
                 agentId={selectedAgent.id}
                 durationMinutes={trailMinutes}
               />
             )}
 
-            {/* Trails for all agents when no specific selection */}
+            {/* Trails for all agents (global toggle, only when no agent selected) */}
             {showTrails && !selectedAgent && filtered.map((a) => (
               <TrailLayer
                 key={a.id}
@@ -1463,6 +1489,8 @@ export function LiveMap({
                 agent={selectedAgent}
                 now={now}
                 onClose={() => setSelectedAgent(null)}
+                trailMinutes={trailMinutes}
+                onTrailMinutesChange={setTrailMinutes}
               />
             )}
           </Map>

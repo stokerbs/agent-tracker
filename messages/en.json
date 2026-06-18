@@ -676,7 +676,7 @@
     "area": "Area",
     "vehicle": "Vehicle",
     "speedLegend": "Speed ring",
-    "trailNote": "Click agent to view trail",
+    "trailNote": "Trail shown automatically when an agent is selected",
     "speed": {
       "stopped": "Stopped (0 km/h)",
       "slow": "Slow (<20 km/h)",
@@ -684,7 +684,7 @@
       "fast": "High speed (≥60 km/h)"
     },
     "trail": {
-      "toggle": "Trails",
+      "toggle": "All trails",
       "mins15": "15 min",
       "mins30": "30 min",
       "mins60": "60 min"
