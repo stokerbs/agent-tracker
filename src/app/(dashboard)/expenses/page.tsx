@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Receipt, TrendingUp } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
@@ -7,6 +8,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { ExportExpensesButton } from "@/components/expenses/export-expenses-button";
+import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,39 +21,65 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { ExpenseCategory } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Expenses" };
 export const dynamic = "force-dynamic";
 
-export default async function ExpensesPage() {
+const VALID_CATEGORIES = new Set<string>(["fuel", "toll", "parking", "food", "hotel", "misc"]);
+
+interface Props {
+  searchParams: Promise<{ q?: string; category?: string; from?: string; to?: string }>;
+}
+
+export default async function ExpensesPage({ searchParams }: Props) {
   await requireProfile();
   const t = await getTranslations("expenses");
   const locale = await getLocale();
+  const sp = await searchParams;
   const expenses = (await getExpenses()) as any[];
 
+  // Stats always reflect full unfiltered dataset
   const now = new Date();
   const thisMonth = expenses.filter((e) => {
     const d = new Date(e.expense_date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-
   const monthTotal = thisMonth.reduce((s, e) => s + Number(e.amount), 0);
   const allTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
-
   const byCategory = thisMonth.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);
     return acc;
   }, {});
-
   const monthName = now.toLocaleString(locale === "th" ? "th-TH" : "en-US", {
     month: "long",
     year: "numeric",
   });
 
+  // Filter table rows
+  const search = sp.q?.toLowerCase().trim() ?? "";
+  const categoryFilter = VALID_CATEGORIES.has(sp.category ?? "") ? (sp.category as ExpenseCategory) : null;
+  const fromDate = sp.from ?? null;
+  const toDate = sp.to ?? null;
+
+  const filtered = expenses.filter((e) => {
+    if (search) {
+      const agentName = (e.agents?.full_name ?? "").toLowerCase();
+      const notes = (e.notes ?? "").toLowerCase();
+      if (!agentName.includes(search) && !notes.includes(search)) return false;
+    }
+    if (categoryFilter && e.category !== categoryFilter) return false;
+    if (fromDate && e.expense_date < fromDate) return false;
+    if (toDate && e.expense_date > toDate) return false;
+    return true;
+  });
+
+  const filteredTotal = filtered.reduce((s, e) => s + Number(e.amount), 0);
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")}>
-        <ExportExpensesButton expenses={expenses} />
+        <ExportExpensesButton expenses={filtered} />
         <AddExpenseDialog />
       </PageHeader>
 
@@ -94,15 +122,17 @@ export default async function ExpensesPage() {
       )}
 
       <Card>
-        <CardContent className="p-0">
-          {expenses.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={<Receipt className="h-6 w-6" />}
-                title={t("noTitle")}
-                description={t("noDescription")}
-              />
-            </div>
+        <CardContent className="space-y-4 p-4">
+          <Suspense>
+            <ExpenseFilters count={filtered.length} filteredTotal={filteredTotal} />
+          </Suspense>
+
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<Receipt className="h-6 w-6" />}
+              title={search || categoryFilter || fromDate || toDate ? t("filters.noResults") : t("noTitle")}
+              description={search || categoryFilter || fromDate || toDate ? t("filters.noResultsDescription") : t("noDescription")}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -115,7 +145,7 @@ export default async function ExpensesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenses.map((e) => (
+                {filtered.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="text-sm">{formatDate(e.expense_date)}</TableCell>
                     <TableCell className="text-sm">{e.agents?.full_name ?? "—"}</TableCell>

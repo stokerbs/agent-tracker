@@ -560,6 +560,16 @@
       "food": "Food",
       "hotel": "Hotel",
       "misc": "Miscellaneous"
+    },
+    "filters": {
+      "searchPlaceholder": "Agent name or notes…",
+      "allCategories": "All categories",
+      "from": "From date",
+      "to": "To date",
+      "clearFilters": "Clear filters",
+      "results": "{count} entries · ฿{total}",
+      "noResults": "No expenses match",
+      "noResultsDescription": "Try a different search, category, or date range."
     }
   },
   "reports": {
