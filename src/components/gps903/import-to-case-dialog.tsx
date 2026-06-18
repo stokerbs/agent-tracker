@@ -14,17 +14,17 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { importDeviceToCase } from "@/app/(dashboard)/gps903-discovery/actions";
+import { attachCredentialToCase } from "@/app/(dashboard)/gps903-discovery/actions";
 import type { CaseOption, AgentOption } from "@/app/(dashboard)/gps903-discovery/types";
 
 interface Props {
-  gps903DeviceId: number;
-  deviceName:     string | null;
-  cases:          CaseOption[];
-  agents:         AgentOption[];
+  credentialId: string;
+  deviceName:   string | null;
+  cases:        CaseOption[];
+  agents:       AgentOption[];
 }
 
-export function ImportToCaseDialog({ gps903DeviceId, deviceName, cases, agents }: Props) {
+export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: Props) {
   const router = useRouter();
   const [open, setOpen]               = useState(false);
   const [selectedCase,  setCase]      = useState("");
@@ -34,15 +34,15 @@ export function ImportToCaseDialog({ gps903DeviceId, deviceName, cases, agents }
   function handleImport() {
     if (!selectedCase) { toast.error("Select a case first"); return; }
     start(async () => {
-      const res = await importDeviceToCase(
-        gps903DeviceId,
+      const res = await attachCredentialToCase(
+        credentialId,
         selectedCase,
         selectedAgent === "none" ? null : selectedAgent,
       );
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success("Device imported to case");
+        toast.success("Device attached to case");
         setOpen(false);
         router.refresh();
       }
@@ -54,16 +54,15 @@ export function ImportToCaseDialog({ gps903DeviceId, deviceName, cases, agents }
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs">
           <Link2 className="h-3 w-3" />
-          Import to Case
+          Attach to Case
         </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Import to Case</DialogTitle>
+          <DialogTitle>Attach to Case</DialogTitle>
           <DialogDescription>
-            Link GPS903-{gps903DeviceId}
-            {deviceName ? ` · ${deviceName}` : ""} to a case and optionally assign an agent.
+            {deviceName ? deviceName : "GPS Device"} — link to a case and optionally assign an agent.
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +106,7 @@ export function ImportToCaseDialog({ gps903DeviceId, deviceName, cases, agents }
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleImport} disabled={pending || !selectedCase}>
             {pending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Import Device
+            Attach Device
           </Button>
         </DialogFooter>
       </DialogContent>

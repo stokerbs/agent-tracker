@@ -331,7 +331,7 @@ function GpsDeviceMarker({
     >
       <div
         className="relative cursor-pointer select-none"
-        title={device.notes ?? `GPS903-${device.gps903_device_id}`}
+        title={device.cred_name ?? device.notes ?? `GPS903-${device.gps903_device_id ?? "?"}`}
       >
         {/* Diamond (rotated square) body */}
         <div className={cn(
@@ -766,11 +766,17 @@ function GpsDevicePopup({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-foreground">
-                {device.notes ?? `GPS903-${device.gps903_device_id ?? "?"}`}
+                {device.cred_name ?? device.notes ?? `GPS903-${device.gps903_device_id ?? "?"}`}
               </p>
               <p className="font-mono text-xs text-muted-foreground">
-                {device.imei ?? "—"}
+                {device.cred_imei ?? device.imei ?? "—"}
               </p>
+              {device.cred_phone && (
+                <p className="font-mono text-[10px] text-muted-foreground/70">{device.cred_phone}</p>
+              )}
+              {(device.cred_provider ?? device.provider) && (
+                <p className="font-mono text-[10px] text-muted-foreground/70">{device.cred_provider ?? device.provider}</p>
+              )}
               {/* Locate mode badge — below IMEI */}
               <div className="mt-1">
                 <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={isStale} />
@@ -1035,14 +1041,22 @@ export function LiveMap({
   async function refreshGps() {
     const { data } = await supabase
       .from("gps_devices")
-      .select("*, cases(case_number)")
+      .select("*, cases(case_number), gps903_credentials(device_name, imei, phone_number, provider)")
       .not("last_lat", "is", null)
       .is("deleted_at", null);
     if (data) {
+      type RawGpsRow = GpsDeviceForMap & {
+        cases: { case_number: string } | null;
+        gps903_credentials: { device_name: string | null; imei: string | null; phone_number: string | null; provider: string | null } | null;
+      };
       setGpsDevices(
-        (data as unknown as Array<GpsDeviceForMap & { cases: { case_number: string } | null }>).map((row) => ({
+        (data as unknown as RawGpsRow[]).map((row) => ({
           ...row,
-          case_number: row.cases?.case_number ?? null,
+          case_number:   row.cases?.case_number ?? null,
+          cred_name:     row.gps903_credentials?.device_name ?? null,
+          cred_imei:     row.gps903_credentials?.imei ?? null,
+          cred_phone:    row.gps903_credentials?.phone_number ?? null,
+          cred_provider: row.gps903_credentials?.provider ?? null,
         })),
       );
     }

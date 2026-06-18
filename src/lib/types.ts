@@ -136,6 +136,7 @@ export interface GpsDevice {
   agent_id: string | null;
   traccar_id: number | null;
   gps903_device_id: number | null;
+  credential_id: string | null;
   last_polled_at: string | null;
   last_poll_ok: boolean | null;
   // Denormalized last-known position (updated by GPS903 polling, not by agents)
@@ -178,9 +179,13 @@ export interface GpsDeviceAccessWithProfile extends GpsDeviceAccess {
   profiles: Pick<Profile, "id" | "full_name" | "email" | "role" | "avatar_url"> | null;
 }
 
-/** GpsDevice extended with case_number for map display. */
+/** GpsDevice extended with case_number and credential metadata for map display. */
 export interface GpsDeviceForMap extends GpsDevice {
-  case_number: string | null;
+  case_number:   string | null;
+  cred_name:     string | null;  // from gps903_credentials.device_name
+  cred_imei:     string | null;
+  cred_phone:    string | null;
+  cred_provider: string | null;
 }
 
 export interface Gps903Device {
@@ -202,6 +207,8 @@ export interface Gps903Credential {
   imei:             string;
   // device_password intentionally absent — never sent to the browser
   gps903_device_id: number | null;  // null until auto-detected via Test Connection
+  phone_number:     string | null;
+  provider:         string | null;
   is_active:        boolean;
   last_synced_at:   string | null;
   last_sync_ok:     boolean | null;

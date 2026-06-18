@@ -11,16 +11,15 @@ export interface LinkedCase {
 }
 
 export interface EnrichedDevice {
-  id:          string;
-  gps903Id:    number;
-  deviceName:  string | null;
-  imei:        string | null;
-  model:       string | null;
-  lastSeen:    string | null;
-  syncedAt:    string;
-  linkedCases: LinkedCase[];
-  phoneNumber: string | null;  // from gps_devices.phone_number (first linked row)
-  provider:    string | null;  // from gps_devices.provider (first linked row)
+  credentialId: string;        // gps903_credentials.id (replaces old catalog id)
+  gps903Id:     number | null; // gps903_credentials.gps903_device_id
+  deviceName:   string;        // gps903_credentials.device_name
+  imei:         string;
+  phoneNumber:  string | null; // from credential directly
+  provider:     string | null; // from credential directly
+  lastSynced:   string | null; // gps903_credentials.last_synced_at
+  lastSyncOk:   boolean | null;
+  linkedCases:  LinkedCase[];
 }
 
 export interface CaseOption  { id: string; case_number: string }

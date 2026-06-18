@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { SyncButton } from "@/components/gps903/sync-button";
 import { DiscoveryTable } from "./discovery-table";
-import type { Gps903Device } from "@/lib/types";
 import type { AgentOption, CaseOption, EnrichedDevice, LinkedCase } from "./types";
 
 export const dynamic = "force-dynamic";
@@ -23,38 +22,46 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
   const t   = await getTranslations("gps903Discovery");
   const svc = createServiceClient();
 
-  // 1. Fetch full GPS903 device catalog
-  const { data: catalogRows } = await svc
-    .from("gps903_devices")
-    .select("*")
-    .order("gps903_device_id");
+  // 1. Fetch credentials as the primary source of truth
+  const { data: credRows } = await svc
+    .from("gps903_credentials")
+    .select("id, device_name, imei, gps903_device_id, phone_number, provider, last_synced_at, last_sync_ok")
+    .order("device_name");
 
-  const catalog    = (catalogRows ?? []) as Gps903Device[];
-  const catalogIds = catalog.map((d) => d.gps903_device_id);
+  const credentials = (credRows ?? []) as {
+    id: string;
+    device_name: string;
+    imei: string;
+    gps903_device_id: number | null;
+    phone_number: string | null;
+    provider: string | null;
+    last_synced_at: string | null;
+    last_sync_ok: boolean | null;
+  }[];
 
-  // 2. Fetch operational links (gps_devices rows that reference catalog devices)
-  const opQuery = catalogIds.length > 0
+  const credentialIds = credentials.map((c) => c.id);
+
+  // 2. Fetch operational links (gps_devices rows that reference credentials)
+  const opQuery = credentialIds.length > 0
     ? await svc
         .from("gps_devices")
         .select(`
-          id, gps903_device_id, case_id, agent_id, phone_number, provider,
+          id, credential_id, case_id, agent_id,
           cases ( case_number ),
           agents ( id, full_name, agent_code )
         `)
-        .in("gps903_device_id", catalogIds)
+        .in("credential_id", credentialIds)
         .is("deleted_at", null)
     : { data: [] };
 
   const opRows = opQuery.data ?? [];
 
-  // Build map: gps903_device_id → LinkedCase[]
-  const linkedMap = new Map<number, LinkedCase[]>();
-  // Build map: gps903_device_id → first-row SIM info (phone_number + provider)
-  const simMap    = new Map<number, { phoneNumber: string | null; provider: string | null }>();
+  // Build map: credential_id → LinkedCase[]
+  const linkedMap = new Map<string, LinkedCase[]>();
 
   for (const row of opRows) {
-    const gId: number = row.gps903_device_id as number;
     const r = row as Record<string, any>;
+    const credId: string = r.credential_id as string;
 
     const entry: LinkedCase = {
       gpsDeviceId: r.id,
@@ -64,27 +71,22 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
       agentName:   r.agents?.full_name ?? null,
       agentCode:   r.agents?.agent_code ?? null,
     };
-    const existing = linkedMap.get(gId) ?? [];
+    const existing = linkedMap.get(credId) ?? [];
     existing.push(entry);
-    linkedMap.set(gId, existing);
-
-    if (!simMap.has(gId)) {
-      simMap.set(gId, { phoneNumber: r.phone_number ?? null, provider: r.provider ?? null });
-    }
+    linkedMap.set(credId, existing);
   }
 
   // 3. Enrich and filter
-  const enriched: EnrichedDevice[] = catalog.map((d) => ({
-    id:          d.id,
-    gps903Id:    d.gps903_device_id,
-    deviceName:  d.device_name,
-    imei:        d.imei,
-    model:       d.model,
-    lastSeen:    d.last_seen,
-    syncedAt:    d.synced_at,
-    linkedCases: linkedMap.get(d.gps903_device_id) ?? [],
-    phoneNumber: simMap.get(d.gps903_device_id)?.phoneNumber ?? null,
-    provider:    simMap.get(d.gps903_device_id)?.provider    ?? null,
+  const enriched: EnrichedDevice[] = credentials.map((c) => ({
+    credentialId: c.id,
+    gps903Id:     c.gps903_device_id,
+    deviceName:   c.device_name,
+    imei:         c.imei,
+    phoneNumber:  c.phone_number,
+    provider:     c.provider,
+    lastSynced:   c.last_synced_at,
+    lastSyncOk:   c.last_sync_ok,
+    linkedCases:  linkedMap.get(c.id) ?? [],
   }));
 
   const displayed =
@@ -111,7 +113,11 @@ export default async function Gps903DiscoveryPage({ searchParams }: Props) {
   const total    = enriched.length;
   const linked   = enriched.filter((d) => d.linkedCases.length > 0).length;
   const unlinked = total - linked;
-  const lastSync = catalog[0]?.synced_at ?? null;
+  const lastSync = credentials.reduce<string | null>((best, c) => {
+    if (!c.last_synced_at) return best;
+    if (!best) return c.last_synced_at;
+    return c.last_synced_at > best ? c.last_synced_at : best;
+  }, null);
 
   const lastSyncLabel = lastSync
     ? new Date(lastSync).toLocaleString("en-GB", {

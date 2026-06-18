@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Gps903Credential } from "@/lib/types";
 import {
@@ -34,6 +41,8 @@ const EMPTY = {
   imei:             "",
   device_password:  "",
   gps903_device_id: "" as string,
+  phone_number:     "",
+  provider:         "",
   is_active:        true,
 };
 
@@ -53,6 +62,8 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
               imei:             credential.imei,
               device_password:  "",   // never pre-filled
               gps903_device_id: credential.gps903_device_id?.toString() ?? "",
+              phone_number:     credential.phone_number ?? "",
+              provider:         credential.provider ?? "",
               is_active:        credential.is_active,
             }
           : EMPTY,
@@ -120,6 +131,8 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
         imei:             form.imei.trim(),
         device_password:  form.device_password,
         gps903_device_id: deviceId,
+        phone_number:     form.phone_number.trim() || null,
+        provider:         form.provider || null,
         is_active:        form.is_active,
       };
 
@@ -271,6 +284,40 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
                 The device won&apos;t be polled until a Device ID is detected or entered.
               </p>
             )}
+          </div>
+
+          {/* Phone Number */}
+          <div className="space-y-1.5">
+            <Label htmlFor="phone_number">
+              Phone Number (SIM)
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="phone_number"
+              type="tel"
+              placeholder="e.g. 0812345678"
+              value={form.phone_number}
+              onChange={(e) => set("phone_number", e.target.value)}
+            />
+          </div>
+
+          {/* Provider */}
+          <div className="space-y-1.5">
+            <Label htmlFor="provider">
+              Provider
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Select value={form.provider} onValueChange={(v) => set("provider", v === "none" ? "" : v)}>
+              <SelectTrigger id="provider">
+                <SelectValue placeholder="Select provider…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="AIS">AIS</SelectItem>
+                <SelectItem value="TRUE">TRUE</SelectItem>
+                <SelectItem value="DTAC">DTAC</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Active toggle */}

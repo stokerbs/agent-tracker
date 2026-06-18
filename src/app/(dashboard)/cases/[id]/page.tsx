@@ -42,7 +42,6 @@ import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
-import { GpsDeviceFormDialog } from "@/components/cases/gps-device-form-dialog";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -154,7 +153,7 @@ export default async function CaseDetailPage({
       : Promise.resolve({ count: 0 }),
     supabase
       .from("gps_devices")
-      .select("*")
+      .select("*, gps903_credentials(device_name, imei, phone_number, provider)")
       .eq("case_id", id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true }),
@@ -352,7 +351,6 @@ export default async function CaseDetailPage({
                 {isAdmin && (
                   <div className="flex items-center gap-2">
                     <ImportFromGps903Dialog caseId={id} />
-                    <GpsDeviceFormDialog caseId={id} agents={allAgents} />
                   </div>
                 )}
               </div>

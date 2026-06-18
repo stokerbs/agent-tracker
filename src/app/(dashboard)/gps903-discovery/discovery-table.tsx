@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Phone, Search, Signal } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,10 +56,9 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      String(d.gps903Id).includes(q) ||
-      (d.deviceName?.toLowerCase().includes(q)  ?? false) ||
-      (d.imei?.toLowerCase().includes(q)         ?? false) ||
-      (d.model?.toLowerCase().includes(q)        ?? false) ||
+      (d.gps903Id != null && String(d.gps903Id).includes(q)) ||
+      d.deviceName.toLowerCase().includes(q) ||
+      d.imei.toLowerCase().includes(q) ||
       (d.phoneNumber?.toLowerCase().includes(q)  ?? false) ||
       (d.provider?.toLowerCase().includes(q)     ?? false)
     );
@@ -104,7 +102,7 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                 const isLinked  = d.linkedCases.length > 0;
 
                 return (
-                  <TableRow key={d.id} className="text-sm">
+                  <TableRow key={d.credentialId} className="text-sm">
                     {/* Device */}
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -114,10 +112,10 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                           }`}
                         />
                         <div>
-                          <p className="font-mono text-xs font-bold">GPS903-{d.gps903Id}</p>
-                          {d.deviceName && (
-                            <p className="text-xs text-muted-foreground">{d.deviceName}</p>
+                          {d.gps903Id != null && (
+                            <p className="font-mono text-xs font-bold">GPS903-{d.gps903Id}</p>
                           )}
+                          <p className="text-xs text-muted-foreground">{d.deviceName}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -125,7 +123,7 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                     {/* IMEI + SIM info */}
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-mono text-xs text-muted-foreground">{d.imei ?? "—"}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{d.imei}</p>
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
                           <Phone className="h-3 w-3 shrink-0" />
                           <span className="font-mono">{d.phoneNumber ?? "—"}</span>
@@ -134,16 +132,14 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                       </div>
                     </TableCell>
 
-                    {/* Model */}
+                    {/* Last Synced (replaces Model + Last Seen columns) */}
                     <TableCell>
-                      {d.model
-                        ? <Badge variant="secondary" className="text-[10px]">{d.model}</Badge>
-                        : <span className="text-xs text-muted-foreground/50">—</span>}
+                      <span className="text-xs text-muted-foreground/50">—</span>
                     </TableCell>
 
-                    {/* Last Seen */}
+                    {/* Last Synced */}
                     <TableCell className="text-xs text-muted-foreground">
-                      {timeAgo(d.lastSeen)}
+                      {timeAgo(d.lastSynced)}
                     </TableCell>
 
                     {/* Case */}
@@ -183,7 +179,7 @@ export function DiscoveryTable({ devices, cases, agents, emptyMessage }: Props) 
                       <div className="flex items-center justify-end gap-1.5">
                         {!isLinked ? (
                           <ImportToCaseDialog
-                            gps903DeviceId={d.gps903Id}
+                            credentialId={d.credentialId}
                             deviceName={d.deviceName}
                             cases={cases}
                             agents={agents}

@@ -5,7 +5,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { getOrRefreshCredentialSession, gps903GetTracking } from "@/lib/gps903";
-import type { Gps903Device } from "@/lib/types";
 
 /**
  * Sync all active GPS903 credentials into the gps903_devices catalog.
@@ -75,40 +74,46 @@ export async function syncGps903Devices(): Promise<{
   return { ok: true, count: rows.length };
 }
 
-export async function importDeviceToCase(
-  gps903DeviceId: number,
+/**
+ * Attach a credential to a case, creating a gps_devices link row.
+ * Replaces the old importDeviceToCase (which used the catalog).
+ */
+export async function attachCredentialToCase(
+  credentialId: string,
   caseId: string,
   agentId: string | null,
 ): Promise<{ ok?: boolean; error?: string }> {
   const profile = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
-  const { data: catalog } = await svc
-    .from("gps903_devices")
-    .select("imei, device_name")
-    .eq("gps903_device_id", gps903DeviceId)
+  const { data: cred } = await svc
+    .from("gps903_credentials")
+    .select("id, imei, device_name, phone_number, provider, gps903_device_id")
+    .eq("id", credentialId)
     .maybeSingle();
 
-  if (!catalog) return { error: "Device not found in catalog — run a Sync first" };
+  if (!cred) return { error: "Credential not found" };
 
   // Prevent duplicate link to the same case
   const { data: existing } = await svc
     .from("gps_devices")
     .select("id")
+    .eq("credential_id", credentialId)
     .eq("case_id", caseId)
-    .eq("gps903_device_id", gps903DeviceId)
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (existing) return { error: "This GPS903 device is already linked to this case" };
+  if (existing) return { error: "This GPS device is already linked to this case" };
 
   const { error } = await svc.from("gps_devices").insert({
     case_id:          caseId,
-    imei:             catalog.imei,
-    provider:         "GPS903",
-    gps903_device_id: gps903DeviceId,
+    credential_id:    cred.id,
+    imei:             cred.imei,
+    phone_number:     cred.phone_number,
+    provider:         cred.provider ?? "GPS903",
+    gps903_device_id: cred.gps903_device_id,
     agent_id:         agentId,
-    notes:            catalog.device_name,
+    notes:            cred.device_name,
     created_by:       profile.id,
   });
 
@@ -120,20 +125,37 @@ export async function importDeviceToCase(
   return { ok: true };
 }
 
-/** Returns the GPS903 device catalog for use in client-side import dialogs. */
-export async function getGps903CatalogForImport(): Promise<
-  Pick<Gps903Device, "gps903_device_id" | "device_name" | "imei" | "model" | "last_seen">[]
-> {
+/**
+ * Returns all active credentials for use in client-side attach dialogs.
+ * Replaces the old getGps903CatalogForImport (which used the catalog table).
+ */
+export async function getCredentialsForAttach(): Promise<{
+  id: string;
+  gps903_device_id: number | null;
+  device_name: string;
+  imei: string;
+  phone_number: string | null;
+  provider: string | null;
+  last_synced_at: string | null;
+  last_sync_ok: boolean | null;
+}[]> {
   await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
   const { data } = await svc
-    .from("gps903_devices")
-    .select("gps903_device_id, device_name, imei, model, last_seen")
-    .order("gps903_device_id");
+    .from("gps903_credentials")
+    .select("id, gps903_device_id, device_name, imei, phone_number, provider, last_synced_at, last_sync_ok")
+    .eq("is_active", true)
+    .order("device_name");
 
-  return (data ?? []) as Pick<
-    Gps903Device,
-    "gps903_device_id" | "device_name" | "imei" | "model" | "last_seen"
-  >[];
+  return (data ?? []) as {
+    id: string;
+    gps903_device_id: number | null;
+    device_name: string;
+    imei: string;
+    phone_number: string | null;
+    provider: string | null;
+    last_synced_at: string | null;
+    last_sync_ok: boolean | null;
+  }[];
 }

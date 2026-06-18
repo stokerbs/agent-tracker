@@ -208,6 +208,16 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               )}
               <span>Last sync: {timeAgo(cred.last_synced_at)}</span>
             </div>
+            {(cred.phone_number || cred.provider) && (
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground/70">
+                {cred.phone_number && (
+                  <span className="font-mono">SIM: {cred.phone_number}</span>
+                )}
+                {cred.provider && (
+                  <span className="font-mono">{cred.provider}</span>
+                )}
+              </div>
+            )}
 
             {/* Test result banner */}
             {testResult && (

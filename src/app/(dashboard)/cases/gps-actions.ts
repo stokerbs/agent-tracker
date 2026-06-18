@@ -67,22 +67,12 @@ export async function updateGpsDevice(deviceId: string, caseId: string, formData
   const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
 
-  let imei: string | null;
-  try {
-    imei = parseImei(formData.get("imei"));
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-
-  const agentIdRaw     = String(formData.get("agent_id") ?? "").trim();
-  const gps903DeviceId = parseInt(String(formData.get("gps903_device_id") ?? ""), 10);
+  // Device metadata (IMEI, SIM, provider, gps903_device_id) is now read-only
+  // from gps903_credentials. Only agent assignment and notes can be changed here.
+  const agentIdRaw = String(formData.get("agent_id") ?? "").trim();
   const payload = {
-    imei,
-    phone_number:     parsePhone(formData.get("phone_number")),
-    provider:         parseProvider(formData.get("provider")),
-    notes:            String(formData.get("notes") ?? "").trim() || null,
-    agent_id:         agentIdRaw && agentIdRaw !== "none" ? agentIdRaw : null,
-    gps903_device_id: isNaN(gps903DeviceId) ? null : gps903DeviceId,
+    notes:    String(formData.get("notes") ?? "").trim() || null,
+    agent_id: agentIdRaw && agentIdRaw !== "none" ? agentIdRaw : null,
   };
 
   const { error } = await supabase
@@ -97,7 +87,7 @@ export async function updateGpsDevice(deviceId: string, caseId: string, formData
     action: "gps_device_updated",
     entity: "gps_devices",
     entity_id: deviceId,
-    metadata: { case_id: caseId, imei: payload.imei },
+    metadata: { case_id: caseId },
   });
 
   revalidatePath(`/cases/${caseId}`);

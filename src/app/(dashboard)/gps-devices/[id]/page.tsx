@@ -166,12 +166,13 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
     supabase
       .from("gps_devices")
       .select(`
-        id, imei, phone_number, gps903_device_id, provider, notes, case_id,
+        id, imei, phone_number, gps903_device_id, provider, notes, case_id, credential_id,
         last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_heading,
         last_lat, last_lng, last_seen_at, last_locate_mode, last_position_time, last_stop_minutes, last_ignition,
         agent_id, created_at,
         cases ( id, case_number ),
-        agents ( id, full_name, agent_code, status, photo_url )
+        agents ( id, full_name, agent_code, status, photo_url ),
+        gps903_credentials ( device_name, imei, phone_number, provider )
       `)
       .eq("id", id)
       .is("deleted_at", null)
@@ -230,7 +231,12 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
     grantedIds = (accessRes.data ?? []).map((r: { profile_id: string }) => r.profile_id);
   }
 
-  const deviceLabel = device.notes ?? `GPS903-${device.gps903_device_id ?? "—"}`;
+  const cred       = device.gps903_credentials as { device_name: string | null; imei: string | null; phone_number: string | null; provider: string | null } | null;
+  const dispImei   = cred?.imei ?? device.imei;
+  const dispPhone  = cred?.phone_number ?? device.phone_number;
+  const dispProv   = cred?.provider ?? device.provider;
+  const dispName   = cred?.device_name ?? device.notes;
+  const deviceLabel = dispName ?? `GPS903-${device.gps903_device_id ?? "—"}`;
 
   return (
     <div className="space-y-6">
@@ -250,17 +256,17 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
           </div>
           <div>
             <h1 className="font-mono text-lg font-bold">GPS903-{device.gps903_device_id ?? "—"}</h1>
-            {device.notes && <p className="text-sm text-muted-foreground">{device.notes}</p>}
+            {dispName && <p className="text-sm text-muted-foreground">{dispName}</p>}
             <p className="mt-0.5 flex items-center gap-1 font-mono text-xs text-muted-foreground/70">
               <Phone className="h-3 w-3 shrink-0" />
-              {device.phone_number ?? "—"}
+              {dispPhone ?? "—"}
             </p>
           </div>
-          {device.provider && (
+          {dispProv && (
             <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold tracking-wider ${
-              PROVIDER_COLORS[device.provider] ?? "bg-muted text-muted-foreground"
+              PROVIDER_COLORS[dispProv] ?? "bg-muted text-muted-foreground"
             }`}>
-              {device.provider}
+              {dispProv}
             </span>
           )}
           <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={stale} />
@@ -322,9 +328,9 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <InfoRow label="GPS903 ID" value={device.gps903_device_id ? `#${device.gps903_device_id}` : "—"} mono />
-              <InfoRow label="IMEI"      value={device.imei ?? "—"} mono />
-              <InfoRow label="SIM"       value={device.phone_number ?? "—"} mono />
-              <InfoRow label="Provider"  value={device.provider ?? "—"} />
+              <InfoRow label="IMEI"      value={dispImei ?? "—"} mono />
+              <InfoRow label="SIM"       value={dispPhone ?? "—"} mono />
+              <InfoRow label="Provider"  value={dispProv ?? "—"} />
               <InfoRow label="Last poll" value={timeAgo(device.last_polled_at)} />
               <InfoRow label="Added"     value={new Date(device.created_at).toLocaleDateString()} />
               {device.cases && (

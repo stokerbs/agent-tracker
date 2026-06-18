@@ -2,11 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Pencil } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
-  createGpsDevice,
   updateGpsDevice,
 } from "@/app/(dashboard)/cases/gps-actions";
 import { Button } from "@/components/ui/button";
@@ -14,38 +13,36 @@ import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { Agent, GpsDevice, GpsProvider } from "@/lib/types";
-
-const PROVIDERS: GpsProvider[] = ["AIS", "TRUE", "DTAC", "GPS903"];
+import type { Agent, GpsDevice } from "@/lib/types";
 
 interface Props {
   caseId: string;
-  device?: GpsDevice;
+  device: GpsDevice;
   agents?: Pick<Agent, "id" | "full_name" | "agent_code">[];
 }
 
+/**
+ * Edit-only dialog for GPS device agent assignment and notes.
+ * Device metadata (IMEI, SIM, provider) is now managed in GPS Credentials.
+ */
 export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
   const t = useTranslations("cases.gps");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const isEdit = !!device;
 
   function onSubmit(formData: FormData) {
     start(async () => {
-      const res = isEdit
-        ? await updateGpsDevice(device.id, caseId, formData)
-        : await createGpsDevice(caseId, formData);
+      const res = await updateGpsDevice(device.id, caseId, formData);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success(isEdit ? t("toast.updated") : t("toast.created"));
+      toast.success(t("toast.updated"));
       setOpen(false);
       router.refresh();
     });
@@ -54,87 +51,33 @@ export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {isEdit ? (
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
-            <Pencil className="h-3 w-3" />
-            {tCommon("edit")}
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            {t("addDevice")}
-          </Button>
-        )}
+        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+          <Pencil className="h-3 w-3" />
+          {tCommon("edit")}
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? t("editTitle") : t("addTitle")}</DialogTitle>
+          <DialogTitle>{t("editTitle")}</DialogTitle>
           <DialogDescription>
-            {isEdit ? t("editDescription") : t("addDescription")}
+            {t("editDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <form action={onSubmit} className="space-y-4">
-          {/* IMEI */}
-          <div className="space-y-2">
-            <Label htmlFor="gps-imei">
-              {t("fields.imei")}
-              <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
-            </Label>
-            <Input
-              id="gps-imei"
-              name="imei"
-              placeholder="867912345678901"
-              maxLength={15}
-              pattern="\d{15}"
-              defaultValue={device?.imei ?? ""}
-              inputMode="numeric"
-            />
-            <p className="text-[11px] text-muted-foreground">{t("fields.imeiHint")}</p>
-          </div>
+          <p className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Device metadata (IMEI, SIM, provider) is managed in GPS Credentials.
+          </p>
 
-          {/* SIM Number */}
-          <div className="space-y-2">
-            <Label htmlFor="gps-phone">
-              {t("fields.phoneNumber")}
-              <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
-            </Label>
-            <Input
-              id="gps-phone"
-              name="phone_number"
-              type="tel"
-              placeholder="0812345678"
-              defaultValue={device?.phone_number ?? ""}
-            />
-          </div>
-
-          {/* Provider */}
-          <div className="space-y-2">
-            <Label htmlFor="gps-provider">
-              {t("fields.provider")}
-              <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
-            </Label>
-            <Select name="provider" defaultValue={device?.provider ?? ""}>
-              <SelectTrigger id="gps-provider">
-                <SelectValue placeholder={t("fields.providerPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDERS.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Agent link (GPS903 Live Map) */}
+          {/* Agent link */}
           {agents.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="gps-agent">
                 {t("fields.linkedAgent")}
                 <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
               </Label>
-              <Select name="agent_id" defaultValue={device?.agent_id ?? "none"}>
+              <Select name="agent_id" defaultValue={device.agent_id ?? "none"}>
                 <SelectTrigger id="gps-agent">
                   <SelectValue placeholder={t("fields.linkedAgentPlaceholder")} />
                 </SelectTrigger>
@@ -151,24 +94,6 @@ export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
             </div>
           )}
 
-          {/* GPS903 Device ID (for web API polling) */}
-          <div className="space-y-2">
-            <Label htmlFor="gps-gps903id">
-              {t("fields.gps903DeviceId")}
-              <span className="ml-1 text-[10px] text-muted-foreground">({tCommon("optional") ?? "optional"})</span>
-            </Label>
-            <Input
-              id="gps-gps903id"
-              name="gps903_device_id"
-              type="number"
-              min={1}
-              placeholder="12345"
-              defaultValue={device?.gps903_device_id ?? ""}
-              inputMode="numeric"
-            />
-            <p className="text-[11px] text-muted-foreground">{t("fields.gps903DeviceIdHint")}</p>
-          </div>
-
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="gps-notes">
@@ -180,7 +105,7 @@ export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
               name="notes"
               rows={2}
               placeholder={t("fields.notesPlaceholder")}
-              defaultValue={device?.notes ?? ""}
+              defaultValue={device.notes ?? ""}
             />
           </div>
 
@@ -190,7 +115,7 @@ export function GpsDeviceFormDialog({ caseId, device, agents = [] }: Props) {
             </Button>
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? tCommon("save") : t("addDevice")}
+              {tCommon("save")}
             </Button>
           </DialogFooter>
         </form>

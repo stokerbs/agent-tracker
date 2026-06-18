@@ -17,6 +17,8 @@ export interface CredentialFormData {
   imei:              string;
   device_password:   string;
   gps903_device_id?: number | null; // optional — auto-detected via Test Connection
+  phone_number?:     string | null;
+  provider?:         string | null;
   is_active:         boolean;
 }
 
@@ -43,6 +45,8 @@ export async function createCredential(
     imei:             form.imei.trim(),
     device_password:  form.device_password,
     gps903_device_id: form.gps903_device_id ?? null,
+    phone_number:     form.phone_number ?? null,
+    provider:         form.provider ?? null,
     is_active:        form.is_active,
     created_by:       actor.id,
   });
@@ -63,6 +67,8 @@ export async function updateCredential(
   if (form.device_name      !== undefined) patch.device_name      = form.device_name.trim();
   if (form.imei             !== undefined) patch.imei             = form.imei.trim();
   if (form.gps903_device_id !== undefined) patch.gps903_device_id = form.gps903_device_id ?? null;
+  if (form.phone_number     !== undefined) patch.phone_number     = form.phone_number ?? null;
+  if (form.provider         !== undefined) patch.provider         = form.provider ?? null;
   if (form.is_active        !== undefined) patch.is_active        = form.is_active;
   // Only update password if a non-empty value was provided
   if (form.device_password) patch.device_password = form.device_password;

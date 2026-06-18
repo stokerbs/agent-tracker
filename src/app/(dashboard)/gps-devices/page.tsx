@@ -57,7 +57,8 @@ export default async function GpsDevicesPage() {
       id, imei, phone_number, gps903_device_id, notes, provider, case_id,
       last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_seen_at, agent_id,
       cases ( case_number ),
-      agents ( id, full_name, agent_code, status )
+      agents ( id, full_name, agent_code, status ),
+      gps903_credentials ( device_name, imei, phone_number, provider )
     `)
     .not("gps903_device_id", "is", null)
     .is("deleted_at", null)
@@ -106,10 +107,15 @@ export default async function GpsDevicesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {devices.map((d) => {
-            const agent   = d.agents;
-            const stale   = !d.last_seen_at || now - new Date(d.last_seen_at).getTime() >= STALE_MS;
-            const battery = d.last_battery_pct as number | null;
-            const pollOk  = d.last_poll_ok;
+            const agent    = d.agents;
+            const cred     = d.gps903_credentials as { device_name: string | null; imei: string | null; phone_number: string | null; provider: string | null } | null;
+            const stale    = !d.last_seen_at || now - new Date(d.last_seen_at).getTime() >= STALE_MS;
+            const battery  = d.last_battery_pct as number | null;
+            const pollOk   = d.last_poll_ok;
+            const dispName = cred?.device_name ?? d.notes;
+            const dispImei = cred?.imei ?? d.imei;
+            const dispPhone = cred?.phone_number ?? d.phone_number;
+            const dispProv  = cred?.provider ?? d.provider;
 
             return (
               <Card
@@ -132,18 +138,18 @@ export default async function GpsDevicesPage() {
                       <p className="font-mono text-sm font-bold text-foreground">
                         GPS903-{d.gps903_device_id}
                       </p>
-                      {d.notes && (
-                        <p className="truncate text-xs text-muted-foreground">{d.notes}</p>
+                      {dispName && (
+                        <p className="truncate text-xs text-muted-foreground">{dispName}</p>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      {d.provider && (
+                      {dispProv && (
                         <span
                           className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold tracking-wider ${
-                            PROVIDER_COLORS[d.provider] ?? "bg-muted text-muted-foreground"
+                            PROVIDER_COLORS[dispProv] ?? "bg-muted text-muted-foreground"
                           }`}
                         >
-                          {d.provider}
+                          {dispProv}
                         </span>
                       )}
                       {pollOk === true  && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
@@ -154,11 +160,11 @@ export default async function GpsDevicesPage() {
                   {/* IMEI + SIM info */}
                   <div className="space-y-0.5">
                     <p className="font-mono text-[11px] text-muted-foreground/70">
-                      IMEI: {d.imei ?? "—"}
+                      IMEI: {dispImei ?? "—"}
                     </p>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
                       <Phone className="h-3 w-3 shrink-0" />
-                      <span className="font-mono">{d.phone_number ?? "—"}</span>
+                      <span className="font-mono">{dispPhone ?? "—"}</span>
                     </div>
                   </div>
 

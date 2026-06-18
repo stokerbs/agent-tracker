@@ -58,17 +58,16 @@ export async function GET(request: NextRequest) {
 
       const pos = await gps903GetTracking(session, cred.gps903_device_id);
 
-      // Find linked gps_devices row (device imported into a case)
-      const { data: linked } = await svc
+      // Find ALL linked gps_devices rows for this credential (one per case)
+      const { data: linkedDevices } = await svc
         .from("gps_devices")
         .select("id")
-        .eq("gps903_device_id", cred.gps903_device_id)
-        .is("deleted_at", null)
-        .maybeSingle();
+        .eq("credential_id", cred.id)
+        .is("deleted_at", null);
 
       if (pos) {
-        if (linked) {
-          await applyPositionToDevice(svc, linked.id, pos);
+        if (linkedDevices?.length) {
+          await Promise.all(linkedDevices.map((d) => applyPositionToDevice(svc, d.id, pos)));
         }
 
         // Keep gps903_devices catalog fresh (last_seen)
@@ -90,12 +89,14 @@ export async function GET(request: NextRequest) {
           last_sync_ok:   true,
         }).eq("id", cred.id);
       } else {
-        if (linked) {
-          await svc.from("gps_devices").update({
-            last_polled_at:   now,
-            last_poll_ok:     false,
-            last_locate_mode: "offline",
-          }).eq("id", linked.id);
+        if (linkedDevices?.length) {
+          await Promise.all(linkedDevices.map((d) =>
+            svc.from("gps_devices").update({
+              last_polled_at:   now,
+              last_poll_ok:     false,
+              last_locate_mode: "offline",
+            }).eq("id", d.id),
+          ));
         }
 
         await svc.from("gps903_credentials").update({

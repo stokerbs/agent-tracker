@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import type { Agent, GpsDevice } from "@/lib/types";
 
 const PROVIDER_COLORS: Record<string, string> = {
-  AIS:    "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  AIS:    "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
   TRUE:   "bg-red-500/10  text-red-600  dark:text-red-400  border-red-500/20",
   DTAC:   "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
   GPS903: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
