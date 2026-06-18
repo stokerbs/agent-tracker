@@ -494,6 +494,20 @@
       "results": "{count} entries",
       "noResults": "No entries match",
       "noResultsDescription": "Try a different search, agent, or date range."
+    },
+    "entry": {
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "unsavedWarning": "You have unsaved changes. Discard them?",
+      "deleteConfirm": "Delete this timeline entry? This cannot be undone.",
+      "toast": {
+        "saved": "Timeline entry updated",
+        "deleted": "Timeline entry deleted",
+        "saveError": "Failed to save changes",
+        "deleteError": "Failed to delete entry"
+      }
     }
   },
   "evidence": {

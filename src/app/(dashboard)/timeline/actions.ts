@@ -55,20 +55,52 @@ export async function addTimelineEntry(formData: FormData) {
   return { ok: true };
 }
 
-export async function deleteTimelineEntry(id: string, caseId: string) {
-  await requireRole(["admin", "supervisor"]);
+export async function updateTimelineEntry(
+  id: string,
+  caseId: string,
+  data: { entry_date: string; entry_time: string; entry: string; location: string | null },
+) {
+  const profile = await requireRole(["admin", "supervisor"]);
+  const entry = data.entry.trim();
+  if (!entry) return { error: "Entry text is required" };
+
   const supabase = await createClient();
-
-  const { data: deleted, error } = await supabase
+  const { error } = await supabase
     .from("timeline_entries")
-    .delete()
+    .update({
+      entry_date: data.entry_date,
+      entry_time: data.entry_time,
+      entry,
+      location: data.location?.trim() || null,
+      updated_at: new Date().toISOString(),
+      updated_by: profile.id,
+    })
     .eq("id", id)
-    .select("id")
-    .maybeSingle();
+    .is("deleted_at", null);
 
-  if (!deleted && !error) return { error: "Timeline entry not found" };
   if (error) return { error: handleDbError(error, "timeline") };
 
   revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/timeline");
+  return { ok: true };
+}
+
+export async function deleteTimelineEntry(id: string, caseId: string) {
+  const profile = await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("timeline_entries")
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: profile.id,
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) return { error: handleDbError(error, "timeline") };
+
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/timeline");
   return { ok: true };
 }

@@ -31,6 +31,7 @@ import {
 } from "@/components/shared/status-badges";
 import { StatCard } from "@/components/shared/stat-card";
 import { AddTimelineEntry } from "@/components/cases/add-timeline-entry";
+import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { GenerateReportButton } from "@/components/cases/generate-report-button";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
@@ -126,6 +127,7 @@ export default async function CaseDetailPage({
       .from("timeline_entries")
       .select("*, agents(full_name, nickname)")
       .eq("case_id", id)
+      .is("deleted_at", null)
       .order("entry_date", { ascending: false })
       .order("entry_time", { ascending: false }),
     supabase
@@ -410,24 +412,9 @@ export default async function CaseDetailPage({
               <div className="relative space-y-1 pl-4">
                 <div className="absolute left-[7px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
                 {timelineEntries.map((entry) => (
-                  <div key={entry.id} className="relative flex gap-4 pb-4">
+                  <div key={entry.id} className="group relative flex gap-4 pb-4">
                     <div className="absolute -left-[1px] mt-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
-                    <div className="ml-4 flex-1 rounded-lg border bg-card p-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                          {entry.entry_date} · {entry.entry_time}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {entry.agents?.full_name ?? "Agent"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm">{entry.entry}</p>
-                      {entry.location && (
-                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" /> {entry.location}
-                        </p>
-                      )}
-                    </div>
+                    <TimelineEntryCard entry={entry} canEdit={staff} />
                   </div>
                 ))}
               </div>

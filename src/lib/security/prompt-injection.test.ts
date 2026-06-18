@@ -50,6 +50,10 @@ const BASE_ENTRY: TimelineEntry = {
   photo_url: null,
   video_url: null,
   created_at: "2026-01-15T09:00:00Z",
+  updated_at: null,
+  updated_by: null,
+  deleted_at: null,
+  deleted_by: null,
 };
 
 function cleanSections(overrides: Partial<AiReportSections> = {}): AiReportSections {

@@ -3,10 +3,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Clock, MapPin } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
-import { requireProfile } from "@/lib/auth";
+import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { TimelineFilters } from "@/components/timeline/timeline-filters";
+import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { EmptyState } from "@/components/shared/empty-state";
 
 export const metadata: Metadata = { title: "Timeline" };
@@ -17,7 +18,8 @@ interface Props {
 }
 
 export default async function TimelinePage({ searchParams }: Props) {
-  await requireProfile();
+  const profile = await requireProfile();
+  const canEdit = isStaff(profile.role);
   const t = await getTranslations("timeline");
   const locale = await getLocale();
   const sp = await searchParams;
@@ -29,6 +31,7 @@ export default async function TimelinePage({ searchParams }: Props) {
       let q = supabase
         .from("timeline_entries")
         .select("*, agents(full_name), cases(case_number)")
+        .is("deleted_at", null)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: false })
         .limit(200);
@@ -93,41 +96,44 @@ export default async function TimelinePage({ searchParams }: Props) {
 
               {/* Timeline entries */}
               <div className="relative pl-5">
-                {/* Vertical connector */}
                 <div className="absolute inset-y-0 left-[7px] w-px bg-border/50" />
 
                 <div className="space-y-0">
-                  {items.map((e, i) => (
+                  {items.map((e) => (
                     <div key={e.id} className="group relative flex gap-4 pb-4 last:pb-0">
                       {/* Timeline node */}
                       <div className="absolute -left-[13px] mt-1 flex h-4 w-4 shrink-0 items-center justify-center">
                         <div className="h-2 w-2 rounded-full border-2 border-border bg-card ring-4 ring-background transition-colors group-hover:border-primary group-hover:bg-primary/20" />
                       </div>
 
-                      {/* Content card */}
-                      <div className="ml-2 flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm leading-snug text-foreground/90">{e.entry}</p>
-                          <span className="shrink-0 font-mono text-xs text-muted-foreground/70">
-                            {e.entry_time?.slice(0, 5)}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                          <Link
-                            href={`/cases/${e.case_id}`}
-                            className="font-mono font-medium text-primary hover:underline"
-                          >
-                            {e.cases?.case_number ?? "—"}
-                          </Link>
-                          <span className="text-muted-foreground">{e.agents?.full_name ?? "—"}</span>
-                          {e.location && (
-                            <span className="flex items-center gap-1 text-muted-foreground/70">
-                              <MapPin className="h-3 w-3" />
-                              {e.location}
+                      {canEdit ? (
+                        <TimelineEntryCard entry={e} canEdit />
+                      ) : (
+                        /* Read-only view for non-staff */
+                        <div className="ml-2 flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm leading-snug text-foreground/90">{e.entry}</p>
+                            <span className="shrink-0 font-mono text-xs text-muted-foreground/70">
+                              {e.entry_time?.slice(0, 5)}
                             </span>
-                          )}
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                            <Link
+                              href={`/cases/${e.case_id}`}
+                              className="font-mono font-medium text-primary hover:underline"
+                            >
+                              {e.cases?.case_number ?? "—"}
+                            </Link>
+                            <span className="text-muted-foreground">{e.agents?.full_name ?? "—"}</span>
+                            {e.location && (
+                              <span className="flex items-center gap-1 text-muted-foreground/70">
+                                <MapPin className="h-3 w-3" />
+                                {e.location}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
