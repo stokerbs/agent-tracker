@@ -142,6 +142,7 @@ export async function updateAgent(agentId: string, formData: FormData) {
     position:  emptyToNull(formData.get("position")),
     area:      emptyToNull(formData.get("area")),
     status:    (String(formData.get("status") ?? "offline") as AgentStatus),
+    photo_url: emptyToNull(formData.get("photo_url")),
   };
 
   const vehicleType = noneToNull(formData.get("vehicle_type")) as AgentVehicleType | null;
