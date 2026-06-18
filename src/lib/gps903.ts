@@ -783,6 +783,7 @@ export async function applyPositionToDevice(
   const positionTime = gps903DateToIso(pos.fixTime);
   if (positionTime) deviceUpdate.last_position_time = positionTime;
   if (pos.stopMinutes !== null) deviceUpdate.last_stop_minutes = pos.stopMinutes;
+  deviceUpdate.last_ignition = pos.ignition;
 
   await Promise.all([
     svc.from("gps_device_positions").insert(posRow),

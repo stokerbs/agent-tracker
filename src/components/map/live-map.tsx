@@ -44,6 +44,7 @@ import {
   User,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -700,16 +701,24 @@ function LocateModeBadge({
   );
 }
 
-function formatPositionTime(ts: string | null | undefined): string {
+/** Format a UTC timestamp for display in Asia/Bangkok (GMT+7). */
+function formatBangkokTime(ts: string | null | undefined): string {
   if (!ts) return "—";
   try {
     const d = new Date(ts);
-    const day  = d.getUTCDate().toString().padStart(2, "0");
-    const mon  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
-    const hh   = d.getUTCHours().toString().padStart(2, "0");
-    const mm   = d.getUTCMinutes().toString().padStart(2, "0");
-    const ss   = d.getUTCSeconds().toString().padStart(2, "0");
-    return `${day} ${mon} ${d.getUTCFullYear()} ${hh}:${mm}:${ss}`;
+    if (isNaN(d.getTime())) return "—";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Bangkok",
+      day:      "2-digit",
+      month:    "short",
+      year:     "numeric",
+      hour:     "2-digit",
+      minute:   "2-digit",
+      second:   "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return `${get("day")} ${get("month")} ${get("year")} ${get("hour")}:${get("minute")}:${get("second")} GMT+7`;
   } catch { return "—"; }
 }
 
@@ -776,12 +785,14 @@ function GpsDevicePopup({
           </div>
 
           {/* Telemetry rows */}
-          <div className="space-y-1.5 px-3 pb-3 text-xs text-muted-foreground">
+          <div className="px-3 pb-3 text-xs text-muted-foreground">
             {/* Battery */}
             <div className={cn("flex items-center gap-1.5", battClass)}>
               <BatteryMedium className="h-3.5 w-3.5 shrink-0" />
               <span className="font-mono">{battery !== null ? `${battery}%` : "—"}</span>
             </div>
+
+            <div className="my-1.5 border-t border-border/30" />
 
             {/* Speed */}
             <div className="flex items-center gap-1.5">
@@ -791,31 +802,52 @@ function GpsDevicePopup({
               </span>
             </div>
 
-            {/* Position time — UTC timestamp of the last GPS fix */}
-            <div className="flex items-center gap-1.5">
+            {/* Position time — Bangkok (GMT+7) */}
+            <div className="mt-1.5 flex items-center gap-1.5">
               <CalendarClock className="h-3.5 w-3.5 shrink-0 text-sky-500" />
-              <span className="font-mono">{formatPositionTime(device.last_position_time)}</span>
+              <span className="font-mono">{formatBangkokTime(device.last_position_time)}</span>
             </div>
 
             {/* Stop time */}
-            <div className="flex items-center gap-1.5">
+            <div className="mt-1.5 flex items-center gap-1.5">
               <Timer className="h-3.5 w-3.5 shrink-0 text-amber-500" />
               <span className="font-mono">{formatStopMinutes(device.last_stop_minutes)}</span>
             </div>
 
-            {/* Last seen */}
-            <div className={cn("flex items-center gap-1.5", isStale && "text-amber-600")}>
+            {/* Last seen — Bangkok (GMT+7); amber when stale */}
+            <div className={cn("mt-1.5 flex items-center gap-1.5", isStale && "text-amber-600")}>
               <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span>{device.last_seen_at ? timeAgo(device.last_seen_at) : "—"}</span>
+              <span className="font-mono">{formatBangkokTime(device.last_seen_at)}</span>
               {isStale && <span className="font-medium">(stale)</span>}
+            </div>
+
+            <div className="my-1.5 border-t border-border/30" />
+
+            {/* ACC Status (ignition) */}
+            <div className="flex items-center gap-1.5">
+              <Zap className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                device.last_ignition === true ? "text-emerald-500" : "text-muted-foreground/50",
+              )} />
+              <span className={cn(
+                "font-mono font-medium",
+                device.last_ignition === true  ? "text-emerald-600 dark:text-emerald-400"
+                : device.last_ignition === false ? "text-muted-foreground"
+                : "text-muted-foreground/50",
+              )}>
+                {device.last_ignition === null ? "—" : device.last_ignition ? "ACC ON" : "ACC OFF"}
+              </span>
             </div>
 
             {/* Case */}
             {device.case_number && (
-              <div className="flex items-center gap-1.5">
-                <Shield className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-mono font-medium">{device.case_number}</span>
-              </div>
+              <>
+                <div className="my-1.5 border-t border-border/30" />
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 shrink-0" />
+                  <span className="font-mono font-medium">{device.case_number}</span>
+                </div>
+              </>
             )}
           </div>
         </div>

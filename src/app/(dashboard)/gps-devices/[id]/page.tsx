@@ -21,6 +21,7 @@ import {
   Timer,
   User,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -70,16 +71,24 @@ function fmtCoord(n: number | null): string {
   return n == null ? "—" : n.toFixed(6);
 }
 
-function formatPositionTime(ts: string | null): string {
+/** Format a UTC timestamp for display in Asia/Bangkok (GMT+7). */
+function formatBangkokTime(ts: string | null): string {
   if (!ts) return "—";
   try {
     const d = new Date(ts);
-    const day  = d.getUTCDate().toString().padStart(2, "0");
-    const mon  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
-    const hh   = d.getUTCHours().toString().padStart(2, "0");
-    const mm   = d.getUTCMinutes().toString().padStart(2, "0");
-    const ss   = d.getUTCSeconds().toString().padStart(2, "0");
-    return `${day} ${mon} ${d.getUTCFullYear()} ${hh}:${mm}:${ss}`;
+    if (isNaN(d.getTime())) return "—";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone:  "Asia/Bangkok",
+      day:       "2-digit",
+      month:     "short",
+      year:      "numeric",
+      hour:      "2-digit",
+      minute:    "2-digit",
+      second:    "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return `${get("day")} ${get("month")} ${get("year")} ${get("hour")}:${get("minute")}:${get("second")} GMT+7`;
   } catch { return "—"; }
 }
 
@@ -158,7 +167,7 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
       .select(`
         id, imei, phone_number, gps903_device_id, provider, notes, case_id,
         last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_heading,
-        last_lat, last_lng, last_seen_at, last_locate_mode, last_position_time, last_stop_minutes,
+        last_lat, last_lng, last_seen_at, last_locate_mode, last_position_time, last_stop_minutes, last_ignition,
         agent_id, created_at,
         cases ( id, case_number ),
         agents ( id, full_name, agent_code, status, photo_url )
@@ -362,7 +371,7 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                   <CalendarClock className="h-3.5 w-3.5" /> Position time
                 </span>
                 <span className="font-mono text-xs font-medium">
-                  {formatPositionTime(device.last_position_time ?? null)}
+                  {formatBangkokTime(device.last_position_time ?? null)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -389,8 +398,8 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> Last seen
                 </span>
-                <span className={`text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
-                  {timeAgo(device.last_seen_at ?? null)}
+                <span className={`font-mono text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
+                  {formatBangkokTime(device.last_seen_at ?? null)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -398,6 +407,18 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                   <Signal className="h-3.5 w-3.5" /> Locate mode
                 </span>
                 <LocateModeBadge mode={device.last_locate_mode ?? null} isStale={stale} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Zap className="h-3.5 w-3.5" /> ACC
+                </span>
+                <span className={`font-mono text-sm font-medium ${
+                  device.last_ignition === true  ? "text-emerald-600 dark:text-emerald-400"
+                  : device.last_ignition === false ? "text-muted-foreground"
+                  : "text-muted-foreground/50"
+                }`}>
+                  {device.last_ignition === null ? "—" : device.last_ignition ? "ON" : "OFF"}
+                </span>
               </div>
               {device.last_lat != null && (
                 <Button asChild variant="outline" size="sm" className="mt-1 w-full gap-1.5 text-xs">
@@ -515,8 +536,10 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
                       <TableRow key={i} className="font-mono text-xs">
                         <TableCell className="text-muted-foreground">
                           {new Date(h.recorded_at).toLocaleString("en-GB", {
+                            timeZone: "Asia/Bangkok",
                             day: "2-digit", month: "short",
                             hour: "2-digit", minute: "2-digit", second: "2-digit",
+                            hourCycle: "h23",
                           })}
                         </TableCell>
                         <TableCell>{h.lat.toFixed(6)}</TableCell>

@@ -148,6 +148,7 @@ export interface GpsDevice {
   last_locate_mode:   "gps" | "lbs" | "offline" | "unknown" | null;
   last_position_time: string | null;  // UTC timestamp of the GPS fix (deviceUtcDate)
   last_stop_minutes:  number | null;  // minutes the device has been stopped (stopTimeMinute)
+  last_ignition:      boolean | null; // ACC on/off from dataContext[0]
   created_by: string | null;
   deleted_at: string | null;
   created_at: string;
