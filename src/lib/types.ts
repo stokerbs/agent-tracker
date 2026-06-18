@@ -165,9 +165,13 @@ export interface GpsDevicePosition {
 export interface GpsDeviceAccess {
   id:            string;
   gps_device_id: string;
-  agent_id:      string;
+  profile_id:    string;
   granted_by:    string | null;
   created_at:    string;
+}
+
+export interface GpsDeviceAccessWithProfile extends GpsDeviceAccess {
+  profiles: Pick<Profile, "id" | "full_name" | "email" | "role" | "avatar_url"> | null;
 }
 
 /** GpsDevice extended with case_number for map display. */

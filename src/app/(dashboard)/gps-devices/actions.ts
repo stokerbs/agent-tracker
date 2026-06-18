@@ -65,6 +65,41 @@ export async function pollDeviceNow(deviceId: string) {
   return { ok: true, lat: pos.lat, lng: pos.lng, speed: pos.speed };
 }
 
+/** Grant a profile access to view a GPS device. */
+export async function grantDeviceAccess(deviceId: string, profileId: string) {
+  const actor = await requireRole(["admin", "supervisor"]);
+  const svc = createServiceClient();
+
+  const { error } = await svc
+    .from("gps_device_access")
+    .upsert(
+      { gps_device_id: deviceId, profile_id: profileId, granted_by: actor.id },
+      { onConflict: "gps_device_id,profile_id", ignoreDuplicates: true },
+    );
+
+  if (error) return { error: handleDbError(error, "gps_device_access") };
+
+  revalidatePath(`/gps-devices/${deviceId}`);
+  return { ok: true };
+}
+
+/** Revoke a profile's access to view a GPS device. */
+export async function revokeDeviceAccess(deviceId: string, profileId: string) {
+  await requireRole(["admin", "supervisor"]);
+  const svc = createServiceClient();
+
+  const { error } = await svc
+    .from("gps_device_access")
+    .delete()
+    .eq("gps_device_id", deviceId)
+    .eq("profile_id", profileId);
+
+  if (error) return { error: handleDbError(error, "gps_device_access") };
+
+  revalidatePath(`/gps-devices/${deviceId}`);
+  return { ok: true };
+}
+
 /** Link or unlink an agent from a GPS device. */
 export async function relinkAgent(deviceId: string, agentId: string | null) {
   await requireRole(["admin", "supervisor"]);

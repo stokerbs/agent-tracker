@@ -11,6 +11,7 @@ import {
   Clock,
   Compass,
   Gauge,
+  Lock,
   MapPin,
   Navigation,
   Radio,
@@ -19,7 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,13 +33,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PollNowButton } from "@/components/gps903/poll-now-button";
-import { RelinkAgentDialog } from "@/components/gps903/relink-agent-dialog";
+import { PollNowButton }           from "@/components/gps903/poll-now-button";
+import { RelinkAgentDialog }        from "@/components/gps903/relink-agent-dialog";
+import { DevicePermissionsPanel }   from "@/components/gps903/device-permissions-panel";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params:       Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -81,12 +85,27 @@ const PROVIDER_COLORS: Record<string, string> = {
   DTAC:   "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
 };
 
-export default async function GpsDeviceDetailPage({ params }: Props) {
-  const { id } = await params;
-  await requireRole(["admin", "supervisor"]);
-  const t = await getTranslations("gpsDevices");
-  const supabase = await createClient();
+const TABS = [
+  { key: "info",        label: "Device Info" },
+  { key: "permissions", label: "Permissions" },
+  { key: "history",     label: "Position History" },
+] as const;
 
+type Tab = (typeof TABS)[number]["key"];
+
+export default async function GpsDeviceDetailPage({ params, searchParams }: Props) {
+  const { id }  = await params;
+  const { tab: rawTab } = await searchParams;
+  const tab: Tab = (TABS.map((t) => t.key) as string[]).includes(rawTab ?? "")
+    ? (rawTab as Tab)
+    : "info";
+
+  const actor = await requireRole(["admin", "supervisor"]);
+  const t      = await getTranslations("gpsDevices");
+  const supabase    = await createClient();
+  const serviceSup  = createServiceClient();
+
+  // ── Device (user-scoped — RLS enforces visibility) ──
   const [deviceRes, agentsRes] = await Promise.all([
     supabase
       .from("gps_devices")
@@ -114,67 +133,83 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
   const agent     = device.agents as any;
   const now       = Date.now();
   const stale     = !device.last_seen_at || now - new Date(device.last_seen_at).getTime() >= STALE_MS;
+  const pollOk    = device.last_poll_ok;
+  const isAdmin   = actor.role === "admin";
 
-  // Last 48h of position history from gps_device_positions
-  const historyRes = await supabase
-    .from("gps_device_positions")
-    .select("lat, lng, speed_kmh, heading, recorded_at")
-    .eq("gps_device_id", device.id)
-    .gte("recorded_at", new Date(now - 48 * 60 * 60 * 1000).toISOString())
-    .order("recorded_at", { ascending: false })
-    .limit(100);
+  // ── Tab-specific data ──
+  let history:    any[]                             = [];
+  let profiles:   { id: string; full_name: string | null; email: string; role: string; avatar_url: string | null }[] = [];
+  let grantedIds: string[]                          = [];
 
-  const history = (historyRes.data ?? []) as any[];
+  if (tab === "history") {
+    const res = await supabase
+      .from("gps_device_positions")
+      .select("lat, lng, speed_kmh, heading, recorded_at")
+      .eq("gps_device_id", device.id)
+      .gte("recorded_at", new Date(now - 48 * 60 * 60 * 1000).toISOString())
+      .order("recorded_at", { ascending: false })
+      .limit(100);
+    history = (res.data ?? []) as any[];
+  }
 
-  const pollOk = device.last_poll_ok;
+  if (tab === "permissions") {
+    const [profilesRes, accessRes] = await Promise.all([
+      // Service client: list all non-admin, non-client profiles for the permission picker
+      serviceSup
+        .from("profiles")
+        .select("id, full_name, email, role, avatar_url")
+        .in("role", ["supervisor", "agent"])
+        .eq("is_active", true)
+        .order("full_name"),
+
+      // Existing grants for this device
+      serviceSup
+        .from("gps_device_access")
+        .select("profile_id")
+        .eq("gps_device_id", device.id),
+    ]);
+
+    profiles   = (profilesRes.data ?? []) as typeof profiles;
+    grantedIds = (accessRes.data ?? []).map((r: { profile_id: string }) => r.profile_id);
+  }
+
+  const deviceLabel = device.notes ?? `GPS903-${device.gps903_device_id ?? "—"}`;
 
   return (
     <div className="space-y-6">
-      {/* Back + header */}
-      <div className="flex items-center gap-3">
-        <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
-          <Link href="/gps-devices">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {t("title")}
-          </Link>
-        </Button>
-      </div>
+      {/* Back */}
+      <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
+        <Link href="/gps-devices">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {t("title")}
+        </Link>
+      </Button>
 
-      {/* Device title bar */}
+      {/* Title bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/30">
             <Satellite className="h-5 w-5 text-emerald-500" />
           </div>
           <div>
-            <h1 className="font-mono text-lg font-bold">
-              GPS903-{device.gps903_device_id ?? "—"}
-            </h1>
-            {device.notes && (
-              <p className="text-sm text-muted-foreground">{device.notes}</p>
-            )}
+            <h1 className="font-mono text-lg font-bold">GPS903-{device.gps903_device_id ?? "—"}</h1>
+            {device.notes && <p className="text-sm text-muted-foreground">{device.notes}</p>}
           </div>
           {device.provider && (
-            <span
-              className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold tracking-wider ${
-                PROVIDER_COLORS[device.provider] ?? "bg-muted text-muted-foreground"
-              }`}
-            >
+            <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold tracking-wider ${
+              PROVIDER_COLORS[device.provider] ?? "bg-muted text-muted-foreground"
+            }`}>
               {device.provider}
             </span>
           )}
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              pollOk === true  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-              pollOk === false ? "bg-red-500/10 text-red-500" :
-              "bg-muted text-muted-foreground"
-            }`}
-          >
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            pollOk === true  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+            pollOk === false ? "bg-red-500/10 text-red-500" :
+            "bg-muted text-muted-foreground"
+          }`}>
             {pollOk === true  && <CheckCircle2 className="h-3 w-3" />}
             {pollOk === false && <XCircle      className="h-3 w-3" />}
-            {pollOk === true  ? "Last poll OK" :
-             pollOk === false ? "Last poll failed" :
-             "Never polled"}
+            {pollOk === true ? "Last poll OK" : pollOk === false ? "Last poll failed" : "Never polled"}
           </span>
         </div>
 
@@ -188,208 +223,254 @@ export default async function GpsDeviceDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Info grid */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Device info */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Radio className="h-4 w-4 text-emerald-500" />
-              {t("detail.deviceInfo")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <InfoRow label="GPS903 ID" value={device.gps903_device_id ? `#${device.gps903_device_id}` : "—"} mono />
-            <InfoRow label="IMEI"      value={device.imei ?? "—"} mono />
-            <InfoRow label="SIM"       value={device.phone_number ?? "—"} mono />
-            <InfoRow label="Provider"  value={device.provider ?? "—"} />
-            <InfoRow label="Last poll" value={timeAgo(device.last_polled_at)} />
-            <InfoRow label="Added"     value={new Date(device.created_at).toLocaleDateString()} />
-            {device.cases && (
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 border-b border-border/60 pb-px">
+        {TABS.map(({ key, label }) => (
+          <Link
+            key={key}
+            href={`?tab=${key}`}
+            className={cn(
+              "flex items-center gap-1.5 rounded-t-md px-3 py-2 text-sm font-medium transition-colors",
+              tab === key
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {key === "permissions" && <Lock className="h-3.5 w-3.5" />}
+            {label}
+            {key === "permissions" && grantedIds.length > 0 && (
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary">
+                {grantedIds.length}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* ── Tab: Info ── */}
+      {tab === "info" && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Device info */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Radio className="h-4 w-4 text-emerald-500" />
+                {t("detail.deviceInfo")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <InfoRow label="GPS903 ID" value={device.gps903_device_id ? `#${device.gps903_device_id}` : "—"} mono />
+              <InfoRow label="IMEI"      value={device.imei ?? "—"} mono />
+              <InfoRow label="SIM"       value={device.phone_number ?? "—"} mono />
+              <InfoRow label="Provider"  value={device.provider ?? "—"} />
+              <InfoRow label="Last poll" value={timeAgo(device.last_polled_at)} />
+              <InfoRow label="Added"     value={new Date(device.created_at).toLocaleDateString()} />
+              {device.cases && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Case</span>
+                  <Link
+                    href={`/cases/${device.case_id}`}
+                    className="flex items-center gap-1 font-mono text-xs font-medium text-primary hover:underline"
+                  >
+                    <Briefcase className="h-3 w-3" />
+                    {device.cases.case_number}
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Live telemetry */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Navigation className="h-4 w-4 text-sky-500" />
+                {t("detail.telemetry")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Case</span>
-                <Link
-                  href={`/cases/${device.case_id}`}
-                  className="flex items-center gap-1 font-mono text-xs font-medium text-primary hover:underline"
-                >
-                  <Briefcase className="h-3 w-3" />
-                  {device.cases.case_number}
-                </Link>
+                <span className="text-muted-foreground">Battery</span>
+                <BatteryDisplay pct={device.last_battery_pct ?? null} />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Gauge className="h-3.5 w-3.5" /> Speed
+                </span>
+                <span className="font-mono text-sm font-medium">
+                  {device.last_speed_kmh != null ? `${Math.round(device.last_speed_kmh)} km/h` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Compass className="h-3.5 w-3.5" /> Heading
+                </span>
+                <span className="font-mono text-sm font-medium">
+                  {device.last_heading != null ? `${device.last_heading}°` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" /> Latitude
+                </span>
+                <span className="font-mono text-xs">{fmtCoord(device.last_lat ?? null)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" /> Longitude
+                </span>
+                <span className="font-mono text-xs">{fmtCoord(device.last_lng ?? null)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" /> Last seen
+                </span>
+                <span className={`text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
+                  {timeAgo(device.last_seen_at ?? null)}
+                </span>
+              </div>
+              {device.last_lat != null && (
+                <Button asChild variant="outline" size="sm" className="mt-1 w-full gap-1.5 text-xs">
+                  <Link href="/map">
+                    <MapPin className="h-3 w-3" />
+                    View on Live Map
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Live telemetry — sourced from gps_devices.last_* */}
+          {/* Linked agent */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <User className="h-4 w-4 text-violet-500" />
+                {t("detail.linkedAgent")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {agent ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold uppercase">
+                      {agent.full_name?.[0] ?? "?"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{agent.full_name}</p>
+                      <p className="font-mono text-xs text-muted-foreground">{agent.agent_code}</p>
+                    </div>
+                  </div>
+                  <AgentStatusBadge status={agent.status} />
+                  <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+                    <Link href={`/agents/${agent.id}`}>
+                      <User className="h-3 w-3" />
+                      View Agent Profile
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-4 text-center">
+                  <User className="h-8 w-8 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">{t("unlinked")}</p>
+                  <p className="text-[11px] text-muted-foreground/60">
+                    Link an agent above to associate field activity.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Tab: Permissions ── */}
+      {tab === "permissions" && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Navigation className="h-4 w-4 text-sky-500" />
-              {t("detail.telemetry")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Battery</span>
-              <BatteryDisplay pct={device.last_battery_pct ?? null} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Gauge className="h-3.5 w-3.5" /> Speed
-              </span>
-              <span className="font-mono text-sm font-medium">
-                {device.last_speed_kmh != null ? `${Math.round(device.last_speed_kmh)} km/h` : "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Compass className="h-3.5 w-3.5" /> Heading
-              </span>
-              <span className="font-mono text-sm font-medium">
-                {device.last_heading != null ? `${device.last_heading}°` : "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" /> Latitude
-              </span>
-              <span className="font-mono text-xs">{fmtCoord(device.last_lat ?? null)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" /> Longitude
-              </span>
-              <span className="font-mono text-xs">{fmtCoord(device.last_lng ?? null)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" /> Last seen
-              </span>
-              <span className={`text-xs font-medium ${stale && device.last_seen_at ? "text-amber-500" : ""}`}>
-                {timeAgo(device.last_seen_at ?? null)}
-              </span>
-            </div>
-            {device.last_lat != null && (
-              <Button asChild variant="outline" size="sm" className="mt-1 w-full gap-1.5 text-xs">
-                <Link href="/map">
-                  <MapPin className="h-3 w-3" />
-                  View on Live Map
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Linked agent */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <User className="h-4 w-4 text-violet-500" />
-              {t("detail.linkedAgent")}
+              <Lock className="h-4 w-4 text-amber-500" />
+              Visibility Permissions
+              <Badge variant="secondary" className="ml-auto text-[10px]">
+                {grantedIds.length} user{grantedIds.length !== 1 ? "s" : ""} granted
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agent ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-sm uppercase">
-                    {agent.full_name?.[0] ?? "?"}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{agent.full_name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{agent.agent_code}</p>
-                  </div>
-                </div>
-                <AgentStatusBadge status={agent.status} />
-                <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
-                  <Link href={`/agents/${agent.id}`}>
-                    <User className="h-3 w-3" />
-                    View Agent Profile
-                  </Link>
-                </Button>
+            {isAdmin || actor.role === "supervisor" ? (
+              <DevicePermissionsPanel
+                deviceId={device.id}
+                profiles={profiles}
+                grantedIds={grantedIds}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Only admins and supervisors can manage GPS device permissions.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Tab: Position History ── */}
+      {tab === "history" && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              {t("detail.history")}
+              <Badge variant="secondary" className="ml-auto text-[10px]">
+                Last 48h · {history.length} points
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {history.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <Clock className="h-6 w-6 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">{t("detail.noHistory")}</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2 py-4 text-center">
-                <User className="h-8 w-8 text-muted-foreground/30" />
-                <p className="text-xs text-muted-foreground">{t("unlinked")}</p>
-                <p className="text-[11px] text-muted-foreground/60">
-                  Link an agent above to enable GPS device access.
-                </p>
+              <div className="max-h-[420px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t("detail.histCol.time")}</TableHead>
+                      <TableHead className="text-xs">{t("detail.histCol.lat")}</TableHead>
+                      <TableHead className="text-xs">{t("detail.histCol.lng")}</TableHead>
+                      <TableHead className="text-xs">{t("detail.histCol.speed")}</TableHead>
+                      <TableHead className="text-xs">{t("detail.histCol.heading")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {history.map((h: any, i: number) => (
+                      <TableRow key={i} className="font-mono text-xs">
+                        <TableCell className="text-muted-foreground">
+                          {new Date(h.recorded_at).toLocaleString("en-GB", {
+                            day: "2-digit", month: "short",
+                            hour: "2-digit", minute: "2-digit", second: "2-digit",
+                          })}
+                        </TableCell>
+                        <TableCell>{h.lat.toFixed(6)}</TableCell>
+                        <TableCell>{h.lng.toFixed(6)}</TableCell>
+                        <TableCell>
+                          {h.speed_kmh != null ? `${Math.round(h.speed_kmh)} km/h` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {h.heading != null ? `${h.heading}°` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Location history */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            {t("detail.history")}
-            <Badge variant="secondary" className="ml-auto text-[10px]">
-              Last 48h · {history.length} points
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {history.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <Clock className="h-6 w-6 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground">
-                {t("detail.noHistory")}
-              </p>
-            </div>
-          ) : (
-            <div className="max-h-[420px] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">{t("detail.histCol.time")}</TableHead>
-                    <TableHead className="text-xs">{t("detail.histCol.lat")}</TableHead>
-                    <TableHead className="text-xs">{t("detail.histCol.lng")}</TableHead>
-                    <TableHead className="text-xs">{t("detail.histCol.speed")}</TableHead>
-                    <TableHead className="text-xs">{t("detail.histCol.heading")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((h: any, i: number) => (
-                    <TableRow key={i} className="font-mono text-xs">
-                      <TableCell className="text-muted-foreground">
-                        {new Date(h.recorded_at).toLocaleString("en-GB", {
-                          day: "2-digit", month: "short",
-                          hour: "2-digit", minute: "2-digit", second: "2-digit",
-                        })}
-                      </TableCell>
-                      <TableCell>{h.lat.toFixed(6)}</TableCell>
-                      <TableCell>{h.lng.toFixed(6)}</TableCell>
-                      <TableCell>
-                        {h.speed_kmh != null ? `${Math.round(h.speed_kmh)} km/h` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {h.heading != null ? `${h.heading}°` : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      )}
     </div>
   );
 }
 
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground">{label}</span>
