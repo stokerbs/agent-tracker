@@ -4,9 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
-import { getOrRefreshSession, gps903GetDevicesByUserID } from "@/lib/gps903";
+import { getOrRefreshCredentialSession, gps903GetTracking } from "@/lib/gps903";
 import type { Gps903Device } from "@/lib/types";
 
+/**
+ * Sync all active GPS903 credentials into the gps903_devices catalog.
+ * For each credential: login → GetTracking → upsert catalog row with last_seen.
+ */
 export async function syncGps903Devices(): Promise<{
   ok?: boolean;
   count?: number;
@@ -15,33 +19,50 @@ export async function syncGps903Devices(): Promise<{
   await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
-  const session = await getOrRefreshSession(svc);
-  if (!session) return { error: "GPS903 login failed — check IMEI credentials" };
+  const { data: credentials, error: credErr } = await svc
+    .from("gps903_credentials")
+    .select("id, imei, device_password, gps903_device_id, device_name")
+    .eq("is_active", true);
 
-  const devices = await gps903GetDevicesByUserID(session);
-  if (devices.length === 0)
+  if (credErr) return { error: handleDbError(credErr, "gps903_credentials") };
+
+  if (!credentials?.length) {
     return {
       error:
-        "No devices found. Set GPS903_DEVICE_ID=<id> in env to register a known device, " +
-        "or set GPS903_USERNAME + GPS903_PASSWORD for full account-level discovery.",
+        "No active GPS903 credentials found. " +
+        "Add at least one device in GPS Credentials before syncing.",
     };
+  }
 
   const now = new Date().toISOString();
-  const rows = devices.map((d) => {
-    let lastSeen: string | null = null;
-    if (d.lastSeen) {
-      try { lastSeen = new Date(d.lastSeen).toISOString(); } catch { /* keep null */ }
-    }
-    return {
-      gps903_device_id: d.gps903DeviceId,
-      device_name:      d.deviceName,
-      imei:             d.imei,
-      model:            d.model,
-      last_seen:        lastSeen,
-      synced_at:        now,
-      updated_at:       now,
-    };
-  });
+
+  const rows = await Promise.all(
+    credentials.map(async (cred) => {
+      const session = await getOrRefreshCredentialSession(svc, cred);
+      let lastSeen: string | null = null;
+
+      if (session) {
+        const tracking = await gps903GetTracking(session, cred.gps903_device_id);
+        if (tracking?.fixTime) {
+          try {
+            lastSeen = new Date(tracking.fixTime).toISOString();
+          } catch {
+            /* keep null */
+          }
+        }
+      }
+
+      return {
+        gps903_device_id: cred.gps903_device_id,
+        device_name:      cred.device_name,
+        imei:             cred.imei,
+        model:            null as string | null,
+        last_seen:        lastSeen,
+        synced_at:        now,
+        updated_at:       now,
+      };
+    }),
+  );
 
   const { error } = await svc
     .from("gps903_devices")
@@ -50,7 +71,7 @@ export async function syncGps903Devices(): Promise<{
   if (error) return { error: handleDbError(error, "gps903_devices") };
 
   revalidatePath("/gps903-discovery");
-  return { ok: true, count: devices.length };
+  return { ok: true, count: rows.length };
 }
 
 export async function importDeviceToCase(

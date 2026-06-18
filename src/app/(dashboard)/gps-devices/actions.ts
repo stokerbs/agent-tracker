@@ -4,22 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
-import {
-  getOrRefreshSession,
-  gps903Login,
-  cacheSession,
-  gps903GetTracking,
-  applyPositionToDevice,
-} from "@/lib/gps903";
+import { getOrRefreshCredentialSession, gps903GetTracking, applyPositionToDevice } from "@/lib/gps903";
 
 /** Trigger an immediate GPS903 poll for a single device. */
 export async function pollDeviceNow(deviceId: string) {
   await requireRole(["admin", "supervisor"]);
-
-  const imei           = process.env.GPS903_IMEI;
-  const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
-  if (!imei || !devicePassword) return { error: "GPS903 IMEI credentials not configured" };
-
   const svc = createServiceClient();
 
   const { data: device } = await svc
@@ -31,24 +20,32 @@ export async function pollDeviceNow(deviceId: string) {
 
   if (!device?.gps903_device_id) return { error: "Device has no GPS903 Device ID configured" };
 
-  let session = await getOrRefreshSession(svc);
+  // Look up active credential by gps903_device_id
+  const { data: credential } = await svc
+    .from("gps903_credentials")
+    .select("id, imei, device_password, gps903_device_id")
+    .eq("gps903_device_id", device.gps903_device_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!credential) {
+    return {
+      error:
+        "No active GPS903 credential found for this device. " +
+        "Add credentials in GPS Credentials.",
+    };
+  }
+
+  const session = await getOrRefreshCredentialSession(svc, credential);
   if (!session) {
     await svc.from("gps_devices").update({
       last_polled_at: new Date().toISOString(),
       last_poll_ok:   false,
     }).eq("id", deviceId);
-    return { error: "GPS903 login failed — check IMEI credentials" };
+    return { error: "GPS903 login failed — check device credentials in GPS Credentials" };
   }
 
-  let pos = await gps903GetTracking(session, device.gps903_device_id as number);
-
-  if (!pos) {
-    const fresh = await gps903Login(imei, devicePassword);
-    if (fresh) {
-      await cacheSession(svc, fresh);
-      pos = await gps903GetTracking(fresh, device.gps903_device_id as number);
-    }
-  }
+  const pos = await gps903GetTracking(session, credential.gps903_device_id);
 
   if (!pos) {
     await svc.from("gps_devices").update({

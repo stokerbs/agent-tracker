@@ -1,12 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import {
-  getOrRefreshSession,
-  gps903Login,
-  cacheSession,
-  gps903GetTracking,
-  applyPositionToDevice,
-} from "@/lib/gps903";
+import { getOrRefreshCredentialSession, gps903GetTracking, applyPositionToDevice } from "@/lib/gps903";
 
 export const maxDuration = 30;
 
@@ -14,11 +8,17 @@ export const maxDuration = 30;
  * GET /api/cron/gps903-sync
  * Vercel Cron calls this every minute with Authorization: Bearer <CRON_SECRET>.
  *
- * Polls ALL active GPS903 devices. Position data is written to:
- *   - gps_device_positions  (history)
- *   - gps_devices.last_*    (denormalized current state for map display)
+ * Polls ALL active credentials from gps903_credentials.
+ * Each device logs in with its own IMEI/password — sessions are cached per credential.
  *
- * Agents are NOT updated. GPS device telemetry is independent of agent data.
+ * For each credential:
+ *   1. Get or refresh ASP.NET session (per-device cache in gps903_credential_sessions)
+ *   2. Call GetTracking to get current position
+ *   3. If device is linked to a case (gps_devices row exists):
+ *      - Write position to gps_device_positions
+ *      - Update gps_devices.last_* denormalized columns
+ *   4. Update gps903_devices catalog (last_seen)
+ *   5. Update gps903_credentials.last_synced_at / last_sync_ok
  */
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -29,75 +29,86 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const imei           = process.env.GPS903_IMEI;
-  const devicePassword = process.env.GPS903_DEVICE_PASSWORD;
-  if (!imei || !devicePassword) {
-    return NextResponse.json(
-      { error: "GPS903_IMEI / GPS903_DEVICE_PASSWORD not configured" },
-      { status: 500 },
-    );
-  }
-
   const svc = createServiceClient();
 
-  // Poll ALL active GPS903 devices — no agent_id requirement
-  const { data: devices, error: devErr } = await svc
-    .from("gps_devices")
-    .select("id, gps903_device_id")
-    .not("gps903_device_id", "is", null)
-    .is("deleted_at", null);
+  const { data: credentials, error: credErr } = await svc
+    .from("gps903_credentials")
+    .select("id, imei, device_password, gps903_device_id, device_name")
+    .eq("is_active", true);
 
-  if (devErr) return NextResponse.json({ error: devErr.message }, { status: 500 });
-  if (!devices?.length) return NextResponse.json({ ok: true, skipped: "no configured devices" });
-
-  let session = await getOrRefreshSession(svc);
-  if (!session) {
-    return NextResponse.json({ error: "GPS903 login failed — check IMEI credentials" }, { status: 502 });
+  if (credErr) return NextResponse.json({ error: credErr.message }, { status: 500 });
+  if (!credentials?.length) {
+    return NextResponse.json({ ok: true, skipped: "no active credentials" });
   }
 
+  const now = new Date().toISOString();
+
   const settled = await Promise.allSettled(
-    devices.map(async (device) => {
-      const gps903Id = device.gps903_device_id as number;
-      const deviceId = device.id as string;
+    credentials.map(async (cred) => {
+      const session = await getOrRefreshCredentialSession(svc, cred);
 
-      let pos = await gps903GetTracking(session!, gps903Id);
-      let freshSession: string | undefined;
-
-      // Session may have expired mid-run — retry with a fresh login
-      if (!pos) {
-        const fresh = await gps903Login(imei, devicePassword);
-        if (fresh) {
-          freshSession = fresh;
-          pos = await gps903GetTracking(fresh, gps903Id);
-        }
+      if (!session) {
+        await svc.from("gps903_credentials").update({
+          last_synced_at: now,
+          last_sync_ok:   false,
+        }).eq("id", cred.id);
+        return { deviceId: cred.gps903_device_id, ok: false, error: "login failed" };
       }
+
+      const pos = await gps903GetTracking(session, cred.gps903_device_id);
+
+      // Find linked gps_devices row (device imported into a case)
+      const { data: linked } = await svc
+        .from("gps_devices")
+        .select("id")
+        .eq("gps903_device_id", cred.gps903_device_id)
+        .is("deleted_at", null)
+        .maybeSingle();
 
       if (pos) {
-        await applyPositionToDevice(svc, deviceId, pos);
+        if (linked) {
+          await applyPositionToDevice(svc, linked.id, pos);
+        }
+
+        // Keep gps903_devices catalog fresh (last_seen)
+        await svc.from("gps903_devices").upsert(
+          {
+            gps903_device_id: cred.gps903_device_id,
+            device_name:      cred.device_name,
+            imei:             cred.imei,
+            model:            null,
+            last_seen:        pos.fixTime,
+            synced_at:        now,
+            updated_at:       now,
+          },
+          { onConflict: "gps903_device_id" },
+        );
+
+        await svc.from("gps903_credentials").update({
+          last_synced_at: now,
+          last_sync_ok:   true,
+        }).eq("id", cred.id);
       } else {
-        // Record poll failure
-        await svc.from("gps_devices").update({
-          last_polled_at: new Date().toISOString(),
-          last_poll_ok:   false,
-        }).eq("id", deviceId);
+        if (linked) {
+          await svc.from("gps_devices").update({
+            last_polled_at: now,
+            last_poll_ok:   false,
+          }).eq("id", linked.id);
+        }
+
+        await svc.from("gps903_credentials").update({
+          last_synced_at: now,
+          last_sync_ok:   false,
+        }).eq("id", cred.id);
       }
 
-      return { deviceId: gps903Id, ok: pos !== null, freshSession };
+      return { deviceId: cred.gps903_device_id, ok: pos !== null };
     }),
   );
 
-  // Persist the most recently obtained fresh session if any
-  const freshSessions = settled
-    .filter((r) => r.status === "fulfilled" && !!(r as PromiseFulfilledResult<{ freshSession?: string }>).value.freshSession)
-    .map((r) => (r as PromiseFulfilledResult<{ freshSession: string }>).value.freshSession);
-
-  if (freshSessions.length > 0) {
-    await cacheSession(svc, freshSessions[freshSessions.length - 1]);
-  }
-
   const results = settled.map((r) =>
     r.status === "fulfilled"
-      ? { deviceId: r.value.deviceId, ok: r.value.ok }
+      ? r.value
       : { ok: false, error: (r.reason as Error)?.message ?? "unknown" },
   );
 

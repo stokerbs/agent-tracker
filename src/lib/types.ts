@@ -191,6 +191,21 @@ export interface Gps903Device {
   updated_at:       string;
 }
 
+/** Per-device IMEI credential stored in gps903_credentials table. */
+export interface Gps903Credential {
+  id:               string;
+  device_name:      string;
+  imei:             string;
+  // device_password intentionally absent — never sent to the browser
+  gps903_device_id: number;
+  is_active:        boolean;
+  last_synced_at:   string | null;
+  last_sync_ok:     boolean | null;
+  created_by:       string | null;
+  created_at:       string;
+  updated_at:       string;
+}
+
 export interface CaseWithAgents extends Case {
   agents?: Agent[];
 }

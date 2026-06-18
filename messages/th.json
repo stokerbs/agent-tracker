@@ -126,7 +126,8 @@
       "analytics": "วิเคราะห์",
       "field": "แอปภาคสนาม",
       "gpsDevices": "อุปกรณ์ GPS",
-      "gps903Discovery": "ค้นหาอุปกรณ์"
+      "gps903Discovery": "ค้นหาอุปกรณ์",
+      "gps903Credentials": "ข้อมูลรับรอง GPS"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"

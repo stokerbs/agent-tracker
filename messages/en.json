@@ -126,7 +126,8 @@
       "analytics": "Analytics",
       "field": "Field App",
       "gpsDevices": "GPS Devices",
-      "gps903Discovery": "Device Discovery"
+      "gps903Discovery": "Device Discovery",
+      "gps903Credentials": "GPS Credentials"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
