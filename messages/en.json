@@ -517,6 +517,14 @@
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
       "close": "Close"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by case number…",
+      "allTypes": "All types",
+      "clearFilters": "Clear filters",
+      "results": "{count} items",
+      "noResults": "No evidence matches",
+      "noResultsDescription": "Try a different search or file type."
     }
   },
   "expenses": {

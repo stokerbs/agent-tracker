@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { FolderLock } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
@@ -7,17 +8,25 @@ import { createClient } from "@/lib/supabase/server";
 import { BUCKETS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
+import { EvidenceFilters } from "@/components/evidence/evidence-filters";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Evidence } from "@/lib/types";
+import type { Evidence, EvidenceType } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Evidence" };
 export const dynamic = "force-dynamic";
 
 type EvidenceWithCase = Evidence & { cases: { case_number: string } | null };
 
-export default async function EvidencePage() {
+const VALID_TYPES = new Set<string>(["photo", "video", "pdf", "audio", "document"]);
+
+interface Props {
+  searchParams: Promise<{ q?: string; type?: string }>;
+}
+
+export default async function EvidencePage({ searchParams }: Props) {
   const profile = await requireProfile();
   const t = await getTranslations("evidence");
+  const sp = await searchParams;
   const supabase = await createClient();
 
   // Fetch evidence joined with case number and uploader profile.
@@ -39,8 +48,18 @@ export default async function EvidencePage() {
     }
   }
 
-  // Batch-generate signed thumbnail URLs for photos/videos in one API call.
-  const visualPaths = items
+  // Apply filters in-memory.
+  const search = sp.q?.toLowerCase().trim() ?? "";
+  const typeFilter = VALID_TYPES.has(sp.type ?? "") ? (sp.type as EvidenceType) : null;
+
+  const filtered = items.filter((e) => {
+    if (search && !(e.cases?.case_number ?? "").toLowerCase().includes(search)) return false;
+    if (typeFilter && e.type !== typeFilter) return false;
+    return true;
+  });
+
+  // Generate signed URLs only for filtered photo/video items.
+  const visualPaths = filtered
     .filter((e) => e.type === "photo" || e.type === "video")
     .map((e) => e.storage_path);
 
@@ -56,8 +75,8 @@ export default async function EvidencePage() {
     }
   }
 
-  // Group by case number.
-  const groups = items.reduce<Record<string, typeof items>>((acc, e) => {
+  // Group filtered items by case number.
+  const groups = filtered.reduce<Record<string, typeof filtered>>((acc, e) => {
     const key = e.cases?.case_number ?? "Unassigned";
     (acc[key] ??= []).push(e);
     return acc;
@@ -69,11 +88,15 @@ export default async function EvidencePage() {
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} />
 
-      {items.length === 0 ? (
+      <Suspense>
+        <EvidenceFilters count={filtered.length} />
+      </Suspense>
+
+      {filtered.length === 0 ? (
         <EmptyState
           icon={<FolderLock className="h-6 w-6" />}
-          title={t("noTitle")}
-          description={t("noDescription")}
+          title={search || typeFilter ? t("filters.noResults") : t("noTitle")}
+          description={search || typeFilter ? t("filters.noResultsDescription") : t("noDescription")}
         />
       ) : (
         <div className="space-y-10">

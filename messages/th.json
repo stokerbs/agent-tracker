@@ -517,6 +517,14 @@
       "zoomIn": "ขยาย",
       "zoomOut": "ย่อ",
       "close": "ปิด"
+    },
+    "filters": {
+      "searchPlaceholder": "ค้นหาตามหมายเลขคดี…",
+      "allTypes": "ทุกประเภท",
+      "clearFilters": "ล้างตัวกรอง",
+      "results": "{count} รายการ",
+      "noResults": "ไม่พบหลักฐานที่ตรงกัน",
+      "noResultsDescription": "ลองค้นหาด้วยคำอื่นหรือเปลี่ยนประเภทไฟล์"
     }
   },
   "expenses": {
