@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   caseId: string;
   defaultDate?: string;
+  onSuccess?: () => void;
 }
 
 type FilePreview = {
@@ -48,7 +49,7 @@ function kindForFile(file: File): FilePreview["kind"] {
   return "file";
 }
 
-export function ObservationUploader({ caseId, defaultDate }: Props) {
+export function ObservationUploader({ caseId, defaultDate, onSuccess }: Props) {
   const router = useRouter();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +128,7 @@ export function ObservationUploader({ caseId, defaultDate }: Props) {
       setDescription("");
       setLocation("");
       setFiles([]);
+      onSuccess?.();
       router.refresh();
     });
   }

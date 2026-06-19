@@ -4,6 +4,18 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { BUCKETS } from "@/lib/constants";
+import type { LinkedEvidence, TimelineEntry } from "@/lib/types";
+
+// ── Shared types (consumed by page.tsx and timeline-client.tsx) ───────────────
+export type EntryFull = TimelineEntry & {
+  agents: { full_name: string; agent_code: string } | null;
+  cases: { case_number: string } | null;
+};
+export type DateGroup = { date: string; entries: EntryFull[] };
+export type CaseGroup = { caseId: string; caseNumber: string; dates: DateGroup[] };
+
+const CASES_PER_PAGE = 7;
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -41,8 +53,6 @@ export async function addTimelineEntry(formData: FormData) {
     entry_time: String(formData.get("entry_time") ?? "") || undefined,
     entry: String(formData.get("entry") ?? "").trim(),
     location: emptyToNull(formData.get("location")),
-    photo_url: emptyToNull(formData.get("photo_url")),
-    video_url: emptyToNull(formData.get("video_url")),
   };
 
   if (!payload.entry) return { error: "Entry text is required" };
@@ -332,17 +342,12 @@ export async function addMultipleTimelineEntries(
 
   const supabase = await createClient();
 
-  // Always look up the agent ID server-side for security
-  let agentId: string | null = null;
-  if (isStaff(profile.role)) {
-    const { data: ag } = await supabase
-      .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
-    agentId = ag?.id ?? null;
-  } else {
-    const { data: ag } = await supabase
-      .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
-    agentId = ag?.id ?? null;
-  }
+  // Resolve the calling user's own agent record for attribution.
+  // Staff who need to attribute entries to a different agent should use
+  // addTimelineEntry() per row (which accepts an agent_id in FormData).
+  const { data: ag } = await supabase
+    .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
+  const agentId = ag?.id ?? null;
 
   const rows = entries.map((e) => {
     const timeParts = e.time.split(":");
@@ -632,4 +637,138 @@ Return only the report text, no extra explanation.`,
   } catch (err) {
     return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
   }
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+export async function loadMoreCaseGroups(
+  alreadyLoadedCaseIds: string[],
+  filters: { q?: string; from?: string; to?: string },
+): Promise<{ caseGroups: CaseGroup[]; hasMore: boolean }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { caseGroups: [], hasMore: false };
+
+  const supabase = await createClient();
+
+  // Scope query to the user's assigned cases for non-admin roles
+  let caseIdFilter: string[] | null = null;
+  if (profile.role !== "admin") {
+    const { data: agentRow } = await supabase
+      .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
+    if (!agentRow) return { caseGroups: [], hasMore: false };
+
+    const { data: caseAgents } = await supabase
+      .from("case_agents").select("case_id").eq("agent_id", agentRow.id);
+
+    const allMyCaseIds = (caseAgents ?? []).map((ca) => ca.case_id);
+    const remaining = allMyCaseIds.filter((id) => !alreadyLoadedCaseIds.includes(id));
+    if (remaining.length === 0) return { caseGroups: [], hasMore: false };
+    caseIdFilter = remaining;
+  }
+
+  let query = supabase
+    .from("timeline_entries")
+    .select("*, agents(full_name, agent_code), cases(case_number)")
+    .is("deleted_at", null)
+    .order("entry_date", { ascending: false })
+    .order("entry_time", { ascending: false })
+    .limit(500);
+
+  if (caseIdFilter) {
+    query = query.in("case_id", caseIdFilter);
+  } else if (alreadyLoadedCaseIds.length > 0) {
+    query = query.not("case_id", "in", `(${alreadyLoadedCaseIds.join(",")})`);
+  }
+
+  if (filters.from) query = query.gte("entry_date", filters.from);
+  if (filters.to) query = query.lte("entry_date", filters.to);
+
+  const { data: rawEntries } = await query;
+  let allEntries = (rawEntries ?? []) as EntryFull[];
+
+  if (filters.q) {
+    const search = filters.q.toLowerCase().trim();
+    allEntries = allEntries.filter((e) =>
+      (e.cases?.case_number ?? "").toLowerCase().includes(search) ||
+      (e.entry ?? "").toLowerCase().includes(search) ||
+      (e.location ?? "").toLowerCase().includes(search),
+    );
+  }
+
+  // Collect entries for the first CASES_PER_PAGE unique cases (newest-first order)
+  const caseOrder: string[] = [];
+  const caseMap = new Map<string, { caseNumber: string; dateMap: Map<string, EntryFull[]> }>();
+
+  for (const entry of allEntries) {
+    const isNew = !caseMap.has(entry.case_id);
+    if (isNew && caseOrder.length >= CASES_PER_PAGE) break;
+    if (isNew) {
+      caseOrder.push(entry.case_id);
+      caseMap.set(entry.case_id, {
+        caseNumber: entry.cases?.case_number ?? entry.case_id,
+        dateMap: new Map(),
+      });
+    }
+    const cd = caseMap.get(entry.case_id)!;
+    if (!cd.dateMap.has(entry.entry_date)) cd.dateMap.set(entry.entry_date, []);
+    cd.dateMap.get(entry.entry_date)!.push(entry);
+  }
+
+  const caseOrderSet = new Set(caseOrder);
+  const hasMore = allEntries.some((e) => !caseOrderSet.has(e.case_id));
+
+  // Enrich with linked evidence + signed URLs
+  const cappedEntries = allEntries.filter((e) => caseOrderSet.has(e.case_id));
+  const entryIds = cappedEntries.map((e) => e.id);
+  const enrichedMap = new Map<string, EntryFull>();
+  cappedEntries.forEach((e) => enrichedMap.set(e.id, e));
+
+  if (entryIds.length > 0) {
+    const { data: evidenceRows } = await supabase
+      .from("evidence")
+      .select("id, case_id, type, category, storage_path, file_name, file_size, mime_type, notes, uploaded_by, uploaded_at, timeline_entry_id")
+      .in("timeline_entry_id", entryIds);
+
+    if (evidenceRows && evidenceRows.length > 0) {
+      const paths = evidenceRows.map((e) => e.storage_path);
+      const { data: signedData } = await supabase.storage
+        .from(BUCKETS.evidence)
+        .createSignedUrls(paths, 3600);
+
+      const signedUrlMap: Record<string, string> = {};
+      (signedData ?? []).forEach((su, i) => { signedUrlMap[paths[i]] = su.signedUrl ?? ""; });
+
+      const evidenceByEntry = new Map<string, LinkedEvidence[]>();
+      for (const ev of evidenceRows) {
+        if (!ev.timeline_entry_id) continue;
+        const list = evidenceByEntry.get(ev.timeline_entry_id) ?? [];
+        list.push({
+          id: ev.id, case_id: ev.case_id, type: ev.type, category: ev.category,
+          storage_path: ev.storage_path, file_name: ev.file_name, file_size: ev.file_size,
+          mime_type: ev.mime_type, notes: ev.notes, uploaded_by: ev.uploaded_by,
+          uploaded_at: ev.uploaded_at, signedUrl: signedUrlMap[ev.storage_path] ?? "",
+        });
+        evidenceByEntry.set(ev.timeline_entry_id, list);
+      }
+      cappedEntries.forEach((e) => {
+        enrichedMap.set(e.id, { ...e, linked_evidence: evidenceByEntry.get(e.id) ?? [] });
+      });
+    }
+  }
+
+  const caseGroups: CaseGroup[] = caseOrder.map((caseId) => {
+    const { caseNumber, dateMap } = caseMap.get(caseId)!;
+    return {
+      caseId,
+      caseNumber,
+      dates: Array.from(dateMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, entries]) => ({
+          date,
+          entries: [...entries].reverse().map((e) => enrichedMap.get(e.id) ?? e),
+        })),
+    };
+  });
+
+  return { caseGroups, hasMore };
 }

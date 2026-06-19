@@ -23,6 +23,7 @@ import {
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { BUCKETS } from "@/lib/constants";
 import { decryptField } from "@/lib/security/encryption";
 import { PageHeader } from "@/components/shared/page-header";
 import {
@@ -30,7 +31,7 @@ import {
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
 import { StatCard } from "@/components/shared/stat-card";
-import { AddTimelineEntry } from "@/components/cases/add-timeline-entry";
+import { AddObservationToggle } from "@/components/timeline/add-observation-toggle";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { GenerateReportButton } from "@/components/cases/generate-report-button";
@@ -56,7 +57,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, Client, Evidence, Expense, GpsDevice, Report, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, Report, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export default async function CaseDetailPage({
 
   const [
     { data: caseAgentRows },
-    { data: timeline },
+    { data: rawTimeline },
     { data: evidence },
     { data: reports },
     { data: expenses },
@@ -159,6 +160,40 @@ export default async function CaseDetailPage({
       .order("created_at", { ascending: true }),
   ]);
 
+  // Enrich timeline entries with linked evidence + server-signed URLs
+  type RawEntry = TimelineEntry & { agents?: { full_name: string; nickname?: string | null } | null };
+  const rawTimelineTyped = (rawTimeline ?? []) as RawEntry[];
+  const entryIds = rawTimelineTyped.map((e) => e.id);
+  const evidenceByEntryId = new Map<string, LinkedEvidence[]>();
+
+  if (entryIds.length > 0) {
+    const { data: linkedRows } = await supabase
+      .from("evidence")
+      .select("id, case_id, type, category, storage_path, file_name, file_size, mime_type, notes, uploaded_by, uploaded_at, timeline_entry_id")
+      .in("timeline_entry_id", entryIds);
+
+    if (linkedRows && linkedRows.length > 0) {
+      const paths = linkedRows.map((r) => r.storage_path);
+      const { data: signedData } = await supabase.storage
+        .from(BUCKETS.evidence)
+        .createSignedUrls(paths, 3600);
+      const signedUrlMap: Record<string, string> = {};
+      (signedData ?? []).forEach((su, i) => { signedUrlMap[paths[i]] = su.signedUrl ?? ""; });
+
+      for (const ev of linkedRows) {
+        if (!ev.timeline_entry_id) continue;
+        const list = evidenceByEntryId.get(ev.timeline_entry_id) ?? [];
+        list.push({
+          id: ev.id, case_id: ev.case_id, type: ev.type, category: ev.category,
+          storage_path: ev.storage_path, file_name: ev.file_name, file_size: ev.file_size,
+          mime_type: ev.mime_type, notes: ev.notes, uploaded_by: ev.uploaded_by,
+          uploaded_at: ev.uploaded_at, signedUrl: signedUrlMap[ev.storage_path] ?? "",
+        });
+        evidenceByEntryId.set(ev.timeline_entry_id, list);
+      }
+    }
+  }
+
   const caseClient = clientRaw as Client | null;
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
   const hasApprovedReport = (reports as Report[] ?? []).some((r) => r.status === "approved");
@@ -176,9 +211,10 @@ export default async function CaseDetailPage({
     .map((r) => r.agents)
     .filter(Boolean);
 
-  const timelineEntries = (timeline ?? []) as (TimelineEntry & {
-    agents?: { full_name: string } | null;
-  })[];
+  const timelineEntries = rawTimelineTyped.map((e) => ({
+    ...e,
+    linked_evidence: evidenceByEntryId.get(e.id) ?? [],
+  }));
   const caseEvidence  = (evidence  ?? []) as Evidence[];
   const caseReports   = (reports   ?? []) as Report[];
   const caseExpenses  = (expenses  ?? []) as (Expense & { agents?: { full_name: string } | null })[];
@@ -406,7 +442,7 @@ export default async function CaseDetailPage({
 
           {/* Timeline */}
           <TabsContent value="timeline" className="space-y-4">
-            <AddTimelineEntry caseId={id} />
+            {profile.role !== "client" && <AddObservationToggle caseId={id} />}
             {timelineEntries.length === 0 ? (
               <EmptyState
                 icon={<Clock className="h-6 w-6" />}
@@ -417,9 +453,14 @@ export default async function CaseDetailPage({
               <div className="relative space-y-1 pl-4">
                 <div className="absolute left-[7px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
                 {timelineEntries.map((entry) => (
-                  <div key={entry.id} className="group relative flex gap-4 pb-4">
+                  <div key={entry.id} className="group relative flex gap-2 sm:gap-4 pb-2 sm:pb-4">
                     <div className="absolute -left-[1px] mt-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
-                    <TimelineEntryCard entry={entry} canEdit={staff} />
+                    <TimelineEntryCard
+                      entry={entry}
+                      canEdit={staff}
+                      isAdmin={isAdmin}
+                      linkedEvidence={entry.linked_evidence}
+                    />
                   </div>
                 ))}
               </div>

@@ -31,22 +31,20 @@ import {
 } from "@/components/ui/dialog";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { TimelineEvidenceGallery } from "@/components/timeline/timeline-evidence-gallery";
-import { ObservationUploader } from "@/components/timeline/observation-uploader";
-import { generateReport } from "@/app/(dashboard)/timeline/actions";
-import type { ReportType } from "@/app/(dashboard)/timeline/actions";
+import { generateReport, loadMoreCaseGroups } from "@/app/(dashboard)/timeline/actions";
+import type { ReportType, CaseGroup } from "@/app/(dashboard)/timeline/actions";
 import type { TimelineEntry } from "@/lib/types";
 
 type EntryFull = TimelineEntry & {
   agents: { full_name: string; agent_code: string } | null;
   cases: { case_number: string } | null;
 };
-type DateGroup = { date: string; entries: EntryFull[] };
-type CaseGroup = { caseId: string; caseNumber: string; dates: DateGroup[] };
 
 interface Props {
   caseGroups: CaseGroup[];
-  canEdit: boolean;   // supervisor + admin: edit/delete existing entries and generate reports
-  canInsert: boolean; // agent + staff: can add new observations
+  hasMore: boolean;
+  filters: { q?: string; from?: string; to?: string };
+  canEdit: boolean;
   isAdmin: boolean;
 }
 
@@ -55,6 +53,10 @@ function fmtDate(dateStr: string, locale: string) {
     locale === "th" ? "th-TH" : "en-US",
     { weekday: "long", month: "long", day: "numeric", year: "numeric" },
   );
+}
+
+function fmtDateShort(dateStr: string) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-CA"); // YYYY-MM-DD
 }
 
 function entryCount(n: number, t: ReturnType<typeof useTranslations<"timeline.section">>) {
@@ -68,24 +70,41 @@ interface SummaryState {
   copied: boolean;
 }
 
-export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Props) {
+export function TimelineClient({ caseGroups: initialGroups, hasMore: initialHasMore, filters, canEdit, isAdmin }: Props) {
   const t = useTranslations("timeline");
   const ts = useTranslations("timeline.section");
   const tai = useTranslations("timeline.ai");
   const locale = useLocale();
 
-  const [collapsedCases, setCollapsedCases] = useState<Record<string, boolean>>({});
-  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
+  // All cases and dates collapsed by default — {} = nothing expanded
+  const [expandedCases, setExpandedCases] = useState<Record<string, boolean>>({});
+  const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
+
+  const [extraGroups, setExtraGroups] = useState<CaseGroup[]>([]);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingMore, startLoadMore] = useTransition();
+
   const [summaryState, setSummaryState] = useState<SummaryState>({ open: false, text: "", title: "", copied: false });
-  const [summaryLoading, setSummaryLoading] = useState<string | null>(null); // `${caseId}::${date}::${format}`
+  const [summaryLoading, setSummaryLoading] = useState<string | null>(null);
   const [, startSummary] = useTransition();
 
+  const allGroups = [...initialGroups, ...extraGroups];
+
   function toggleCase(caseId: string) {
-    setCollapsedCases((prev) => ({ ...prev, [caseId]: !prev[caseId] }));
+    setExpandedCases((prev) => ({ ...prev, [caseId]: !prev[caseId] }));
   }
 
   function toggleDate(key: string) {
-    setCollapsedDates((prev) => ({ ...prev, [key]: !prev[key] }));
+    setExpandedDates((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleLoadMore() {
+    const loadedIds = allGroups.map((cg) => cg.caseId);
+    startLoadMore(async () => {
+      const result = await loadMoreCaseGroups(loadedIds, filters);
+      setExtraGroups((prev) => [...prev, ...result.caseGroups]);
+      setHasMore(result.hasMore);
+    });
   }
 
   function downloadAsText(text: string, filename: string) {
@@ -120,12 +139,8 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
     startSummary(async () => {
       const res = await generateReport(caseId, date, reportType);
       setSummaryLoading(null);
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      const title = tai("reportTitle");
-      setSummaryState({ open: true, text: res.report ?? "", title, copied: false });
+      if (res.error) { toast.error(res.error); return; }
+      setSummaryState({ open: true, text: res.report ?? "", title: tai("reportTitle"), copied: false });
     });
   }
 
@@ -141,10 +156,12 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
 
   return (
     <>
-      <div className="space-y-4">
-        {caseGroups.map((cg) => {
-          const caseCollapsed = !!collapsedCases[cg.caseId];
-          const totalCaseEntries = cg.dates.reduce((s, dg) => s + dg.entries.length, 0);
+      <div className="space-y-2">
+        {allGroups.map((cg) => {
+          const isOpen = !!expandedCases[cg.caseId];
+          const totalEntries = cg.dates.reduce((s, dg) => s + dg.entries.length, 0);
+          // Latest date for this case (dates are sorted ASC, last = newest)
+          const latestDate = cg.dates[cg.dates.length - 1]?.date;
 
           return (
             <div key={cg.caseId} className="rounded-lg border bg-card">
@@ -154,38 +171,43 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
                 onClick={() => toggleCase(cg.caseId)}
                 className="flex min-h-[52px] w-full items-center gap-2 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/40"
               >
-                {caseCollapsed ? (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                ) : (
+                {isOpen ? (
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <span className="font-mono text-sm font-bold">{cg.caseNumber}</span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {entryCount(totalCaseEntries, ts)}
+                <span className="text-xs text-muted-foreground">
+                  {entryCount(totalEntries, ts)}
                 </span>
+                {latestDate && !isOpen && (
+                  <span className="ml-auto text-xs text-muted-foreground/60">
+                    {fmtDateShort(latestDate)}
+                  </span>
+                )}
               </button>
 
               {/* Case body */}
-              {!caseCollapsed && (
+              {isOpen && (
                 <div className="px-4 pb-4">
                   <div className="space-y-4">
                     {cg.dates.map((dg) => {
                       const dateKey = `${cg.caseId}::${dg.date}`;
-                      const dateCollapsed = !!collapsedDates[dateKey];
+                      const dateOpen = !!expandedDates[dateKey];
 
                       return (
                         <div key={dg.date}>
-                          {/* Date header — sticky on scroll */}
+                          {/* Date header */}
                           <div className="sticky top-0 z-10 mb-3 flex min-h-[44px] items-center gap-2 bg-background/95 backdrop-blur-sm">
                             <button
                               type="button"
                               onClick={() => toggleDate(dateKey)}
                               className="flex min-h-[44px] items-center gap-1.5 rounded px-1 text-left transition-colors hover:text-foreground"
                             >
-                              {dateCollapsed ? (
-                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                              ) : (
+                              {dateOpen ? (
                                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                               )}
                               <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                                 {fmtDate(dg.date, locale)}
@@ -258,38 +280,31 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
                           </div>
 
                           {/* Date entries */}
-                          {!dateCollapsed && (
+                          {dateOpen && (
                             <div className="relative pl-5">
                               <div className="absolute inset-y-0 left-[7px] w-px bg-border/50" />
-
                               <div className="space-y-0">
                                 {dg.entries.map((e) => (
                                   <div key={e.id} className="group relative flex gap-4 pb-4 last:pb-0">
-                                    {/* Timeline node */}
                                     <div className="absolute -left-[13px] mt-1 flex h-4 w-4 shrink-0 items-center justify-center">
                                       <div className="h-2 w-2 rounded-full border-2 border-border bg-card ring-4 ring-background transition-colors group-hover:border-primary group-hover:bg-primary/20" />
                                     </div>
-
-                                    {/* Time badge */}
                                     <span className="mt-3 shrink-0 font-mono text-xs text-muted-foreground/70">
                                       {e.entry_time?.slice(0, 5)}
                                     </span>
-
                                     {canEdit ? (
                                       <TimelineEntryCard
-                                        entry={e}
+                                        entry={e as EntryFull}
                                         canEdit
                                         isAdmin={isAdmin}
                                         linkedEvidence={e.linked_evidence}
                                       />
                                     ) : (
-                                      <div className="flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
-                                        <p className="text-sm leading-snug text-foreground/90">
-                                          {e.entry}
-                                        </p>
+                                      <div className="flex-1 rounded-lg border border-border/50 bg-card p-2 sm:p-3 transition-colors hover:border-border">
+                                        <p className="text-sm leading-snug text-foreground/90">{e.entry}</p>
                                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                          {e.agents?.full_name && (
-                                            <span>{e.agents.full_name}</span>
+                                          {(e as EntryFull).agents?.full_name && (
+                                            <span>{(e as EntryFull).agents!.full_name}</span>
                                           )}
                                           {e.location && (
                                             <span className="flex items-center gap-1">
@@ -306,32 +321,40 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
                                   </div>
                                 ))}
                               </div>
-
-                              {/* Add observation — agents and staff */}
-                              {canInsert && (
-                                <div className="mt-4">
-                                  <ObservationUploader caseId={cg.caseId} defaultDate={dg.date} />
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
                       );
                     })}
-
-                    {/* Add observation for a new date */}
-                    {canInsert && cg.dates.length === 0 && (
-                      <ObservationUploader caseId={cg.caseId} />
-                    )}
                   </div>
                 </div>
               )}
             </div>
           );
         })}
+
+        {/* Load more */}
+        {hasMore && (
+          <div className="flex justify-center pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="gap-2"
+            >
+              {loadingMore ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</>
+              ) : (
+                "Load more cases"
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Daily Summary Dialog */}
+      {/* Report dialog */}
       <Dialog
         open={summaryState.open}
         onOpenChange={(open) => setSummaryState((s) => ({ ...s, open }))}
@@ -339,43 +362,24 @@ export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Prop
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{summaryState.title || tai("reportTitle")}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {t("description")}
-            </DialogDescription>
+            <DialogDescription className="sr-only">{t("description")}</DialogDescription>
           </DialogHeader>
           <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
             {summaryState.text}
           </pre>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => printReport(summaryState.text, summaryState.title)}
-            >
-              <Printer className="h-3.5 w-3.5" />
-              PDF / Print
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={() => printReport(summaryState.text, summaryState.title)}>
+              <Printer className="h-3.5 w-3.5" /> PDF / Print
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => downloadAsText(summaryState.text, `${summaryState.title}.txt`)}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download TXT
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={() => downloadAsText(summaryState.text, `${summaryState.title}.txt`)}>
+              <Download className="h-3.5 w-3.5" /> Download TXT
             </Button>
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={() => handleCopy(summaryState.text)}
-            >
-              {summaryState.copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-              {summaryState.copied ? tai("copied") : tai("copy")}
+            <Button size="sm" className="gap-1.5" onClick={() => handleCopy(summaryState.text)}>
+              {summaryState.copied
+                ? <><Check className="h-3.5 w-3.5 text-green-500" /> {tai("copied")}</>
+                : <><Copy className="h-3.5 w-3.5" /> {tai("copy")}</>}
             </Button>
           </div>
         </DialogContent>
