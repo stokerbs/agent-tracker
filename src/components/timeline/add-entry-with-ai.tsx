@@ -459,7 +459,7 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
             onChange={(e) => setQuickInput(e.target.value)}
             placeholder={tai("quickEntryPlaceholder")}
             className="min-h-[40px] resize-none text-xs"
-            disabled={parsing || pending}
+            disabled={multiParsing || pending}
             rows={1}
           />
           <Button
@@ -467,15 +467,15 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
             size="sm"
             variant="secondary"
             className="h-auto shrink-0 gap-1 self-start text-xs"
-            onClick={handleParseWithAI}
-            disabled={parsing || pending || !quickInput.trim()}
+            onClick={handleMultiParseWithAI}
+            disabled={multiParsing || pending || !quickInput.trim()}
           >
-            {parsing ? (
+            {multiParsing ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
               <Wand2 className="h-3 w-3" />
             )}
-            {parsing ? tai("parsing") : tai("parseWithAI")}
+            {multiParsing ? tai("parsing") : tai("parseWithAI")}
           </Button>
         </div>
 
