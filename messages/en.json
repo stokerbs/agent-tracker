@@ -117,6 +117,7 @@
       "evidence": "Evidence",
       "reports": "Reports",
       "expenses": "Expenses",
+      "payroll": "Payroll",
       "emergency": "Emergency",
       "clients": "Clients",
       "users": "Users",
@@ -702,6 +703,92 @@
       "results": "{count} entries · ฿{total}",
       "noResults": "No expenses match",
       "noResultsDescription": "Try a different search, category, or date range."
+    }
+  },
+  "payroll": {
+    "title": "Agent Payroll",
+    "description": "Daily payments owed to investigators and partners.",
+    "myTitle": "My Payroll",
+    "myDescription": "Your work days, pending payments, and payment history.",
+    "addPayment": "Add Payment",
+    "noTitle": "No payroll entries",
+    "noDescription": "Create the first daily payment entry above.",
+    "noOwn": "No payroll records yet",
+    "noOwnDescription": "Your payment records will appear here.",
+    "stats": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "cancelled": "Cancelled",
+      "outstanding": "Outstanding Balance",
+      "workDays": "Work Days",
+      "totalEarned": "Total Earned"
+    },
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "cancelled": "Cancelled",
+      "adjusted": "Adjusted"
+    },
+    "table": {
+      "date": "Date",
+      "agent": "Agent",
+      "case": "Case",
+      "amount": "Amount",
+      "notes": "Notes",
+      "status": "Status",
+      "paidBy": "Paid by",
+      "total": "Total"
+    },
+    "dialog": {
+      "title": "Add Payment Entry",
+      "agentLabel": "Agent",
+      "agentPlaceholder": "Select agent",
+      "caseLabel": "Case (optional)",
+      "casePlaceholder": "No case selected",
+      "dateLabel": "Work Date",
+      "amountLabel": "Amount (THB)",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "e.g. Full day surveillance",
+      "submitButton": "Save Payment",
+      "toast": { "success": "Payment entry saved" }
+    },
+    "adjust": {
+      "title": "Adjust Amount",
+      "newAmountLabel": "New Amount (THB)",
+      "reasonLabel": "Reason for adjustment",
+      "reasonPlaceholder": "e.g. Half day, overtime, deduction",
+      "submitButton": "Save Adjustment",
+      "toast": { "success": "Amount adjusted" }
+    },
+    "actions": {
+      "markPaid": "Mark as Paid",
+      "markPending": "Mark as Pending",
+      "markCancelled": "Cancel",
+      "adjust": "Adjust Amount",
+      "deleteConfirmTitle": "Delete this entry?",
+      "deleteConfirmDescription": "This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "paidBy": "by {name}"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "markPaid": "Mark Paid",
+      "deselect": "Deselect all"
+    },
+    "filters": {
+      "searchPlaceholder": "Agent name or notes…",
+      "allStatuses": "All statuses",
+      "from": "From",
+      "to": "To",
+      "clearFilters": "Clear filters",
+      "results": "{count} entries · ฿{total}",
+      "noResults": "No entries match",
+      "noResultsDescription": "Try different filters."
+    },
+    "caseSection": {
+      "payrollTotal": "Agent Payroll",
+      "expensesTotal": "Expenses",
+      "totalCost": "Total Cost"
     }
   },
   "reports": {

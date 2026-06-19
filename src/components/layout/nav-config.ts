@@ -38,6 +38,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { labelKey: "evidence", href: "/evidence", icon: "FolderLock", roles: ALL },
       { labelKey: "reports", href: "/reports", icon: "FileText", roles: ALL },
       { labelKey: "expenses", href: "/expenses", icon: "Receipt", roles: ALL },
+      { labelKey: "payroll", href: "/payroll", icon: "Wallet", roles: ALL },
       { labelKey: "emergency", href: "/emergency", icon: "Siren", roles: STAFF },
     ],
   },

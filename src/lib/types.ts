@@ -34,6 +34,7 @@ export type ExpenseCategory =
   | "office"
   | "misc";
 export type ExpenseStatus = "pending" | "paid" | "reimbursed" | "cancelled";
+export type PayrollStatus = "pending" | "paid" | "cancelled" | "adjusted";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type GpsProvider = "AIS" | "TRUE" | "DTAC" | "GPS903";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
@@ -315,6 +316,22 @@ export interface ExtractedExpense {
     expense_time: number;
     receipt_number: number;
   };
+}
+
+export interface AgentPayment {
+  id: string;
+  agent_id: string | null;
+  case_id: string | null;
+  work_date: string;
+  amount: number;
+  currency: string;
+  notes: string | null;
+  status: PayrollStatus;
+  paid_at: string | null;
+  paid_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EmergencyAlert {

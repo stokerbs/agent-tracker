@@ -14,6 +14,7 @@ import {
   Receipt,
   User,
   Users,
+  Wallet,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
@@ -88,6 +89,7 @@ export default async function CaseDetailPage({
   const tCommon = await getTranslations("common");
   const tInvoices = await getTranslations("invoices");
   const tExpenses = await getTranslations("expenses");
+  const tPayroll  = await getTranslations("payroll");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -113,6 +115,7 @@ export default async function CaseDetailPage({
     { data: clientRaw },
     invoiceCountRes,
     { data: gpsDevicesRaw },
+    { data: paymentsRaw },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -144,6 +147,11 @@ export default async function CaseDetailPage({
       .eq("case_id", id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("agent_payments")
+      .select("*, agents(full_name), profiles!agent_payments_paid_by_fkey(full_name)")
+      .eq("case_id", id)
+      .order("work_date", { ascending: false }),
   ]);
 
   // Enrich timeline entries with linked evidence + server-signed URLs
@@ -204,6 +212,11 @@ export default async function CaseDetailPage({
   const caseExpenses  = (expenses  ?? []) as (Expense & { agents?: { full_name: string } | null })[];
 
   const totalExpenses = caseExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const casePayments  = ((paymentsRaw ?? []) as any[]).map((p) => ({
+    ...p,
+    paid_by_name: (p.profiles as { full_name: string | null } | null)?.full_name ?? null,
+  }));
+  const totalPayroll  = casePayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
   const isAdmin = profile.role === "admin";
@@ -424,6 +437,13 @@ export default async function CaseDetailPage({
               {t("tabs.expenses")}
               <TabCount n={caseExpenses.length} />
             </TabsTrigger>
+            {staff && (
+              <TabsTrigger value="payroll">
+                <Wallet className="mr-1 h-4 w-4" />
+                {tPayroll("title")}
+                <TabCount n={casePayments.length} />
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Timeline */}
@@ -523,6 +543,86 @@ export default async function CaseDetailPage({
               </Card>
             )}
           </TabsContent>
+
+          {/* Payroll */}
+          {staff && (
+            <TabsContent value="payroll" className="space-y-4">
+              {/* Cost summary */}
+              <div className="grid grid-cols-3 gap-3">
+                <Card>
+                  <CardContent className="py-3 px-4">
+                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.payrollTotal")}</p>
+                    <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalPayroll)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="py-3 px-4">
+                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.expensesTotal")}</p>
+                    <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalExpenses)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/30">
+                  <CardContent className="py-3 px-4">
+                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.totalCost")}</p>
+                    <p className="mt-0.5 font-semibold tabular-nums text-primary">{formatCurrency(totalPayroll + totalExpenses)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {casePayments.length === 0 ? (
+                <EmptyState
+                  icon={<Wallet className="h-6 w-6" />}
+                  title={tPayroll("noTitle")}
+                  description={tPayroll("noDescription")}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{tPayroll("table.date")}</TableHead>
+                          <TableHead>{tPayroll("table.agent")}</TableHead>
+                          <TableHead>{tPayroll("table.notes")}</TableHead>
+                          <TableHead>{tPayroll("table.status")}</TableHead>
+                          <TableHead className="text-right">{tPayroll("table.amount")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {casePayments.map((p: any) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-sm whitespace-nowrap">{p.work_date}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {p.agents?.full_name ?? "—"}
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                              {p.notes ?? "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">
+                                {tPayroll(`status.${p.status}` as any)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium whitespace-nowrap">
+                              {formatCurrency(Number(p.amount))}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/30 font-medium">
+                          <TableCell colSpan={4} className="text-sm">
+                            {tPayroll("table.total")}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-primary">
+                            {formatCurrency(totalPayroll)}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </FadeUp>
     </div>
