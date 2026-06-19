@@ -20,8 +20,9 @@ export const NAV_SECTIONS: NavSection[] = [
     sectionKey: "operations",
     items: [
       { labelKey: "dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ALL },
-      { labelKey: "field", href: "/field", icon: "Radio", roles: ALL },
-      { labelKey: "map", href: "/map", icon: "MapPin", roles: STAFF },
+      { labelKey: "field",      href: "/field",       icon: "Radio",      roles: ALL   },
+      { labelKey: "gpsMonitor", href: "/gps-monitor", icon: "Navigation",  roles: ALL   },
+      { labelKey: "map",        href: "/map",          icon: "MapPin",      roles: STAFF },
       { labelKey: "gpsDevices",        href: "/gps-devices",         icon: "Satellite",  roles: STAFF },
       { labelKey: "gps903Discovery",  href: "/gps903-discovery",   icon: "ScanSearch", roles: STAFF },
       { labelKey: "gps903Credentials",href: "/gps903-credentials", icon: "KeyRound",   roles: STAFF },

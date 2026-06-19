@@ -257,3 +257,37 @@ export async function getActiveGpsDevices(): Promise<GpsDeviceForMap[]> {
     case_number: row.cases?.case_number ?? null,
   }));
 }
+
+type GpsRawRow = GpsDeviceForMap & {
+  cases: { case_number: string } | null;
+  gps903_credentials: { device_name: string | null; imei: string | null; phone_number: string | null; provider: string | null } | null;
+};
+
+function flattenGpsRow(row: GpsRawRow): GpsDeviceForMap {
+  return {
+    ...row,
+    case_number:   row.cases?.case_number ?? null,
+    cred_name:     row.gps903_credentials?.device_name  ?? null,
+    cred_imei:     row.gps903_credentials?.imei         ?? null,
+    cred_phone:    row.gps903_credentials?.phone_number ?? null,
+    cred_provider: row.gps903_credentials?.provider     ?? null,
+  };
+}
+
+/**
+ * GPS Monitor: returns GPS devices visible to the current user (RLS-scoped).
+ * Admins see all; supervisors see their access-granted devices;
+ * agents see devices on their assigned cases (migration 0047 RLS policy).
+ * Includes credential metadata for popup display.
+ */
+export async function getGpsMonitorDevices(): Promise<GpsDeviceForMap[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("gps_devices")
+    .select("*, cases(case_number), gps903_credentials(device_name, imei, phone_number, provider)")
+    .not("last_lat", "is", null)
+    .is("deleted_at", null)
+    .order("last_seen_at", { ascending: false });
+
+  return ((data ?? []) as unknown as GpsRawRow[]).map(flattenGpsRow);
+}

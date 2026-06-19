@@ -2,10 +2,12 @@
 
 import {
   BarChart2,
+  KeyRound,
   LayoutDashboard,
   MapPin,
   Briefcase,
   Clock,
+  Navigation,
   Radio,
   Users,
   FolderLock,
@@ -24,10 +26,12 @@ import {
 
 const ICONS = {
   BarChart2,
+  KeyRound,
   LayoutDashboard,
   MapPin,
   Briefcase,
   Clock,
+  Navigation,
   Radio,
   Users,
   FolderLock,
