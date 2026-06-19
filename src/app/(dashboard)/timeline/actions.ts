@@ -372,11 +372,95 @@ export async function improveTimelineEntry(
   }
 }
 
-export async function generateDailySummary(
+export type ReportType = "thai_client" | "english_client" | "internal";
+
+function formatThaiDate(isoDate: string): string {
+  const thaiMonths = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+  ];
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return `${day} ${thaiMonths[month - 1]} ${year + 543}`;
+}
+
+function buildFallbackReport(
+  reportType: ReportType,
+  caseNumber: string,
+  date: string,
+  timelineText: string,
+): string {
+  const thaiDate = formatThaiDate(date);
+
+  if (reportType === "thai_client") {
+    return `รายงานสรุปการเฝ้าสังเกตการณ์
+================================
+เลขคดี: ${caseNumber}
+วันที่: ${thaiDate}
+
+สรุปภาพรวม
+-----------
+รายงานการเฝ้าสังเกตการณ์ประจำวันที่ ${thaiDate}
+
+ลำดับเหตุการณ์
+--------------
+${timelineText || "(ไม่มีรายการบันทึก)"}
+
+ข้อสังเกตสำคัญ
+--------------
+-
+
+หมายเหตุ
+---------
+รายงานนี้สร้างจากข้อมูลในระบบโดยอัตโนมัติ`;
+  }
+
+  if (reportType === "english_client") {
+    return `DAILY SURVEILLANCE REPORT
+=========================
+Case Number: ${caseNumber}
+Date: ${date}
+
+Executive Summary
+-----------------
+Daily surveillance report for ${date}.
+
+Chronological Observations
+--------------------------
+${timelineText || "(No entries recorded)"}
+
+Key Findings
+------------
+-
+
+Remarks
+-------
+This report was generated automatically from system records.`;
+  }
+
+  // internal
+  return `SURVEILLANCE OPERATIONS REPORT
+===============================
+Case: ${caseNumber}
+Date: ${date}
+
+Timeline
+--------
+${timelineText || "(No entries recorded)"}
+
+Operational Notes
+-----------------
+-
+
+Recommendations
+---------------
+-`;
+}
+
+export async function generateReport(
   caseId: string,
   date: string,
-  format: "internal" | "client" = "internal",
-): Promise<{ summary?: string; error?: string }> {
+  reportType: ReportType,
+): Promise<{ report?: string; error?: string }> {
   const supabase = await createClient();
 
   const [entriesRes, caseRes] = await Promise.all([
@@ -387,43 +471,127 @@ export async function generateDailySummary(
       .eq("entry_date", date)
       .is("deleted_at", null)
       .order("entry_time", { ascending: true }),
-    supabase.from("cases").select("case_number").eq("id", caseId).maybeSingle(),
+    supabase.from("cases").select("case_number, client_name").eq("id", caseId).maybeSingle(),
   ]);
 
   const entries = entriesRes.data ?? [];
   const caseRow = caseRes.data;
+  const caseNumber = caseRow?.case_number ?? caseId;
 
-  const entriesText = entries
-    .map(
-      (e) =>
-        `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
-    )
-    .join("\n");
+  const timelineText = entries.length
+    ? entries
+        .map((e) => `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}`)
+        .join("\n")
+    : "(ไม่มีรายการบันทึก / No entries recorded)";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    const header = `DAILY SURVEILLANCE REPORT — ${caseRow?.case_number ?? caseId} — ${date}`;
-    const body = entries.length
-      ? entriesText
-      : "No entries recorded for this date.";
-    return { summary: `${header}\n\n${body}` };
+    return { report: buildFallbackReport(reportType, caseNumber, date, timelineText) };
   }
 
+  const thaiDate = formatThaiDate(date);
+
+  const prompts: Record<ReportType, string> = {
+    thai_client: `คุณเป็นผู้เชี่ยวชาญด้านการเขียนรายงานสืบสวนระดับมืออาชีพสำหรับลูกค้า
+
+จงเขียนรายงานสรุปการเฝ้าสังเกตการณ์เป็นภาษาไทยที่เป็นทางการและเหมาะสมสำหรับลูกค้า
+
+รูปแบบรายงาน:
+รายงานสรุปการเฝ้าสังเกตการณ์
+================================
+เลขคดี: ${caseNumber}
+วันที่: ${thaiDate}
+
+สรุปภาพรวม
+-----------
+[2-3 ประโยคสรุปภาพรวมของวัน]
+
+ลำดับเหตุการณ์
+--------------
+[เรียงตามเวลา เขียนเป็นประโยคสมบูรณ์ ใช้ภาษาสุภาพ]
+
+ข้อสังเกตสำคัญ
+--------------
+[จุดสำคัญที่ควรทราบ]
+
+หมายเหตุ
+---------
+[ข้อมูลเพิ่มเติมหรือคำแนะนำ]
+
+กฎ:
+- ภาษาไทยทางการ เหมาะสำหรับลูกค้า
+- ไม่เปิดเผยรายละเอียดปฏิบัติการภายใน
+- เขียนเชิงบรรยาย ไม่ใช่รายการ
+- ใช้คำว่า "ผู้ต้องสงสัย" หรือ "บุคคลเป้าหมาย"
+- Return only the report text, no extra explanation`,
+
+    english_client: `You are a professional surveillance report writer for client delivery.
+
+Write a formal daily surveillance report in English suitable for client presentation and legal review.
+
+Format:
+DAILY SURVEILLANCE REPORT
+=========================
+Case Number: ${caseNumber}
+Date: ${date}
+
+Executive Summary
+-----------------
+[2-3 sentence overview of the day's activities]
+
+Chronological Observations
+--------------------------
+[Time-ordered narrative in complete sentences, professional tone]
+
+Key Findings
+------------
+[Notable observations or patterns]
+
+Remarks
+-------
+[Additional context or follow-up notes]
+
+Rules:
+- Professional client-facing English
+- Third person, past tense
+- Do not expose internal operational details
+- Narrative prose, not bullet lists
+- The subject / the individual / the target
+- Return only the report text, no extra explanation`,
+
+    internal: `You are writing an internal surveillance operations report for the investigative team.
+
+Format:
+SURVEILLANCE OPERATIONS REPORT
+===============================
+Case: ${caseNumber}
+Date: ${date}
+
+Timeline
+--------
+[Preserve all investigator observations with exact times]
+
+Operational Notes
+-----------------
+[Include any surveillance gaps, vehicle details, locations, patterns observed]
+
+Recommendations
+---------------
+[Suggested follow-up actions based on the day's observations]
+
+Rules:
+- Preserve all operational details
+- Note surveillance gaps explicitly (e.g. "Gap: 11:30–13:00, subject not observed")
+- Include any vehicle/location details mentioned
+- Professional English
+- Return only the report text, no extra explanation`,
+  };
+
   try {
-    const system =
-      format === "client"
-        ? "Write a professional daily surveillance report for a client.\n" +
-          "Format:\n" +
-          "- Header: \"DAILY SURVEILLANCE REPORT\"\n" +
-          "- Case number and date\n" +
-          "- Professional narrative (no jargon, suitable for client presentation)\n" +
-          "- Third person, past tense, English only\n" +
-          "- Factual, concise\n" +
-          "Return the full formatted report as plain text."
-        : "Write a professional daily surveillance summary. Format: Header 'DAILY SURVEILLANCE REPORT — [Case] — [Date]', brief executive summary (2-3 sentences), chronological narrative in professional surveillance language, closing observation. English only. Third person. Past tense. Factual.";
-    const user = `Case: ${caseRow?.case_number}\nDate: ${date}\n\nTimeline:\n${entriesText}`;
-    const summary = await callAnthropic(system, user, 800);
-    return { summary: summary.trim() };
+    const system = prompts[reportType];
+    const user = `Case: ${caseNumber}\nDate: ${date}\n\nTimeline:\n${timelineText}`;
+    const report = await callAnthropic(system, user, 1200);
+    return { report: report.trim() };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to generate summary" };
+    return { report: buildFallbackReport(reportType, caseNumber, date, timelineText) };
   }
 }

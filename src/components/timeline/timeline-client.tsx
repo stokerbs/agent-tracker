@@ -10,7 +10,8 @@ import {
   Check,
   Loader2,
   MapPin,
-  Users,
+  Printer,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { AddEntryWithAI } from "@/components/timeline/add-entry-with-ai";
-import { generateDailySummary } from "@/app/(dashboard)/timeline/actions";
+import { generateReport } from "@/app/(dashboard)/timeline/actions";
+import type { ReportType } from "@/app/(dashboard)/timeline/actions";
 import type { TimelineEntry } from "@/lib/types";
 
 type EntryFull = TimelineEntry & {
@@ -77,18 +79,44 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
     setCollapsedDates((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  async function handleGenerateSummary(caseId: string, date: string, format: "internal" | "client" = "internal") {
-    const key = `${caseId}::${date}::${format}`;
+  function downloadAsText(text: string, filename: string) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function printReport(text: string, title: string) {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html><head>
+<title>${title}</title>
+<style>
+  body { font-family: 'Sarabun', 'Courier New', monospace; padding: 40px; max-width: 800px; margin: 0 auto; font-size: 13px; line-height: 1.8; color: #111; }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
+  @media print { body { padding: 20px; } }
+</style>
+</head><body><pre>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+    win.document.close();
+    win.print();
+  }
+
+  async function handleGenerateReport(caseId: string, date: string, reportType: ReportType) {
+    const key = `${caseId}::${date}::${reportType}`;
     setSummaryLoading(key);
     startSummary(async () => {
-      const res = await generateDailySummary(caseId, date, format);
+      const res = await generateReport(caseId, date, reportType);
       setSummaryLoading(null);
       if (res.error) {
         toast.error(res.error);
         return;
       }
-      const title = format === "client" ? tai("clientReportTitle") : tai("summaryTitle");
-      setSummaryState({ open: true, text: res.summary ?? "", title, copied: false });
+      const title = tai("reportTitle");
+      setSummaryState({ open: true, text: res.report ?? "", title, copied: false });
     });
   }
 
@@ -98,8 +126,8 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
     setTimeout(() => setSummaryState((s) => ({ ...s, copied: false })), 2000);
   }
 
-  function isSummaryLoadingFor(caseId: string, date: string, format: "internal" | "client") {
-    return summaryLoading === `${caseId}::${date}::${format}`;
+  function isReportLoading(caseId: string, date: string, reportType: ReportType) {
+    return summaryLoading === `${caseId}::${date}::${reportType}`;
   }
 
   return (
@@ -135,7 +163,6 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                     {cg.dates.map((dg) => {
                       const dateKey = `${cg.caseId}::${dg.date}`;
                       const dateCollapsed = !!collapsedDates[dateKey];
-                      const isSummaryLoading = summaryLoading === dateKey;
 
                       return (
                         <div key={dg.date}>
@@ -161,38 +188,55 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
 
                             <div className="h-px flex-1 bg-border/40" />
 
-                            {/* Daily Summary button */}
+                            {/* Thai Client Report button */}
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateSummary(cg.caseId, dg.date, "internal")}
+                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "thai_client")}
                               disabled={!!summaryLoading}
                             >
-                              {isSummaryLoadingFor(cg.caseId, dg.date, "internal") ? (
+                              {isReportLoading(cg.caseId, dg.date, "thai_client") ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
                                 <FileText className="h-3 w-3" />
                               )}
-                              {isSummaryLoadingFor(cg.caseId, dg.date, "internal") ? tai("generating") : tai("dailySummary")}
+                              {isReportLoading(cg.caseId, dg.date, "thai_client") ? tai("generating") : "รายงานลูกค้า TH"}
                             </Button>
 
-                            {/* Client Report button */}
+                            {/* English Client Report button */}
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateSummary(cg.caseId, dg.date, "client")}
+                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "english_client")}
                               disabled={!!summaryLoading}
                             >
-                              {isSummaryLoadingFor(cg.caseId, dg.date, "client") ? (
+                              {isReportLoading(cg.caseId, dg.date, "english_client") ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
-                                <Users className="h-3 w-3" />
+                                <FileText className="h-3 w-3" />
                               )}
-                              {isSummaryLoadingFor(cg.caseId, dg.date, "client") ? tai("generating") : tai("clientReport")}
+                              {isReportLoading(cg.caseId, dg.date, "english_client") ? tai("generating") : "Client Report EN"}
+                            </Button>
+
+                            {/* Internal Report button */}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
+                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "internal")}
+                              disabled={!!summaryLoading}
+                            >
+                              {isReportLoading(cg.caseId, dg.date, "internal") ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <FileText className="h-3 w-3" />
+                              )}
+                              {isReportLoading(cg.caseId, dg.date, "internal") ? tai("generating") : "Internal Report"}
                             </Button>
                           </div>
 
@@ -269,7 +313,7 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{summaryState.title || tai("summaryTitle")}</DialogTitle>
+            <DialogTitle>{summaryState.title || tai("reportTitle")}</DialogTitle>
             <DialogDescription className="sr-only">
               {t("description")}
             </DialogDescription>
@@ -277,9 +321,26 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
           <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
             {summaryState.text}
           </pre>
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => printReport(summaryState.text, summaryState.title)}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              PDF / Print
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadAsText(summaryState.text, `${summaryState.title}.txt`)}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download TXT
+            </Button>
+            <Button
               size="sm"
               className="gap-1.5"
               onClick={() => handleCopy(summaryState.text)}
