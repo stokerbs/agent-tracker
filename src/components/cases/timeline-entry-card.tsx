@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MapPin, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
+import { FileText, Loader2, MapPin, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { TimelineEntry } from "@/lib/types";
+import type { LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 type EntryWithAgent = TimelineEntry & {
   agents?: { full_name: string; nickname?: string | null } | null;
@@ -22,9 +22,10 @@ type EntryWithAgent = TimelineEntry & {
 interface Props {
   entry: EntryWithAgent;
   canEdit: boolean;
+  linkedEvidence?: LinkedEvidence[];
 }
 
-export function TimelineEntryCard({ entry, canEdit }: Props) {
+export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
   const t = useTranslations("timeline.entry");
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -166,6 +167,40 @@ export function TimelineEntryCard({ entry, canEdit }: Props) {
           )}
           {entry.updated_at && (
             <p className="mt-1 text-[10px] text-muted-foreground/40 italic">edited</p>
+          )}
+
+          {/* Linked evidence thumbnails */}
+          {linkedEvidence && linkedEvidence.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {linkedEvidence.map((ev) =>
+                ev.mime_type?.startsWith("image/") && ev.signedUrl ? (
+                  <a
+                    key={ev.id}
+                    href={ev.signedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block h-14 w-14 shrink-0 overflow-hidden rounded border hover:opacity-80"
+                  >
+                    <img
+                      src={ev.signedUrl}
+                      alt={ev.file_name ?? "Evidence"}
+                      className="h-full w-full object-cover"
+                    />
+                  </a>
+                ) : (
+                  <a
+                    key={ev.id}
+                    href={ev.signedUrl || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded border bg-muted text-[9px] leading-tight text-muted-foreground hover:opacity-80"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="max-w-[52px] truncate px-1">{ev.file_name ?? "file"}</span>
+                  </a>
+                ),
+              )}
+            </div>
           )}
         </div>
         {canEdit && (

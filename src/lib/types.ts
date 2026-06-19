@@ -221,6 +221,16 @@ export interface CaseWithAgents extends Case {
   agents?: Agent[];
 }
 
+export interface LinkedEvidence {
+  id: string;
+  type: EvidenceType;
+  storage_path: string;
+  file_name: string | null;
+  mime_type: string | null;
+  notes: string | null;
+  signedUrl: string;
+}
+
 export interface TimelineEntry {
   id: string;
   case_id: string;
@@ -238,6 +248,7 @@ export interface TimelineEntry {
   updated_by: string | null;
   deleted_at: string | null;
   deleted_by: string | null;
+  linked_evidence?: LinkedEvidence[];
 }
 
 export interface Evidence {
@@ -252,6 +263,7 @@ export interface Evidence {
   notes: string | null;
   uploaded_by: string | null;
   uploaded_at: string;
+  timeline_entry_id: string | null;
 }
 
 export interface Expense {

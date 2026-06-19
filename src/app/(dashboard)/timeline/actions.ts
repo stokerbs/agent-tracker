@@ -47,12 +47,16 @@ export async function addTimelineEntry(formData: FormData) {
 
   if (!payload.entry) return { error: "Entry text is required" };
 
-  const { error } = await supabase.from("timeline_entries").insert(payload);
+  const { data: inserted, error } = await supabase
+    .from("timeline_entries")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) return { error: handleDbError(error, "timeline") };
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/timeline");
-  return { ok: true };
+  return { ok: true, id: inserted.id as string };
 }
 
 export async function updateTimelineEntry(
@@ -461,7 +465,7 @@ export async function generateReport(
   const [entriesRes, caseRes] = await Promise.all([
     supabase
       .from("timeline_entries")
-      .select("entry_time, entry, location")
+      .select("id, entry_time, entry, location")
       .eq("case_id", caseId)
       .eq("entry_date", date)
       .is("deleted_at", null)
@@ -473,9 +477,28 @@ export async function generateReport(
   const caseRow = caseRes.data;
   const caseNumber = caseRow?.case_number ?? caseId;
 
+  // Count linked evidence per entry to include in report observations.
+  let evidenceCountByEntryId: Record<string, number> = {};
+  if (entries.length > 0) {
+    const { data: evRows } = await supabase
+      .from("evidence")
+      .select("timeline_entry_id")
+      .in("timeline_entry_id", entries.map((e) => e.id));
+    for (const row of evRows ?? []) {
+      if (row.timeline_entry_id) {
+        evidenceCountByEntryId[row.timeline_entry_id] =
+          (evidenceCountByEntryId[row.timeline_entry_id] ?? 0) + 1;
+      }
+    }
+  }
+
   const timelineText = entries.length
     ? entries
-        .map((e) => `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}`)
+        .map((e) => {
+          const evCount = evidenceCountByEntryId[e.id] ?? 0;
+          const evNote = evCount > 0 ? ` [${evCount} photo${evCount > 1 ? "s" : ""} attached]` : "";
+          return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}${evNote}`;
+        })
         .join("\n")
     : "(ไม่มีรายการบันทึก / No entries recorded)";
 

@@ -23,7 +23,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
-import { AddEntryWithAI } from "@/components/timeline/add-entry-with-ai";
+import { ObservationUploader } from "@/components/timeline/observation-uploader";
 import { generateReport } from "@/app/(dashboard)/timeline/actions";
 import type { ReportType } from "@/app/(dashboard)/timeline/actions";
 import type { TimelineEntry } from "@/lib/types";
@@ -259,7 +259,7 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                                     </span>
 
                                     {canEdit ? (
-                                      <TimelineEntryCard entry={e} canEdit />
+                                      <TimelineEntryCard entry={e} canEdit linkedEvidence={e.linked_evidence} />
                                     ) : (
                                       <div className="flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
                                         <p className="text-sm leading-snug text-foreground/90">
@@ -282,10 +282,10 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                                 ))}
                               </div>
 
-                              {/* Add Entry with AI — shown if canEdit */}
+                              {/* Add observation — shown if canEdit */}
                               {canEdit && (
                                 <div className="mt-4">
-                                  <AddEntryWithAI caseId={cg.caseId} defaultDate={dg.date} />
+                                  <ObservationUploader caseId={cg.caseId} defaultDate={dg.date} />
                                 </div>
                               )}
                             </div>
@@ -294,9 +294,9 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                       );
                     })}
 
-                    {/* Add entry for a new date (shown at case level bottom when canEdit) */}
+                    {/* Add observation for a new date */}
                     {canEdit && cg.dates.length === 0 && (
-                      <AddEntryWithAI caseId={cg.caseId} />
+                      <ObservationUploader caseId={cg.caseId} />
                     )}
                   </div>
                 </div>

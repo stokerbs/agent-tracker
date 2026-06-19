@@ -74,6 +74,20 @@ export async function uploadEvidence(formData: FormData) {
     if (!assignment) return { error: "Not assigned to this case" };
   }
 
+  const timelineEntryId = String(formData.get("timeline_entry_id") ?? "").trim() || null;
+
+  // Belt-and-suspenders: if a timeline_entry_id is supplied, verify it belongs
+  // to the same case before touching Storage (RLS enforces the same constraint).
+  if (timelineEntryId) {
+    const { data: te } = await supabase
+      .from("timeline_entries")
+      .select("case_id")
+      .eq("id", timelineEntryId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!te || te.case_id !== caseId) return { error: "Invalid timeline entry reference" };
+  }
+
   const ext = file.name.split(".").pop() ?? "bin";
   const path = `${caseId}/${crypto.randomUUID()}.${ext}`;
 
@@ -92,6 +106,7 @@ export async function uploadEvidence(formData: FormData) {
     mime_type: file.type,
     notes: String(formData.get("notes") ?? "") || null,
     uploaded_by: profile.id,
+    timeline_entry_id: timelineEntryId,
   });
   if (error) return { error: handleDbError(error, "evidence") };
 

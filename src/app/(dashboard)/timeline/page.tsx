@@ -4,11 +4,12 @@ import { Clock } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { BUCKETS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { TimelineFilters } from "@/components/timeline/timeline-filters";
 import { TimelineClient } from "@/components/timeline/timeline-client";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { TimelineEntry } from "@/lib/types";
+import type { TimelineEntry, LinkedEvidence } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Timeline" };
 export const dynamic = "force-dynamic";
@@ -88,6 +89,48 @@ export default async function TimelinePage({ searchParams }: Props) {
         (e.entry ?? "").toLowerCase().includes(search) ||
         (e.location ?? "").toLowerCase().includes(search),
     );
+  }
+
+  // Fetch linked evidence for visible entries and attach pre-signed URLs.
+  const entryIds = allEntries.map((e) => e.id);
+  if (entryIds.length > 0) {
+    const { data: evidenceRows } = await supabase
+      .from("evidence")
+      .select("id, type, storage_path, file_name, mime_type, notes, timeline_entry_id")
+      .in("timeline_entry_id", entryIds);
+
+    if (evidenceRows && evidenceRows.length > 0) {
+      const paths = evidenceRows.map((e) => e.storage_path);
+      const { data: signedData } = await supabase.storage
+        .from(BUCKETS.evidence)
+        .createSignedUrls(paths, 3600);
+
+      const signedUrlMap: Record<string, string> = {};
+      (signedData ?? []).forEach((su, i) => {
+        signedUrlMap[paths[i]] = su.signedUrl ?? "";
+      });
+
+      const evidenceByEntryId = new Map<string, LinkedEvidence[]>();
+      for (const ev of evidenceRows) {
+        if (!ev.timeline_entry_id) continue;
+        const list = evidenceByEntryId.get(ev.timeline_entry_id) ?? [];
+        list.push({
+          id: ev.id,
+          type: ev.type,
+          storage_path: ev.storage_path,
+          file_name: ev.file_name,
+          mime_type: ev.mime_type,
+          notes: ev.notes,
+          signedUrl: signedUrlMap[ev.storage_path] ?? "",
+        });
+        evidenceByEntryId.set(ev.timeline_entry_id, list);
+      }
+
+      allEntries = allEntries.map((e) => ({
+        ...e,
+        linked_evidence: evidenceByEntryId.get(e.id) ?? [],
+      }));
+    }
   }
 
   // Build CaseGroup[]
