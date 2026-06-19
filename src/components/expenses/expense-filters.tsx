@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const CATEGORIES = ["fuel", "toll", "parking", "food", "hotel", "misc"] as const;
+const CATEGORIES = ["fuel", "toll", "parking", "meals", "accommodation", "transportation", "office", "misc"] as const;
 
 export function ExpenseFilters({
   count,

@@ -28,8 +28,10 @@ export type ExpenseCategory =
   | "fuel"
   | "toll"
   | "parking"
-  | "food"
-  | "hotel"
+  | "meals"
+  | "accommodation"
+  | "transportation"
+  | "office"
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type GpsProvider = "AIS" | "TRUE" | "DTAC" | "GPS903";
@@ -276,10 +278,37 @@ export interface Expense {
   amount: number;
   currency: string;
   expense_date: string;
+  expense_time: string | null;
   receipt_url: string | null;
+  vendor_name: string | null;
+  vat_amount: number | null;
+  receipt_number: string | null;
   notes: string | null;
+  source: string;
+  ocr_confidence: number | null;
   created_by: string | null;
   created_at: string;
+}
+
+export interface ExtractedExpense {
+  vendor_name: string | null;
+  category: ExpenseCategory;
+  amount: number | null;
+  vat_amount: number | null;
+  expense_date: string | null;
+  expense_time: string | null;
+  receipt_number: string | null;
+  notes: string | null;
+  confidence: number;
+  field_confidence: {
+    vendor_name: number;
+    category: number;
+    amount: number;
+    vat_amount: number;
+    expense_date: number;
+    expense_time: number;
+    receipt_number: number;
+  };
 }
 
 export interface EmergencyAlert {
