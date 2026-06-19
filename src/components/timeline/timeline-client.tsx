@@ -45,7 +45,8 @@ type CaseGroup = { caseId: string; caseNumber: string; dates: DateGroup[] };
 
 interface Props {
   caseGroups: CaseGroup[];
-  canEdit: boolean;
+  canEdit: boolean;   // supervisor + admin: edit/delete existing entries and generate reports
+  canInsert: boolean; // agent + staff: can add new observations
   isAdmin: boolean;
 }
 
@@ -67,7 +68,7 @@ interface SummaryState {
   copied: boolean;
 }
 
-export function TimelineClient({ caseGroups, canEdit, isAdmin }: Props) {
+export function TimelineClient({ caseGroups, canEdit, canInsert, isAdmin }: Props) {
   const t = useTranslations("timeline");
   const ts = useTranslations("timeline.section");
   const tai = useTranslations("timeline.ai");
@@ -306,8 +307,8 @@ export function TimelineClient({ caseGroups, canEdit, isAdmin }: Props) {
                                 ))}
                               </div>
 
-                              {/* Add observation — shown if canEdit */}
-                              {canEdit && (
+                              {/* Add observation — agents and staff */}
+                              {canInsert && (
                                 <div className="mt-4">
                                   <ObservationUploader caseId={cg.caseId} defaultDate={dg.date} />
                                 </div>
@@ -319,7 +320,7 @@ export function TimelineClient({ caseGroups, canEdit, isAdmin }: Props) {
                     })}
 
                     {/* Add observation for a new date */}
-                    {canEdit && cg.dates.length === 0 && (
+                    {canInsert && cg.dates.length === 0 && (
                       <ObservationUploader caseId={cg.caseId} />
                     )}
                   </div>

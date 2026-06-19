@@ -27,7 +27,8 @@ interface Props {
 
 export default async function TimelinePage({ searchParams }: Props) {
   const profile = await requireProfile();
-  const canEdit = isStaff(profile.role);
+  const canEdit = isStaff(profile.role);       // supervisor + admin: edit/delete/reports
+  const canInsert = profile.role !== "client"; // agent + staff: can add entries
   const isAdmin = profile.role === "admin";
   const t = await getTranslations("timeline");
   const sp = await searchParams;
@@ -48,7 +49,7 @@ export default async function TimelinePage({ searchParams }: Props) {
 
     if (!agentRow) {
       // No agent record — show nothing
-      return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+      return renderPage(t, sp, caseGroups, canEdit, canInsert, isAdmin);
     }
 
     const { data: caseAgents } = await supabase
@@ -58,7 +59,7 @@ export default async function TimelinePage({ searchParams }: Props) {
 
     const myCaseIds = (caseAgents ?? []).map((ca) => ca.case_id);
     if (myCaseIds.length === 0) {
-      return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+      return renderPage(t, sp, caseGroups, canEdit, canInsert, isAdmin);
     }
     caseIdFilter = myCaseIds;
   }
@@ -164,7 +165,7 @@ export default async function TimelinePage({ searchParams }: Props) {
     }))
     .sort((a, b) => a.caseNumber.localeCompare(b.caseNumber));
 
-  return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+  return renderPage(t, sp, caseGroups, canEdit, canInsert, isAdmin);
 }
 
 function renderPage(
@@ -172,6 +173,7 @@ function renderPage(
   sp: { q?: string; from?: string; to?: string },
   caseGroups: CaseGroup[],
   canEdit: boolean,
+  canInsert: boolean,
   isAdmin: boolean,
 ) {
   const totalEntries = caseGroups.reduce(
@@ -202,6 +204,7 @@ function renderPage(
         <TimelineClient
           caseGroups={caseGroups}
           canEdit={canEdit}
+          canInsert={canInsert}
           isAdmin={isAdmin}
         />
       )}
