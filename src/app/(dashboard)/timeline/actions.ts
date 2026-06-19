@@ -164,6 +164,157 @@ export async function parseTimelineEntry(
   }
 }
 
+// ─── Multi-entry parse ────────────────────────────────────────────────────────
+
+type ParsedEntry = { time: string; date: string; entry: string };
+
+function parseWithRegex(rawText: string, defaultDate: string): ParsedEntry[] {
+  const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
+  const entries: ParsedEntry[] = [];
+  let current: { time: string; date: string; lines: string[] } | null = null;
+  const TIME_START = /^(\d{1,2})[.:h\-](\d{2})\b/;
+  for (const line of lines) {
+    const m = line.match(TIME_START);
+    if (m) {
+      if (current) {
+        entries.push({ time: current.time, date: current.date, entry: current.lines.join(" ") });
+      }
+      const h = m[1].padStart(2, "0");
+      const min = m[2];
+      const rest = line.slice(m[0].length).trim();
+      current = { time: `${h}:${min}`, date: defaultDate, lines: rest ? [rest] : [] };
+    } else if (current) {
+      current.lines.push(line);
+    } else {
+      // No time marker found yet — treat whole block as single entry
+      const now = new Date();
+      const t = now.toTimeString().slice(0, 5);
+      entries.push({ time: t, date: defaultDate, entry: rawText });
+      return entries;
+    }
+  }
+  if (current) {
+    entries.push({ time: current.time, date: current.date, entry: current.lines.join(" ") });
+  }
+  if (!entries.length) {
+    const now = new Date();
+    const t = now.toTimeString().slice(0, 5);
+    return [{ time: t, date: defaultDate, entry: rawText }];
+  }
+  return entries;
+}
+
+export async function parseMultipleEntries(
+  rawText: string,
+  defaultDate: string,
+): Promise<{ entries?: ParsedEntry[]; error?: string }> {
+  const trimmed = rawText.trim().slice(0, 5000);
+  if (!trimmed) return { error: "Entry text is required" };
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { entries: parseWithRegex(trimmed, defaultDate) };
+  }
+
+  const system = `You are a surveillance timeline parser. The user may submit ONE or MULTIPLE timestamped events in a single block of text.
+
+Your job:
+1. Detect all time markers in the text. Time formats to recognize:
+   - HH.MM (e.g. 10.15, 13.45)
+   - HH:MM (e.g. 10:15, 13:45)
+   - HHMM  (e.g. 1015, 1345, but only if it forms a valid 24h time)
+   - HH-MM (e.g. 10-15)
+2. Split the text at each time marker boundary.
+3. For each segment, produce one structured entry.
+4. Rewrite descriptions as professional surveillance English.
+5. Translate Thai to English.
+6. Start each description with "The subject" or an action verb.
+
+Return ONLY a JSON array (no markdown, no explanation):
+[
+  {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"},
+  {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"}
+]
+
+Rules:
+- date: use defaultDate unless a different date is explicitly stated. defaultDate is ${defaultDate}.
+- time: always 24h HH:MM format.
+- If only one event is found, still return a single-element array.
+- Sort entries by time ascending.`;
+
+  try {
+    const text = await callAnthropic(system, `Field notes:\n${trimmed}`, 1000);
+    const jsonStart = text.indexOf("[");
+    const jsonEnd = text.lastIndexOf("]");
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error("No array in response");
+    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
+    const entries: ParsedEntry[] = parsed.map((p: { time?: string; date?: string; entry?: string }) => ({
+      time: String(p.time ?? "").trim() || new Date().toTimeString().slice(0, 5),
+      date: String(p.date ?? "").trim() || defaultDate,
+      entry: String(p.entry ?? "").trim() || trimmed,
+    }));
+    return { entries };
+  } catch {
+    // Fallback: return regex parse
+    return { entries: parseWithRegex(trimmed, defaultDate) };
+  }
+}
+
+export async function addMultipleTimelineEntries(
+  entries: Array<{
+    caseId: string;
+    date: string;
+    time: string;
+    entry: string;
+    location: string;
+  }>,
+): Promise<{ count?: number; error?: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "Not authenticated" };
+  if (profile.role === "client") return { error: "Not authorized" };
+
+  if (!entries.length) return { error: "No entries provided" };
+
+  const supabase = await createClient();
+
+  // Always look up the agent ID server-side for security
+  let agentId: string | null = null;
+  if (isStaff(profile.role)) {
+    const { data: ag } = await supabase
+      .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
+    agentId = ag?.id ?? null;
+  } else {
+    const { data: ag } = await supabase
+      .from("agents").select("id").eq("profile_id", profile.id).maybeSingle();
+    agentId = ag?.id ?? null;
+  }
+
+  const rows = entries.map((e) => {
+    const timeParts = e.time.split(":");
+    const entryTime = timeParts.length === 2 ? `${e.time}:00` : e.time;
+    return {
+      case_id: e.caseId,
+      agent_id: agentId,
+      entry_date: e.date,
+      entry_time: entryTime,
+      entry: e.entry,
+      location: e.location?.trim() || null,
+    };
+  });
+
+  const { error } = await supabase.from("timeline_entries").insert(rows);
+  if (error) return { error: handleDbError(error, "timeline") };
+
+  // Revalidate all affected case paths
+  const caseIds = [...new Set(entries.map((e) => e.caseId))];
+  for (const caseId of caseIds) {
+    revalidatePath(`/cases/${caseId}`);
+  }
+  revalidatePath("/timeline");
+
+  return { count: rows.length };
+}
+
 export async function improveTimelineEntry(
   text: string,
 ): Promise<{ improved?: string; error?: string }> {

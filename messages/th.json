@@ -535,7 +535,19 @@
       "copy": "คัดลอก",
       "copied": "คัดลอกแล้ว!",
       "aiUnavailable": "ไม่ได้กำหนดค่า AI",
-      "parseSuccess": "วิเคราะห์แล้ว — ตรวจสอบและปรับก่อนบันทึก"
+      "parseSuccess": "วิเคราะห์แล้ว — ตรวจสอบและปรับก่อนบันทึก",
+      "multiParse": "วิเคราะห์ด้วย AI",
+      "detected": "พบ {count} รายการ",
+      "saveAll": "บันทึกทั้งหมด ({count} รายการ)",
+      "saving": "กำลังบันทึก {count} รายการ…",
+      "addWithoutAI": "เพิ่มเป็นรายการเดียว",
+      "back": "กลับ",
+      "editEntry": "แก้ไข",
+      "removeEntry": "ลบ",
+      "saveSuccess": "บันทึก {count} รายการแล้ว",
+      "preview": "ตรวจสอบ",
+      "save": "บันทึก",
+      "cancel": "ยกเลิก"
     },
     "section": {
       "collapse": "ย่อ",

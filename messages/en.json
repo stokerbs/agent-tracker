@@ -535,7 +535,19 @@
       "copy": "Copy",
       "copied": "Copied!",
       "aiUnavailable": "AI not configured",
-      "parseSuccess": "Entry parsed — review and adjust before saving"
+      "parseSuccess": "Entry parsed — review and adjust before saving",
+      "multiParse": "Parse with AI",
+      "detected": "Detected {count} timeline events",
+      "saveAll": "Save All ({count} entries)",
+      "saving": "Saving {count} entries…",
+      "addWithoutAI": "Add as single entry",
+      "back": "Back",
+      "editEntry": "Edit",
+      "removeEntry": "Remove",
+      "saveSuccess": "{count} timeline entries saved",
+      "preview": "Preview",
+      "save": "Save",
+      "cancel": "Cancel"
     },
     "section": {
       "collapse": "Collapse",
