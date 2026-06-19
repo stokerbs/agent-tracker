@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Lock, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { closeCase } from "@/app/(dashboard)/cases/actions";
@@ -25,8 +25,6 @@ interface Props {
   clientName: string | null;
   timelineCount: number;
   evidenceCount: number;
-  reportCount: number;
-  hasApprovedReport: boolean;
   hasInvoice: boolean;
 }
 
@@ -64,8 +62,6 @@ export function CloseCaseDialog({
   clientName,
   timelineCount,
   evidenceCount,
-  reportCount,
-  hasApprovedReport,
   hasInvoice,
 }: Props) {
   const t = useTranslations("cases.detail.closeCase");
@@ -116,7 +112,7 @@ export function CloseCaseDialog({
         <div className="space-y-5">
           {/* Case summary */}
           <div className="rounded-lg bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-            {t("summary", { timeline: timelineCount, evidence: evidenceCount, reports: reportCount })}
+            {t("summary", { timeline: timelineCount, evidence: evidenceCount })}
           </div>
 
           {/* Checklist */}
@@ -124,11 +120,6 @@ export function CloseCaseDialog({
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t("checklist")}
             </p>
-            <CheckItem
-              label={t("checkApprovedReport")}
-              done={hasApprovedReport}
-              notDoneLabel={t("checkNotDone")}
-            />
             <CheckItem
               label={t("checkInvoice")}
               done={hasInvoice}

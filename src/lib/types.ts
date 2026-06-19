@@ -33,9 +33,6 @@ export type ExpenseCategory =
   | "misc";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type GpsProvider = "AIS" | "TRUE" | "DTAC" | "GPS903";
-// "submitted" kept for backward compatibility with rows created before migration 0021.
-export type ReportStatus = "draft" | "review" | "submitted" | "approved" | "rejected";
-export type ReportLanguage = "th" | "en";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
 
 export interface InvoiceLineItem {
@@ -298,44 +295,6 @@ export interface EmergencyAlert {
   created_at: string;
 }
 
-export interface Report {
-  id: string;
-  case_id: string;
-  title: string;
-  executive_summary: string | null;
-  body: string | null;
-  observations: string | null;
-  conclusion: string | null;
-  status: ReportStatus;
-  pdf_url: string | null;
-  generated_by: string | null;
-  edited_by: string | null;
-  edited_at: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
-  rejected_by: string | null;
-  rejected_at: string | null;
-  rejection_notes: string | null;
-  is_client_visible: boolean;
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
-}
-
-export interface ReportVersion {
-  id: string;
-  report_id: string;
-  version_number: number;
-  content: {
-    executive_summary?: string;
-    body?: string;
-    observations?: string;
-    conclusion?: string;
-  };
-  edited_by: string | null;
-  created_at: string;
-}
-
 export interface Notification {
   id: string;
   user_id: string;
@@ -387,13 +346,6 @@ export interface EnrichedUser extends Profile {
   agent_code: string | null;
   agent_status: AgentStatus | null;
   battery_pct: number | null;
-}
-
-export interface AiReportSections {
-  executive_summary: string;
-  chronological_report: string;
-  observations: string;
-  conclusion: string;
 }
 
 export interface AgentLocationHistory {

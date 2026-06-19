@@ -1,103 +1,85 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Suspense } from "react";
-import { Archive, FileText } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { FileText } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
-import { ReportCard } from "@/components/reports/report-card";
-import { ReportFilters } from "@/components/reports/report-filters";
 import { EmptyState } from "@/components/shared/empty-state";
-import { cn } from "@/lib/utils";
-import type { Case, Report } from "@/lib/types";
+import { ReportGenerator } from "./report-generator";
+import type { Case } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
-interface Props {
-  searchParams: Promise<{ show_archived?: string; q?: string; status?: string }>;
-}
-
-const VALID_STATUSES = new Set(["draft", "review", "approved", "rejected"]);
-
-export default async function ReportsPage({ searchParams }: Props) {
+export default async function ReportsPage() {
   const profile = await requireProfile();
-  const sp = await searchParams;
-  const t = await getTranslations("reports");
-  const staff = isStaff(profile.role);
-  const isAdmin = profile.role === "admin";
+  if (!isStaff(profile.role)) redirect("/");
+
   const supabase = await createClient();
 
-  const showArchived = sp.show_archived === "1";
-  const search = sp.q?.toLowerCase().trim() ?? "";
-  const statusFilter = VALID_STATUSES.has(sp.status ?? "") ? sp.status! : null;
+  let caseQuery = supabase
+    .from("cases")
+    .select("id, case_number, client_name")
+    .order("case_number", { ascending: true });
 
-  let query = supabase
-    .from("reports")
-    .select("*, cases(*)")
-    .order("created_at", { ascending: false });
+  if (profile.role !== "admin") {
+    const { data: agentRow } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
 
-  if (showArchived) {
-    query = query.not("archived_at", "is", null);
-  } else {
-    query = query.is("archived_at", null);
+    if (agentRow) {
+      const { data: caseAgents } = await supabase
+        .from("case_agents")
+        .select("case_id")
+        .eq("agent_id", agentRow.id);
+
+      const myCaseIds = (caseAgents ?? []).map((ca) => ca.case_id);
+      if (myCaseIds.length === 0) {
+        return (
+          <div className="space-y-6">
+            <PageHeader
+              title="Daily Report Generator"
+              description="Generate Thai, English, or Internal reports from timeline entries."
+            />
+            <EmptyState
+              icon={<FileText className="h-6 w-6" />}
+              title="No cases assigned"
+              description="You have no assigned cases to generate reports for."
+            />
+          </div>
+        );
+      }
+      caseQuery = caseQuery.in("id", myCaseIds);
+    }
   }
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
-  }
+  const { data } = await caseQuery;
+  const cases = (data ?? []) as Pick<Case, "id" | "case_number" | "client_name">[];
 
-  const { data } = await query;
-  const allReports = (data ?? []) as (Report & { cases: Case | null })[];
-
-  const reports = search
-    ? allReports.filter((r) => {
-        const title = r.title.toLowerCase();
-        const caseNum = (r.cases?.case_number ?? "").toLowerCase();
-        return title.includes(search) || caseNum.includes(search);
-      })
-    : allReports;
+  const caseOptions = cases.map((c) => ({
+    id: c.id,
+    caseNumber: c.case_number,
+    clientName: c.client_name,
+  }));
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")} description={t("description")}>
-        <Link
-          href={showArchived ? "/reports" : "/reports?show_archived=1"}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
-            showArchived
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border bg-transparent text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Archive className="h-3.5 w-3.5" />
-          {showArchived ? "ดูรายงานที่ใช้งาน" : "เก็บถาวร"}
-        </Link>
-      </PageHeader>
+      <PageHeader
+        title="Daily Report Generator"
+        description="Select a case and date, then generate a Thai, English, or Internal surveillance report from timeline entries."
+      />
 
-      <Suspense>
-        <ReportFilters count={reports.length} />
-      </Suspense>
-
-      {reports.length === 0 ? (
+      {caseOptions.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title={search || statusFilter ? t("filters.noResults") : showArchived ? "ไม่มีรายงานที่เก็บถาวร" : t("noTitle")}
-          description={search || statusFilter ? t("filters.noResultsDescription") : showArchived ? "ยังไม่มีรายงานที่ถูกเก็บถาวร" : t("noDescription")}
+          title="No cases"
+          description="Create a case first before generating reports."
         />
       ) : (
-        <div className="grid gap-4">
-          {reports.map((r) => (
-            <ReportCard
-              key={r.id}
-              report={r}
-              caseRecord={r.cases}
-              canApprove={staff}
-              canManage={staff}
-              isAdmin={isAdmin}
-            />
-          ))}
+        <div className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 shadow-sm">
+          <ReportGenerator cases={caseOptions} />
         </div>
       )}
     </div>

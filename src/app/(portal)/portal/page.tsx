@@ -22,18 +22,16 @@
  */
 
 import type { Metadata } from "next";
-import { AlertTriangle, Banknote, Briefcase, FileText, Receipt } from "lucide-react";
+import { AlertTriangle, Banknote, Briefcase, Receipt } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ReportCard } from "@/components/reports/report-card";
 import { InvoiceCard } from "@/components/invoices/invoice-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatCard } from "@/components/shared/stat-card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency } from "@/lib/utils";
-import type { Case, Invoice, Report } from "@/lib/types";
+import type { Case, Invoice } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Client Portal" };
 export const dynamic = "force-dynamic";
@@ -94,23 +92,6 @@ export default async function PortalPage() {
   const cases    = (casesRaw    ?? []) as Pick<Case, "id" | "status">[];
   const invoices = (invoicesRaw ?? []) as Invoice[];
 
-  // ── Step 3: fetch reports scoped to this client's case IDs ──────────────────
-  // Reports have no client_id column — ownership is inherited through case_id.
-  // We filter by the case IDs we already know belong to this client.
-  const caseIds = cases.map((c) => c.id);
-
-  const { data: reportsRaw } = caseIds.length > 0
-    ? await supabase
-        .from("reports")
-        .select("*, cases(*)")
-        .in("case_id", caseIds)              // ← explicit ownership filter
-        .eq("status", "approved")            // ← F-1: mirror the RLS status gate
-        .eq("is_client_visible", true)       // ← F-1: mirror the RLS visibility gate
-        .order("created_at", { ascending: false })
-    : { data: [] };
-
-  const reports = (reportsRaw ?? []) as (Report & { cases: Case | null })[];
-
   // ── Stats ────────────────────────────────────────────────────────────────────
   const firstName   = profile.full_name?.split(" ")[0] ?? clientRow.name;
   const companyLine = clientRow.company ?? null;
@@ -142,18 +123,12 @@ export default async function PortalPage() {
 
       {/* Stat cards */}
       <FadeUp delay={0.04}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatCard
             label={t("stats.openCases")}
             value={openCases}
             icon={<Briefcase className="h-4 w-4" />}
             accentBar={openCases > 0 ? "primary" : undefined}
-          />
-          <StatCard
-            label={t("stats.reports")}
-            value={reports.length}
-            icon={<FileText className="h-4 w-4" />}
-            accentBar={reports.length > 0 ? "success" : undefined}
           />
           <StatCard
             label={t("stats.outstanding")}
@@ -187,61 +162,22 @@ export default async function PortalPage() {
 
       {/* Tabs */}
       <FadeUp delay={0.1}>
-        <Tabs defaultValue="reports">
-          <TabsList>
-            <TabsTrigger value="reports">
-              <FileText className="mr-1 h-4 w-4" />
-              {t("tabs.reports")}
-              {reports.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {reports.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="invoices">
-              <Receipt className="mr-1 h-4 w-4" />
-              {t("tabs.invoices")}
-              {overdueInvoices.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
-                  {overdueInvoices.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="reports" className="mt-4 space-y-4">
-            {reports.length === 0 ? (
-              <EmptyState
-                icon={<FileText className="h-6 w-6" />}
-                title={t("noReports")}
-                description={t("noReportsDescription")}
-              />
-            ) : (
-              reports.map((r) => (
-                <ReportCard
-                  key={r.id}
-                  report={r}
-                  caseRecord={r.cases}
-                  canApprove={false}
-                />
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="invoices" className="mt-4 space-y-3">
-            {invoices.length === 0 ? (
-              <EmptyState
-                icon={<Receipt className="h-6 w-6" />}
-                title={t("noInvoices")}
-                description={t("noInvoicesDescription")}
-              />
-            ) : (
-              invoices.map((inv) => (
-                <InvoiceCard key={inv.id} invoice={inv} canManage={false} />
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("tabs.invoices")}
+          </h2>
+          {invoices.length === 0 ? (
+            <EmptyState
+              icon={<Receipt className="h-6 w-6" />}
+              title={t("noInvoices")}
+              description={t("noInvoicesDescription")}
+            />
+          ) : (
+            invoices.map((inv) => (
+              <InvoiceCard key={inv.id} invoice={inv} canManage={false} />
+            ))
+          )}
+        </div>
       </FadeUp>
     </div>
   );

@@ -1,7 +1,3 @@
-// AI report generation via Anthropic can take up to ~30s; raise the Vercel
-// function timeout so the Server Action is not killed mid-request.
-export const maxDuration = 60;
-
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -11,7 +7,6 @@ import {
   Briefcase,
   Car,
   Clock,
-  FileText,
   FolderLock,
   MapPin,
   Phone,
@@ -34,11 +29,9 @@ import { StatCard } from "@/components/shared/stat-card";
 import { AddObservationToggle } from "@/components/timeline/add-observation-toggle";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
-import { GenerateReportButton } from "@/components/cases/generate-report-button";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
-import { ReportCard } from "@/components/reports/report-card";
 import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
@@ -57,7 +50,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, Report, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -117,7 +110,6 @@ export default async function CaseDetailPage({
     { data: caseAgentRows },
     { data: rawTimeline },
     { data: evidence },
-    { data: reports },
     { data: expenses },
     { data: clientRaw },
     invoiceCountRes,
@@ -136,11 +128,6 @@ export default async function CaseDetailPage({
       .select("*")
       .eq("case_id", id)
       .order("uploaded_at", { ascending: false }),
-    supabase
-      .from("reports")
-      .select("*")
-      .eq("case_id", id)
-      .order("created_at", { ascending: false }),
     supabase
       .from("expenses")
       .select("*, agents(full_name)")
@@ -196,7 +183,6 @@ export default async function CaseDetailPage({
 
   const caseClient = clientRaw as Client | null;
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
-  const hasApprovedReport = (reports as Report[] ?? []).some((r) => r.status === "approved");
 
   const [allAgents, allClients] = await Promise.all([
     staff
@@ -216,7 +202,6 @@ export default async function CaseDetailPage({
     linked_evidence: evidenceByEntryId.get(e.id) ?? [],
   }));
   const caseEvidence  = (evidence  ?? []) as Evidence[];
-  const caseReports   = (reports   ?? []) as Report[];
   const caseExpenses  = (expenses  ?? []) as (Expense & { agents?: { full_name: string } | null })[];
 
   const totalExpenses = caseExpenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -246,7 +231,7 @@ export default async function CaseDetailPage({
 
       {/* Stat cards */}
       <FadeUp delay={0.04}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatCard
             label={t("stats.timeline")}
             value={timelineEntries.length}
@@ -258,12 +243,6 @@ export default async function CaseDetailPage({
             value={caseEvidence.length}
             icon={<FolderLock className="h-4 w-4" />}
             accentBar={caseEvidence.length > 0 ? "success" : undefined}
-          />
-          <StatCard
-            label={t("stats.reports")}
-            value={caseReports.length}
-            icon={<FileText className="h-4 w-4" />}
-            accentBar={caseReports.length > 0 ? "success" : undefined}
           />
           <StatCard
             label={t("stats.expenses")}
@@ -342,7 +321,6 @@ export default async function CaseDetailPage({
                   ? t("reportingHint", { count: timelineEntries.length })
                   : t("reportingHintPlural", { count: timelineEntries.length })}
               </p>
-              <GenerateReportButton caseId={id} />
               {staff && caseClient && c.client_id && (
                 <CreateInvoiceDialog
                   clients={[caseClient]}
@@ -364,8 +342,6 @@ export default async function CaseDetailPage({
                   clientName={c.client_name}
                   timelineCount={timelineEntries.length}
                   evidenceCount={caseEvidence.length}
-                  reportCount={caseReports.length}
-                  hasApprovedReport={hasApprovedReport}
                   hasInvoice={hasInvoice}
                 />
               )}
@@ -428,11 +404,6 @@ export default async function CaseDetailPage({
               {t("tabs.evidence")}
               <TabCount n={caseEvidence.length} />
             </TabsTrigger>
-            <TabsTrigger value="reports">
-              <FileText className="mr-1 h-4 w-4" />
-              {t("tabs.reports")}
-              <TabCount n={caseReports.length} />
-            </TabsTrigger>
             <TabsTrigger value="expenses">
               <Receipt className="mr-1 h-4 w-4" />
               {t("tabs.expenses")}
@@ -481,27 +452,6 @@ export default async function CaseDetailPage({
                 items={caseEvidence}
                 columns="grid-cols-2 sm:grid-cols-3"
               />
-            )}
-          </TabsContent>
-
-          {/* Reports */}
-          <TabsContent value="reports" className="space-y-4">
-            {caseReports.length === 0 ? (
-              <EmptyState
-                icon={<FileText className="h-6 w-6" />}
-                title={t("noReports")}
-                description={t("noReportsDescription")}
-              />
-            ) : (
-              caseReports.map((r) => (
-                <ReportCard
-                  key={r.id}
-                  report={r}
-                  caseRecord={c}
-                  subjectName={targetName}
-                  canApprove={staff}
-                />
-              ))
             )}
           </TabsContent>
 
