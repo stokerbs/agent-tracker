@@ -109,11 +109,11 @@ export async function deleteTimelineEntry(id: string, caseId: string) {
 
 const AI_MODEL = process.env.AI_REPORT_MODEL ?? "claude-sonnet-4-6";
 
-async function callAnthropic(
+async function callAnthropicRaw(
   system: string,
   user: string,
   maxTokens: number,
-): Promise<string> {
+): Promise<{ text: string; stop_reason: string }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -133,7 +133,19 @@ async function callAnthropic(
     throw new Error(`Anthropic ${res.status}: ${body}`);
   }
   const data = await res.json();
-  return data?.content?.[0]?.text ?? "";
+  return {
+    text: data?.content?.[0]?.text ?? "",
+    stop_reason: data?.stop_reason ?? "unknown",
+  };
+}
+
+async function callAnthropic(
+  system: string,
+  user: string,
+  maxTokens: number,
+): Promise<string> {
+  const { text } = await callAnthropicRaw(system, user, maxTokens);
+  return text;
 }
 
 export async function parseTimelineEntry(
@@ -555,11 +567,45 @@ Do NOT add any content not present in the original notes.
 Return only the report text, no extra explanation.`,
   };
 
+  const INITIAL_TOKENS = 4000;
+  const RETRY_TOKENS   = 8000;
+
   try {
     const system = prompts[reportType];
     const user = `Case: ${caseNumber}\nDate: ${date}\n\nTimeline:\n${timelineText}`;
-    const report = await callAnthropic(system, user, 1200);
-    return { report: report.trim() };
+
+    let result = await callAnthropicRaw(system, user, INITIAL_TOKENS);
+
+    console.log("[generateReport]", {
+      model: AI_MODEL,
+      max_tokens: INITIAL_TOKENS,
+      stop_reason: result.stop_reason,
+      input_length: user.length,
+      output_length: result.text.length,
+      entry_count: entries.length,
+    });
+
+    if (result.stop_reason === "max_tokens") {
+      console.log("[generateReport] truncated — retrying with", RETRY_TOKENS, "tokens");
+      result = await callAnthropicRaw(system, user, RETRY_TOKENS);
+      console.log("[generateReport] retry", {
+        model: AI_MODEL,
+        max_tokens: RETRY_TOKENS,
+        stop_reason: result.stop_reason,
+        output_length: result.text.length,
+      });
+    }
+
+    // If still truncated after retry, append a visible warning rather than silently returning partial text.
+    if (result.stop_reason === "max_tokens") {
+      return {
+        report: result.text.trimEnd() +
+          "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณากด Download TXT เพื่อรับรายงานฉบับเต็ม" +
+          "\n⚠️ Report truncated due to data size. Use Download TXT for the complete report.",
+      };
+    }
+
+    return { report: result.text.trim() };
   } catch (err) {
     return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
   }
