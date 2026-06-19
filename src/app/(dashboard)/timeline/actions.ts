@@ -128,7 +128,10 @@ async function callAnthropic(
       messages: [{ role: "user", content: user }],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Anthropic ${res.status}: ${body}`);
+  }
   const data = await res.json();
   return data?.content?.[0]?.text ?? "";
 }
@@ -364,8 +367,8 @@ export async function improveTimelineEntry(
       "If input is English: output Professional English. Start with 'The subject' or action verb.";
     const improved = await callAnthropic(system, text, 300);
     return { improved: improved.trim() };
-  } catch {
-    return { error: "AI improvement failed" };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "AI improvement failed" };
   }
 }
 
@@ -420,7 +423,7 @@ export async function generateDailySummary(
     const user = `Case: ${caseRow?.case_number}\nDate: ${date}\n\nTimeline:\n${entriesText}`;
     const summary = await callAnthropic(system, user, 800);
     return { summary: summary.trim() };
-  } catch {
-    return { error: "Failed to generate summary" };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to generate summary" };
   }
 }
