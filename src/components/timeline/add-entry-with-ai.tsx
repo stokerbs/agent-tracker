@@ -2,13 +2,20 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Sparkles, Wand2, X, ChevronLeft } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  Loader2,
+  Plus,
+  Wand2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
   addTimelineEntry,
-  parseTimelineEntry,
-  improveTimelineEntry,
   parseMultipleEntries,
   addMultipleTimelineEntries,
 } from "@/app/(dashboard)/timeline/actions";
@@ -18,7 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   caseId: string;
-  /** Pre-fill the date field (e.g. the date of the section being expanded). */
   defaultDate?: string;
 }
 
@@ -26,8 +32,7 @@ type ParsedEntry = { time: string; date: string; entry: string };
 type Mode = "input" | "preview";
 
 function todayBangkok(): string {
-  return new Date()
-    .toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
 }
 
 export function AddEntryWithAI({ caseId, defaultDate }: Props) {
@@ -35,57 +40,31 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
   const tai = useTranslations("timeline.ai");
   const router = useRouter();
 
-  // ── Input mode state ──────────────────────────────────────────────────────
   const [today] = useState<string>(defaultDate ?? todayBangkok());
-  const [currentTime, setCurrentTime] = useState("");
-  const [quickInput, setQuickInput] = useState("");
+  const [rawInput, setRawInput] = useState("");
   const [date, setDate] = useState(defaultDate ?? todayBangkok());
-  const [time, setTime] = useState("");
-  const [entry, setEntry] = useState("");
   const [location, setLocation] = useState("");
+  const [currentTime, setCurrentTime] = useState("");
 
-  // ── Multi-entry mode state ────────────────────────────────────────────────
   const [mode, setMode] = useState<Mode>("input");
   const [parsed, setParsed] = useState<ParsedEntry[]>([]);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editTime, setEditTime] = useState("");
   const [editEntry, setEditEntry] = useState("");
 
-  // ── Transitions ───────────────────────────────────────────────────────────
-  const [pending, startPending] = useTransition();
   const [parsing, startParse] = useTransition();
-  const [multiParsing, startMultiParse] = useTransition();
   const [saving, startSave] = useTransition();
-  const [improving, startImprove] = useTransition();
+  const [addingDirect, startDirect] = useTransition();
 
   useEffect(() => {
-    const now = new Date();
-    const timeStr = now.toTimeString().slice(0, 5);
-    setCurrentTime(timeStr);
-    setTime(timeStr);
+    setCurrentTime(new Date().toTimeString().slice(0, 5));
   }, []);
 
-  // ── Single-entry parse (existing "Parse with AI" for the lower form) ──────
-  function handleParseWithAI() {
-    if (!quickInput.trim()) return;
+  // ── Parse with AI → preview ────────────────────────────────────────────────
+  function handleParse() {
+    if (!rawInput.trim()) return;
     startParse(async () => {
-      const result = await parseTimelineEntry(quickInput, today || date);
-      if (result.error && !result.entry) {
-        toast.error(result.error);
-        return;
-      }
-      if (result.time) setTime(result.time);
-      if (result.date) setDate(result.date);
-      if (result.entry) setEntry(result.entry);
-      toast.success(tai("parseSuccess"));
-    });
-  }
-
-  // ── Multi-entry parse → switch to preview mode ────────────────────────────
-  function handleMultiParseWithAI() {
-    if (!quickInput.trim()) return;
-    startMultiParse(async () => {
-      const result = await parseMultipleEntries(quickInput, date);
+      const result = await parseMultipleEntries(rawInput, date);
       if (result.error && !result.entries) {
         toast.error(result.error);
         return;
@@ -100,89 +79,55 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
     });
   }
 
-  // ── Add without AI (single entry, whole raw text) ─────────────────────────
-  function handleAddWithoutAI() {
-    if (!quickInput.trim()) return;
-    const formData = new FormData();
-    formData.set("case_id", caseId);
-    formData.set("entry_date", date || today);
-    formData.set("entry_time", currentTime || time);
-    formData.set("entry", quickInput.trim());
-    formData.set("location", location);
-    startPending(async () => {
-      const res = await addTimelineEntry(formData);
-      if (res?.error) {
-        toast.error(res.error);
-        return;
-      }
+  // ── Add without AI (escape hatch) ─────────────────────────────────────────
+  function handleAddDirect() {
+    if (!rawInput.trim()) return;
+    const fd = new FormData();
+    fd.set("case_id", caseId);
+    fd.set("entry_date", date || today);
+    fd.set("entry_time", currentTime);
+    fd.set("entry", rawInput.trim());
+    fd.set("location", location);
+    startDirect(async () => {
+      const res = await addTimelineEntry(fd);
+      if (res?.error) { toast.error(res.error); return; }
       toast.success(t("toast.success"));
-      setQuickInput("");
+      setRawInput("");
       router.refresh();
     });
   }
 
-  // ── Improve entry text with AI ────────────────────────────────────────────
-  function handleImproveWithAI() {
-    if (!entry.trim()) return;
-    startImprove(async () => {
-      const result = await improveTimelineEntry(entry);
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      if (result.improved) setEntry(result.improved);
+  // ── Preview: reorder ───────────────────────────────────────────────────────
+  function moveEntry(idx: number, dir: -1 | 1) {
+    const next = idx + dir;
+    if (next < 0 || next >= parsed.length) return;
+    setParsed((prev) => {
+      const arr = [...prev];
+      [arr[idx], arr[next]] = [arr[next], arr[idx]];
+      return arr;
     });
   }
 
-  // ── Single-entry form submit ──────────────────────────────────────────────
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!entry.trim()) return;
-    const formData = new FormData();
-    formData.set("case_id", caseId);
-    formData.set("entry_date", date || today);
-    formData.set("entry_time", time || currentTime);
-    formData.set("entry", entry);
-    formData.set("location", location);
-    startPending(async () => {
-      const res = await addTimelineEntry(formData);
-      if (res?.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(t("toast.success"));
-      setQuickInput("");
-      setEntry("");
-      setLocation("");
-      const now = new Date();
-      setTime(now.toTimeString().slice(0, 5));
-      router.refresh();
-    });
-  }
-
-  // ── Preview mode: remove entry ────────────────────────────────────────────
-  function removeEntry(idx: number) {
-    setParsed((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  // ── Preview mode: start editing a row ────────────────────────────────────
+  // ── Preview: inline edit ───────────────────────────────────────────────────
   function startEdit(idx: number) {
     setEditingIdx(idx);
     setEditTime(parsed[idx].time);
     setEditEntry(parsed[idx].entry);
   }
 
-  // ── Preview mode: save inline edit ───────────────────────────────────────
   function commitEdit(idx: number) {
     setParsed((prev) =>
-      prev.map((p, i) =>
-        i === idx ? { ...p, time: editTime, entry: editEntry } : p,
-      ),
+      prev.map((p, i) => (i === idx ? { ...p, time: editTime, entry: editEntry } : p)),
     );
     setEditingIdx(null);
   }
 
-  // ── Preview mode: save all entries ───────────────────────────────────────
+  // ── Preview: remove ────────────────────────────────────────────────────────
+  function removeEntry(idx: number) {
+    setParsed((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── Preview: save all ──────────────────────────────────────────────────────
   function handleSaveAll() {
     if (!parsed.length) return;
     startSave(async () => {
@@ -192,16 +137,12 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
           date: p.date,
           time: p.time,
           entry: p.entry,
-          location: location,
+          location,
         })),
       );
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
+      if (result.error) { toast.error(result.error); return; }
       toast.success(tai("saveSuccess", { count: result.count ?? parsed.length }));
-      setQuickInput("");
-      setEntry("");
+      setRawInput("");
       setLocation("");
       setParsed([]);
       setMode("input");
@@ -242,47 +183,53 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
                     rows={2}
                   />
                   <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="default"
-                      className="h-6 text-xs"
-                      onClick={() => commitEdit(idx)}
-                    >
-                      {tai("save") || "Save"}
+                    <Button type="button" size="sm" className="h-6 text-xs" onClick={() => commitEdit(idx)}>
+                      Save
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 text-xs"
-                      onClick={() => setEditingIdx(null)}
-                    >
-                      {tai("cancel") || "Cancel"}
+                    <Button type="button" size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingIdx(null)}>
+                      Cancel
                     </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                    {p.time}
-                  </span>
-                  <span className="flex-1 text-xs">{p.entry}</span>
+                  <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {p.time} · {p.date}
+                    </span>
+                    <span className="text-xs">{p.entry}</span>
+                  </div>
+                  {/* Reorder */}
+                  <div className="flex shrink-0 flex-col gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => moveEntry(idx, -1)}
+                      disabled={idx === 0}
+                      className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveEntry(idx, 1)}
+                      disabled={idx === parsed.length - 1}
+                      className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </button>
+                  </div>
                   <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-5 px-1.5 text-[10px] text-muted-foreground"
+                    type="button" size="sm" variant="ghost"
+                    className="h-5 shrink-0 px-1.5 text-[10px] text-muted-foreground"
                     onClick={() => startEdit(idx)}
-                    aria-label={tai("editEntry")}
                   >
                     {tai("editEntry")}
                   </Button>
                   <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-5 px-1 text-[10px] text-muted-foreground hover:text-destructive"
+                    type="button" size="sm" variant="ghost"
+                    className="h-5 shrink-0 px-1 text-[10px] text-muted-foreground hover:text-destructive"
                     onClick={() => removeEntry(idx)}
                     aria-label={tai("removeEntry")}
                   >
@@ -294,31 +241,29 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
           ))}
         </div>
 
+        {/* Location override */}
         <div className="flex items-center gap-2">
           <Input
             type="date"
             value={parsed[0]?.date ?? date}
             onChange={(e) => {
-              const newDate = e.target.value;
-              setParsed((prev) => prev.map((p) => ({ ...p, date: newDate })));
+              const d = e.target.value;
+              setParsed((prev) => prev.map((p) => ({ ...p, date: d })));
             }}
             className="h-7 w-36 text-xs"
-            aria-label="Date"
+            aria-label="Override date for all entries"
           />
           <Input
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder={t("locationPlaceholder")}
             className="flex-1 h-7 text-xs"
-            aria-label={t("locationPlaceholder")}
           />
         </div>
 
         <div className="flex items-center justify-between gap-2">
           <Button
-            type="button"
-            size="sm"
-            variant="ghost"
+            type="button" size="sm" variant="ghost"
             className="h-7 gap-1 text-xs"
             onClick={() => { setMode("input"); setEditingIdx(null); }}
             disabled={saving}
@@ -328,22 +273,15 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
           </Button>
 
           <Button
-            type="button"
-            size="sm"
+            type="button" size="sm"
             className="h-7 gap-1 text-xs"
             onClick={handleSaveAll}
             disabled={saving || !parsed.length}
           >
             {saving ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {tai("saving", { count: parsed.length })}
-              </>
+              <><Loader2 className="h-3 w-3 animate-spin" />{tai("saving", { count: parsed.length })}</>
             ) : (
-              <>
-                <Plus className="h-3 w-3" />
-                {tai("saveAll", { count: parsed.length })}
-              </>
+              <><Plus className="h-3 w-3" />{tai("saveAll", { count: parsed.length })}</>
             )}
           </Button>
         </div>
@@ -352,169 +290,67 @@ export function AddEntryWithAI({ caseId, defaultDate }: Props) {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // INPUT MODE (default)
+  // INPUT MODE
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded-lg border border-dashed bg-card/50 p-4"
-    >
-      {/* Section A: Multi-entry quick input */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">{tai("quickEntry")}</p>
-
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-7 w-36 text-xs"
-            disabled={multiParsing || pending}
-            aria-label="Date"
-          />
-          <Input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder={t("locationPlaceholder")}
-            className="flex-1 h-7 text-xs"
-            disabled={multiParsing || pending}
-            aria-label={t("locationPlaceholder")}
-          />
-        </div>
-
-        <Textarea
-          value={quickInput}
-          onChange={(e) => setQuickInput(e.target.value)}
-          placeholder={"10.15 Target left residence\n11.20 Target at Starbucks\n13.45 Target returned home"}
-          className="min-h-[80px] text-sm"
-          disabled={multiParsing || pending}
-          rows={5}
+    <div className="space-y-3 rounded-lg border border-dashed bg-card/50 p-4">
+      <div className="flex items-center gap-2">
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-7 w-36 text-xs"
+          disabled={parsing || addingDirect}
+          aria-label="Date"
         />
-
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-7 gap-1 text-xs"
-            onClick={handleMultiParseWithAI}
-            disabled={multiParsing || pending || !quickInput.trim()}
-          >
-            {multiParsing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Wand2 className="h-3 w-3" />
-            )}
-            {multiParsing ? tai("parsing") : tai("multiParse")}
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-muted-foreground"
-            onClick={handleAddWithoutAI}
-            disabled={pending || multiParsing || !quickInput.trim()}
-          >
-            {pending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-            {tai("addWithoutAI")}
-          </Button>
-        </div>
+        <Input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder={t("locationPlaceholder")}
+          className="flex-1 h-7 text-xs"
+          disabled={parsing || addingDirect}
+        />
       </div>
 
-      {/* Section B: Single-entry form fields */}
-      <div className="space-y-2 border-t pt-3">
-        <p className="text-xs font-medium text-muted-foreground">{tai("quickEntry")} — {tai("preview")}</p>
+      <Textarea
+        value={rawInput}
+        onChange={(e) => setRawInput(e.target.value)}
+        placeholder={
+          "10.15 เป้าหมายออกจากบ้าน\n11.20 เป้าหมายเข้าสตาร์บัค\n13.45 เป้าหมายกลับบ้าน"
+        }
+        className="min-h-[100px] text-sm"
+        disabled={parsing || addingDirect}
+        rows={5}
+      />
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-7 text-xs"
-            disabled={pending}
-            aria-label="Date"
-          />
-          <Input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="h-7 text-xs"
-            disabled={pending}
-            aria-label="Time"
-          />
-          <Input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder={t("locationPlaceholder")}
-            className="col-span-2 h-7 text-xs"
-            disabled={pending}
-            aria-label={t("locationPlaceholder")}
-          />
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-8 gap-1.5 text-xs font-medium"
+          onClick={handleParse}
+          disabled={parsing || addingDirect || !rawInput.trim()}
+        >
+          {parsing ? (
+            <><Loader2 className="h-3 w-3 animate-spin" />{tai("parsing")}</>
+          ) : (
+            <><Wand2 className="h-3 w-3" />✨ {tai("multiParse")}</>
+          )}
+        </Button>
 
-        <div className="flex gap-2">
-          <Textarea
-            value={quickInput}
-            onChange={(e) => setQuickInput(e.target.value)}
-            placeholder={tai("quickEntryPlaceholder")}
-            className="min-h-[40px] resize-none text-xs"
-            disabled={multiParsing || pending}
-            rows={1}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-auto shrink-0 gap-1 self-start text-xs"
-            onClick={handleMultiParseWithAI}
-            disabled={multiParsing || pending || !quickInput.trim()}
-          >
-            {multiParsing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Wand2 className="h-3 w-3" />
-            )}
-            {multiParsing ? tai("parsing") : tai("parseWithAI")}
-          </Button>
-        </div>
-
-        <Textarea
-          value={entry}
-          onChange={(e) => setEntry(e.target.value)}
-          placeholder={t("entryPlaceholder")}
-          required
-          className="min-h-[70px] text-sm"
-          disabled={pending}
-        />
-
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1 text-xs text-muted-foreground"
-            onClick={handleImproveWithAI}
-            disabled={improving || pending || !entry.trim()}
-          >
-            {improving ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Sparkles className="h-3 w-3" />
-            )}
-            {improving ? tai("improving") : tai("improveWithAI")}
-          </Button>
-
-          <Button type="submit" size="sm" disabled={pending || !entry.trim()} className="h-7 gap-1 text-xs">
-            {pending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Plus className="h-3 w-3" />
-            )}
-            {t("addButton")}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 text-xs text-muted-foreground"
+          onClick={handleAddDirect}
+          disabled={addingDirect || parsing || !rawInput.trim()}
+        >
+          {addingDirect && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+          {tai("addWithoutAI")}
+        </Button>
       </div>
-    </form>
+    </div>
   );
 }

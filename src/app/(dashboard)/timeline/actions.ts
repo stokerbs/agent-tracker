@@ -168,12 +168,21 @@ export async function parseTimelineEntry(
 
 type ParsedEntry = { time: string; date: string; entry: string };
 
+// Regex to detect an ISO or recognisable English date on a line by itself.
+// Thai dates require the AI path; the regex fallback uses this to skip date-only lines.
+const DATE_LINE_RE = /^(\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4})$/i;
+
 function parseWithRegex(rawText: string, defaultDate: string): ParsedEntry[] {
   const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
   const entries: ParsedEntry[] = [];
   let current: { time: string; date: string; lines: string[] } | null = null;
+  let activeDate = defaultDate;
   const TIME_START = /^(\d{1,2})[.:h\-](\d{2})\b/;
+
   for (const line of lines) {
+    // Skip lines that look like standalone date headers
+    if (DATE_LINE_RE.test(line)) continue;
+
     const m = line.match(TIME_START);
     if (m) {
       if (current) {
@@ -182,14 +191,14 @@ function parseWithRegex(rawText: string, defaultDate: string): ParsedEntry[] {
       const h = m[1].padStart(2, "0");
       const min = m[2];
       const rest = line.slice(m[0].length).trim();
-      current = { time: `${h}:${min}`, date: defaultDate, lines: rest ? [rest] : [] };
+      current = { time: `${h}:${min}`, date: activeDate, lines: rest ? [rest] : [] };
     } else if (current) {
       current.lines.push(line);
     } else {
       // No time marker found yet — treat whole block as single entry
       const now = new Date();
       const t = now.toTimeString().slice(0, 5);
-      entries.push({ time: t, date: defaultDate, entry: rawText });
+      entries.push({ time: t, date: activeDate, entry: rawText });
       return entries;
     }
   }
@@ -201,7 +210,10 @@ function parseWithRegex(rawText: string, defaultDate: string): ParsedEntry[] {
     const t = now.toTimeString().slice(0, 5);
     return [{ time: t, date: defaultDate, entry: rawText }];
   }
-  return entries;
+  // Sort by date ASC, time ASC
+  return entries.sort((a, b) =>
+    a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time),
+  );
 }
 
 export async function parseMultipleEntries(
@@ -215,44 +227,74 @@ export async function parseMultipleEntries(
     return { entries: parseWithRegex(trimmed, defaultDate) };
   }
 
-  const system = `You are a surveillance timeline parser. The user may submit ONE or MULTIPLE timestamped events in a single block of text.
+  const system = `You are a professional surveillance timeline parser for a Thai detective agency.
 
-Your job:
-1. Detect all time markers in the text. Time formats to recognize:
-   - HH.MM (e.g. 10.15, 13.45)
-   - HH:MM (e.g. 10:15, 13:45)
-   - HHMM  (e.g. 1015, 1345, but only if it forms a valid 24h time)
-   - HH-MM (e.g. 10-15)
-2. Split the text at each time marker boundary.
-3. For each segment, produce one structured entry.
-4. Rewrite descriptions as professional surveillance English.
-5. Translate Thai to English.
-6. Start each description with "The subject" or an action verb.
+The input may contain ONE or MULTIPLE timestamped surveillance events, possibly spanning multiple days.
 
-Return ONLY a JSON array (no markdown, no explanation):
+STEP 1 — DETECT DATE HEADERS
+Scan for date headers and track the active date. Supported formats:
+- Thai Buddhist calendar full: "19 มิถุนายน 2569", "วันพฤหัสบดีที่ 19 มิถุนายน 2569"
+- Thai abbreviated: "19 มิ.ย. 69", "19 มิ.ย. 2569"
+- English: "19 June 2026", "June 19, 2026", "19/06/2026"
+- ISO: "2026-06-19"
+Convert Thai Buddhist year to CE by subtracting 543 (e.g. 2569 → 2026).
+Thai months: ม.ค.=01 ก.พ.=02 มี.ค.=03 เม.ย.=04 พ.ค.=05 มิ.ย.=06 ก.ค.=07 ส.ค.=08 ก.ย.=09 ต.ค.=10 พ.ย.=11 ธ.ค.=12
+Apply detected date to all following entries until the next date header.
+Default date (use when no date is detected): ${defaultDate}
+
+STEP 2 — DETECT TIME MARKERS
+Recognize at the start of a line:
+- HH.MM (e.g. 10.15, 13.45)
+- HH:MM (e.g. 10:15, 13:45)
+- HHMM  (e.g. 1015, 1345 — only valid 24h times)
+- HH-MM (e.g. 10-15)
+Convert all to HH:MM 24-hour format.
+
+STEP 3 — SPLIT
+Each time marker starts a new entry. Text between markers is the description for that entry.
+Lines that are date headers (Step 1) are NOT entries — they only update the active date.
+
+STEP 4 — LANGUAGE PRESERVATION AND REWRITE
+IMPORTANT: Do NOT translate between Thai and English.
+- If description is Thai → rewrite as professional surveillance Thai. Keep Thai. Start with "ผู้ต้องสงสัย" or appropriate Thai surveillance verb.
+- If description is English → rewrite as professional surveillance English. Start with "The subject" or an action verb.
+
+Thai rewrite examples:
+  "เป้าหมายออกจากบ้าน" → "ผู้ต้องสงสัยออกจากที่พักอาศัย"
+  "เป้าหมายเข้าสตาร์บัค" → "ผู้ต้องสงสัยเดินทางเข้าร้าน Starbucks"
+  "เป้าหมายขับรถออกไป" → "ผู้ต้องสงสัยขับยานพาหนะออกจากพื้นที่"
+
+English rewrite examples:
+  "target left home" → "The subject departed from the residence."
+  "target at coffee shop" → "The subject was observed at a coffee establishment."
+
+STEP 5 — SORT
+Sort all entries by date ASC, then time ASC.
+
+Return ONLY a JSON array — no markdown, no explanation, no code block:
 [
   {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"},
   {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"}
 ]
 
-Rules:
-- date: use defaultDate unless a different date is explicitly stated. defaultDate is ${defaultDate}.
-- time: always 24h HH:MM format.
-- If only one event is found, still return a single-element array.
-- Sort entries by time ascending.`;
+If only one event is found, return a single-element array.`;
 
   try {
-    const text = await callAnthropic(system, `Field notes:\n${trimmed}`, 1000);
+    const text = await callAnthropic(system, `Field notes:\n${trimmed}`, 1500);
     const jsonStart = text.indexOf("[");
     const jsonEnd = text.lastIndexOf("]");
     if (jsonStart === -1 || jsonEnd === -1) throw new Error("No array in response");
     const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
-    const entries: ParsedEntry[] = parsed.map((p: { time?: string; date?: string; entry?: string }) => ({
-      time: String(p.time ?? "").trim() || new Date().toTimeString().slice(0, 5),
-      date: String(p.date ?? "").trim() || defaultDate,
-      entry: String(p.entry ?? "").trim() || trimmed,
-    }));
+    const entries: ParsedEntry[] = parsed
+      .map((p: { time?: string; date?: string; entry?: string }) => ({
+        time: String(p.time ?? "").trim() || new Date().toTimeString().slice(0, 5),
+        date: String(p.date ?? "").trim() || defaultDate,
+        entry: String(p.entry ?? "").trim() || trimmed,
+      }))
+      .sort((a: ParsedEntry, b: ParsedEntry) =>
+        a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time),
+      );
     return { entries };
   } catch {
     // Fallback: return regex parse
