@@ -47,6 +47,7 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
   const [improving, startImprove] = useTransition();
   const [uploading, startUpload] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -299,7 +300,7 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
 
   // ── VIEW MODE ────────────────────────────────────────────────────────────────
   return (
-    <div className="ml-4 flex-1 rounded-lg border bg-card p-3 transition-colors hover:border-border group-hover:border-border/80">
+    <div className="ml-4 flex-1 rounded-lg border bg-card p-2 sm:p-3 transition-colors hover:border-border group-hover:border-border/80">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -310,7 +311,16 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
               {entry.agents?.full_name ?? "Agent"}
             </span>
           </div>
-          <p className="mt-1 text-sm">{entry.entry}</p>
+          {/* Tap-to-expand on mobile; full text on sm+ */}
+          <button
+            type="button"
+            className="mt-1 block w-full text-left"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <p className={cn("text-sm", !expanded && "line-clamp-3 sm:line-clamp-none")}>
+              {entry.entry}
+            </p>
+          </button>
           {entry.location && (
             <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3" /> {entry.location}
@@ -325,7 +335,7 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
         </div>
 
         {canEdit && (
-          <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex shrink-0 gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
             <Button
               size="icon" variant="ghost" className="h-6 w-6"
               onClick={() => setEditing(true)} disabled={pending} title={t("edit")}

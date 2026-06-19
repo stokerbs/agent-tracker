@@ -10,11 +10,18 @@ import {
   Check,
   Loader2,
   MapPin,
+  MoreHorizontal,
   Printer,
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -189,56 +196,64 @@ export function TimelineClient({ caseGroups, canEdit, isAdmin }: Props) {
 
                             <div className="h-px flex-1 bg-border/40" />
 
-                            {/* Thai Client Report button */}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "thai_client")}
-                              disabled={!!summaryLoading}
-                            >
-                              {isReportLoading(cg.caseId, dg.date, "thai_client") ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <FileText className="h-3 w-3" />
-                              )}
-                              {isReportLoading(cg.caseId, dg.date, "thai_client") ? tai("generating") : "รายงานลูกค้า TH"}
-                            </Button>
+                            {/* Report buttons — staff only */}
+                            {canEdit && (
+                              <>
+                                {/* Desktop: three inline buttons */}
+                                <div className="hidden sm:flex items-center gap-1">
+                                  {(["thai_client", "english_client", "internal"] as const).map((rt, i) => (
+                                    <Button
+                                      key={rt}
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
+                                      onClick={() => handleGenerateReport(cg.caseId, dg.date, rt)}
+                                      disabled={!!summaryLoading}
+                                    >
+                                      {isReportLoading(cg.caseId, dg.date, rt) ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <FileText className="h-3 w-3" />
+                                      )}
+                                      {isReportLoading(cg.caseId, dg.date, rt)
+                                        ? tai("generating")
+                                        : [" รายงาน TH", "Report EN", "Internal"][i]}
+                                    </Button>
+                                  ))}
+                                </div>
 
-                            {/* English Client Report button */}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "english_client")}
-                              disabled={!!summaryLoading}
-                            >
-                              {isReportLoading(cg.caseId, dg.date, "english_client") ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <FileText className="h-3 w-3" />
-                              )}
-                              {isReportLoading(cg.caseId, dg.date, "english_client") ? tai("generating") : "Client Report EN"}
-                            </Button>
-
-                            {/* Internal Report button */}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateReport(cg.caseId, dg.date, "internal")}
-                              disabled={!!summaryLoading}
-                            >
-                              {isReportLoading(cg.caseId, dg.date, "internal") ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <FileText className="h-3 w-3" />
-                              )}
-                              {isReportLoading(cg.caseId, dg.date, "internal") ? tai("generating") : "Internal Report"}
-                            </Button>
+                                {/* Mobile: single dropdown */}
+                                <div className="sm:hidden">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0 text-muted-foreground"
+                                        disabled={!!summaryLoading}
+                                      >
+                                        {summaryLoading?.startsWith(`${cg.caseId}::${dg.date}::`)
+                                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          : <MoreHorizontal className="h-3.5 w-3.5" />}
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleGenerateReport(cg.caseId, dg.date, "thai_client")}>
+                                        <FileText className="mr-2 h-3.5 w-3.5" /> รายงานลูกค้า TH
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleGenerateReport(cg.caseId, dg.date, "english_client")}>
+                                        <FileText className="mr-2 h-3.5 w-3.5" /> Client Report EN
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleGenerateReport(cg.caseId, dg.date, "internal")}>
+                                        <FileText className="mr-2 h-3.5 w-3.5" /> Internal Report
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           {/* Date entries */}

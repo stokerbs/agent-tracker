@@ -13,9 +13,12 @@ import {
   CheckCircle2,
   Clock,
   Crosshair,
+  Film,
+  ImageIcon,
   Loader2,
   MapPin,
   Navigation,
+  Paperclip,
   RefreshCw,
   Siren,
   UserX,
@@ -25,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { addTimelineEntry } from "@/app/(dashboard)/timeline/actions";
+import { uploadEvidence } from "@/app/(dashboard)/evidence/actions";
 import { updateAgentStatus } from "@/app/(dashboard)/agents/actions";
 import { triggerSos } from "@/app/(dashboard)/emergency/actions";
 import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
@@ -409,23 +413,67 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [selectedCase, setSelectedCase] = useState(cases[0]?.id ?? "");
+  const [entry, setEntry] = useState("");
+  const [location, setLocation] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
 
-  function onSubmit(formData: FormData) {
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const fileRef  = useRef<HTMLInputElement>(null);
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+
+  function handleSubmit() {
+    if (!entry.trim()) return;
     start(async () => {
       if (!selectedCase) { toast.error(t("log.noCase")); return; }
-      formData.set("case_id", selectedCase);
-      const today = new Date();
-      formData.set("entry_date", today.toISOString().slice(0, 10));
-      formData.set("entry_time", today.toTimeString().slice(0, 5));
-      const res = await addTimelineEntry(formData);
+      const fd = new FormData();
+      fd.set("case_id", selectedCase);
+      const now = new Date();
+      fd.set("entry_date", now.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
+      fd.set("entry_time", now.toLocaleTimeString("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }));
+      fd.set("entry", entry.trim());
+      if (location.trim()) fd.set("location", location.trim());
+
+      const res = await addTimelineEntry(fd);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success(t("log.success"));
+
+      if (files.length > 0 && res.id) {
+        const results = await Promise.all(
+          files.map((f) => {
+            const efd = new FormData();
+            efd.set("case_id", selectedCase);
+            efd.set("file", f);
+            efd.set("timeline_entry_id", res.id!);
+            return uploadEvidence(efd);
+          }),
+        );
+        const failed = results.filter((r) => r?.error).length;
+        if (failed > 0) {
+          toast.warning(`Saved. ${failed} file(s) failed to upload.`);
+        } else {
+          toast.success(`${t("log.success")} + ${files.length} file${files.length > 1 ? "s" : ""}`);
+        }
+      } else {
+        toast.success(t("log.success"));
+      }
+
+      setEntry("");
+      setLocation("");
+      setFiles([]);
       setOpen(false);
     });
   }
 
+  const photos = files.filter((f) => f.type.startsWith("image/"));
+  const videos = files.filter((f) => f.type.startsWith("video/"));
+  const docs   = files.filter((f) => !f.type.startsWith("image/") && !f.type.startsWith("video/"));
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEntry(""); setLocation(""); setFiles([]); } }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="flex min-h-[56px] flex-col gap-0.5 h-auto py-3">
           <Clock className="h-5 w-5" />
@@ -437,7 +485,7 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
           <DialogTitle>{t("log.title")}</DialogTitle>
           <DialogDescription>{t("log.description")}</DialogDescription>
         </DialogHeader>
-        <form action={onSubmit} className="space-y-4">
+        <div className="space-y-4">
           {cases.length > 0 && (
             <div className="space-y-1.5">
               <Label>{t("log.case")}</Label>
@@ -455,33 +503,75 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
               </Select>
             </div>
           )}
-          {cases.length === 0 && (
-            <input type="hidden" name="case_id" value="" />
-          )}
           <div className="space-y-1.5">
             <Label htmlFor="log-location">{t("log.location")}</Label>
-            <Input id="log-location" name="location" placeholder={t("log.locationPlaceholder")} />
+            <Input
+              id="log-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder={t("log.locationPlaceholder")}
+              disabled={pending}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="log-entry">{t("log.entry")}</Label>
             <Textarea
               id="log-entry"
-              name="entry"
+              value={entry}
+              onChange={(e) => setEntry(e.target.value)}
               rows={4}
               placeholder={t("log.entryPlaceholder")}
-              required
+              disabled={pending}
             />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {t("log.submit")}
-            </Button>
-          </DialogFooter>
-        </form>
+
+          {/* File attach buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50"
+            >
+              <ImageIcon className="h-3 w-3" />
+              {photos.length > 0 ? `${photos.length} Photo${photos.length > 1 ? "s" : ""}` : "Photos"}
+            </button>
+            <button
+              type="button"
+              onClick={() => videoRef.current?.click()}
+              disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50"
+            >
+              <Film className="h-3 w-3" />
+              {videos.length > 0 ? `${videos.length} Video${videos.length > 1 ? "s" : ""}` : "Videos"}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
+            >
+              <Paperclip className="h-3 w-3" />
+              {docs.length > 0 ? `${docs.length} File${docs.length > 1 ? "s" : ""}` : "Files"}
+            </button>
+            <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+            <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" multiple className="sr-only"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+            <input ref={fileRef} type="file" accept="application/pdf" multiple className="sr-only"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={pending || !entry.trim()}>
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("log.submit")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
