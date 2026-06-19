@@ -26,8 +26,7 @@ import {
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
 import { StatCard } from "@/components/shared/stat-card";
-import { AddObservationToggle } from "@/components/timeline/add-observation-toggle";
-import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
+import { CaseTimelineClient } from "@/components/cases/case-timeline-client";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
@@ -209,6 +208,22 @@ export default async function CaseDetailPage({
 
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
+  const canInsert = profile.role !== "client";
+
+  // Group timeline entries by date DESC, entries ASC within each day.
+  // timelineEntries arrives sorted DESC — first-seen date is newest.
+  const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const dateMap = new Map<string, typeof timelineEntries>();
+  for (const e of timelineEntries) {
+    if (!dateMap.has(e.entry_date)) dateMap.set(e.entry_date, []);
+    dateMap.get(e.entry_date)!.push(e);
+  }
+  const dateGroups = Array.from(dateMap.entries())
+    .sort(([a], [b]) => b.localeCompare(a)) // dates DESC
+    .map(([date, entries]) => ({
+      date,
+      entries: [...entries].reverse(), // time ASC within day
+    }));
 
   return (
     <div className="space-y-6">
@@ -412,29 +427,22 @@ export default async function CaseDetailPage({
           </TabsList>
 
           {/* Timeline */}
-          <TabsContent value="timeline" className="space-y-4">
-            {profile.role !== "client" && <AddObservationToggle caseId={id} />}
-            {timelineEntries.length === 0 ? (
+          <TabsContent value="timeline" className="space-y-2">
+            {dateGroups.length === 0 ? (
               <EmptyState
                 icon={<Clock className="h-6 w-6" />}
                 title={t("noTimeline")}
                 description={t("noTimelineDescription")}
               />
             ) : (
-              <div className="relative space-y-1 pl-4">
-                <div className="absolute left-[7px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
-                {timelineEntries.map((entry) => (
-                  <div key={entry.id} className="group relative flex gap-2 sm:gap-4 pb-2 sm:pb-4">
-                    <div className="absolute -left-[1px] mt-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
-                    <TimelineEntryCard
-                      entry={entry}
-                      canEdit={staff}
-                      isAdmin={isAdmin}
-                      linkedEvidence={entry.linked_evidence}
-                    />
-                  </div>
-                ))}
-              </div>
+              <CaseTimelineClient
+                caseId={id}
+                dateGroups={dateGroups}
+                canInsert={canInsert}
+                canEdit={staff}
+                isAdmin={isAdmin}
+                todayBangkok={todayBKK}
+              />
             )}
           </TabsContent>
 
