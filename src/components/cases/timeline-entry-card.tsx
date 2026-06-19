@@ -2,10 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MapPin, Pencil, Save, Trash2, X } from "lucide-react";
+import { Loader2, MapPin, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { updateTimelineEntry, deleteTimelineEntry } from "@/app/(dashboard)/timeline/actions";
+import {
+  updateTimelineEntry,
+  deleteTimelineEntry,
+  improveTimelineEntry,
+} from "@/app/(dashboard)/timeline/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +28,7 @@ export function TimelineEntryCard({ entry, canEdit }: Props) {
   const t = useTranslations("timeline.entry");
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [improving, startImprove] = useTransition();
   const [editing, setEditing] = useState(false);
 
   const [date, setDate] = useState(entry.entry_date);
@@ -58,6 +63,15 @@ export function TimelineEntryCard({ entry, canEdit }: Props) {
       toast.success(t("toast.saved"));
       setEditing(false);
       router.refresh();
+    });
+  }
+
+  function handleImprove() {
+    if (!text.trim()) return;
+    startImprove(async () => {
+      const res = await improveTimelineEntry(text);
+      if (res.error) { toast.error(res.error); return; }
+      if (res.improved) setText(res.improved);
     });
   }
 
@@ -101,10 +115,23 @@ export function TimelineEntryCard({ entry, canEdit }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           className="mt-2 min-h-[70px] text-sm"
-          disabled={pending}
+          disabled={pending || improving}
         />
+        <div className="mt-1 flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 text-xs text-muted-foreground"
+            onClick={handleImprove}
+            disabled={improving || pending}
+          >
+            {improving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            Improve with AI
+          </Button>
+        </div>
         <div className="mt-2 flex items-center gap-2">
-          <Button size="sm" onClick={handleSave} disabled={pending || !text.trim()} className="h-7 gap-1 text-xs">
+          <Button size="sm" onClick={handleSave} disabled={pending || improving || !text.trim()} className="h-7 gap-1 text-xs">
             {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             {t("save")}
           </Button>

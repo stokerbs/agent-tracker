@@ -1,146 +1,161 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { Clock, MapPin } from "lucide-react";
-import { getLocale, getTranslations } from "next-intl/server";
+import { Clock } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { TimelineFilters } from "@/components/timeline/timeline-filters";
-import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
+import { TimelineClient } from "@/components/timeline/timeline-client";
 import { EmptyState } from "@/components/shared/empty-state";
+import type { TimelineEntry } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Timeline" };
 export const dynamic = "force-dynamic";
 
+type EntryFull = TimelineEntry & {
+  agents: { full_name: string; agent_code: string } | null;
+  cases: { case_number: string } | null;
+};
+type DateGroup = { date: string; entries: EntryFull[] };
+type CaseGroup = { caseId: string; caseNumber: string; dates: DateGroup[] };
+
 interface Props {
-  searchParams: Promise<{ q?: string; agent_id?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ q?: string; from?: string; to?: string }>;
 }
 
 export default async function TimelinePage({ searchParams }: Props) {
   const profile = await requireProfile();
   const canEdit = isStaff(profile.role);
+  const isAdmin = profile.role === "admin";
   const t = await getTranslations("timeline");
-  const locale = await getLocale();
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [agentsResult, entriesResult] = await Promise.all([
-    supabase.from("agents").select("id, full_name, agent_code").order("full_name"),
-    (() => {
-      let q = supabase
-        .from("timeline_entries")
-        .select("*, agents(full_name), cases(case_number)")
-        .is("deleted_at", null)
-        .order("entry_date", { ascending: false })
-        .order("entry_time", { ascending: false })
-        .limit(200);
-      if (sp.agent_id) q = q.eq("agent_id", sp.agent_id);
-      if (sp.from) q = q.gte("entry_date", sp.from);
-      if (sp.to) q = q.lte("entry_date", sp.to);
-      return q;
-    })(),
-  ]);
+  let caseGroups: CaseGroup[] = [];
 
-  const agents = (agentsResult.data ?? []) as { id: string; full_name: string; agent_code: string }[];
+  // Scope query by role
+  let caseIdFilter: string[] | null = null;
 
-  // Case number search is in-memory (joined column).
+  if (profile.role !== "admin") {
+    // supervisor or agent: find their agent record
+    const { data: agentRow } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (!agentRow) {
+      // No agent record — show nothing
+      return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+    }
+
+    const { data: caseAgents } = await supabase
+      .from("case_agents")
+      .select("case_id")
+      .eq("agent_id", agentRow.id);
+
+    const myCaseIds = (caseAgents ?? []).map((ca) => ca.case_id);
+    if (myCaseIds.length === 0) {
+      return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+    }
+    caseIdFilter = myCaseIds;
+  }
+
+  let query = supabase
+    .from("timeline_entries")
+    .select("*, agents(full_name, agent_code), cases(case_number)")
+    .is("deleted_at", null)
+    .order("entry_date", { ascending: true })
+    .order("entry_time", { ascending: true })
+    .limit(500);
+
+  if (caseIdFilter) {
+    query = query.in("case_id", caseIdFilter);
+  }
+  if (sp.from) query = query.gte("entry_date", sp.from);
+  if (sp.to) query = query.lte("entry_date", sp.to);
+
+  const { data: rawEntries } = await query;
+  let allEntries = (rawEntries ?? []) as EntryFull[];
+
+  // In-memory search
   const search = sp.q?.toLowerCase().trim() ?? "";
-  const allEntries = (entriesResult.data ?? []) as any[];
-  const entries = search
-    ? allEntries.filter((e) =>
+  if (search) {
+    allEntries = allEntries.filter(
+      (e) =>
         (e.cases?.case_number ?? "").toLowerCase().includes(search) ||
-        (e.entry ?? "").toLowerCase().includes(search),
-      )
-    : allEntries;
+        (e.entry ?? "").toLowerCase().includes(search) ||
+        (e.location ?? "").toLowerCase().includes(search),
+    );
+  }
 
-  const groups = entries.reduce<Record<string, any[]>>((acc, e) => {
-    (acc[e.entry_date] ??= []).push(e);
-    return acc;
-  }, {});
+  // Build CaseGroup[]
+  const caseMap = new Map<string, { caseNumber: string; dateMap: Map<string, EntryFull[]> }>();
+  for (const entry of allEntries) {
+    const caseId = entry.case_id;
+    const caseNumber = entry.cases?.case_number ?? caseId;
+    if (!caseMap.has(caseId)) {
+      caseMap.set(caseId, { caseNumber, dateMap: new Map() });
+    }
+    const caseData = caseMap.get(caseId)!;
+    const date = entry.entry_date;
+    if (!caseData.dateMap.has(date)) {
+      caseData.dateMap.set(date, []);
+    }
+    caseData.dateMap.get(date)!.push(entry);
+  }
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString(locale === "th" ? "th-TH" : "en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+  caseGroups = Array.from(caseMap.entries())
+    .map(([caseId, { caseNumber, dateMap }]) => ({
+      caseId,
+      caseNumber,
+      dates: Array.from(dateMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, entries]) => ({ date, entries })),
+    }))
+    .sort((a, b) => a.caseNumber.localeCompare(b.caseNumber));
+
+  return renderPage(t, sp, caseGroups, canEdit, isAdmin);
+}
+
+function renderPage(
+  t: Awaited<ReturnType<typeof getTranslations<"timeline">>>,
+  sp: { q?: string; from?: string; to?: string },
+  caseGroups: CaseGroup[],
+  canEdit: boolean,
+  isAdmin: boolean,
+) {
+  const totalEntries = caseGroups.reduce(
+    (sum, cg) => sum + cg.dates.reduce((s, dg) => s + dg.entries.length, 0),
+    0,
+  );
+  const hasFilters = !!(sp.q || sp.from || sp.to);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={t("title")} description={t("description")} />
-
+    <div className="space-y-4">
+      <div className="hidden md:block">
+        <PageHeader title={t("title")} description={t("description")} />
+      </div>
       <Suspense>
-        <TimelineFilters agents={agents} count={entries.length} />
+        <TimelineFilters count={totalEntries} />
       </Suspense>
-
-      {entries.length === 0 ? (
+      {caseGroups.length === 0 ? (
         <EmptyState
           icon={<Clock className="h-6 w-6" />}
-          title={search || sp.agent_id || sp.from || sp.to ? t("filters.noResults") : t("noTitle")}
-          description={search || sp.agent_id || sp.from || sp.to ? t("filters.noResultsDescription") : t("noDescription")}
+          title={hasFilters ? t("filters.noResults") : t("noTitle")}
+          description={
+            hasFilters
+              ? t("filters.noResultsDescription")
+              : t("noDescription")
+          }
         />
       ) : (
-        <div className="space-y-8">
-          {Object.entries(groups).map(([date, items]) => (
-            <div key={date}>
-              {/* Date header */}
-              <div className="mb-4 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border/60" />
-                <span className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-                  {fmtDate(date)}
-                </span>
-                <div className="h-px flex-1 bg-border/60" />
-              </div>
-
-              {/* Timeline entries */}
-              <div className="relative pl-5">
-                <div className="absolute inset-y-0 left-[7px] w-px bg-border/50" />
-
-                <div className="space-y-0">
-                  {items.map((e) => (
-                    <div key={e.id} className="group relative flex gap-4 pb-4 last:pb-0">
-                      {/* Timeline node */}
-                      <div className="absolute -left-[13px] mt-1 flex h-4 w-4 shrink-0 items-center justify-center">
-                        <div className="h-2 w-2 rounded-full border-2 border-border bg-card ring-4 ring-background transition-colors group-hover:border-primary group-hover:bg-primary/20" />
-                      </div>
-
-                      {canEdit ? (
-                        <TimelineEntryCard entry={e} canEdit />
-                      ) : (
-                        /* Read-only view for non-staff */
-                        <div className="ml-2 flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm leading-snug text-foreground/90">{e.entry}</p>
-                            <span className="shrink-0 font-mono text-xs text-muted-foreground/70">
-                              {e.entry_time?.slice(0, 5)}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                            <Link
-                              href={`/cases/${e.case_id}`}
-                              className="font-mono font-medium text-primary hover:underline"
-                            >
-                              {e.cases?.case_number ?? "—"}
-                            </Link>
-                            <span className="text-muted-foreground">{e.agents?.full_name ?? "—"}</span>
-                            {e.location && (
-                              <span className="flex items-center gap-1 text-muted-foreground/70">
-                                <MapPin className="h-3 w-3" />
-                                {e.location}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <TimelineClient
+          caseGroups={caseGroups}
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+        />
       )}
     </div>
   );

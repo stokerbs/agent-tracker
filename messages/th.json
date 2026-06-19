@@ -518,6 +518,28 @@
         "saveError": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้",
         "deleteError": "ไม่สามารถลบรายการได้"
       }
+    },
+    "ai": {
+      "quickEntry": "บันทึกด่วน",
+      "quickEntryPlaceholder": "เช่น 10:15 ผู้ต้องสงสัยออกจากบ้าน",
+      "parseWithAI": "วิเคราะห์ด้วย AI",
+      "parsing": "กำลังวิเคราะห์…",
+      "improveWithAI": "ปรับปรุงด้วย AI",
+      "improving": "กำลังปรับปรุง…",
+      "improveHint": "แปลงเป็นภาษาทางการสอดแนม",
+      "dailySummary": "สรุปประจำวัน",
+      "generating": "กำลังสร้าง…",
+      "summaryTitle": "รายงานการสอดแนมประจำวัน",
+      "copy": "คัดลอก",
+      "copied": "คัดลอกแล้ว!",
+      "aiUnavailable": "ไม่ได้กำหนดค่า AI",
+      "parseSuccess": "วิเคราะห์แล้ว — ตรวจสอบและปรับก่อนบันทึก"
+    },
+    "section": {
+      "collapse": "ย่อ",
+      "expand": "ขยาย",
+      "entries": "{count} รายการ",
+      "entry": "1 รายการ"
     }
   },
   "evidence": {

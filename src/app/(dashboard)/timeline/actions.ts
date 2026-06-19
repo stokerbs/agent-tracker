@@ -104,3 +104,124 @@ export async function deleteTimelineEntry(id: string, caseId: string) {
   revalidatePath("/timeline");
   return { ok: true };
 }
+
+// ─── AI helpers ───────────────────────────────────────────────────────────────
+
+const AI_MODEL = process.env.AI_REPORT_MODEL ?? "claude-sonnet-4-6";
+
+async function callAnthropic(
+  system: string,
+  user: string,
+  maxTokens: number,
+): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: user }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+  const data = await res.json();
+  return data?.content?.[0]?.text ?? "";
+}
+
+export async function parseTimelineEntry(
+  rawText: string,
+  defaultDate: string,
+): Promise<{ time: string; date: string; entry: string; error?: string }> {
+  const trimmed = rawText.trim().slice(0, 1000);
+  if (!trimmed) return { time: "", date: defaultDate, entry: "", error: "Entry text is required" };
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Regex fallback
+    const match = trimmed.match(/\b(\d{1,2})[.:h](\d{2})\b/);
+    const h = match ? match[1].padStart(2, "0") : new Date().getHours().toString().padStart(2, "0");
+    const m = match ? match[2] : new Date().getMinutes().toString().padStart(2, "0");
+    return { time: `${h}:${m}`, date: defaultDate, entry: trimmed };
+  }
+
+  try {
+    const system = `You are a surveillance timeline parser. Extract time, date, and rewrite as professional English. Return JSON only: {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"}. Rules: time in 24h format; if missing use current time. Date: use defaultDate unless explicitly stated, defaultDate is ${defaultDate}. Entry: professional surveillance English, translate Thai to English, start with 'The subject' or action verb. No markdown, no explanation, just JSON.`;
+    const text = await callAnthropic(system, `Field note: "${trimmed}"`, 200);
+    const jsonStart = text.indexOf("{");
+    const jsonEnd = text.lastIndexOf("}");
+    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    return {
+      time: parsed.time ?? "",
+      date: parsed.date ?? defaultDate,
+      entry: parsed.entry ?? trimmed,
+    };
+  } catch {
+    return { time: "", date: defaultDate, entry: trimmed, error: "AI parsing failed" };
+  }
+}
+
+export async function improveTimelineEntry(
+  text: string,
+): Promise<{ improved?: string; error?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { error: "AI not configured" };
+  }
+  try {
+    const system =
+      "Rewrite as professional surveillance language. English only. Third person. Past tense. Start with 'The subject' or action verb. Factual, concise. Return ONLY the rewritten text, no quotes, no explanation. Translate Thai to English.";
+    const improved = await callAnthropic(system, text, 300);
+    return { improved: improved.trim() };
+  } catch {
+    return { error: "AI improvement failed" };
+  }
+}
+
+export async function generateDailySummary(
+  caseId: string,
+  date: string,
+): Promise<{ summary?: string; error?: string }> {
+  const supabase = await createClient();
+
+  const [entriesRes, caseRes] = await Promise.all([
+    supabase
+      .from("timeline_entries")
+      .select("entry_time, entry, location")
+      .eq("case_id", caseId)
+      .eq("entry_date", date)
+      .is("deleted_at", null)
+      .order("entry_time", { ascending: true }),
+    supabase.from("cases").select("case_number").eq("id", caseId).maybeSingle(),
+  ]);
+
+  const entries = entriesRes.data ?? [];
+  const caseRow = caseRes.data;
+
+  const entriesText = entries
+    .map(
+      (e) =>
+        `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+    )
+    .join("\n");
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const header = `DAILY SURVEILLANCE REPORT — ${caseRow?.case_number ?? caseId} — ${date}`;
+    const body = entries.length
+      ? entriesText
+      : "No entries recorded for this date.";
+    return { summary: `${header}\n\n${body}` };
+  }
+
+  try {
+    const system =
+      "Write a professional daily surveillance summary. Format: Header 'DAILY SURVEILLANCE REPORT — [Case] — [Date]', brief executive summary (2-3 sentences), chronological narrative in professional surveillance language, closing observation. English only. Third person. Past tense. Factual.";
+    const user = `Case: ${caseRow?.case_number}\nDate: ${date}\n\nTimeline:\n${entriesText}`;
+    const summary = await callAnthropic(system, user, 800);
+    return { summary: summary.trim() };
+  } catch {
+    return { error: "Failed to generate summary" };
+  }
+}

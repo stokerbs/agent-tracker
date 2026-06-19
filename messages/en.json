@@ -518,6 +518,28 @@
         "saveError": "Failed to save changes",
         "deleteError": "Failed to delete entry"
       }
+    },
+    "ai": {
+      "quickEntry": "Quick entry",
+      "quickEntryPlaceholder": "e.g. 10:15 target left residence heading north",
+      "parseWithAI": "Parse with AI",
+      "parsing": "Parsing…",
+      "improveWithAI": "Improve with AI",
+      "improving": "Improving…",
+      "improveHint": "Rewrite as professional surveillance language",
+      "dailySummary": "Daily Summary",
+      "generating": "Generating…",
+      "summaryTitle": "Daily Surveillance Report",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "aiUnavailable": "AI not configured",
+      "parseSuccess": "Entry parsed — review and adjust before saving"
+    },
+    "section": {
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "entries": "{count} entries",
+      "entry": "1 entry"
     }
   },
   "evidence": {

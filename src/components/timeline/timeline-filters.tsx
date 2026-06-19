@@ -6,21 +6,8 @@ import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-export function TimelineFilters({
-  agents,
-  count,
-}: {
-  agents: { id: string; full_name: string; agent_code: string }[];
-  count: number;
-}) {
+export function TimelineFilters({ count }: { count: number }) {
   const tf = useTranslations("timeline.filters");
   const router = useRouter();
   const pathname = usePathname();
@@ -29,7 +16,7 @@ export function TimelineFilters({
 
   function push(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
-    if (value && value !== "all") {
+    if (value) {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -42,13 +29,12 @@ export function TimelineFilters({
     debounceRef.current = setTimeout(() => push(key, value), 300);
   }
 
-  const hasFilters =
-    sp.has("q") || sp.has("agent_id") || sp.has("from") || sp.has("to");
+  const hasFilters = sp.has("q") || sp.has("from") || sp.has("to");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none text-muted-foreground" />
         <Input
           className="h-8 w-44 pl-8 text-xs"
           placeholder={tf("searchPlaceholder")}
@@ -56,26 +42,6 @@ export function TimelineFilters({
           onChange={(e) => pushDebounced("q", e.target.value)}
         />
       </div>
-
-      <Select
-        value={sp.get("agent_id") ?? "all"}
-        onValueChange={(v) => push("agent_id", v)}
-      >
-        <SelectTrigger className="h-8 w-44 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{tf("allAgents")}</SelectItem>
-          {agents.map((a) => (
-            <SelectItem key={a.id} value={a.id}>
-              {a.full_name}
-              <span className="ml-1.5 font-mono text-[10px] opacity-60">
-                {a.agent_code}
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
 
       <div className="flex items-center gap-1">
         <Input
