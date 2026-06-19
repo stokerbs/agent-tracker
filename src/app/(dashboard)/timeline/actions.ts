@@ -387,73 +387,56 @@ function buildFallbackReport(
   reportType: ReportType,
   caseNumber: string,
   date: string,
-  timelineText: string,
+  entries: Array<{ entry_time: string; entry: string; location: string | null }>,
 ): string {
   const thaiDate = formatThaiDate(date);
+  const lines = entries.map(
+    (e) => `${e.entry_time.slice(0, 5)} น. — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+  );
 
   if (reportType === "thai_client") {
-    return `รายงานสรุปการเฝ้าสังเกตการณ์
-================================
+    return `รายงานการเฝ้าสังเกตการณ์ประจำวัน
+==================================
 เลขคดี: ${caseNumber}
 วันที่: ${thaiDate}
 
-สรุปภาพรวม
------------
-รายงานการเฝ้าสังเกตการณ์ประจำวันที่ ${thaiDate}
+ลำดับการสังเกตการณ์
+--------------------
+${lines.length ? lines.join("\n") : "(ไม่มีรายการบันทึก)"}
 
-ลำดับเหตุการณ์
---------------
-${timelineText || "(ไม่มีรายการบันทึก)"}
-
-ข้อสังเกตสำคัญ
---------------
--
-
-หมายเหตุ
----------
-รายงานนี้สร้างจากข้อมูลในระบบโดยอัตโนมัติ`;
+สิ้นสุดรายงาน`;
   }
 
   if (reportType === "english_client") {
+    const obsLines = entries.map(
+      (e) => `${e.entry_time.slice(0, 5)} hrs — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+    );
     return `DAILY SURVEILLANCE REPORT
 =========================
 Case Number: ${caseNumber}
 Date: ${date}
 
-Executive Summary
------------------
-Daily surveillance report for ${date}.
-
-Chronological Observations
+CHRONOLOGICAL OBSERVATIONS
 --------------------------
-${timelineText || "(No entries recorded)"}
+${obsLines.length ? obsLines.join("\n") : "(No entries recorded)"}
 
-Key Findings
-------------
--
-
-Remarks
--------
-This report was generated automatically from system records.`;
+End of Report`;
   }
 
   // internal
+  const obsLines = entries.map(
+    (e) => `${e.entry_time.slice(0, 5)} hrs — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+  );
   return `SURVEILLANCE OPERATIONS REPORT
 ===============================
 Case: ${caseNumber}
 Date: ${date}
 
-Timeline
---------
-${timelineText || "(No entries recorded)"}
+CHRONOLOGICAL OBSERVATIONS
+--------------------------
+${obsLines.length ? obsLines.join("\n") : "(No entries recorded)"}
 
-Operational Notes
------------------
--
-
-Recommendations
----------------
--`;
+End of Report`;
 }
 
 export async function generateReport(
@@ -485,105 +468,91 @@ export async function generateReport(
     : "(ไม่มีรายการบันทึก / No entries recorded)";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, timelineText) };
+    return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
   }
 
   const thaiDate = formatThaiDate(date);
 
+  const FACTUAL_RULES_EN = `CRITICAL RULES — FACTUAL OBSERVATIONS ONLY:
+- Record ONLY what was directly observed and recorded. Never infer, assume, speculate, interpret, or assess.
+- Forbidden words and phrases: "appeared", "seemed", "likely", "assessed", "believed", "routine behavior", "no suspicious activity", "subject remained inside", "possibly", "probably", "may have".
+- Do NOT write an Executive Summary, Key Findings, Remarks, Recommendations, Conclusions, or any closing observation.
+- The report ends immediately after the final chronological entry, followed by "End of Report" on its own line.
+- No additional text after "End of Report".`;
+
+  const FACTUAL_RULES_TH = `กฎเด็ดขาด — บันทึกเฉพาะที่สังเกตเห็นโดยตรงเท่านั้น:
+- ห้ามสรุป อนุมาน คาดเดา หรือตีความพฤติกรรม
+- ห้ามใช้คำว่า "ดูเหมือน" "น่าจะ" "คาดว่า" "ประเมินว่า" "พฤติกรรมปกติ" "ไม่พบพฤติกรรมน่าสงสัย" "อาจจะ"
+- ห้ามเขียนบทสรุป ข้อสังเกตสำคัญ หมายเหตุ หรือคำแนะนำใด ๆ
+- รายงานสิ้นสุดทันทีหลังรายการสุดท้าย ตามด้วย "สิ้นสุดรายงาน" บนบรรทัดใหม่
+- ไม่มีข้อความใด ๆ หลัง "สิ้นสุดรายงาน"`;
+
   const prompts: Record<ReportType, string> = {
-    thai_client: `คุณเป็นผู้เชี่ยวชาญด้านการเขียนรายงานสืบสวนระดับมืออาชีพสำหรับลูกค้า
+    thai_client: `คุณเป็นนักเขียนรายงานการเฝ้าสังเกตการณ์ระดับมืออาชีพ
 
-จงเขียนรายงานสรุปการเฝ้าสังเกตการณ์เป็นภาษาไทยที่เป็นทางการและเหมาะสมสำหรับลูกค้า
+จงเขียนรายงานการเฝ้าสังเกตการณ์เป็นภาษาไทยทางการ โดยใช้รูปแบบด้านล่างนี้เท่านั้น:
 
-รูปแบบรายงาน:
-รายงานสรุปการเฝ้าสังเกตการณ์
-================================
+รายงานการเฝ้าสังเกตการณ์ประจำวัน
+==================================
 เลขคดี: ${caseNumber}
 วันที่: ${thaiDate}
 
-สรุปภาพรวม
------------
-[2-3 ประโยคสรุปภาพรวมของวัน]
+ลำดับการสังเกตการณ์
+--------------------
+[สำหรับทุกรายการ: HH:MM น. — การสังเกตการณ์]
 
-ลำดับเหตุการณ์
---------------
-[เรียงตามเวลา เขียนเป็นประโยคสมบูรณ์ ใช้ภาษาสุภาพ]
+สิ้นสุดรายงาน
 
-ข้อสังเกตสำคัญ
---------------
-[จุดสำคัญที่ควรทราบ]
+${FACTUAL_RULES_TH}
 
-หมายเหตุ
----------
-[ข้อมูลเพิ่มเติมหรือคำแนะนำ]
+รูปแบบแต่ละรายการ: "HH:MM น. — [การสังเกตการณ์เป็นภาษาไทยทางการ]"
+ใช้คำว่า "ผู้ต้องสงสัย" หรือ "บุคคลเป้าหมาย" เท่านั้น
+แปลงบันทึกภาคสนามเป็นภาษาไทยทางการ ห้ามเพิ่มเนื้อหาใด ๆ ที่ไม่มีในบันทึกต้นฉบับ
+Return only the report text, no extra explanation.`,
 
-กฎ:
-- ภาษาไทยทางการ เหมาะสำหรับลูกค้า
-- ไม่เปิดเผยรายละเอียดปฏิบัติการภายใน
-- เขียนเชิงบรรยาย ไม่ใช่รายการ
-- ใช้คำว่า "ผู้ต้องสงสัย" หรือ "บุคคลเป้าหมาย"
-- Return only the report text, no extra explanation`,
+    english_client: `You are a professional surveillance report writer.
 
-    english_client: `You are a professional surveillance report writer for client delivery.
+Write a daily surveillance report in English using ONLY the format below:
 
-Write a formal daily surveillance report in English suitable for client presentation and legal review.
-
-Format:
 DAILY SURVEILLANCE REPORT
 =========================
 Case Number: ${caseNumber}
 Date: ${date}
 
-Executive Summary
------------------
-[2-3 sentence overview of the day's activities]
-
-Chronological Observations
+CHRONOLOGICAL OBSERVATIONS
 --------------------------
-[Time-ordered narrative in complete sentences, professional tone]
+[For every entry: HH:MM hrs — observation]
 
-Key Findings
-------------
-[Notable observations or patterns]
+End of Report
 
-Remarks
--------
-[Additional context or follow-up notes]
+${FACTUAL_RULES_EN}
 
-Rules:
-- Professional client-facing English
-- Third person, past tense
-- Do not expose internal operational details
-- Narrative prose, not bullet lists
-- The subject / the individual / the target
-- Return only the report text, no extra explanation`,
+Format each entry as: "HH:MM hrs — [observation in professional English, third person, past tense]"
+Use "the subject" or "the individual". Convert field notes into professional surveillance English.
+Do NOT add any content not present in the original notes.
+Return only the report text, no extra explanation.`,
 
-    internal: `You are writing an internal surveillance operations report for the investigative team.
+    internal: `You are writing an internal surveillance operations report.
 
-Format:
+Write the report using ONLY the format below:
+
 SURVEILLANCE OPERATIONS REPORT
 ===============================
 Case: ${caseNumber}
 Date: ${date}
 
-Timeline
---------
-[Preserve all investigator observations with exact times]
+CHRONOLOGICAL OBSERVATIONS
+--------------------------
+[For every entry: HH:MM hrs — observation]
 
-Operational Notes
------------------
-[Include any surveillance gaps, vehicle details, locations, patterns observed]
+End of Report
 
-Recommendations
----------------
-[Suggested follow-up actions based on the day's observations]
+${FACTUAL_RULES_EN}
 
-Rules:
-- Preserve all operational details
-- Note surveillance gaps explicitly (e.g. "Gap: 11:30–13:00, subject not observed")
-- Include any vehicle/location details mentioned
-- Professional English
-- Return only the report text, no extra explanation`,
+Format each entry as: "HH:MM hrs — [observation preserving all operational detail: vehicles, locations, descriptions]"
+Preserve every operational detail from the original notes exactly as recorded.
+Do NOT add any content not present in the original notes.
+Return only the report text, no extra explanation.`,
   };
 
   try {
@@ -592,6 +561,6 @@ Rules:
     const report = await callAnthropic(system, user, 1200);
     return { report: report.trim() };
   } catch (err) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, timelineText) };
+    return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
   }
 }
