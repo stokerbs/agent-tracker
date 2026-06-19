@@ -172,7 +172,9 @@ export async function improveTimelineEntry(
   }
   try {
     const system =
-      "Rewrite as professional surveillance language. English only. Third person. Past tense. Start with 'The subject' or action verb. Factual, concise. Return ONLY the rewritten text, no quotes, no explanation. Translate Thai to English.";
+      "Rewrite as professional surveillance language. Third person. Past tense. Factual, concise. Return ONLY the rewritten text, no quotes, no explanation.\n" +
+      "If input is Thai: output Professional Thai (maintain Thai language). Start with 'ผู้ต้องสงสัย' or appropriate Thai surveillance verb.\n" +
+      "If input is English: output Professional English. Start with 'The subject' or action verb.";
     const improved = await callAnthropic(system, text, 300);
     return { improved: improved.trim() };
   } catch {
@@ -183,6 +185,7 @@ export async function improveTimelineEntry(
 export async function generateDailySummary(
   caseId: string,
   date: string,
+  format: "internal" | "client" = "internal",
 ): Promise<{ summary?: string; error?: string }> {
   const supabase = await createClient();
 
@@ -217,7 +220,16 @@ export async function generateDailySummary(
 
   try {
     const system =
-      "Write a professional daily surveillance summary. Format: Header 'DAILY SURVEILLANCE REPORT — [Case] — [Date]', brief executive summary (2-3 sentences), chronological narrative in professional surveillance language, closing observation. English only. Third person. Past tense. Factual.";
+      format === "client"
+        ? "Write a professional daily surveillance report for a client.\n" +
+          "Format:\n" +
+          "- Header: \"DAILY SURVEILLANCE REPORT\"\n" +
+          "- Case number and date\n" +
+          "- Professional narrative (no jargon, suitable for client presentation)\n" +
+          "- Third person, past tense, English only\n" +
+          "- Factual, concise\n" +
+          "Return the full formatted report as plain text."
+        : "Write a professional daily surveillance summary. Format: Header 'DAILY SURVEILLANCE REPORT — [Case] — [Date]', brief executive summary (2-3 sentences), chronological narrative in professional surveillance language, closing observation. English only. Third person. Past tense. Factual.";
     const user = `Case: ${caseRow?.case_number}\nDate: ${date}\n\nTimeline:\n${entriesText}`;
     const summary = await callAnthropic(system, user, 800);
     return { summary: summary.trim() };

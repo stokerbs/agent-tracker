@@ -10,6 +10,7 @@ import {
   Check,
   Loader2,
   MapPin,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ function entryCount(n: number, t: ReturnType<typeof useTranslations<"timeline.se
 interface SummaryState {
   open: boolean;
   text: string;
+  title: string;
   copied: boolean;
 }
 
@@ -63,8 +65,8 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
 
   const [collapsedCases, setCollapsedCases] = useState<Record<string, boolean>>({});
   const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
-  const [summaryState, setSummaryState] = useState<SummaryState>({ open: false, text: "", copied: false });
-  const [summaryLoading, setSummaryLoading] = useState<string | null>(null); // `${caseId}::${date}`
+  const [summaryState, setSummaryState] = useState<SummaryState>({ open: false, text: "", title: "", copied: false });
+  const [summaryLoading, setSummaryLoading] = useState<string | null>(null); // `${caseId}::${date}::${format}`
   const [, startSummary] = useTransition();
 
   function toggleCase(caseId: string) {
@@ -75,17 +77,18 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
     setCollapsedDates((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  async function handleGenerateSummary(caseId: string, date: string) {
-    const key = `${caseId}::${date}`;
+  async function handleGenerateSummary(caseId: string, date: string, format: "internal" | "client" = "internal") {
+    const key = `${caseId}::${date}::${format}`;
     setSummaryLoading(key);
     startSummary(async () => {
-      const res = await generateDailySummary(caseId, date);
+      const res = await generateDailySummary(caseId, date, format);
       setSummaryLoading(null);
       if (res.error) {
         toast.error(res.error);
         return;
       }
-      setSummaryState({ open: true, text: res.summary ?? "", copied: false });
+      const title = format === "client" ? tai("clientReportTitle") : tai("summaryTitle");
+      setSummaryState({ open: true, text: res.summary ?? "", title, copied: false });
     });
   }
 
@@ -93,6 +96,10 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
     await navigator.clipboard.writeText(text);
     setSummaryState((s) => ({ ...s, copied: true }));
     setTimeout(() => setSummaryState((s) => ({ ...s, copied: false })), 2000);
+  }
+
+  function isSummaryLoadingFor(caseId: string, date: string, format: "internal" | "client") {
+    return summaryLoading === `${caseId}::${date}::${format}`;
   }
 
   return (
@@ -108,7 +115,7 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
               <button
                 type="button"
                 onClick={() => toggleCase(cg.caseId)}
-                className="flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                className="flex min-h-[52px] w-full items-center gap-2 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/40"
               >
                 {caseCollapsed ? (
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -132,12 +139,12 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
 
                       return (
                         <div key={dg.date}>
-                          {/* Date header */}
-                          <div className="mb-3 flex items-center gap-2">
+                          {/* Date header — sticky on scroll */}
+                          <div className="sticky top-0 z-10 mb-3 flex min-h-[44px] items-center gap-2 bg-background/95 backdrop-blur-sm">
                             <button
                               type="button"
                               onClick={() => toggleDate(dateKey)}
-                              className="flex items-center gap-1.5 rounded text-left transition-colors hover:text-foreground"
+                              className="flex min-h-[44px] items-center gap-1.5 rounded px-1 text-left transition-colors hover:text-foreground"
                             >
                               {dateCollapsed ? (
                                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -159,16 +166,33 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
-                              onClick={() => handleGenerateSummary(cg.caseId, dg.date)}
-                              disabled={isSummaryLoading}
+                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
+                              onClick={() => handleGenerateSummary(cg.caseId, dg.date, "internal")}
+                              disabled={!!summaryLoading}
                             >
-                              {isSummaryLoading ? (
+                              {isSummaryLoadingFor(cg.caseId, dg.date, "internal") ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
                                 <FileText className="h-3 w-3" />
                               )}
-                              {isSummaryLoading ? tai("generating") : tai("dailySummary")}
+                              {isSummaryLoadingFor(cg.caseId, dg.date, "internal") ? tai("generating") : tai("dailySummary")}
+                            </Button>
+
+                            {/* Client Report button */}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground"
+                              onClick={() => handleGenerateSummary(cg.caseId, dg.date, "client")}
+                              disabled={!!summaryLoading}
+                            >
+                              {isSummaryLoadingFor(cg.caseId, dg.date, "client") ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Users className="h-3 w-3" />
+                              )}
+                              {isSummaryLoadingFor(cg.caseId, dg.date, "client") ? tai("generating") : tai("clientReport")}
                             </Button>
                           </div>
 
@@ -245,7 +269,7 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{tai("summaryTitle")}</DialogTitle>
+            <DialogTitle>{summaryState.title || tai("summaryTitle")}</DialogTitle>
             <DialogDescription className="sr-only">
               {t("description")}
             </DialogDescription>

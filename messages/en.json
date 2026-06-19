@@ -528,6 +528,8 @@
       "improving": "Improving…",
       "improveHint": "Rewrite as professional surveillance language",
       "dailySummary": "Daily Summary",
+      "clientReport": "Client Report",
+      "clientReportTitle": "Daily Client Report",
       "generating": "Generating…",
       "summaryTitle": "Daily Surveillance Report",
       "copy": "Copy",
