@@ -12,15 +12,18 @@ export default async function GpsMonitorPage() {
   const devices  = await getGpsMonitorDevices();
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        title="GPS Monitor"
-        description={
-          profile.role === "agent"
-            ? "GPS trackers assigned to your cases."
-            : "Live GPS device positions across all active cases."
-        }
-      />
+    <div className="flex flex-col gap-3">
+      {/* Header hidden on mobile to maximise map area */}
+      <div className="hidden md:block">
+        <PageHeader
+          title="GPS Monitor"
+          description={
+            profile.role === "agent"
+              ? "GPS trackers assigned to your cases."
+              : "Live GPS device positions across all active cases."
+          }
+        />
+      </div>
       <GpsMonitorMap initialDevices={devices} role={profile.role} />
     </div>
   );
