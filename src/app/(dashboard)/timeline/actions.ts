@@ -223,82 +223,76 @@ export async function parseMultipleEntries(
   const trimmed = rawText.trim().slice(0, 5000);
   if (!trimmed) return { error: "Entry text is required" };
 
+  // Step 1: Always split with regex first — this is deterministic and never collapses entries.
+  // The AI's only job below is to enhance the descriptions, not control splitting.
+  const regexEntries = parseWithRegex(trimmed, defaultDate);
+
+  // Step 2: No API key — return regex results as-is.
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { entries: parseWithRegex(trimmed, defaultDate) };
+    return { entries: regexEntries };
   }
 
-  const system = `You are a professional surveillance timeline parser for a Thai detective agency.
+  // Step 3: Use AI to enhance descriptions on the already-split segments.
+  // The AI receives a numbered list and must return the same count.
+  // time and date from the regex are always used as ground truth.
+  const segments = regexEntries
+    .map((e, i) => `[${i + 1}] time=${e.time} | description="${e.entry}"`)
+    .join("\n");
 
-The input may contain ONE or MULTIPLE timestamped surveillance events, possibly spanning multiple days.
+  const system = `You are a professional surveillance language editor for a Thai detective agency.
 
-STEP 1 — DETECT DATE HEADERS
-Scan for date headers and track the active date. Supported formats:
-- Thai Buddhist calendar full: "19 มิถุนายน 2569", "วันพฤหัสบดีที่ 19 มิถุนายน 2569"
-- Thai abbreviated: "19 มิ.ย. 69", "19 มิ.ย. 2569"
-- English: "19 June 2026", "June 19, 2026", "19/06/2026"
-- ISO: "2026-06-19"
-Convert Thai Buddhist year to CE by subtracting 543 (e.g. 2569 → 2026).
-Thai months: ม.ค.=01 ก.พ.=02 มี.ค.=03 เม.ย.=04 พ.ค.=05 มิ.ย.=06 ก.ค.=07 ส.ค.=08 ก.ย.=09 ต.ค.=10 พ.ย.=11 ธ.ค.=12
-Apply detected date to all following entries until the next date header.
-Default date (use when no date is detected): ${defaultDate}
+You will receive a numbered list of pre-split surveillance timeline entries. Each has a time and description.
+Your ONLY job is to rewrite each description into professional surveillance language.
 
-STEP 2 — DETECT TIME MARKERS
-Recognize at the start of a line:
-- HH.MM (e.g. 10.15, 13.45)
-- HH:MM (e.g. 10:15, 13:45)
-- HHMM  (e.g. 1015, 1345 — only valid 24h times)
-- HH-MM (e.g. 10-15)
-Convert all to HH:MM 24-hour format.
+CRITICAL RULES:
+1. Return EXACTLY ${regexEntries.length} entries — one per input line. Never add, merge, or remove entries.
+2. Keep "time" and "date" values EXACTLY as provided. Do NOT change them.
+3. LANGUAGE: If description is Thai → professional Thai (do NOT translate to English). If English → professional English.
+4. If description is empty → use "(ไม่มีรายละเอียด)" for a Thai-context entry, "(no description)" for English.
+5. Thai descriptions start with "ผู้ต้องสงสัย" or an appropriate Thai surveillance verb.
+6. English descriptions start with "The subject" or an action verb.
 
-STEP 3 — SPLIT
-Each time marker starts a new entry. Text between markers is the description for that entry.
-Lines that are date headers (Step 1) are NOT entries — they only update the active date.
-
-STEP 4 — LANGUAGE PRESERVATION AND REWRITE
-IMPORTANT: Do NOT translate between Thai and English.
-- If description is Thai → rewrite as professional surveillance Thai. Keep Thai. Start with "ผู้ต้องสงสัย" or appropriate Thai surveillance verb.
-- If description is English → rewrite as professional surveillance English. Start with "The subject" or an action verb.
-
-Thai rewrite examples:
+Thai examples:
+  "" → "(ไม่มีรายละเอียด)"
   "เป้าหมายออกจากบ้าน" → "ผู้ต้องสงสัยออกจากที่พักอาศัย"
   "เป้าหมายเข้าสตาร์บัค" → "ผู้ต้องสงสัยเดินทางเข้าร้าน Starbucks"
-  "เป้าหมายขับรถออกไป" → "ผู้ต้องสงสัยขับยานพาหนะออกจากพื้นที่"
 
-English rewrite examples:
+English examples:
+  "" → "(no description)"
   "target left home" → "The subject departed from the residence."
-  "target at coffee shop" → "The subject was observed at a coffee establishment."
 
-STEP 5 — SORT
-Sort all entries by date ASC, then time ASC.
-
-Return ONLY a JSON array — no markdown, no explanation, no code block:
-[
-  {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"},
-  {"time": "HH:MM", "date": "YYYY-MM-DD", "entry": "Professional description"}
-]
-
-If only one event is found, return a single-element array.`;
+Return ONLY a JSON array with exactly ${regexEntries.length} objects:
+[{"time":"HH:MM","date":"YYYY-MM-DD","entry":"..."},...]
+No markdown. No explanation. Only the JSON array.`;
 
   try {
-    const text = await callAnthropic(system, `Field notes:\n${trimmed}`, 1500);
+    const text = await callAnthropic(
+      system,
+      `Enhance these ${regexEntries.length} entries:\n${segments}`,
+      Math.min(150 * regexEntries.length + 200, 4000),
+    );
     const jsonStart = text.indexOf("[");
     const jsonEnd = text.lastIndexOf("]");
     if (jsonStart === -1 || jsonEnd === -1) throw new Error("No array in response");
-    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
-    const entries: ParsedEntry[] = parsed
-      .map((p: { time?: string; date?: string; entry?: string }) => ({
-        time: String(p.time ?? "").trim() || new Date().toTimeString().slice(0, 5),
-        date: String(p.date ?? "").trim() || defaultDate,
-        entry: String(p.entry ?? "").trim() || trimmed,
-      }))
-      .sort((a: ParsedEntry, b: ParsedEntry) =>
-        a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time),
-      );
+    const aiParsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+
+    // If the AI returns a different count, fall back to regex results — don't merge.
+    if (!Array.isArray(aiParsed) || aiParsed.length !== regexEntries.length) {
+      throw new Error(`Count mismatch: expected ${regexEntries.length}, got ${aiParsed?.length}`);
+    }
+
+    const entries: ParsedEntry[] = aiParsed.map(
+      (p: { entry?: string }, i: number) => ({
+        time: regexEntries[i].time,   // regex time is ground truth
+        date: regexEntries[i].date,   // regex date is ground truth
+        entry: String(p.entry ?? "").trim() || "(no description)",
+      }),
+    );
+
     return { entries };
   } catch {
-    // Fallback: return regex parse
-    return { entries: parseWithRegex(trimmed, defaultDate) };
+    // AI failed or returned wrong count — use the regex split as-is.
+    return { entries: regexEntries };
   }
 }
 
