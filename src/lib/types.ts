@@ -223,11 +223,16 @@ export interface CaseWithAgents extends Case {
 
 export interface LinkedEvidence {
   id: string;
+  case_id: string;
   type: EvidenceType;
+  category: string | null;
   storage_path: string;
   file_name: string | null;
+  file_size: number | null;
   mime_type: string | null;
   notes: string | null;
+  uploaded_by: string | null;
+  uploaded_at: string;
   signedUrl: string;
 }
 

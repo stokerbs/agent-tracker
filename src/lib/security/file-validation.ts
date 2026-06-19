@@ -5,8 +5,9 @@ export class FileValidationError extends Error {
   }
 }
 
-export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-export const MAX_PDF_SIZE = 20 * 1024 * 1024;   // 20 MB
+export const MAX_IMAGE_SIZE = 10 * 1024 * 1024;   // 10 MB
+export const MAX_PDF_SIZE   = 20 * 1024 * 1024;   // 20 MB
+export const MAX_VIDEO_SIZE = 200 * 1024 * 1024;  // 200 MB
 
 export const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -15,6 +16,13 @@ export const ALLOWED_IMAGE_TYPES = [
 ] as const;
 
 export const ALLOWED_DOCUMENT_TYPES = ["application/pdf"] as const;
+
+export const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+] as const;
 
 // ─── magic-number helpers ─────────────────────────────────────────────────────
 
@@ -102,6 +110,24 @@ export async function validateImageUpload(file: File): Promise<void> {
     throw new FileValidationError("Unsupported file type.");
   }
   await validateImageMagicNumber(file);
+}
+
+/**
+ * Validates a video file upload (MP4/MOV/WebM/M4V — max 200 MB).
+ *
+ * Video containers are too format-diverse for a reliable magic-number check,
+ * so validation is MIME type + size only. Supabase Storage is the backstop.
+ */
+export async function validateVideoUpload(file: File): Promise<void> {
+  if (file.size === 0) {
+    throw new FileValidationError("Empty file.");
+  }
+  if (file.size > MAX_VIDEO_SIZE) {
+    throw new FileValidationError("Video exceeds 200 MB limit.");
+  }
+  if (!(ALLOWED_VIDEO_TYPES as readonly string[]).includes(file.type)) {
+    throw new FileValidationError("Unsupported video type. Use MP4, MOV, or WebM.");
+  }
 }
 
 /**

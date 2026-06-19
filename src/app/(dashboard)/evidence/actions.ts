@@ -7,9 +7,11 @@ import { handleDbError } from "@/lib/errors";
 import { BUCKETS } from "@/lib/constants";
 import {
   ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
   FileValidationError,
   validateDocumentUpload,
   validateImageUpload,
+  validateVideoUpload,
 } from "@/lib/security/file-validation";
 import type { EvidenceType } from "@/lib/types";
 
@@ -44,6 +46,8 @@ export async function uploadEvidence(formData: FormData) {
   try {
     if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
       await validateImageUpload(file);
+    } else if ((ALLOWED_VIDEO_TYPES as readonly string[]).includes(file.type)) {
+      await validateVideoUpload(file);
     } else {
       // validateDocumentUpload rejects anything that is not application/pdf.
       await validateDocumentUpload(file);

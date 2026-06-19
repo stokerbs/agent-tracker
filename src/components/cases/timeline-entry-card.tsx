@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, MapPin, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
+import {
+  Film,
+  ImageIcon,
+  Loader2,
+  MapPin,
+  Paperclip,
+  Pencil,
+  Save,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -10,9 +21,12 @@ import {
   deleteTimelineEntry,
   improveTimelineEntry,
 } from "@/app/(dashboard)/timeline/actions";
+import { uploadEvidence, deleteEvidence } from "@/app/(dashboard)/evidence/actions";
+import { TimelineEvidenceGallery } from "@/components/timeline/timeline-evidence-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 type EntryWithAgent = TimelineEntry & {
@@ -22,15 +36,22 @@ type EntryWithAgent = TimelineEntry & {
 interface Props {
   entry: EntryWithAgent;
   canEdit: boolean;
+  isAdmin?: boolean;
   linkedEvidence?: LinkedEvidence[];
 }
 
-export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
+export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvidence = [] }: Props) {
   const t = useTranslations("timeline.entry");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [improving, startImprove] = useTransition();
+  const [uploading, startUpload] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
 
   const [date, setDate] = useState(entry.entry_date);
   const [time, setTime] = useState(entry.entry_time.slice(0, 5));
@@ -86,43 +107,83 @@ export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
     });
   }
 
+  function handleAttachFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    startUpload(async () => {
+      const results = await Promise.all(
+        files.map((f) => {
+          const fd = new FormData();
+          fd.set("case_id", entry.case_id);
+          fd.set("file", f);
+          fd.set("timeline_entry_id", entry.id);
+          return uploadEvidence(fd);
+        }),
+      );
+      const failed = results.filter((r) => r?.error).length;
+      if (failed > 0) {
+        toast.warning(`${files.length - failed} file(s) attached, ${failed} failed.`);
+      } else {
+        toast.success(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
+      }
+      router.refresh();
+    });
+  }
+
+  function handleDeleteEvidence(evidenceId: string, fileName: string | null) {
+    if (!confirm(`Delete "${fileName ?? "file"}"?`)) return;
+    startUpload(async () => {
+      const res = await deleteEvidence(evidenceId);
+      if (res?.error) { toast.error(res.error); return; }
+      toast.success("Attachment removed");
+      router.refresh();
+    });
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    handleAttachFiles(e.dataTransfer.files);
+  }
+
+  // ── EDIT MODE ────────────────────────────────────────────────────────────────
   if (editing) {
     return (
-      <div className="ml-4 flex-1 rounded-lg border border-primary/40 bg-card p-3 ring-1 ring-primary/20">
+      <div
+        className={cn(
+          "ml-4 flex-1 rounded-lg border border-primary/40 bg-card p-3 ring-1 ring-primary/20 transition-colors",
+          isDragOver && "border-primary ring-primary/50 bg-primary/5",
+        )}
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+      >
+        {/* Date / time / location */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-7 text-xs"
-            disabled={pending}
-          />
-          <Input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="h-7 text-xs"
-            disabled={pending}
-          />
-          <Input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Location"
-            className="col-span-2 h-7 text-xs"
-            disabled={pending}
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 text-xs" disabled={pending} />
+          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-7 text-xs" disabled={pending} />
+          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="col-span-2 h-7 text-xs" disabled={pending} />
+        </div>
+
+        {/* Textarea — also acts as drop target */}
+        <div className="relative mt-2">
+          {isDragOver && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-primary bg-primary/5">
+              <span className="text-sm font-medium text-primary">Drop files here</span>
+            </div>
+          )}
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="min-h-[70px] text-sm"
+            disabled={pending || improving}
           />
         </div>
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          className="mt-2 min-h-[70px] text-sm"
-          disabled={pending || improving}
-        />
+
+        {/* AI improve */}
         <div className="mt-1 flex items-center gap-2">
           <Button
-            type="button"
-            size="sm"
-            variant="ghost"
+            type="button" size="sm" variant="ghost"
             className="h-7 gap-1 text-xs text-muted-foreground"
             onClick={handleImprove}
             disabled={improving || pending}
@@ -131,7 +192,98 @@ export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
             Improve with AI
           </Button>
         </div>
-        <div className="mt-2 flex items-center gap-2">
+
+        {/* ── Existing attachments ── */}
+        {linkedEvidence.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Attachments ({linkedEvidence.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {linkedEvidence.map((ev) => (
+                <div key={ev.id} className="relative">
+                  {ev.type === "photo" && ev.signedUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={ev.signedUrl}
+                      alt={ev.file_name ?? ""}
+                      className="h-14 w-14 rounded-md border object-cover"
+                    />
+                  ) : ev.type === "video" ? (
+                    <div className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-md border bg-violet-500/10 text-[9px] text-violet-400">
+                      <Film className="h-4 w-4" />
+                      <span className="max-w-[52px] truncate px-1">{ev.file_name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-md border bg-muted text-[9px] text-muted-foreground">
+                      <Paperclip className="h-4 w-4" />
+                      <span className="max-w-[52px] truncate px-1">{ev.file_name}</span>
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvidence(ev.id, ev.file_name)}
+                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:opacity-80"
+                      aria-label="Remove"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Upload buttons ── */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground">Add:</span>
+
+          <button
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50"
+          >
+            <ImageIcon className="h-3 w-3" /> Photos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50"
+          >
+            <Film className="h-3 w-3" /> Videos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
+          >
+            <Paperclip className="h-3 w-3" /> Files
+          </button>
+
+          {uploading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+
+          <p className="w-full text-[10px] text-muted-foreground/60 mt-0.5">
+            Or drag & drop files anywhere above
+          </p>
+        </div>
+
+        {/* Hidden file inputs */}
+        <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
+          onChange={(e) => { handleAttachFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" multiple className="sr-only"
+          onChange={(e) => { handleAttachFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={fileInputRef} type="file" accept="application/pdf" multiple className="sr-only"
+          onChange={(e) => { handleAttachFiles(e.target.files); e.target.value = ""; }} />
+
+        {/* Save / Cancel */}
+        <div className="mt-3 flex items-center gap-2">
           <Button size="sm" onClick={handleSave} disabled={pending || improving || !text.trim()} className="h-7 gap-1 text-xs">
             {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             {t("save")}
@@ -139,14 +291,13 @@ export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
           <Button size="sm" variant="outline" onClick={handleCancel} disabled={pending} className="h-7 gap-1 text-xs">
             <X className="h-3 w-3" /> {t("cancel")}
           </Button>
-          {isDirty && (
-            <span className="text-[11px] text-amber-500">Unsaved changes</span>
-          )}
+          {isDirty && <span className="text-[11px] text-amber-500">Unsaved changes</span>}
         </div>
       </div>
     );
   }
 
+  // ── VIEW MODE ────────────────────────────────────────────────────────────────
   return (
     <div className="ml-4 flex-1 rounded-lg border bg-card p-3 transition-colors hover:border-border group-hover:border-border/80">
       <div className="flex items-start justify-between gap-2">
@@ -169,59 +320,22 @@ export function TimelineEntryCard({ entry, canEdit, linkedEvidence }: Props) {
             <p className="mt-1 text-[10px] text-muted-foreground/40 italic">edited</p>
           )}
 
-          {/* Linked evidence thumbnails */}
-          {linkedEvidence && linkedEvidence.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {linkedEvidence.map((ev) =>
-                ev.mime_type?.startsWith("image/") && ev.signedUrl ? (
-                  <a
-                    key={ev.id}
-                    href={ev.signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block h-14 w-14 shrink-0 overflow-hidden rounded border hover:opacity-80"
-                  >
-                    <img
-                      src={ev.signedUrl}
-                      alt={ev.file_name ?? "Evidence"}
-                      className="h-full w-full object-cover"
-                    />
-                  </a>
-                ) : (
-                  <a
-                    key={ev.id}
-                    href={ev.signedUrl || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded border bg-muted text-[9px] leading-tight text-muted-foreground hover:opacity-80"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="max-w-[52px] truncate px-1">{ev.file_name ?? "file"}</span>
-                  </a>
-                ),
-              )}
-            </div>
-          )}
+          {/* Evidence gallery */}
+          <TimelineEvidenceGallery items={linkedEvidence} />
         </div>
+
         {canEdit && (
           <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => setEditing(true)}
-              disabled={pending}
-              title={t("edit")}
+              size="icon" variant="ghost" className="h-6 w-6"
+              onClick={() => setEditing(true)} disabled={pending} title={t("edit")}
             >
               <Pencil className="h-3 w-3" />
             </Button>
             <Button
-              size="icon"
-              variant="ghost"
+              size="icon" variant="ghost"
               className="h-6 w-6 text-destructive hover:text-destructive"
-              onClick={handleDelete}
-              disabled={pending}
-              title={t("delete")}
+              onClick={handleDelete} disabled={pending} title={t("delete")}
             >
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
             </Button>

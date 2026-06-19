@@ -96,7 +96,7 @@ export default async function TimelinePage({ searchParams }: Props) {
   if (entryIds.length > 0) {
     const { data: evidenceRows } = await supabase
       .from("evidence")
-      .select("id, type, storage_path, file_name, mime_type, notes, timeline_entry_id")
+      .select("id, case_id, type, category, storage_path, file_name, file_size, mime_type, notes, uploaded_by, uploaded_at, timeline_entry_id")
       .in("timeline_entry_id", entryIds);
 
     if (evidenceRows && evidenceRows.length > 0) {
@@ -116,11 +116,16 @@ export default async function TimelinePage({ searchParams }: Props) {
         const list = evidenceByEntryId.get(ev.timeline_entry_id) ?? [];
         list.push({
           id: ev.id,
+          case_id: ev.case_id,
           type: ev.type,
+          category: ev.category,
           storage_path: ev.storage_path,
           file_name: ev.file_name,
+          file_size: ev.file_size,
           mime_type: ev.mime_type,
           notes: ev.notes,
+          uploaded_by: ev.uploaded_by,
+          uploaded_at: ev.uploaded_at,
           signedUrl: signedUrlMap[ev.storage_path] ?? "",
         });
         evidenceByEntryId.set(ev.timeline_entry_id, list);

@@ -23,6 +23,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
+import { TimelineEvidenceGallery } from "@/components/timeline/timeline-evidence-gallery";
 import { ObservationUploader } from "@/components/timeline/observation-uploader";
 import { generateReport } from "@/app/(dashboard)/timeline/actions";
 import type { ReportType } from "@/app/(dashboard)/timeline/actions";
@@ -59,7 +60,7 @@ interface SummaryState {
   copied: boolean;
 }
 
-export function TimelineClient({ caseGroups, canEdit }: Props) {
+export function TimelineClient({ caseGroups, canEdit, isAdmin }: Props) {
   const t = useTranslations("timeline");
   const ts = useTranslations("timeline.section");
   const tai = useTranslations("timeline.ai");
@@ -259,7 +260,12 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                                     </span>
 
                                     {canEdit ? (
-                                      <TimelineEntryCard entry={e} canEdit linkedEvidence={e.linked_evidence} />
+                                      <TimelineEntryCard
+                                        entry={e}
+                                        canEdit
+                                        isAdmin={isAdmin}
+                                        linkedEvidence={e.linked_evidence}
+                                      />
                                     ) : (
                                       <div className="flex-1 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
                                         <p className="text-sm leading-snug text-foreground/90">
@@ -276,6 +282,9 @@ export function TimelineClient({ caseGroups, canEdit }: Props) {
                                             </span>
                                           )}
                                         </div>
+                                        {e.linked_evidence && e.linked_evidence.length > 0 && (
+                                          <TimelineEvidenceGallery items={e.linked_evidence} />
+                                        )}
                                       </div>
                                     )}
                                   </div>
