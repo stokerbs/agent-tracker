@@ -631,6 +631,28 @@
         "success": "ส่งค่าใช้จ่ายเรียบร้อยแล้ว"
       }
     },
+    "status": {
+      "pending": "รอดำเนินการ",
+      "paid": "จ่ายแล้ว",
+      "reimbursed": "เบิกแล้ว",
+      "cancelled": "ยกเลิก"
+    },
+    "actions": {
+      "markPaid": "ทำเครื่องหมายว่าจ่ายแล้ว",
+      "markPending": "ทำเครื่องหมายว่ารอดำเนินการ",
+      "markReimbursed": "ทำเครื่องหมายว่าเบิกแล้ว",
+      "markCancelled": "ยกเลิก",
+      "delete": "ลบ",
+      "deleteConfirmTitle": "ลบค่าใช้จ่ายนี้?",
+      "deleteConfirmDescription": "ระบบจะซ่อนรายการนี้ถาวร ไม่สามารถกู้คืนได้",
+      "deleteConfirm": "ใช่ ลบเลย",
+      "paidBy": "จ่ายโดย {name}"
+    },
+    "stats": {
+      "pending": "รอดำเนินการ",
+      "paid": "จ่ายแล้ว",
+      "reimbursed": "เบิกแล้ว"
+    },
     "exportPdf": "ส่งออก PDF",
     "exportTitle": "รายงานค่าใช้จ่าย",
     "categories": {
@@ -646,8 +668,12 @@
     "capture": {
       "button": "สแกนใบเสร็จ",
       "title": "สแกนใบเสร็จ",
-      "dropzoneLabel": "ถ่ายภาพหรืออัปโหลดใบเสร็จ",
-      "dropzoneHint": "JPG, PNG, WebP · ไม่เกิน 10 MB",
+      "takePhoto": "ถ่ายภาพ",
+      "takePhotoHint": "เปิดกล้อง — วิเคราะห์ด้วย AI ทันที",
+      "chooseGallery": "เลือกจากคลังภาพ",
+      "chooseGalleryHint": "เลือกภาพที่มีอยู่แล้ว — วิเคราะห์ด้วย AI",
+      "uploadPdf": "อัปโหลด PDF",
+      "uploadPdfHint": "ใบเสร็จ PDF — กรอกรายละเอียดเอง",
       "analyzeButton": "วิเคราะห์ด้วย AI",
       "analyzing": "กำลังสแกน…",
       "reviewTitle": "ตรวจสอบข้อมูลที่ดึงมา",

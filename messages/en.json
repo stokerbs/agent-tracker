@@ -631,6 +631,28 @@
         "success": "Expense submitted"
       }
     },
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "reimbursed": "Reimbursed",
+      "cancelled": "Cancelled"
+    },
+    "actions": {
+      "markPaid": "Mark as Paid",
+      "markPending": "Mark as Pending",
+      "markReimbursed": "Mark as Reimbursed",
+      "markCancelled": "Cancel",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this expense?",
+      "deleteConfirmDescription": "This will permanently hide the record. This cannot be undone.",
+      "deleteConfirm": "Yes, delete",
+      "paidBy": "Paid by {name}"
+    },
+    "stats": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "reimbursed": "Reimbursed"
+    },
     "exportPdf": "Export PDF",
     "exportTitle": "Expense Report",
     "categories": {
@@ -646,8 +668,12 @@
     "capture": {
       "button": "Scan Receipt",
       "title": "Scan Receipt",
-      "dropzoneLabel": "Take photo or upload receipt",
-      "dropzoneHint": "JPG, PNG, WebP · max 10 MB",
+      "takePhoto": "Take Photo",
+      "takePhotoHint": "Open camera — analyzed instantly with AI",
+      "chooseGallery": "Choose from Gallery",
+      "chooseGalleryHint": "Select an existing image — analyzed with AI",
+      "uploadPdf": "Upload PDF",
+      "uploadPdfHint": "PDF receipt — enter details manually",
       "analyzeButton": "Analyze with AI",
       "analyzing": "Scanning…",
       "reviewTitle": "Review Extracted Data",

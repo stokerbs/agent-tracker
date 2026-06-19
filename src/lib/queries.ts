@@ -187,9 +187,14 @@ export async function getExpenses(): Promise<Expense[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("expenses")
-    .select("*, agents(full_name), cases(case_number)")
+    .select("*, agents(full_name), cases(case_number), profiles!expenses_paid_by_fkey(full_name)")
+    .is("deleted_at", null)
     .order("expense_date", { ascending: false });
-  return (data as never) ?? [];
+  // Flatten paid_by profile name onto the object for convenience
+  return ((data ?? []) as any[]).map((e) => ({
+    ...e,
+    paid_by_name: (e.profiles as { full_name: string | null } | null)?.full_name ?? null,
+  })) as never;
 }
 
 export async function getGeofences(): Promise<Geofence[]> {

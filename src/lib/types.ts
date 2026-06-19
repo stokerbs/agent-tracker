@@ -33,6 +33,7 @@ export type ExpenseCategory =
   | "transportation"
   | "office"
   | "misc";
+export type ExpenseStatus = "pending" | "paid" | "reimbursed" | "cancelled";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type GpsProvider = "AIS" | "TRUE" | "DTAC" | "GPS903";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
@@ -286,6 +287,11 @@ export interface Expense {
   notes: string | null;
   source: string;
   ocr_confidence: number | null;
+  status: ExpenseStatus;
+  paid_at: string | null;
+  paid_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   created_by: string | null;
   created_at: string;
 }

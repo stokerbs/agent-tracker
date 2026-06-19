@@ -6,13 +6,19 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
+  FileText,
+  Images,
   Loader2,
   ScanLine,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { scanReceipt, saveOcrExpense } from "@/app/(dashboard)/expenses/actions";
+import {
+  scanReceipt,
+  saveOcrExpense,
+  uploadReceiptPdf,
+} from "@/app/(dashboard)/expenses/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,9 +55,9 @@ interface Props {
 
 interface ReviewState {
   receiptPath: string;
-  previewUrl: string;
+  previewUrl: string | null;
+  isPdf: boolean;
   extracted: ExtractedExpense;
-  // user-editable fields
   vendor_name: string;
   category: ExpenseCategory;
   amount: string;
@@ -77,11 +83,25 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   );
 }
 
+function emptyExtracted(): ExtractedExpense {
+  return {
+    vendor_name: null, category: "misc", amount: null, vat_amount: null,
+    expense_date: null, expense_time: null, receipt_number: null, notes: null,
+    confidence: 0,
+    field_confidence: { vendor_name: 0, category: 0, amount: 0, vat_amount: 0, expense_date: 0, expense_time: 0, receipt_number: 0 },
+  };
+}
+
 export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
   const t = useTranslations("expenses.capture");
   const tCat = useTranslations("expenses.categories");
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Three separate hidden file inputs for Take Photo / Gallery / PDF
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
+
   const [open, setOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [review, setReview] = useState<ReviewState | null>(null);
@@ -94,10 +114,32 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
   function reset() {
     setReview(null);
     setScanning(false);
-    if (fileRef.current) fileRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
+    if (pdfRef.current) pdfRef.current.value = "";
   }
 
-  async function handleFile(file: File) {
+  function buildReview(
+    receiptPath: string,
+    previewUrl: string | null,
+    isPdf: boolean,
+    extracted: ExtractedExpense,
+  ): ReviewState {
+    return {
+      receiptPath, previewUrl, isPdf, extracted,
+      vendor_name: extracted.vendor_name ?? "",
+      category: extracted.category,
+      amount: extracted.amount != null ? String(extracted.amount) : "",
+      vat_amount: extracted.vat_amount != null ? String(extracted.vat_amount) : "",
+      expense_date: extracted.expense_date ?? todayBangkok(),
+      expense_time: extracted.expense_time ?? "",
+      receipt_number: extracted.receipt_number ?? "",
+      notes: extracted.notes ?? "",
+      case_id: caseId,
+    };
+  }
+
+  async function handleImageFile(file: File) {
     setScanning(true);
     const fd = new FormData();
     fd.append("receipt", file);
@@ -106,53 +148,35 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
 
     if ("error" in res) {
       toast.error(t("toast.scanError"));
-      // Keep the uploaded path if available so user can still proceed manually
       if (res.receiptPath) {
-        setReview({
-          receiptPath: res.receiptPath,
-          previewUrl: URL.createObjectURL(file),
-          extracted: {
-            vendor_name: null, category: "misc", amount: null, vat_amount: null,
-            expense_date: null, expense_time: null, receipt_number: null, notes: null,
-            confidence: 0,
-            field_confidence: { vendor_name: 0, category: 0, amount: 0, vat_amount: 0, expense_date: 0, expense_time: 0, receipt_number: 0 },
-          },
-          vendor_name: "", category: "misc", amount: "",
-          vat_amount: "", expense_date: todayBangkok(), expense_time: "",
-          receipt_number: "", notes: "", case_id: caseId,
-        });
+        setReview(buildReview(res.receiptPath, URL.createObjectURL(file), false, emptyExtracted()));
       }
       return;
     }
+    setReview(buildReview(res.receiptPath, URL.createObjectURL(file), false, res.extracted));
+  }
 
-    const e = res.extracted;
-    setReview({
-      receiptPath: res.receiptPath,
-      previewUrl: URL.createObjectURL(file),
-      extracted: e,
-      vendor_name: e.vendor_name ?? "",
-      category: e.category,
-      amount: e.amount != null ? String(e.amount) : "",
-      vat_amount: e.vat_amount != null ? String(e.vat_amount) : "",
-      expense_date: e.expense_date ?? todayBangkok(),
-      expense_time: e.expense_time ?? "",
-      receipt_number: e.receipt_number ?? "",
-      notes: e.notes ?? "",
-      case_id: caseId,
-    });
+  async function handlePdfFile(file: File) {
+    setScanning(true);
+    const fd = new FormData();
+    fd.append("receipt", file);
+    const res = await uploadReceiptPdf(fd);
+    setScanning(false);
+
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    // PDF: no OCR — go directly to manual review with today's date pre-filled
+    setReview(buildReview(res.receiptPath, null, true, emptyExtracted()));
   }
 
   function handleSave() {
     if (!review) return;
     const amount = parseFloat(review.amount);
-    if (!amount || isNaN(amount)) {
-      toast.error("Amount is required");
-      return;
-    }
-    if (!review.expense_date) {
-      toast.error("Date is required");
-      return;
-    }
+    if (!amount || isNaN(amount)) { toast.error("Amount is required"); return; }
+    if (!review.expense_date) { toast.error("Date is required"); return; }
+
     startSave(async () => {
       const res = await saveOcrExpense({
         receiptPath: review.receiptPath,
@@ -166,12 +190,9 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
         receiptNumber: review.receipt_number || null,
         notes: review.notes || null,
         ocrConfidence: review.extracted.confidence || null,
-        ocrRaw: review.extracted,
+        ocrRaw: review.isPdf ? null : review.extracted,
       });
-      if ("error" in res) {
-        toast.error(res.error);
-        return;
-      }
+      if ("error" in res) { toast.error(res.error); return; }
       toast.success(t("toast.success"));
       setOpen(false);
       reset();
@@ -198,41 +219,79 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
           </DialogTitle>
         </DialogHeader>
 
+        {/* Hidden file inputs */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+        />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+        />
+        <input
+          ref={pdfRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); }}
+        />
+
         {/* ── Step 1: Upload ── */}
         {!review && (
           <div className="px-5 pb-5">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-              }}
-            />
-
             {scanning ? (
               <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-sm">{t("analyzing")}</p>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex w-full flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border py-12 text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
-              >
-                <Camera className="h-10 w-10 text-muted-foreground/50" />
-                <div>
-                  <p className="text-sm font-medium">{t("dropzoneLabel")}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{t("dropzoneHint")}</p>
-                </div>
-                <span className="rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">
-                  {t("analyzeButton")}
-                </span>
-              </button>
+              <div className="grid gap-3">
+                {/* Take Photo */}
+                <button
+                  type="button"
+                  onClick={() => cameraRef.current?.click()}
+                  className="flex items-center gap-4 rounded-lg border border-border px-4 py-3.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+                >
+                  <Camera className="h-8 w-8 shrink-0 text-muted-foreground/60" />
+                  <div>
+                    <p className="text-sm font-medium">{t("takePhoto")}</p>
+                    <p className="text-xs text-muted-foreground">{t("takePhotoHint")}</p>
+                  </div>
+                </button>
+
+                {/* Choose from Gallery */}
+                <button
+                  type="button"
+                  onClick={() => galleryRef.current?.click()}
+                  className="flex items-center gap-4 rounded-lg border border-border px-4 py-3.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+                >
+                  <Images className="h-8 w-8 shrink-0 text-muted-foreground/60" />
+                  <div>
+                    <p className="text-sm font-medium">{t("chooseGallery")}</p>
+                    <p className="text-xs text-muted-foreground">{t("chooseGalleryHint")}</p>
+                  </div>
+                </button>
+
+                {/* Upload PDF */}
+                <button
+                  type="button"
+                  onClick={() => pdfRef.current?.click()}
+                  className="flex items-center gap-4 rounded-lg border border-border px-4 py-3.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+                >
+                  <FileText className="h-8 w-8 shrink-0 text-muted-foreground/60" />
+                  <div>
+                    <p className="text-sm font-medium">{t("uploadPdf")}</p>
+                    <p className="text-xs text-muted-foreground">{t("uploadPdfHint")}</p>
+                  </div>
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -240,16 +299,22 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
         {/* ── Step 2: Review ── */}
         {review && (
           <div className="overflow-y-auto px-5 pb-5" style={{ maxHeight: "75vh" }}>
-            {/* Confidence banner */}
-            <div className="mb-4 flex items-center justify-between">
-              <ConfidenceBadge confidence={confidence} />
-              {confidence > 0 && confidence < 80 && (
+            {/* Confidence / PDF banner */}
+            <div className="mb-4 flex items-center justify-between gap-2">
+              {review.isPdf ? (
+                <span className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground">
+                  <FileText className="h-3 w-3" /> PDF — enter details manually
+                </span>
+              ) : (
+                <ConfidenceBadge confidence={confidence} />
+              )}
+              {!review.isPdf && confidence > 0 && confidence < 80 && (
                 <span className="flex items-center gap-1 text-xs text-amber-500">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {confidence < 60 ? t("confidenceLow") : t("confidenceMed")}
                 </span>
               )}
-              {confidence >= 80 && (
+              {!review.isPdf && confidence >= 80 && (
                 <span className="flex items-center gap-1 text-xs text-success">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Looks good — verify before saving
@@ -258,15 +323,17 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* Receipt thumbnail */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <div className="sm:col-span-2">
-                <img
-                  src={review.previewUrl}
-                  alt="Receipt"
-                  className="max-h-40 w-full rounded-lg border border-border object-contain bg-muted/30"
-                />
-              </div>
+              {/* Receipt preview */}
+              {review.previewUrl && !review.isPdf && (
+                <div className="sm:col-span-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={review.previewUrl}
+                    alt="Receipt"
+                    className="max-h-40 w-full rounded-lg border border-border bg-muted/30 object-contain"
+                  />
+                </div>
+              )}
 
               {/* Vendor */}
               <div className="space-y-1.5 sm:col-span-2">
@@ -298,9 +365,7 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
               <div className="space-y-1.5">
                 <Label>Amount (THB)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="number" step="0.01" min="0"
                   value={review.amount}
                   onChange={(e) => setReview((r) => r && { ...r, amount: e.target.value })}
                 />
@@ -310,9 +375,7 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
               <div className="space-y-1.5">
                 <Label>{t("vatLabel")}</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="number" step="0.01" min="0"
                   value={review.vat_amount}
                   onChange={(e) => setReview((r) => r && { ...r, vat_amount: e.target.value })}
                   placeholder="0.00"
@@ -384,12 +447,7 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 {t("saveButton")}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => reset()}
-                disabled={saving}
-                className="gap-1.5"
-              >
+              <Button variant="outline" onClick={() => reset()} disabled={saving} className="gap-1.5">
                 <X className="h-3.5 w-3.5" />
                 {t("scanAnother")}
               </Button>

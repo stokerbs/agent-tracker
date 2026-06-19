@@ -11,7 +11,7 @@ import {
   validateDocumentUpload,
   validateImageUpload,
 } from "@/lib/security/file-validation";
-import type { ExpenseCategory, ExtractedExpense, UserRole } from "@/lib/types";
+import type { ExpenseCategory, ExpenseStatus, ExtractedExpense, UserRole } from "@/lib/types";
 
 const OCR_MODEL = "claude-haiku-4-5-20251001";
 
@@ -203,6 +203,80 @@ export async function scanReceipt(
     console.error("[scanReceipt] parse error, raw:", aiText);
     return { error: "Could not parse AI response", receiptPath };
   }
+}
+
+export async function uploadReceiptPdf(
+  formData: FormData,
+): Promise<{ ok: true; receiptPath: string } | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "Not authenticated" };
+  if (profile.role === "client") return { error: "Not authorized" };
+
+  const file = formData.get("receipt") as File | null;
+  if (!file || file.size === 0) return { error: "No file provided" };
+
+  try {
+    await validateDocumentUpload(file);
+  } catch (err) {
+    if (err instanceof FileValidationError) return { error: err.message };
+    throw err;
+  }
+
+  const supabase = await createClient();
+  const path = `${profile.id}/${crypto.randomUUID()}.pdf`;
+  const bytes = await file.arrayBuffer();
+  const { error: upErr } = await supabase.storage
+    .from(BUCKETS.receipts)
+    .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+  if (upErr) return { error: "Upload failed — please try again" };
+
+  return { ok: true, receiptPath: path };
+}
+
+export async function updateExpenseStatus(
+  expenseId: string,
+  status: ExpenseStatus,
+): Promise<{ ok: true } | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "Not authenticated" };
+  if (!isStaff(profile.role)) return { error: "Not authorized" };
+
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = { status };
+  if (status === "paid") {
+    patch.paid_at = new Date().toISOString();
+    patch.paid_by = profile.id;
+  } else {
+    patch.paid_at = null;
+    patch.paid_by = null;
+  }
+
+  const { error } = await supabase
+    .from("expenses")
+    .update(patch)
+    .eq("id", expenseId);
+  if (error) return { error: handleDbError(error, "updateExpenseStatus") };
+
+  revalidatePath("/expenses");
+  return { ok: true };
+}
+
+export async function softDeleteExpense(
+  expenseId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "Not authenticated" };
+  if (!isStaff(profile.role)) return { error: "Not authorized" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("expenses")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: profile.id })
+    .eq("id", expenseId);
+  if (error) return { error: handleDbError(error, "softDeleteExpense") };
+
+  revalidatePath("/expenses");
+  return { ok: true };
 }
 
 export interface SaveOcrExpenseInput {
