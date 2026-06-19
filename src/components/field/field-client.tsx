@@ -2,28 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
-  Battery,
   BatteryCharging,
   BatteryFull,
   BatteryLow,
   BatteryMedium,
   Briefcase,
-  CheckCircle2,
   Clock,
-  Crosshair,
   Film,
   ImageIcon,
   Loader2,
   MapPin,
   Navigation,
   Paperclip,
+  Plus,
   RefreshCw,
   Siren,
   UserX,
-  Wifi,
-  WifiOff,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -72,11 +69,30 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function todayBangkok() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+}
+function nowBangkok() {
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 type GpsState = "idle" | "acquiring" | "active" | "error";
 
 interface BatteryInfo {
   level: number;
   charging: boolean;
+}
+
+type FilePreview = { file: File; previewUrl: string | null; kind: "photo" | "video" | "file" };
+
+function kindForFile(f: File): FilePreview["kind"] {
+  if (f.type.startsWith("image/")) return "photo";
+  if (f.type.startsWith("video/")) return "video";
+  return "file";
 }
 
 interface Props {
@@ -88,7 +104,6 @@ interface Props {
 export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }: Props) {
   const t = useTranslations("field");
   const tStatus = useTranslations("status.agent");
-  // Emergency is set only via SOS — exclude it from the manual selector.
   const STATUSES = (Object.keys(AGENT_STATUS_META) as AgentStatus[]).filter(
     (s) => s !== "emergency",
   );
@@ -106,13 +121,11 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSentPosRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  // ── Clock tick for "X ago" labels ──
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(id);
   }, []);
 
-  // ── Battery API ──
   useEffect(() => {
     if (typeof navigator === "undefined" || !("getBattery" in navigator)) return;
     (navigator as any).getBattery().then((b: any) => {
@@ -129,7 +142,6 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
     }).catch(() => {});
   }, []);
 
-  // ── GPS ping ──
   const sendPing = useCallback(async (coords: GeolocationCoordinates, forcedStatus?: AgentStatus) => {
     if (!agent || pingPending) return;
     setPingPending(true);
@@ -140,10 +152,7 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         speed_kmh: coords.speed != null ? coords.speed * 3.6 : undefined,
         heading: coords.heading ?? undefined,
       };
-      if (battery) {
-        body.battery = battery.level;
-        body.charging = battery.charging;
-      }
+      if (battery) { body.battery = battery.level; body.charging = battery.charging; }
       if (forcedStatus) body.status = forcedStatus;
 
       const res = await fetch("/api/agents/location", {
@@ -161,33 +170,22 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
     }
   }, [agent, battery, pingPending, t]);
 
-  // ── Start GPS watch ──
   useEffect(() => {
     if (!agent || !navigator.geolocation) {
       if (!navigator.geolocation) setGpsState("error");
       return;
     }
     setGpsState("acquiring");
-
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGpsState("active");
-        setLastPos(pos.coords);
-        setAccuracy(Math.round(pos.coords.accuracy));
-      },
+      (pos) => { setGpsState("active"); setLastPos(pos.coords); setAccuracy(Math.round(pos.coords.accuracy)); },
       () => setGpsState("error"),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
     );
-
-    return () => {
-      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
-    };
+    return () => { if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, [agent]);
 
-  // ── Periodic ping ──
   useEffect(() => {
     if (!lastPos || !agent) return;
-
     async function maybePing() {
       if (!lastPos) return;
       const prev = lastSentPosRef.current;
@@ -196,25 +194,19 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         : true;
       if (moved) await sendPing(lastPos);
     }
-
-    maybePing(); // first ping immediately on position acquired
+    maybePing();
     timerRef.current = setInterval(maybePing, GPS_INTERVAL_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastPos?.latitude, lastPos?.longitude, agent?.id]);
 
-  // ── Status change ──
   const [statusPending, startStatus] = useTransition();
-
   function handleStatusChange(newStatus: AgentStatus) {
     if (!agent) return;
     startStatus(async () => {
       const res = await updateAgentStatus(agent.id, newStatus);
       if (res?.error) { toast.error(res.error); return; }
       setAgent((prev) => prev ? { ...prev, status: newStatus } : prev);
-      // If we have GPS, include the status in the next ping immediately
       if (lastPos) sendPing(lastPos, newStatus);
     });
   }
@@ -233,8 +225,8 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
     gpsState === "acquiring" ? "text-amber-500" : "text-red-500";
 
   return (
-    <div className="space-y-4">
-      {/* ── Identity + status ── */}
+    <div className="space-y-4 pb-6">
+      {/* Identity */}
       <Card>
         <CardContent className="flex items-center gap-4 p-4">
           <Avatar className="h-14 w-14 text-base">
@@ -252,7 +244,7 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         </CardContent>
       </Card>
 
-      {/* ── Status selector ── */}
+      {/* Status selector */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-sm">{t("myStatus")}</CardTitle>
@@ -260,12 +252,11 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         <CardContent className="px-4 pb-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {STATUSES.map((s) => {
-              const meta = AGENT_STATUS_META[s];
               const active = agent.status === s;
               return (
                 <button
                   key={s}
-                  disabled={statusPending || agent.status === s}
+                  disabled={statusPending || active}
                   onClick={() => handleStatusChange(s)}
                   className={cn(
                     "flex min-h-[48px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition-all",
@@ -274,11 +265,7 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
                       : "border-border/60 bg-card hover:bg-accent/40 text-foreground",
                   )}
                 >
-                  {statusPending && active ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    tStatus(s)
-                  )}
+                  {statusPending && active ? <Loader2 className="h-4 w-4 animate-spin" /> : tStatus(s)}
                 </button>
               );
             })}
@@ -286,7 +273,7 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         </CardContent>
       </Card>
 
-      {/* ── GPS & signal ── */}
+      {/* GPS */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="flex items-center gap-2 text-sm">
@@ -312,31 +299,18 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
                 <span className="text-xs text-muted-foreground">±{accuracy}m</span>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              disabled={!lastPos || pingPending}
-              onClick={() => lastPos && sendPing(lastPos)}
-            >
-              {pingPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs"
+              disabled={!lastPos || pingPending} onClick={() => lastPos && sendPing(lastPos)}>
+              {pingPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               {t("ping")}
             </Button>
           </div>
-
           {lastPos && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span className="font-mono">
-                {lastPos.latitude.toFixed(5)}, {lastPos.longitude.toFixed(5)}
-              </span>
+              <span className="font-mono">{lastPos.latitude.toFixed(5)}, {lastPos.longitude.toFixed(5)}</span>
             </div>
           )}
-
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 shrink-0" />
@@ -344,15 +318,10 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
             </div>
             {battery && (
               <div className="flex items-center gap-1.5">
-                {battery.charging ? (
-                  <BatteryCharging className="h-3.5 w-3.5 text-emerald-500" />
-                ) : battery.level > 60 ? (
-                  <BatteryFull className="h-3.5 w-3.5 text-emerald-500" />
-                ) : battery.level > 25 ? (
-                  <BatteryMedium className="h-3.5 w-3.5 text-amber-500" />
-                ) : (
-                  <BatteryLow className="h-3.5 w-3.5 text-red-500" />
-                )}
+                {battery.charging ? <BatteryCharging className="h-3.5 w-3.5 text-emerald-500" />
+                  : battery.level > 60 ? <BatteryFull className="h-3.5 w-3.5 text-emerald-500" />
+                  : battery.level > 25 ? <BatteryMedium className="h-3.5 w-3.5 text-amber-500" />
+                  : <BatteryLow className="h-3.5 w-3.5 text-red-500" />}
                 <span>{battery.level}%</span>
               </div>
             )}
@@ -360,7 +329,7 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         </CardContent>
       </Card>
 
-      {/* ── Active cases ── */}
+      {/* Active cases */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="flex items-center gap-2 text-sm">
@@ -374,16 +343,11 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
           ) : (
             <div className="space-y-2">
               {activeCases.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/cases/${c.id}`}
-                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 transition-colors hover:bg-accent/40"
-                >
+                <Link key={c.id} href={`/cases/${c.id}`}
+                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 transition-colors hover:bg-accent/40">
                   <div className="min-w-0">
                     <p className="text-sm font-mono font-semibold text-primary">{c.case_number}</p>
-                    {c.client_name && (
-                      <p className="text-xs text-muted-foreground truncate">{c.client_name}</p>
-                    )}
+                    {c.client_name && <p className="text-xs text-muted-foreground truncate">{c.client_name}</p>}
                   </div>
                   <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
                     {c.status.replace("_", " ")}
@@ -395,46 +359,91 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
         </CardContent>
       </Card>
 
-      {/* ── Quick actions ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <LogEntryDialog cases={activeCases} />
-        <SosDialog lat={lastPos?.latitude} lng={lastPos?.longitude} />
-      </div>
+      {/* ── Add Observation — primary action ── */}
+      <AddObservationDialog cases={activeCases} lastPos={lastPos} gpsState={gpsState} />
+
+      {/* ── SOS ── */}
+      <SosDialog lat={lastPos?.latitude} lng={lastPos?.longitude} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// Log Entry Dialog
+// Add Observation Dialog
 // ─────────────────────────────────────────────
 
-function LogEntryDialog({ cases }: { cases: Case[] }) {
+interface ObsDialogProps {
+  cases: Case[];
+  lastPos: GeolocationCoordinates | null;
+  gpsState: GpsState;
+}
+
+function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
   const t = useTranslations("field");
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+
   const [selectedCase, setSelectedCase] = useState(cases[0]?.id ?? "");
   const [entry, setEntry] = useState("");
+  const [date, setDate] = useState(todayBangkok());
+  const [time, setTime] = useState(nowBangkok());
   const [location, setLocation] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FilePreview[]>([]);
 
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const fileRef  = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reset form with fresh defaults each time the dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedCase(cases[0]?.id ?? "");
+      setEntry("");
+      setDate(todayBangkok());
+      setTime(nowBangkok());
+      setLocation("");
+      setFiles([]);
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+  }, [open, cases]);
 
   function addFiles(list: FileList | null) {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
+    const previews: FilePreview[] = Array.from(list).map((f) => ({
+      file: f,
+      previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : null,
+      kind: kindForFile(f),
+    }));
+    setFiles((prev) => [...prev, ...previews]);
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => {
+      const p = prev[idx];
+      if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  function useGps() {
+    if (!lastPos) return;
+    setLocation(`${lastPos.latitude.toFixed(5)}, ${lastPos.longitude.toFixed(5)}`);
+  }
+
+  function handleClose() {
+    files.forEach((f) => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
+    setOpen(false);
   }
 
   function handleSubmit() {
-    if (!entry.trim()) return;
+    if (!entry.trim() || !selectedCase) return;
     start(async () => {
-      if (!selectedCase) { toast.error(t("log.noCase")); return; }
       const fd = new FormData();
       fd.set("case_id", selectedCase);
-      const now = new Date();
-      fd.set("entry_date", now.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
-      fd.set("entry_time", now.toLocaleTimeString("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }));
+      fd.set("entry_date", date);
+      fd.set("entry_time", time);
       fd.set("entry", entry.trim());
       if (location.trim()) fd.set("location", location.trim());
 
@@ -443,10 +452,10 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
 
       if (files.length > 0 && res.id) {
         const results = await Promise.all(
-          files.map((f) => {
+          files.map(({ file }) => {
             const efd = new FormData();
             efd.set("case_id", selectedCase);
-            efd.set("file", f);
+            efd.set("file", file);
             efd.set("timeline_entry_id", res.id!);
             return uploadEvidence(efd);
           }),
@@ -455,42 +464,51 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
         if (failed > 0) {
           toast.warning(`Saved. ${failed} file(s) failed to upload.`);
         } else {
-          toast.success(`${t("log.success")} + ${files.length} file${files.length > 1 ? "s" : ""}`);
+          toast.success(`${t("log.success")} · ${files.length} file${files.length > 1 ? "s" : ""} attached`);
         }
       } else {
         toast.success(t("log.success"));
       }
 
-      setEntry("");
-      setLocation("");
-      setFiles([]);
+      files.forEach((f) => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
       setOpen(false);
+      router.refresh();
     });
   }
 
-  const photos = files.filter((f) => f.type.startsWith("image/"));
-  const videos = files.filter((f) => f.type.startsWith("video/"));
-  const docs   = files.filter((f) => !f.type.startsWith("image/") && !f.type.startsWith("video/"));
+  const photos = files.filter((f) => f.kind === "photo");
+  const videos = files.filter((f) => f.kind === "video");
+  const docs   = files.filter((f) => f.kind === "file");
+  const gpsReady = gpsState === "active" && lastPos != null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEntry(""); setLocation(""); setFiles([]); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else setOpen(true); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex min-h-[56px] flex-col gap-0.5 h-auto py-3">
-          <Clock className="h-5 w-5" />
-          <span className="text-xs">{t("log.button")}</span>
+        <Button className="w-full gap-2 h-12 text-base font-semibold" size="lg">
+          <Plus className="h-5 w-5" />
+          {t("log.button")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{t("log.title")}</DialogTitle>
-          <DialogDescription>{t("log.description")}</DialogDescription>
+
+      {/* Bottom-sheet on mobile, centered modal on sm+ */}
+      <DialogContent className="
+        bottom-0 left-0 right-0 top-auto max-w-full translate-x-0 translate-y-0
+        rounded-t-2xl rounded-b-none p-0
+        sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2
+        sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl
+      ">
+        <DialogHeader className="px-4 pb-2 pt-5">
+          <DialogTitle className="text-base">{t("log.title")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("log.description")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          {cases.length > 0 && (
-            <div className="space-y-1.5">
-              <Label>{t("log.case")}</Label>
-              <Select value={selectedCase} onValueChange={setSelectedCase}>
-                <SelectTrigger>
+
+        <div className="space-y-3 overflow-y-auto px-4 pb-2" style={{ maxHeight: "calc(80dvh - 130px)" }}>
+          {/* Case selector */}
+          {cases.length > 1 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{t("log.case")}</Label>
+              <Select value={selectedCase} onValueChange={setSelectedCase} disabled={pending}>
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -503,54 +521,105 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
               </Select>
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label htmlFor="log-location">{t("log.location")}</Label>
-            <Input
-              id="log-location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder={t("log.locationPlaceholder")}
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="log-entry">{t("log.entry")}</Label>
+
+          {/* Observation textarea — primary field, autofocus */}
+          <div className="space-y-1">
+            <Label htmlFor="obs-entry" className="text-xs text-muted-foreground">{t("log.entry")}</Label>
             <Textarea
-              id="log-entry"
+              id="obs-entry"
+              ref={textareaRef}
               value={entry}
               onChange={(e) => setEntry(e.target.value)}
               rows={4}
               placeholder={t("log.entryPlaceholder")}
               disabled={pending}
+              className="resize-none"
             />
           </div>
 
-          {/* File attach buttons */}
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => photoRef.current?.click()}
+          {/* Date + Time row */}
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+                className="h-9 text-sm" disabled={pending} />
+            </div>
+            <div className="w-28 space-y-1">
+              <Label className="text-xs text-muted-foreground">Time</Label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+                className="h-9 text-sm" disabled={pending} />
+            </div>
+          </div>
+
+          {/* Location + GPS */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="obs-location" className="text-xs text-muted-foreground">{t("log.location")}</Label>
+              {gpsReady && (
+                <button
+                  type="button"
+                  onClick={useGps}
+                  disabled={pending}
+                  className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500 hover:bg-emerald-500/20 disabled:opacity-50"
+                >
+                  <Navigation className="h-2.5 w-2.5" />
+                  Use GPS · ±{Math.round(lastPos!.accuracy)}m
+                </button>
+              )}
+            </div>
+            <Input
+              id="obs-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder={t("log.locationPlaceholder")}
+              className="h-9 text-sm"
               disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50"
-            >
+            />
+          </div>
+
+          {/* File previews */}
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {files.map((f, idx) => (
+                <div key={idx} className="relative">
+                  {f.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={f.previewUrl} alt={f.file.name}
+                      className="h-16 w-16 rounded-lg border object-cover" />
+                  ) : f.kind === "video" ? (
+                    <div className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-lg border bg-violet-500/10 text-[9px] text-violet-400">
+                      <Film className="h-4 w-4" />
+                      <span className="max-w-[56px] truncate px-1">{f.file.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-lg border bg-muted text-[9px] text-muted-foreground">
+                      <Paperclip className="h-4 w-4" />
+                      <span className="max-w-[56px] truncate px-1">{f.file.name}</span>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => removeFile(idx)}
+                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => photoRef.current?.click()} disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50">
               <ImageIcon className="h-3 w-3" />
               {photos.length > 0 ? `${photos.length} Photo${photos.length > 1 ? "s" : ""}` : "Photos"}
             </button>
-            <button
-              type="button"
-              onClick={() => videoRef.current?.click()}
-              disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => videoRef.current?.click()} disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50">
               <Film className="h-3 w-3" />
               {videos.length > 0 ? `${videos.length} Video${videos.length > 1 ? "s" : ""}` : "Videos"}
             </button>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50">
               <Paperclip className="h-3 w-3" />
               {docs.length > 0 ? `${docs.length} File${docs.length > 1 ? "s" : ""}` : "Files"}
             </button>
@@ -563,15 +632,21 @@ function LogEntryDialog({ cases }: { cases: Case[] }) {
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            {t("cancel")}
+        {/* Save — full width, sticky at bottom */}
+        <div className="border-t px-4 pb-6 pt-3 sm:pb-4">
+          <Button
+            type="button"
+            className="w-full gap-2 h-11"
+            onClick={handleSubmit}
+            disabled={pending || !entry.trim() || !selectedCase}
+          >
+            {pending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+            ) : (
+              <><Plus className="h-4 w-4" /> Save Observation</>
+            )}
           </Button>
-          <Button type="button" onClick={handleSubmit} disabled={pending || !entry.trim()}>
-            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("log.submit")}
-          </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -603,10 +678,10 @@ function SosDialog({ lat, lng }: { lat?: number; lng?: number }) {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="flex min-h-[56px] flex-col gap-0.5 h-auto py-3 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
-          <Siren className="h-5 w-5" />
-          <span className="text-xs">{t("sos.button")}</span>
+          <Siren className="h-4 w-4" />
+          {t("sos.button")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
@@ -616,12 +691,8 @@ function SosDialog({ lat, lng }: { lat?: number; lng?: number }) {
           </DialogTitle>
           <DialogDescription>{tSos("dialogDescription")}</DialogDescription>
         </DialogHeader>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={tSos("notesPlaceholder")}
-          rows={3}
-        />
+        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+          placeholder={tSos("notesPlaceholder")} rows={3} />
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
           <Button variant="destructive" onClick={fire} disabled={pending}>
