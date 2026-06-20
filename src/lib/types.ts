@@ -334,6 +334,54 @@ export interface AgentPayment {
   updated_at: string;
 }
 
+export interface TargetPhoto {
+  id: string;
+  case_id: string;
+  storage_path: string;
+  is_primary: boolean;
+  caption: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  signedUrl?: string;
+}
+
+export interface TargetVehicle {
+  id: string;
+  case_id: string;
+  make: string | null;
+  model: string | null;
+  color: string | null;
+  license_plate_enc: string | null;
+  license_plate_bidx: string | null;
+  notes: string | null;
+  is_primary: boolean;
+  photo_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  licensePlate?: string | null;
+  photoSignedUrl?: string | null;
+}
+
+export type LocationType = "home" | "workplace" | "other";
+
+export interface TargetLocation {
+  id: string;
+  case_id: string;
+  location_type: LocationType;
+  label: string | null;
+  address_enc: string | null;
+  lat: number | null;
+  lng: number | null;
+  notes: string | null;
+  photo_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  address?: string | null;
+  photoSignedUrl?: string | null;
+}
+
 export interface EmergencyAlert {
   id: string;
   agent_id: string | null;

@@ -1,0 +1,231 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
+import { BUCKETS } from "@/lib/constants";
+import { encryptField, createLicensePlateBlindIndex, normalizeLicensePlate } from "@/lib/security/encryption";
+import { validateImageUpload } from "@/lib/security/file-validation";
+import type { LocationType } from "@/lib/types";
+
+function revalidate(caseId: string) {
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath(`/field/${caseId}`);
+}
+
+// ─── Target profile ────────────────────────────────────────────────────────────
+
+export async function updateTargetProfile(caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const alias    = (formData.get("target_alias") as string | null)?.trim() || null;
+  const gender   = (formData.get("target_gender") as string | null) || null;
+  const ageRaw   = formData.get("target_age") as string | null;
+  const notes    = (formData.get("target_notes") as string | null)?.trim() || null;
+
+  const update: Record<string, unknown> = {
+    target_gender: gender,
+    target_age: ageRaw ? parseInt(ageRaw, 10) : null,
+    target_alias_enc: alias ? encryptField(alias) : null,
+    target_notes_enc: notes ? encryptField(notes) : null,
+  };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("cases").update(update).eq("id", caseId);
+  if (error) throw new Error(handleDbError(error, "updateTargetProfile"));
+  revalidate(caseId);
+}
+
+// ─── Target photos ─────────────────────────────────────────────────────────────
+
+export async function uploadTargetPhoto(caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No file provided");
+  validateImageUpload(file);
+
+  const ext  = file.name.split(".").pop() ?? "jpg";
+  const path = `${caseId}/photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const supabase = await createClient();
+  const { error: uploadErr } = await supabase.storage
+    .from(BUCKETS.intelligence)
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (uploadErr) throw new Error(handleDbError(uploadErr as any, "uploadTargetPhoto"));
+
+  const { error: dbErr } = await supabase.from("target_photos").insert({
+    case_id: caseId,
+    storage_path: path,
+    is_primary: false,
+    uploaded_by: profile.id,
+  });
+  if (dbErr) throw new Error(handleDbError(dbErr, "uploadTargetPhoto.insert"));
+
+  revalidate(caseId);
+}
+
+export async function setPrimaryPhoto(photoId: string, caseId: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  await supabase.from("target_photos").update({ is_primary: false }).eq("case_id", caseId);
+  const { error } = await supabase.from("target_photos").update({ is_primary: true }).eq("id", photoId);
+  if (error) throw new Error(handleDbError(error, "setPrimaryPhoto"));
+  revalidate(caseId);
+}
+
+export async function deleteTargetPhoto(photoId: string, caseId: string, storagePath: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  await supabase.storage.from(BUCKETS.intelligence).remove([storagePath]);
+  const { error } = await supabase.from("target_photos").delete().eq("id", photoId);
+  if (error) throw new Error(handleDbError(error, "deleteTargetPhoto"));
+  revalidate(caseId);
+}
+
+// ─── Vehicles ─────────────────────────────────────────────────────────────────
+
+export async function createVehicle(caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const plate = (formData.get("license_plate") as string | null)?.trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("target_vehicles").insert({
+    case_id: caseId,
+    make:  (formData.get("make")  as string | null)?.trim() || null,
+    model: (formData.get("model") as string | null)?.trim() || null,
+    color: (formData.get("color") as string | null)?.trim() || null,
+    license_plate_enc:  plate ? encryptField(plate) : null,
+    license_plate_bidx: plate ? createLicensePlateBlindIndex(normalizeLicensePlate(plate)) : null,
+    notes: (formData.get("notes") as string | null)?.trim() || null,
+    is_primary: formData.get("is_primary") === "true",
+    created_by: profile.id,
+  });
+  if (error) throw new Error(handleDbError(error, "createVehicle"));
+  revalidate(caseId);
+}
+
+export async function updateVehicle(vehicleId: string, caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const plate = (formData.get("license_plate") as string | null)?.trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("target_vehicles").update({
+    make:  (formData.get("make")  as string | null)?.trim() || null,
+    model: (formData.get("model") as string | null)?.trim() || null,
+    color: (formData.get("color") as string | null)?.trim() || null,
+    license_plate_enc:  plate ? encryptField(plate) : null,
+    license_plate_bidx: plate ? createLicensePlateBlindIndex(normalizeLicensePlate(plate)) : null,
+    notes: (formData.get("notes") as string | null)?.trim() || null,
+    is_primary: formData.get("is_primary") === "true",
+  }).eq("id", vehicleId);
+  if (error) throw new Error(handleDbError(error, "updateVehicle"));
+  revalidate(caseId);
+}
+
+export async function uploadVehiclePhoto(vehicleId: string, caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No file provided");
+  validateImageUpload(file);
+
+  const ext  = file.name.split(".").pop() ?? "jpg";
+  const path = `${caseId}/vehicles/${vehicleId}/${Date.now()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const supabase = await createClient();
+  const { error: uploadErr } = await supabase.storage
+    .from(BUCKETS.intelligence)
+    .upload(path, bytes, { contentType: file.type, upsert: true });
+  if (uploadErr) throw new Error(handleDbError(uploadErr as any, "uploadVehiclePhoto"));
+
+  const { error } = await supabase.from("target_vehicles").update({ photo_url: path }).eq("id", vehicleId);
+  if (error) throw new Error(handleDbError(error, "uploadVehiclePhoto.update"));
+  revalidate(caseId);
+}
+
+export async function deleteVehicle(vehicleId: string, caseId: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("target_vehicles").select("photo_url").eq("id", vehicleId).single();
+  if (data?.photo_url) await supabase.storage.from(BUCKETS.intelligence).remove([data.photo_url]);
+
+  const { error } = await supabase.from("target_vehicles").delete().eq("id", vehicleId);
+  if (error) throw new Error(handleDbError(error, "deleteVehicle"));
+  revalidate(caseId);
+}
+
+// ─── Locations ────────────────────────────────────────────────────────────────
+
+export async function createLocation(caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const address = (formData.get("address") as string | null)?.trim() || null;
+  const latRaw  = formData.get("lat") as string | null;
+  const lngRaw  = formData.get("lng") as string | null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("target_locations").insert({
+    case_id: caseId,
+    location_type: (formData.get("location_type") as LocationType) ?? "other",
+    label:   (formData.get("label") as string | null)?.trim() || null,
+    address_enc: address ? encryptField(address) : null,
+    lat: latRaw ? parseFloat(latRaw) : null,
+    lng: lngRaw ? parseFloat(lngRaw) : null,
+    notes: (formData.get("notes") as string | null)?.trim() || null,
+    created_by: profile.id,
+  });
+  if (error) throw new Error(handleDbError(error, "createLocation"));
+  revalidate(caseId);
+}
+
+export async function updateLocation(locationId: string, caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const address = (formData.get("address") as string | null)?.trim() || null;
+  const latRaw  = formData.get("lat") as string | null;
+  const lngRaw  = formData.get("lng") as string | null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("target_locations").update({
+    location_type: (formData.get("location_type") as LocationType) ?? "other",
+    label:   (formData.get("label") as string | null)?.trim() || null,
+    address_enc: address ? encryptField(address) : null,
+    lat: latRaw ? parseFloat(latRaw) : null,
+    lng: lngRaw ? parseFloat(lngRaw) : null,
+    notes: (formData.get("notes") as string | null)?.trim() || null,
+  }).eq("id", locationId);
+  if (error) throw new Error(handleDbError(error, "updateLocation"));
+  revalidate(caseId);
+}
+
+export async function deleteLocation(locationId: string, caseId: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("target_locations").select("photo_url").eq("id", locationId).single();
+  if (data?.photo_url) await supabase.storage.from(BUCKETS.intelligence).remove([data.photo_url]);
+
+  const { error } = await supabase.from("target_locations").delete().eq("id", locationId);
+  if (error) throw new Error(handleDbError(error, "deleteLocation"));
+  revalidate(caseId);
+}

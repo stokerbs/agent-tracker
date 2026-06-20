@@ -12,6 +12,7 @@ import {
   Phone,
   Radio,
   Receipt,
+  ShieldAlert,
   User,
   Users,
   Wallet,
@@ -38,6 +39,10 @@ import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TargetProfileCard } from "@/components/intelligence/target-profile-card";
+import { TargetPhotosSection } from "@/components/intelligence/target-photos-section";
+import { VehiclesSection } from "@/components/intelligence/vehicles-section";
+import { LocationsSection } from "@/components/intelligence/locations-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,7 +55,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +95,7 @@ export default async function CaseDetailPage({
   const tInvoices = await getTranslations("invoices");
   const tExpenses = await getTranslations("expenses");
   const tPayroll  = await getTranslations("payroll");
+  const tIntel    = await getTranslations("intelligence");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -106,6 +112,8 @@ export default async function CaseDetailPage({
   const targetVehicle = c.target_vehicle_enc ? decryptField(c.target_vehicle_enc) : null;
   const licensePlate  = c.license_plate_enc  ? decryptField(c.license_plate_enc)  : null;
   const targetAddress = c.target_address_enc ? decryptField(c.target_address_enc) : null;
+  const targetAlias   = (c as any).target_alias_enc   ? decryptField((c as any).target_alias_enc)   : null;
+  const targetNotes   = (c as any).target_notes_enc   ? decryptField((c as any).target_notes_enc)   : null;
 
   const [
     { data: caseAgentRows },
@@ -116,6 +124,9 @@ export default async function CaseDetailPage({
     invoiceCountRes,
     { data: gpsDevicesRaw },
     { data: paymentsRaw },
+    { data: targetPhotosRaw },
+    { data: targetVehiclesRaw },
+    { data: targetLocationsRaw },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -152,6 +163,9 @@ export default async function CaseDetailPage({
       .select("*, agents(full_name), profiles!agent_payments_paid_by_fkey(full_name)")
       .eq("case_id", id)
       .order("work_date", { ascending: false }),
+    supabase.from("target_photos").select("*").eq("case_id", id).order("created_at"),
+    supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
+    supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
   ]);
 
   // Enrich timeline entries with linked evidence + server-signed URLs
@@ -217,6 +231,40 @@ export default async function CaseDetailPage({
     paid_by_name: (p.profiles as { full_name: string | null } | null)?.full_name ?? null,
   }));
   const totalPayroll  = casePayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+  // Intelligence: sign photo URLs, decrypt vehicle plates and location addresses
+  const rawPhotos = (targetPhotosRaw ?? []) as TargetPhoto[];
+  const rawVehicles = (targetVehiclesRaw ?? []) as TargetVehicle[];
+  const rawLocations = (targetLocationsRaw ?? []) as TargetLocation[];
+
+  const allIntelPaths = [
+    ...rawPhotos.map((p) => p.storage_path),
+    ...rawVehicles.filter((v) => v.photo_url).map((v) => v.photo_url as string),
+    ...rawLocations.filter((l) => l.photo_url).map((l) => l.photo_url as string),
+  ];
+  const intelSignedMap: Record<string, string> = {};
+  if (allIntelPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from(BUCKETS.intelligence)
+      .createSignedUrls(allIntelPaths, 3600);
+    (signed ?? []).forEach((s, i) => { intelSignedMap[allIntelPaths[i]] = s.signedUrl ?? ""; });
+  }
+
+  const targetPhotos: TargetPhoto[] = rawPhotos.map((p) => ({
+    ...p,
+    signedUrl: intelSignedMap[p.storage_path] ?? "",
+  }));
+  const targetVehicles: TargetVehicle[] = rawVehicles.map((v) => ({
+    ...v,
+    licensePlate: v.license_plate_enc ? decryptField(v.license_plate_enc) : null,
+    photoSignedUrl: v.photo_url ? (intelSignedMap[v.photo_url] ?? null) : null,
+  }));
+  const targetLocations: TargetLocation[] = rawLocations.map((l) => ({
+    ...l,
+    address: l.address_enc ? decryptField(l.address_enc) : null,
+    photoSignedUrl: l.photo_url ? (intelSignedMap[l.photo_url] ?? null) : null,
+  }));
+
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
   const isAdmin = profile.role === "admin";
@@ -420,8 +468,12 @@ export default async function CaseDetailPage({
 
       {/* Tabs */}
       <FadeUp delay={0.1}>
-        <Tabs defaultValue="timeline">
+        <Tabs defaultValue="intelligence">
           <TabsList>
+            <TabsTrigger value="intelligence">
+              <ShieldAlert className="mr-1 h-4 w-4" />
+              {tIntel("tab")}
+            </TabsTrigger>
             <TabsTrigger value="timeline">
               <Clock className="mr-1 h-4 w-4" />
               {t("tabs.timeline")}
@@ -445,6 +497,39 @@ export default async function CaseDetailPage({
               </TabsTrigger>
             )}
           </TabsList>
+
+          {/* Intelligence */}
+          <TabsContent value="intelligence" className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <TargetProfileCard
+                caseId={id}
+                data={{
+                  name: targetName,
+                  alias: targetAlias,
+                  phone: targetPhone,
+                  gender: (c as any).target_gender ?? null,
+                  age: (c as any).target_age ?? null,
+                  notes: targetNotes,
+                }}
+                isStaff={staff}
+              />
+              <TargetPhotosSection
+                caseId={id}
+                photos={targetPhotos}
+                isStaff={staff}
+              />
+            </div>
+            <VehiclesSection
+              caseId={id}
+              vehicles={targetVehicles}
+              isStaff={staff}
+            />
+            <LocationsSection
+              caseId={id}
+              locations={targetLocations}
+              isStaff={staff}
+            />
+          </TabsContent>
 
           {/* Timeline */}
           <TabsContent value="timeline" className="space-y-2">

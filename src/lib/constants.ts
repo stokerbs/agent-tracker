@@ -137,10 +137,11 @@ export const DEFAULT_MAP_CENTER = { lat: 13.7563, lng: 100.5018 };
 // GPS auto-refresh interval (ms) — spec: every 60 seconds.
 export const GPS_REFRESH_MS = 60_000;
 
-// Storage bucket names (mirror migration 0004).
+// Storage bucket names (mirror migrations 0004 + 0057).
 export const BUCKETS = {
   avatars: "avatars",
   evidence: "evidence",
   receipts: "receipts",
   reports: "reports",
+  intelligence: "intelligence",
 } as const;

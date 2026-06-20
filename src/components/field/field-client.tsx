@@ -343,16 +343,27 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
           ) : (
             <div className="space-y-2">
               {activeCases.map((c) => (
-                <Link key={c.id} href={`/cases/${c.id}`}
-                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 transition-colors hover:bg-accent/40">
-                  <div className="min-w-0">
-                    <p className="text-sm font-mono font-semibold text-primary">{c.case_number}</p>
-                    {c.client_name && <p className="text-xs text-muted-foreground truncate">{c.client_name}</p>}
+                <div key={c.id} className="rounded-lg border border-border/60">
+                  <Link href={`/cases/${c.id}`}
+                    className="flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-accent/40">
+                    <div className="min-w-0">
+                      <p className="text-sm font-mono font-semibold text-primary">{c.case_number}</p>
+                      {c.client_name && <p className="text-xs text-muted-foreground truncate">{c.client_name}</p>}
+                    </div>
+                    <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
+                      {c.status.replace("_", " ")}
+                    </Badge>
+                  </Link>
+                  <div className="border-t border-border/40 px-3 py-2">
+                    <Link
+                      href={`/field/${c.id}`}
+                      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      <Navigation className="h-3 w-3" />
+                      {t("intel.viewIntel")}
+                    </Link>
                   </div>
-                  <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
-                    {c.status.replace("_", " ")}
-                  </Badge>
-                </Link>
+                </div>
               ))}
             </div>
           )}
