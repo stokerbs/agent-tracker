@@ -717,7 +717,8 @@
       "noMessagesDescription": "Our team will post case updates here. You can also send us a message.",
       "supportTeam": "Support Team",
       "replyPlaceholder": "Send a message to the team..."
-    }
+    },
+    "typing": "{name} is typing…"
   },
   "payroll": {
     "title": "Agent Payroll",

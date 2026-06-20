@@ -172,6 +172,7 @@ export default async function PortalCasePage({
             caseId={id}
             messages={messages}
             currentProfileId={profile.id}
+            currentUserName={profile.full_name ?? "Client"}
           />
         </div>
       </FadeUp>

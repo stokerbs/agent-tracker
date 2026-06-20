@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -8,29 +8,35 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { sendClientMessage, markClientMessagesRead } from "@/app/(portal)/portal/cases/[id]/message-actions";
+import { useCaseMessages } from "@/components/messages/use-case-messages";
+import { TypingIndicator } from "@/components/messages/typing-indicator";
 import type { CaseMessageWithSender } from "@/lib/types";
 
 interface Props {
   caseId: string;
   messages: CaseMessageWithSender[];
   currentProfileId: string;
+  currentUserName: string;
 }
 
-export function PortalMessagesClient({ caseId, messages, currentProfileId }: Props) {
+export function PortalMessagesClient({ caseId, messages: initialMessages, currentProfileId, currentUserName }: Props) {
   const t = useTranslations("messages");
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    markClientMessagesRead(caseId);
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }, [caseId]);
+  const { messages, typingName, notifyTyping, bottomRef, scrollToBottom } = useCaseMessages({
+    caseId,
+    initialMessages,
+    currentProfileId,
+    currentUserName,
+    markRead: markClientMessagesRead,
+  });
 
   function handleSubmit(formData: FormData) {
     start(async () => {
       await sendClientMessage(formData);
       formRef.current?.reset();
+      scrollToBottom();
     });
   }
 
@@ -84,6 +90,9 @@ export function PortalMessagesClient({ caseId, messages, currentProfileId }: Pro
         </div>
       )}
 
+      {/* Staff identity is hidden on the portal — show a generic label. */}
+      <TypingIndicator name={typingName ? t("portal.supportTeam") : null} />
+
       {/* Reply */}
       <Card className="p-3">
         <form ref={formRef} action={handleSubmit} className="flex gap-2">
@@ -92,6 +101,7 @@ export function PortalMessagesClient({ caseId, messages, currentProfileId }: Pro
             name="body"
             rows={2}
             maxLength={2000}
+            onChange={notifyTyping}
             placeholder={t("portal.replyPlaceholder")}
             className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             required

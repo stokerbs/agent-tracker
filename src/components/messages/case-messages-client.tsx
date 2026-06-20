@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { Lock, MessageSquare, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -9,29 +9,35 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { sendMessage, markMessagesRead } from "@/app/(dashboard)/cases/[id]/message-actions";
+import { useCaseMessages } from "@/components/messages/use-case-messages";
+import { TypingIndicator } from "@/components/messages/typing-indicator";
 import type { CaseMessageWithSender } from "@/lib/types";
 
 interface Props {
   caseId: string;
   messages: CaseMessageWithSender[];
   currentProfileId: string;
+  currentUserName: string;
 }
 
-export function CaseMessagesClient({ caseId, messages, currentProfileId }: Props) {
+export function CaseMessagesClient({ caseId, messages: initialMessages, currentProfileId, currentUserName }: Props) {
   const t = useTranslations("messages");
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    markMessagesRead(caseId);
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }, [caseId]);
+  const { messages, typingName, notifyTyping, bottomRef, scrollToBottom } = useCaseMessages({
+    caseId,
+    initialMessages,
+    currentProfileId,
+    currentUserName,
+    markRead: markMessagesRead,
+  });
 
   function handleSubmit(formData: FormData) {
     start(async () => {
       await sendMessage(formData);
       formRef.current?.reset();
+      scrollToBottom();
     });
   }
 
@@ -102,6 +108,8 @@ export function CaseMessagesClient({ caseId, messages, currentProfileId }: Props
         </div>
       )}
 
+      <TypingIndicator name={typingName} />
+
       {/* Compose */}
       <Card className="p-3">
         <form ref={formRef} action={handleSubmit} className="space-y-2">
@@ -110,6 +118,7 @@ export function CaseMessagesClient({ caseId, messages, currentProfileId }: Props
             name="body"
             rows={3}
             maxLength={2000}
+            onChange={notifyTyping}
             placeholder={t("composePlaceholder")}
             className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             required

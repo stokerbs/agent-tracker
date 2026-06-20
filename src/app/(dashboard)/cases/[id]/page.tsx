@@ -699,6 +699,7 @@ export default async function CaseDetailPage({
               caseId={id}
               messages={caseMessages}
               currentProfileId={profile.id}
+              currentUserName={profile.full_name ?? "Staff"}
             />
           </TabsContent>
 
