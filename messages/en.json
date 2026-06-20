@@ -1499,7 +1499,22 @@
       "deleteError": "Failed to delete vehicle",
       "photoSuccess": "Photo uploaded",
       "photoError": "Photo upload failed",
-      "empty": "No vehicles recorded"
+      "empty": "No vehicles recorded",
+      "photos": {
+        "empty": "No photos yet",
+        "uploadSuccess": "Photo uploaded",
+        "uploadError": "Upload failed",
+        "setPrimary": "Set as primary",
+        "primarySet": "Primary photo updated",
+        "primaryError": "Failed to set primary",
+        "delete": "Delete",
+        "deleteTitle": "Delete this photo?",
+        "deleteConfirm": "Delete",
+        "deleteSuccess": "Photo deleted",
+        "deleteError": "Failed to delete photo",
+        "addFromGallery": "Gallery",
+        "takePhoto": "Camera"
+      }
     },
     "locations": {
       "title": "Locations",

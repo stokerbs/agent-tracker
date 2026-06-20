@@ -186,6 +186,100 @@ export async function deleteVehicle(vehicleId: string, caseId: string) {
   revalidate(caseId);
 }
 
+// ─── Vehicle photos (gallery) ─────────────────────────────────────────────────
+
+export async function addVehiclePhoto(vehicleId: string, caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No file provided");
+  validateImageUpload(file);
+
+  const ext  = file.name.split(".").pop() ?? "jpg";
+  const path = `${caseId}/vehicles/${vehicleId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const supabase = await createClient();
+  const { error: uploadErr } = await supabase.storage
+    .from(BUCKETS.intelligence)
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (uploadErr) throw new Error(handleDbError(uploadErr as any, "addVehiclePhoto"));
+
+  // Auto-primary if this is the first photo for this vehicle
+  const { count } = await supabase
+    .from("vehicle_photos")
+    .select("*", { count: "exact", head: true })
+    .eq("vehicle_id", vehicleId);
+  const isPrimary = (count ?? 0) === 0;
+
+  const { error: dbErr } = await supabase.from("vehicle_photos").insert({
+    vehicle_id: vehicleId,
+    case_id: caseId,
+    storage_path: path,
+    is_primary: isPrimary,
+    uploaded_by: profile.id,
+  });
+  if (dbErr) throw new Error(handleDbError(dbErr, "addVehiclePhoto.insert"));
+
+  // Keep target_vehicles.photo_url synced with the primary
+  if (isPrimary) {
+    await supabase.from("target_vehicles").update({ photo_url: path }).eq("id", vehicleId);
+  }
+
+  revalidate(caseId);
+}
+
+export async function setPrimaryVehiclePhoto(photoId: string, vehicleId: string, caseId: string, storagePath: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  await supabase.from("vehicle_photos").update({ is_primary: false }).eq("vehicle_id", vehicleId);
+  const { error } = await supabase.from("vehicle_photos").update({ is_primary: true }).eq("id", photoId);
+  if (error) throw new Error(handleDbError(error, "setPrimaryVehiclePhoto"));
+
+  // Sync the denormalized photo_url
+  await supabase.from("target_vehicles").update({ photo_url: storagePath }).eq("id", vehicleId);
+
+  revalidate(caseId);
+}
+
+export async function deleteVehiclePhoto(photoId: string, vehicleId: string, caseId: string, storagePath: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { data: photo } = await supabase
+    .from("vehicle_photos")
+    .select("is_primary")
+    .eq("id", photoId)
+    .maybeSingle();
+
+  await supabase.storage.from(BUCKETS.intelligence).remove([storagePath]);
+  const { error } = await supabase.from("vehicle_photos").delete().eq("id", photoId);
+  if (error) throw new Error(handleDbError(error, "deleteVehiclePhoto"));
+
+  // If deleted photo was primary, promote the next oldest
+  if (photo?.is_primary) {
+    const { data: next } = await supabase
+      .from("vehicle_photos")
+      .select("id, storage_path")
+      .eq("vehicle_id", vehicleId)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    if (next) {
+      await supabase.from("vehicle_photos").update({ is_primary: true }).eq("id", next.id);
+      await supabase.from("target_vehicles").update({ photo_url: next.storage_path }).eq("id", vehicleId);
+    } else {
+      await supabase.from("target_vehicles").update({ photo_url: null }).eq("id", vehicleId);
+    }
+  }
+
+  revalidate(caseId);
+}
+
 // ─── Locations ────────────────────────────────────────────────────────────────
 
 export async function createLocation(caseId: string, formData: FormData) {

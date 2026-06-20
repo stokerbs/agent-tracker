@@ -9,6 +9,12 @@ import type { Agent, Case } from "@/lib/types";
 export const metadata: Metadata = { title: "Field" };
 export const dynamic = "force-dynamic";
 
+export interface IntelCounts {
+  photos: number;
+  vehicles: number;
+  locations: number;
+}
+
 export default async function FieldPage() {
   const profile = await requireProfile();
   const t = await getTranslations("field");
@@ -23,6 +29,8 @@ export default async function FieldPage() {
   const agent = agentRaw as Agent | null;
 
   let activeCases: Case[] = [];
+  let intelCounts: Record<string, IntelCounts> = {};
+
   if (agent) {
     const { data } = await supabase
       .from("case_agents")
@@ -32,6 +40,23 @@ export default async function FieldPage() {
     activeCases = (data ?? [])
       .map((r: any) => r.cases)
       .filter((c: any) => c && c.status !== "closed" && c.status !== "cancelled") as Case[];
+
+    if (activeCases.length > 0) {
+      const caseIds = activeCases.map((c) => c.id);
+      const [{ data: photos }, { data: vehicles }, { data: locations }] = await Promise.all([
+        supabase.from("target_photos").select("case_id").in("case_id", caseIds),
+        supabase.from("target_vehicles").select("case_id").in("case_id", caseIds),
+        supabase.from("target_locations").select("case_id").in("case_id", caseIds),
+      ]);
+
+      for (const c of activeCases) {
+        intelCounts[c.id] = {
+          photos:    (photos    ?? []).filter((p) => p.case_id === c.id).length,
+          vehicles:  (vehicles  ?? []).filter((v) => v.case_id === c.id).length,
+          locations: (locations ?? []).filter((l) => l.case_id === c.id).length,
+        };
+      }
+    }
   }
 
   return (
@@ -39,6 +64,7 @@ export default async function FieldPage() {
       <FieldClient
         agent={agent}
         activeCases={activeCases}
+        intelCounts={intelCounts}
         noAgentMessage={t("noAgent")}
       />
     </FadeUp>

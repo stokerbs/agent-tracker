@@ -1499,7 +1499,22 @@
       "deleteError": "ลบยานพาหนะไม่สำเร็จ",
       "photoSuccess": "อัปโหลดรูปสำเร็จ",
       "photoError": "อัปโหลดรูปไม่สำเร็จ",
-      "empty": "ยังไม่มีข้อมูลยานพาหนะ"
+      "empty": "ยังไม่มีข้อมูลยานพาหนะ",
+      "photos": {
+        "empty": "ยังไม่มีรูปภาพ",
+        "uploadSuccess": "อัปโหลดรูปสำเร็จ",
+        "uploadError": "อัปโหลดไม่สำเร็จ",
+        "setPrimary": "ตั้งเป็นรูปหลัก",
+        "primarySet": "อัปเดตรูปหลักแล้ว",
+        "primaryError": "ตั้งรูปหลักไม่สำเร็จ",
+        "delete": "ลบ",
+        "deleteTitle": "ลบรูปภาพนี้?",
+        "deleteConfirm": "ลบ",
+        "deleteSuccess": "ลบรูปแล้ว",
+        "deleteError": "ลบรูปไม่สำเร็จ",
+        "addFromGallery": "แกลเลอรี่",
+        "takePhoto": "กล้อง"
+      }
     },
     "locations": {
       "title": "สถานที่",

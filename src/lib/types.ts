@@ -481,6 +481,17 @@ export interface GeofenceEvent {
   occurred_at: string;
 }
 
+export interface VehiclePhoto {
+  id: string;
+  vehicle_id: string;
+  case_id: string;
+  storage_path: string;
+  is_primary: boolean;
+  uploaded_by: string | null;
+  created_at: string;
+  signedUrl?: string;
+}
+
 export interface CaseMessage {
   id: string;
   case_id: string;

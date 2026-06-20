@@ -58,7 +58,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry, VehiclePhoto } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +132,7 @@ export default async function CaseDetailPage({
     { data: targetVehiclesRaw },
     { data: targetLocationsRaw },
     { data: intelDocsRaw },
+    { data: vehiclePhotosRaw },
     { data: messagesRaw },
     { data: myView },
   ] = await Promise.all([
@@ -174,6 +175,7 @@ export default async function CaseDetailPage({
     supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
     supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
+    supabase.from("vehicle_photos").select("*").eq("case_id", id).order("created_at"),
     supabase
       .from("case_messages")
       .select("*, profiles(id, full_name, role)")
@@ -255,11 +257,13 @@ export default async function CaseDetailPage({
   const rawPhotos = (targetPhotosRaw ?? []) as TargetPhoto[];
   const rawVehicles = (targetVehiclesRaw ?? []) as TargetVehicle[];
   const rawLocations = (targetLocationsRaw ?? []) as TargetLocation[];
+  const rawVehiclePhotos = (vehiclePhotosRaw ?? []) as VehiclePhoto[];
 
   const allIntelPaths = [
     ...rawPhotos.map((p) => p.storage_path),
     ...rawVehicles.filter((v) => v.photo_url).map((v) => v.photo_url as string),
     ...rawLocations.filter((l) => l.photo_url).map((l) => l.photo_url as string),
+    ...rawVehiclePhotos.map((p) => p.storage_path),
   ];
   const intelSignedMap: Record<string, string> = {};
   if (allIntelPaths.length > 0) {
@@ -282,6 +286,11 @@ export default async function CaseDetailPage({
     ...l,
     address: l.address_enc ? decryptField(l.address_enc) : null,
     photoSignedUrl: l.photo_url ? (intelSignedMap[l.photo_url] ?? null) : null,
+  }));
+
+  const vehiclePhotos = rawVehiclePhotos.map((p) => ({
+    ...p,
+    signedUrl: intelSignedMap[p.storage_path] ?? "",
   }));
 
   // Intel documents: sign URLs from the evidence bucket
@@ -571,6 +580,7 @@ export default async function CaseDetailPage({
             <VehiclesSection
               caseId={id}
               vehicles={targetVehicles}
+              vehiclePhotos={vehiclePhotos}
               isStaff={staff}
             />
             <LocationsSection

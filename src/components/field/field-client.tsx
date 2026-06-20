@@ -9,6 +9,8 @@ import {
   BatteryLow,
   BatteryMedium,
   Briefcase,
+  Car,
+  ChevronRight,
   Clock,
   Film,
   ImageIcon,
@@ -18,6 +20,7 @@ import {
   Paperclip,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Siren,
   UserX,
   X,
@@ -55,6 +58,7 @@ import { Input } from "@/components/ui/input";
 import { AGENT_STATUS_META } from "@/lib/constants";
 import { cn, initials, timeAgo } from "@/lib/utils";
 import type { Agent, AgentStatus, Case } from "@/lib/types";
+import type { IntelCounts } from "@/app/(dashboard)/field/page";
 
 const GPS_INTERVAL_MS = 55_000;
 const SIGNIFICANT_MOVE_M = 10;
@@ -98,10 +102,11 @@ function kindForFile(f: File): FilePreview["kind"] {
 interface Props {
   agent: Agent | null;
   activeCases: Case[];
+  intelCounts: Record<string, IntelCounts>;
   noAgentMessage: string;
 }
 
-export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }: Props) {
+export function FieldClient({ agent: initialAgent, activeCases, intelCounts, noAgentMessage }: Props) {
   const t = useTranslations("field");
   const tStatus = useTranslations("status.agent");
   const STATUSES = (Object.keys(AGENT_STATUS_META) as AgentStatus[]).filter(
@@ -341,30 +346,58 @@ export function FieldClient({ agent: initialAgent, activeCases, noAgentMessage }
           {activeCases.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("noActiveCases")}</p>
           ) : (
-            <div className="space-y-2">
-              {activeCases.map((c) => (
-                <div key={c.id} className="rounded-lg border border-border/60">
-                  <Link href={`/cases/${c.id}`}
-                    className="flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-accent/40">
-                    <div className="min-w-0">
-                      <p className="text-sm font-mono font-semibold text-primary">{c.case_number}</p>
-                      {c.client_name && <p className="text-xs text-muted-foreground truncate">{c.client_name}</p>}
-                    </div>
-                    <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
-                      {c.status.replace("_", " ")}
-                    </Badge>
-                  </Link>
-                  <div className="border-t border-border/40 px-3 py-2">
+            <div className="space-y-3">
+              {activeCases.map((c) => {
+                const counts = intelCounts[c.id] ?? { photos: 0, vehicles: 0, locations: 0 };
+                return (
+                  <div key={c.id} className="space-y-2">
+                    {/* Case header row */}
                     <Link
-                      href={`/field/${c.id}`}
-                      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                      href={`/cases/${c.id}`}
+                      className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 transition-colors hover:bg-accent/40"
                     >
-                      <Navigation className="h-3 w-3" />
-                      {t("intel.viewIntel")}
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm font-semibold text-primary">{c.case_number}</p>
+                        {c.client_name && <p className="truncate text-xs text-muted-foreground">{c.client_name}</p>}
+                      </div>
+                      <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
+                        {c.status.replace("_", " ")}
+                      </Badge>
+                    </Link>
+
+                    {/* Target Intel card — large, full-width, min-h-[80px] */}
+                    <Link href={`/field/${c.id}`} className="block">
+                      <div className="flex min-h-[80px] w-full items-center justify-between rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 transition-colors active:bg-primary/15 hover:bg-primary/10">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                            <ShieldAlert className="h-4.5 w-4.5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-primary">{t("intel.viewIntel")}</p>
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <ImageIcon className="h-3 w-3" />
+                                {counts.photos}
+                              </span>
+                              <span className="text-border">·</span>
+                              <span className="flex items-center gap-1">
+                                <Car className="h-3 w-3" />
+                                {counts.vehicles}
+                              </span>
+                              <span className="text-border">·</span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {counts.locations}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
+                      </div>
                     </Link>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
