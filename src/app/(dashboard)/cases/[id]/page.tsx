@@ -9,6 +9,7 @@ import {
   Clock,
   FolderLock,
   MapPin,
+  MessageSquare,
   Phone,
   Radio,
   Receipt,
@@ -44,6 +45,7 @@ import { TargetPhotosSection } from "@/components/intelligence/target-photos-sec
 import { VehiclesSection } from "@/components/intelligence/vehicles-section";
 import { LocationsSection } from "@/components/intelligence/locations-section";
 import { DocumentsSection } from "@/components/intelligence/documents-section";
+import { CaseMessagesClient } from "@/components/messages/case-messages-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +58,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry } from "@/lib/types";
+import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +99,7 @@ export default async function CaseDetailPage({
   const tExpenses = await getTranslations("expenses");
   const tPayroll  = await getTranslations("payroll");
   const tIntel    = await getTranslations("intelligence");
+  const tMsgs     = await getTranslations("messages");
   const supabase = await createClient();
   const staff = isStaff(profile.role);
 
@@ -129,6 +132,8 @@ export default async function CaseDetailPage({
     { data: targetVehiclesRaw },
     { data: targetLocationsRaw },
     { data: intelDocsRaw },
+    { data: messagesRaw },
+    { data: myView },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -169,6 +174,17 @@ export default async function CaseDetailPage({
     supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
     supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
+    supabase
+      .from("case_messages")
+      .select("*, profiles(id, full_name, role)")
+      .eq("case_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("case_message_views")
+      .select("last_seen_at")
+      .eq("case_id", id)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
   ]);
 
   // Enrich timeline entries with linked evidence + server-signed URLs
@@ -300,6 +316,13 @@ export default async function CaseDetailPage({
       date,
       entries: [...entries].reverse(), // time ASC within day
     }));
+
+  // Messages + unread count
+  const caseMessages = (messagesRaw ?? []) as CaseMessageWithSender[];
+  const lastSeen = myView?.last_seen_at ? new Date(myView.last_seen_at) : null;
+  const unreadMessageCount = caseMessages.filter(
+    (m) => m.sender_id !== profile.id && (!lastSeen || new Date(m.created_at) > lastSeen),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -511,6 +534,17 @@ export default async function CaseDetailPage({
                 <TabCount n={casePayments.length} />
               </TabsTrigger>
             )}
+            <TabsTrigger value="messages" className="relative">
+              <MessageSquare className="mr-1 h-4 w-4" />
+              {tMsgs("tab")}
+              {unreadMessageCount > 0 ? (
+                <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                  {unreadMessageCount}
+                </span>
+              ) : (
+                <TabCount n={caseMessages.length} />
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Intelligence */}
@@ -647,6 +681,15 @@ export default async function CaseDetailPage({
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Messages */}
+          <TabsContent value="messages">
+            <CaseMessagesClient
+              caseId={id}
+              messages={caseMessages}
+              currentProfileId={profile.id}
+            />
           </TabsContent>
 
           {/* Payroll */}

@@ -705,6 +705,25 @@
       "noResultsDescription": "Try a different search, category, or date range."
     }
   },
+  "messages": {
+    "tab": "Messages",
+    "noMessages": "No messages yet",
+    "noMessagesDescription": "Post an update or internal note. Updates are visible to the client; internal notes are staff-only.",
+    "you": "You",
+    "internal": "Internal",
+    "internalToggle": "Internal note (staff only)",
+    "clientBadge": "Client",
+    "send": "Send",
+    "composePlaceholder": "Write an update or internal note...",
+    "unread": "{count} unread",
+    "portal": {
+      "title": "Updates",
+      "noMessages": "No updates yet",
+      "noMessagesDescription": "Our team will post case updates here. You can also send us a message.",
+      "supportTeam": "Support Team",
+      "replyPlaceholder": "Send a message to the team..."
+    }
+  },
   "payroll": {
     "title": "Agent Payroll",
     "description": "Daily payments owed to investigators and partners.",

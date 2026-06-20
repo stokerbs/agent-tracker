@@ -480,3 +480,16 @@ export interface GeofenceEvent {
   lng: number;
   occurred_at: string;
 }
+
+export interface CaseMessage {
+  id: string;
+  case_id: string;
+  sender_id: string;
+  body: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
+export interface CaseMessageWithSender extends CaseMessage {
+  profiles: Pick<Profile, "id" | "full_name" | "role"> | null;
+}

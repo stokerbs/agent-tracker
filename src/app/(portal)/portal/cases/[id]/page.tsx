@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, MessageSquare } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -9,9 +9,10 @@ import { InvoiceCard } from "@/components/invoices/invoice-card";
 import { CaseStatusBadge } from "@/components/shared/status-badges";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FadeUp } from "@/components/shared/motion";
+import { PortalMessagesClient } from "@/components/messages/portal-messages-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Case, CaseStatus, Invoice } from "@/lib/types";
+import type { Case, CaseMessageWithSender, CaseStatus, Invoice } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function PortalCasePage({
   const { id } = await params;
   const profile = await requireProfile();
   const t = await getTranslations("portal");
+  const tMsgs = await getTranslations("messages");
   const supabase = await createClient();
 
   // Resolve client identity
@@ -57,16 +59,36 @@ export default async function PortalCasePage({
 
   const c = caseRaw as Pick<Case, "id" | "case_number" | "case_type" | "status" | "start_date" | "end_date" | "description" | "client_id">;
 
-  // Fetch invoices for this specific case
-  const { data: invoicesRaw } = await supabase
-    .from("invoices")
-    .select("*")
-    .eq("client_id", clientRow.id)
-    .eq("case_id", id)
-    .neq("status", "draft")
-    .order("issued_date", { ascending: false });
+  // Fetch invoices + messages + last-seen in parallel
+  const [{ data: invoicesRaw }, { data: messagesRaw }, { data: myView }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("*")
+      .eq("client_id", clientRow.id)
+      .eq("case_id", id)
+      .neq("status", "draft")
+      .order("issued_date", { ascending: false }),
+    supabase
+      .from("case_messages")
+      .select("*, profiles(id, full_name, role)")
+      .eq("case_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("case_message_views")
+      .select("last_seen_at")
+      .eq("case_id", id)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
+  ]);
 
   const invoices = (invoicesRaw ?? []) as Invoice[];
+  const messages = (messagesRaw ?? []) as CaseMessageWithSender[];
+
+  // Unread: staff messages the client hasn't seen yet
+  const lastSeen = myView?.last_seen_at ? new Date(myView.last_seen_at) : null;
+  const unreadCount = messages.filter(
+    (m) => m.sender_id !== profile.id && (!lastSeen || new Date(m.created_at) > lastSeen),
+  ).length;
 
   function fmtDate(d: string | null) {
     if (!d) return null;
@@ -133,8 +155,29 @@ export default async function PortalCasePage({
         </Card>
       </FadeUp>
 
-      {/* Invoices for this case */}
+      {/* Updates / messages */}
       <FadeUp delay={0.08}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              {tMsgs("portal.title")}
+            </h2>
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+          <PortalMessagesClient
+            caseId={id}
+            messages={messages}
+            currentProfileId={profile.id}
+          />
+        </div>
+      </FadeUp>
+
+      {/* Invoices */}
+      <FadeUp delay={0.12}>
         <div className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             {t("tabs.invoices")}
