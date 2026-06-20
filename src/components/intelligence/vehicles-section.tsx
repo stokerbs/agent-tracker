@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Car, ImageIcon, Loader2, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Camera, Car, ImageIcon, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -31,28 +31,84 @@ interface Props {
   isStaff: boolean;
 }
 
+// ── Vehicle Form (Add / Edit) ─────────────────────────────────────────────────
+
 function VehicleForm({
   vehicle,
   caseId,
+  photos = [],
   onDone,
 }: {
   vehicle?: TargetVehicle;
   caseId: string;
+  photos?: VehiclePhoto[];
   onDone: () => void;
 }) {
   const t = useTranslations("intelligence.vehicles");
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; preview: string }>>([]);
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState<VehiclePhoto | null>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef  = useRef<HTMLInputElement>(null);
+
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    const previews = files.map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
+    setPendingFiles((prev) => [...prev, ...previews]);
+    e.target.value = "";
+  }
+
+  function removePending(idx: number) {
+    setPendingFiles((prev) => {
+      URL.revokeObjectURL(prev[idx].preview);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  function handleSetPrimary(photo: VehiclePhoto) {
+    if (!vehicle) return;
+    start(async () => {
+      try {
+        await setPrimaryVehiclePhoto(photo.id, vehicle.id, caseId, photo.storage_path);
+        toast.success(t("photos.primarySet"));
+        router.refresh();
+      } catch {
+        toast.error(t("photos.primaryError"));
+      }
+    });
+  }
+
+  function handleDeletePhoto() {
+    if (!deletePhotoTarget || !vehicle) return;
+    start(async () => {
+      try {
+        await deleteVehiclePhoto(deletePhotoTarget.id, vehicle.id, caseId, deletePhotoTarget.storage_path);
+        toast.success(t("photos.deleteSuccess"));
+        setDeletePhotoTarget(null);
+        router.refresh();
+      } catch {
+        toast.error(t("photos.deleteError"));
+      }
+    });
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     start(async () => {
       try {
+        let vehicleId: string;
         if (vehicle) {
           await updateVehicle(vehicle.id, caseId, fd);
+          vehicleId = vehicle.id;
         } else {
-          await createVehicle(caseId, fd);
+          vehicleId = await createVehicle(caseId, fd);
+        }
+        for (const { file } of pendingFiles) {
+          const pfd = new FormData();
+          pfd.set("file", file);
+          await addVehiclePhoto(vehicleId, caseId, pfd);
         }
         toast.success(vehicle ? t("updateSuccess") : t("createSuccess"));
         onDone();
@@ -63,41 +119,191 @@ function VehicleForm({
     });
   }
 
+  const hasPhotos = photos.length > 0 || pendingFiles.length > 0;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="make">{t("make")}</Label>
-          <Input id="make" name="make" defaultValue={vehicle?.make ?? ""} placeholder="Toyota" />
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="make">{t("make")}</Label>
+            <Input id="make" name="make" defaultValue={vehicle?.make ?? ""} placeholder="Toyota" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="model">{t("model")}</Label>
+            <Input id="model" name="model" defaultValue={vehicle?.model ?? ""} placeholder="Camry" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="color">{t("color")}</Label>
+            <Input id="color" name="color" defaultValue={vehicle?.color ?? ""} placeholder="Black" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="license_plate">{t("plate")}</Label>
+            <Input id="license_plate" name="license_plate" defaultValue={vehicle?.licensePlate ?? ""} placeholder="กก 1234 กทม" />
+          </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="model">{t("model")}</Label>
-          <Input id="model" name="model" defaultValue={vehicle?.model ?? ""} placeholder="Camry" />
+          <Label htmlFor="notes">{t("notes")}</Label>
+          <Input id="notes" name="notes" defaultValue={vehicle?.notes ?? ""} placeholder={t("notesPlaceholder")} />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="color">{t("color")}</Label>
-          <Input id="color" name="color" defaultValue={vehicle?.color ?? ""} placeholder="Black" />
+
+        {/* ── Vehicle Photos ──────────────────────────────────────────── */}
+        <div className="space-y-2.5">
+          <Label>{t("photos.sectionLabel")}</Label>
+
+          {/* Existing photos (edit mode) */}
+          {photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-1.5">
+              {photos.map((p) => (
+                <div
+                  key={p.id}
+                  className={cn(
+                    "relative aspect-square overflow-hidden rounded-md border bg-muted",
+                    p.is_primary && "ring-2 ring-primary ring-offset-1",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.signedUrl ?? ""} alt="" className="h-full w-full object-cover" />
+                  {p.is_primary && (
+                    <span className="absolute left-1 top-1 rounded bg-primary/90 p-0.5">
+                      <Star className="h-2.5 w-2.5 text-primary-foreground" />
+                    </span>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 flex justify-end gap-0.5 bg-gradient-to-t from-black/70 to-transparent px-1 pb-1 pt-3">
+                    {!p.is_primary && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetPrimary(p)}
+                        disabled={pending}
+                        className="rounded bg-white/10 p-1 hover:bg-white/20 active:bg-white/30"
+                        title={t("photos.setPrimary")}
+                      >
+                        <Star className="h-3 w-3 text-yellow-300" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDeletePhotoTarget(p)}
+                      disabled={pending}
+                      className="rounded bg-white/10 p-1 hover:bg-red-500/60 active:bg-red-500/70"
+                      title={t("photos.delete")}
+                    >
+                      <Trash2 className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Staged file previews */}
+          {pendingFiles.length > 0 && (
+            <div className="grid grid-cols-3 gap-1.5">
+              {pendingFiles.map(({ preview }, idx) => {
+                const isFirstAndNoPrior = idx === 0 && photos.length === 0;
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "relative aspect-square overflow-hidden rounded-md border bg-muted",
+                      isFirstAndNoPrior && "ring-2 ring-primary ring-offset-1",
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview} alt="" className="h-full w-full object-cover" />
+                    {isFirstAndNoPrior && (
+                      <span className="absolute left-1 top-1 rounded bg-primary/90 px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
+                        {t("photos.cover")}
+                      </span>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-end bg-gradient-to-t from-black/70 to-transparent px-1 pb-1 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => removePending(idx)}
+                        className="rounded bg-white/10 p-1 hover:bg-red-500/60 active:bg-red-500/70"
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Upload buttons — large for mobile */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-14 flex-col gap-1"
+              disabled={pending}
+              onClick={() => galleryRef.current?.click()}
+            >
+              <ImageIcon className="h-5 w-5" />
+              <span className="text-xs">{t("photos.addFromGallery")}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-14 flex-col gap-1"
+              disabled={pending}
+              onClick={() => cameraRef.current?.click()}
+            >
+              <Camera className="h-5 w-5" />
+              <span className="text-xs">{t("photos.takePhoto")}</span>
+            </Button>
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFilePick}
+            />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFilePick}
+            />
+          </div>
+
+          {!hasPhotos && (
+            <p className="text-center text-xs text-muted-foreground">{t("photos.empty")}</p>
+          )}
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="license_plate">{t("plate")}</Label>
-          <Input id="license_plate" name="license_plate" defaultValue={vehicle?.licensePlate ?? ""} placeholder="กก 1234 กทม" />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="notes">{t("notes")}</Label>
-        <Input id="notes" name="notes" defaultValue={vehicle?.notes ?? ""} placeholder={t("notesPlaceholder")} />
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={pending}>
-          {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {vehicle ? t("update") : t("create")}
-        </Button>
-      </DialogFooter>
-    </form>
+
+        <DialogFooter>
+          <Button type="submit" disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {vehicle ? t("update") : t("create")}
+          </Button>
+        </DialogFooter>
+      </form>
+
+      {/* Delete existing photo confirm */}
+      <Dialog open={!!deletePhotoTarget} onOpenChange={(o) => !o && setDeletePhotoTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{t("photos.deleteTitle")}</DialogTitle></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletePhotoTarget(null)} disabled={pending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeletePhoto} disabled={pending} className="gap-2">
+              {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Trash2 className="h-4 w-4" /> {t("photos.deleteConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-// ── Vehicle Photo Gallery Dialog ──────────────────────────────────────────────
+// ── Vehicle Photo Gallery (card trigger) ─────────────────────────────────────
 
 function VehicleGallery({
   vehicle,
@@ -170,7 +376,7 @@ function VehicleGallery({
 
   return (
     <>
-      {/* Trigger: the photo area on the vehicle card */}
+      {/* Trigger: tap the photo area on the vehicle card */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -203,7 +409,7 @@ function VehicleGallery({
           </DialogHeader>
 
           {photos.length === 0 ? (
-            <div className="flex h-28 items-center justify-center rounded-lg border border-dashed text-muted-foreground text-sm">
+            <div className="flex h-28 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
               {t("photos.empty")}
             </div>
           ) : (
@@ -212,7 +418,7 @@ function VehicleGallery({
                 <div
                   key={p.id}
                   className={cn(
-                    "group relative aspect-square overflow-hidden rounded-md border bg-muted",
+                    "relative aspect-square overflow-hidden rounded-md border bg-muted",
                     p.is_primary && "ring-2 ring-primary ring-offset-1",
                   )}
                 >
@@ -223,27 +429,33 @@ function VehicleGallery({
                     className="h-full w-full cursor-pointer object-cover"
                     onClick={() => setLightbox(p.signedUrl ?? null)}
                   />
+                  {p.is_primary && (
+                    <span className="absolute left-1 top-1 rounded bg-primary/90 p-0.5">
+                      <Star className="h-2.5 w-2.5 text-primary-foreground" />
+                    </span>
+                  )}
+                  {/* Always-visible action bar — works on mobile touch */}
                   {isStaff && (
-                    <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-end gap-0.5 bg-gradient-to-t from-black/70 to-transparent px-1 pb-1 pt-3">
                       {!p.is_primary && (
                         <button
                           type="button"
                           onClick={() => handleSetPrimary(p)}
                           disabled={pending}
-                          className="rounded-full bg-white/20 p-1.5 hover:bg-white/30"
+                          className="rounded bg-white/10 p-1 hover:bg-white/20 active:bg-white/30"
                           title={t("photos.setPrimary")}
                         >
-                          <Star className="h-3.5 w-3.5 text-yellow-300" />
+                          <Star className="h-3 w-3 text-yellow-300" />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(p)}
                         disabled={pending}
-                        className="rounded-full bg-white/20 p-1.5 hover:bg-red-500/60"
+                        className="rounded bg-white/10 p-1 hover:bg-red-500/60 active:bg-red-500/70"
                         title={t("photos.delete")}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-white" />
+                        <Trash2 className="h-3 w-3 text-white" />
                       </button>
                     </div>
                   )}
@@ -335,7 +547,6 @@ export function VehiclesSection({ caseId, vehicles, vehiclePhotos, isStaff }: Pr
   const [editVehicle, setEditVehicle] = useState<TargetVehicle | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TargetVehicle | null>(null);
 
-  // Group photos by vehicle_id
   const photosByVehicle = vehiclePhotos.reduce<Record<string, VehiclePhoto[]>>((acc, p) => {
     if (!acc[p.vehicle_id]) acc[p.vehicle_id] = [];
     acc[p.vehicle_id].push(p);
@@ -435,12 +646,17 @@ export function VehiclesSection({ caseId, vehicles, vehiclePhotos, isStaff }: Pr
         </div>
       )}
 
-      {/* Edit dialog */}
+      {/* Edit dialog — passes existing photos for in-dialog management */}
       <Dialog open={!!editVehicle} onOpenChange={(o) => !o && setEditVehicle(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{t("editTitle")}</DialogTitle></DialogHeader>
           {editVehicle && (
-            <VehicleForm vehicle={editVehicle} caseId={caseId} onDone={() => setEditVehicle(null)} />
+            <VehicleForm
+              vehicle={editVehicle}
+              caseId={caseId}
+              photos={photosByVehicle[editVehicle.id] ?? []}
+              onDone={() => setEditVehicle(null)}
+            />
           )}
         </DialogContent>
       </Dialog>

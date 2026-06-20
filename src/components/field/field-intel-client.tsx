@@ -9,7 +9,7 @@ import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { Evidence, LocationType, TargetLocation, TargetPhoto, TargetVehicle } from "@/lib/types";
+import type { Evidence, LocationType, TargetLocation, TargetPhoto, TargetVehicle, VehiclePhoto } from "@/lib/types";
 
 interface IntelDoc extends Evidence {
   signedUrl?: string;
@@ -35,11 +35,12 @@ interface Props {
   profile: ProfileData;
   photos: TargetPhoto[];
   vehicles: TargetVehicle[];
+  vehiclePhotoMap?: Record<string, VehiclePhoto[]>;
   locations: TargetLocation[];
   documents?: IntelDoc[];
 }
 
-export function FieldIntelClient({ profile, photos, vehicles, locations, documents = [] }: Props) {
+export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = {}, locations, documents = [] }: Props) {
   const t = useTranslations("field.intel");
   const tI = useTranslations("intelligence");
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -165,64 +166,87 @@ export function FieldIntelClient({ profile, photos, vehicles, locations, documen
         </Card>
       )}
 
-      {/* Primary vehicle highlight */}
-      {primaryVehicle && (
-        <Card>
-          <CardContent className="p-0">
-            <div className="flex">
-              {primaryVehicle.photoSignedUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={primaryVehicle.photoSignedUrl}
-                  alt="Vehicle"
-                  className="w-24 shrink-0 object-cover rounded-l-lg cursor-pointer"
-                  onClick={() => setLightbox(primaryVehicle.photoSignedUrl!)}
-                />
-              ) : (
-                <div className="flex w-24 shrink-0 items-center justify-center bg-muted rounded-l-lg min-h-[72px]">
-                  <Car className="h-6 w-6 text-muted-foreground/40" />
-                </div>
-              )}
-              <div className="p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  {tI("vehicles.title")}
-                  {primaryVehicle.is_primary && <span className="ml-1 text-primary">· {tI("vehicles.primary")}</span>}
-                </p>
-                <p className="font-semibold text-sm">
-                  {[primaryVehicle.color, primaryVehicle.make, primaryVehicle.model].filter(Boolean).join(" ") || tI("vehicles.unknownVehicle")}
-                </p>
-                {primaryVehicle.licensePlate && (
-                  <p className="font-mono text-base font-bold text-primary">{primaryVehicle.licensePlate}</p>
-                )}
-                {primaryVehicle.notes && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{primaryVehicle.notes}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* All vehicles (if more than 1) */}
-      {vehicles.length > 1 && (
+      {/* Vehicles */}
+      {vehicles.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-semibold text-muted-foreground">
               {tI("vehicles.title")} ({vehicles.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-2">
-            {vehicles.slice(1).map((v) => (
-              <div key={v.id} className="flex items-center gap-3 rounded-md border px-2.5 py-2">
-                <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {[v.color, v.make, v.model].filter(Boolean).join(" ") || tI("vehicles.unknownVehicle")}
-                  </p>
-                  {v.licensePlate && <p className="font-mono text-xs font-bold text-primary">{v.licensePlate}</p>}
+          <CardContent className="px-3 pb-3 space-y-3">
+            {vehicles.map((v) => {
+              const vPhotos = vehiclePhotoMap[v.id] ?? [];
+              const cover = vPhotos.find((p) => p.is_primary) ?? vPhotos[0] ?? null;
+              const coverUrl = cover?.signedUrl || v.photoSignedUrl || null;
+              return (
+                <div key={v.id}>
+                  <div className="flex gap-3">
+                    {/* Cover photo */}
+                    <div
+                      className={cn(
+                        "relative w-20 shrink-0 overflow-hidden rounded-lg bg-muted",
+                        coverUrl && "cursor-pointer",
+                      )}
+                      style={{ minHeight: 64 }}
+                      onClick={() => coverUrl && setLightbox(coverUrl)}
+                    >
+                      {coverUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={coverUrl} alt="Vehicle" className="h-full w-full object-cover" style={{ minHeight: 64 }} />
+                      ) : (
+                        <div className="flex h-full min-h-[64px] items-center justify-center">
+                          <Car className="h-5 w-5 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      {vPhotos.length > 1 && (
+                        <span className="absolute bottom-0.5 right-0.5 flex items-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-[8px] font-medium text-white">
+                          <ImageIcon className="h-2 w-2" />
+                          {vPhotos.length}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 py-0.5">
+                      {v.is_primary && (
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-0.5">
+                          {tI("vehicles.primary")}
+                        </p>
+                      )}
+                      <p className="font-semibold text-sm leading-tight">
+                        {[v.color, v.make, v.model].filter(Boolean).join(" ") || tI("vehicles.unknownVehicle")}
+                      </p>
+                      {v.licensePlate && (
+                        <p className="font-mono text-sm font-bold text-primary">{v.licensePlate}</p>
+                      )}
+                      {v.notes && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{v.notes}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Additional photos strip (if >1) */}
+                  {vPhotos.length > 1 && (
+                    <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                      {vPhotos.map((p) => (
+                        <div
+                          key={p.id}
+                          className={cn(
+                            "relative h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-md border bg-muted",
+                            p.is_primary && "ring-2 ring-primary ring-offset-1",
+                          )}
+                          onClick={() => p.signedUrl && setLightbox(p.signedUrl)}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.signedUrl ?? ""} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}

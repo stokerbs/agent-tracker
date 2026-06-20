@@ -605,9 +605,9 @@
     "noTitle": "ยังไม่มีการบันทึกค่าใช้จ่าย",
     "noDescription": "ส่งค่าใช้จ่ายภาคสนามรายการแรกเพื่อเริ่มติดตาม",
     "stats": {
-      "thisMonth": "เดือนนี้",
-      "allTime": "ตลอดเวลา",
-      "entriesThisMonth": "รายการเดือนนี้"
+      "pending": "รอดำเนินการ",
+      "paid": "จ่ายแล้ว",
+      "reimbursed": "เบิกแล้ว"
     },
     "summaryByCategory": "สรุปรายเดือนตามหมวดหมู่",
     "table": {
@@ -648,11 +648,6 @@
       "deleteConfirmDescription": "ระบบจะซ่อนรายการนี้ถาวร ไม่สามารถกู้คืนได้",
       "deleteConfirm": "ใช่ ลบเลย",
       "paidBy": "จ่ายโดย {name}"
-    },
-    "stats": {
-      "pending": "รอดำเนินการ",
-      "paid": "จ่ายแล้ว",
-      "reimbursed": "เบิกแล้ว"
     },
     "exportPdf": "ส่งออก PDF",
     "exportTitle": "รายงานค่าใช้จ่าย",
@@ -826,7 +821,9 @@
       "notesLabel": "หมายเหตุ",
       "notesPlaceholder": "เช่น เฝ้าระวังเต็มวัน",
       "submitButton": "บันทึกรายการ",
-      "toast": { "success": "บันทึกรายการชำระเงินแล้ว" }
+      "toast": {
+        "success": "บันทึกรายการชำระเงินแล้ว"
+      }
     },
     "adjust": {
       "title": "ปรับจำนวนเงิน",
@@ -834,7 +831,9 @@
       "reasonLabel": "เหตุผลในการปรับ",
       "reasonPlaceholder": "เช่น ครึ่งวัน, โอที, หักเงิน",
       "submitButton": "บันทึกการปรับ",
-      "toast": { "success": "ปรับจำนวนเงินแล้ว" }
+      "toast": {
+        "success": "ปรับจำนวนเงินแล้ว"
+      }
     },
     "actions": {
       "markPaid": "ทำเครื่องหมายว่าจ่ายแล้ว",
@@ -1459,7 +1458,10 @@
       "notesPlaceholder": "รูปลักษณ์ นิสัย ความเกี่ยวข้อง…",
       "save": "บันทึกการเปลี่ยนแปลง",
       "empty": "ยังไม่มีข้อมูลโปรไฟล์",
-      "toast": { "success": "อัปเดตโปรไฟล์แล้ว", "error": "อัปเดตโปรไฟล์ไม่สำเร็จ" }
+      "toast": {
+        "success": "อัปเดตโปรไฟล์แล้ว",
+        "error": "อัปเดตโปรไฟล์ไม่สำเร็จ"
+      }
     },
     "photos": {
       "title": "รูปภาพเป้าหมาย",
@@ -1501,6 +1503,8 @@
       "photoError": "อัปโหลดรูปไม่สำเร็จ",
       "empty": "ยังไม่มีข้อมูลยานพาหนะ",
       "photos": {
+        "sectionLabel": "Vehicle Photos",
+        "cover": "Cover",
         "empty": "ยังไม่มีรูปภาพ",
         "uploadSuccess": "อัปโหลดรูปสำเร็จ",
         "uploadError": "อัปโหลดไม่สำเร็จ",

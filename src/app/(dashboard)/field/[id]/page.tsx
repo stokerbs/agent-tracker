@@ -9,7 +9,7 @@ import { BUCKETS } from "@/lib/constants";
 import { decryptField } from "@/lib/security/encryption";
 import { Button } from "@/components/ui/button";
 import { FieldIntelClient } from "@/components/field/field-intel-client";
-import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation } from "@/lib/types";
+import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation, VehiclePhoto } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -48,16 +48,21 @@ export default async function FieldIntelPage({
     { data: targetVehiclesRaw },
     { data: targetLocationsRaw },
     { data: intelDocsRaw },
+    { data: vehiclePhotosRaw },
   ] = await Promise.all([
     supabase.from("target_photos").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
     supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
+    supabase.from("vehicle_photos").select("*").eq("case_id", id).order("created_at"),
   ]);
+
+  const rawVehiclePhotos = (vehiclePhotosRaw ?? []) as VehiclePhoto[];
 
   const allPaths = [
     ...((targetPhotosRaw ?? []) as TargetPhoto[]).map((p) => p.storage_path),
     ...((targetVehiclesRaw ?? []) as TargetVehicle[]).filter((v) => v.photo_url).map((v) => v.photo_url as string),
+    ...rawVehiclePhotos.map((p) => p.storage_path),
   ];
   const signedMap: Record<string, string> = {};
   if (allPaths.length > 0) {
@@ -80,6 +85,17 @@ export default async function FieldIntelPage({
     ...l,
     address: l.address_enc ? decryptField(l.address_enc) : null,
   }));
+
+  const vehiclePhotos: VehiclePhoto[] = rawVehiclePhotos.map((p) => ({
+    ...p,
+    signedUrl: signedMap[p.storage_path] ?? "",
+  }));
+
+  const vehiclePhotoMap = vehiclePhotos.reduce<Record<string, VehiclePhoto[]>>((acc, p) => {
+    if (!acc[p.vehicle_id]) acc[p.vehicle_id] = [];
+    acc[p.vehicle_id].push(p);
+    return acc;
+  }, {});
 
   // Intel documents — sign from evidence bucket
   const rawDocs = (intelDocsRaw ?? []) as Evidence[];
@@ -122,6 +138,7 @@ export default async function FieldIntelPage({
         profile={profileData}
         photos={photos}
         vehicles={vehicles}
+        vehiclePhotoMap={vehiclePhotoMap}
         locations={locations}
         documents={intelDocs}
       />

@@ -605,9 +605,9 @@
     "noTitle": "No expenses logged",
     "noDescription": "Submit your first field expense to start tracking.",
     "stats": {
-      "thisMonth": "This month",
-      "allTime": "All time",
-      "entriesThisMonth": "Entries this month"
+      "pending": "Pending",
+      "paid": "Paid",
+      "reimbursed": "Reimbursed"
     },
     "summaryByCategory": "Monthly Summary by Category",
     "table": {
@@ -648,11 +648,6 @@
       "deleteConfirmDescription": "This will permanently hide the record. This cannot be undone.",
       "deleteConfirm": "Yes, delete",
       "paidBy": "Paid by {name}"
-    },
-    "stats": {
-      "pending": "Pending",
-      "paid": "Paid",
-      "reimbursed": "Reimbursed"
     },
     "exportPdf": "Export PDF",
     "exportTitle": "Expense Report",
@@ -769,7 +764,9 @@
       "notesLabel": "Notes",
       "notesPlaceholder": "e.g. Full day surveillance",
       "submitButton": "Save Payment",
-      "toast": { "success": "Payment entry saved" }
+      "toast": {
+        "success": "Payment entry saved"
+      }
     },
     "adjust": {
       "title": "Adjust Amount",
@@ -777,7 +774,9 @@
       "reasonLabel": "Reason for adjustment",
       "reasonPlaceholder": "e.g. Half day, overtime, deduction",
       "submitButton": "Save Adjustment",
-      "toast": { "success": "Amount adjusted" }
+      "toast": {
+        "success": "Amount adjusted"
+      }
     },
     "actions": {
       "markPaid": "Mark as Paid",
@@ -1459,7 +1458,10 @@
       "notesPlaceholder": "Physical description, habits, associations…",
       "save": "Save Changes",
       "empty": "No profile data entered.",
-      "toast": { "success": "Profile updated", "error": "Failed to update profile" }
+      "toast": {
+        "success": "Profile updated",
+        "error": "Failed to update profile"
+      }
     },
     "photos": {
       "title": "Target Photos",
@@ -1501,6 +1503,8 @@
       "photoError": "Photo upload failed",
       "empty": "No vehicles recorded",
       "photos": {
+        "sectionLabel": "Vehicle Photos",
+        "cover": "Cover",
         "empty": "No photos yet",
         "uploadSuccess": "Photo uploaded",
         "uploadError": "Upload failed",

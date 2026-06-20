@@ -108,14 +108,14 @@ export async function deleteTargetPhoto(photoId: string, caseId: string, storage
 
 // ─── Vehicles ─────────────────────────────────────────────────────────────────
 
-export async function createVehicle(caseId: string, formData: FormData) {
+export async function createVehicle(caseId: string, formData: FormData): Promise<string> {
   const profile = await getCurrentProfile();
   if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
 
   const plate = (formData.get("license_plate") as string | null)?.trim() || null;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("target_vehicles").insert({
+  const { data, error } = await supabase.from("target_vehicles").insert({
     case_id: caseId,
     make:  (formData.get("make")  as string | null)?.trim() || null,
     model: (formData.get("model") as string | null)?.trim() || null,
@@ -125,9 +125,10 @@ export async function createVehicle(caseId: string, formData: FormData) {
     notes: (formData.get("notes") as string | null)?.trim() || null,
     is_primary: formData.get("is_primary") === "true",
     created_by: profile.id,
-  });
+  }).select("id").single();
   if (error) throw new Error(handleDbError(error, "createVehicle"));
   revalidate(caseId);
+  return data.id;
 }
 
 export async function updateVehicle(vehicleId: string, caseId: string, formData: FormData) {
