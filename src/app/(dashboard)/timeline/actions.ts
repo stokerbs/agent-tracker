@@ -395,6 +395,20 @@ export async function improveTimelineEntry(
 
 export type ReportType = "thai_client" | "english_client" | "internal";
 
+const FACTUAL_RULES_EN = `CRITICAL RULES — FACTUAL OBSERVATIONS ONLY:
+- Record ONLY what was directly observed and recorded. Never infer, assume, speculate, interpret, or assess.
+- Forbidden words and phrases: "appeared", "seemed", "likely", "assessed", "believed", "routine behavior", "no suspicious activity", "subject remained inside", "possibly", "probably", "may have".
+- Do NOT write an Executive Summary, Key Findings, Remarks, Recommendations, Conclusions, or any closing observation.
+- The report ends immediately after the final chronological entry, followed by "End of Report" on its own line.
+- No additional text after "End of Report".`;
+
+const FACTUAL_RULES_TH = `กฎเด็ดขาด — บันทึกเฉพาะที่สังเกตเห็นโดยตรงเท่านั้น:
+- ห้ามสรุป อนุมาน คาดเดา หรือตีความพฤติกรรม
+- ห้ามใช้คำว่า "ดูเหมือน" "น่าจะ" "คาดว่า" "ประเมินว่า" "พฤติกรรมปกติ" "ไม่พบพฤติกรรมน่าสงสัย" "อาจจะ"
+- ห้ามเขียนบทสรุป ข้อสังเกตสำคัญ หมายเหตุ หรือคำแนะนำใด ๆ
+- รายงานสิ้นสุดทันทีหลังรายการสุดท้าย ตามด้วย "สิ้นสุดรายงาน" บนบรรทัดใหม่
+- ไม่มีข้อความใด ๆ หลัง "สิ้นสุดรายงาน"`;
+
 function formatThaiDate(isoDate: string): string {
   const thaiMonths = [
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -513,20 +527,6 @@ export async function generateReport(
 
   const thaiDate = formatThaiDate(date);
 
-  const FACTUAL_RULES_EN = `CRITICAL RULES — FACTUAL OBSERVATIONS ONLY:
-- Record ONLY what was directly observed and recorded. Never infer, assume, speculate, interpret, or assess.
-- Forbidden words and phrases: "appeared", "seemed", "likely", "assessed", "believed", "routine behavior", "no suspicious activity", "subject remained inside", "possibly", "probably", "may have".
-- Do NOT write an Executive Summary, Key Findings, Remarks, Recommendations, Conclusions, or any closing observation.
-- The report ends immediately after the final chronological entry, followed by "End of Report" on its own line.
-- No additional text after "End of Report".`;
-
-  const FACTUAL_RULES_TH = `กฎเด็ดขาด — บันทึกเฉพาะที่สังเกตเห็นโดยตรงเท่านั้น:
-- ห้ามสรุป อนุมาน คาดเดา หรือตีความพฤติกรรม
-- ห้ามใช้คำว่า "ดูเหมือน" "น่าจะ" "คาดว่า" "ประเมินว่า" "พฤติกรรมปกติ" "ไม่พบพฤติกรรมน่าสงสัย" "อาจจะ"
-- ห้ามเขียนบทสรุป ข้อสังเกตสำคัญ หมายเหตุ หรือคำแนะนำใด ๆ
-- รายงานสิ้นสุดทันทีหลังรายการสุดท้าย ตามด้วย "สิ้นสุดรายงาน" บนบรรทัดใหม่
-- ไม่มีข้อความใด ๆ หลัง "สิ้นสุดรายงาน"`;
-
   const prompts: Record<ReportType, string> = {
     thai_client: `คุณเป็นนักเขียนรายงานการเฝ้าสังเกตการณ์ระดับมืออาชีพ
 
@@ -636,6 +636,255 @@ Return only the report text, no extra explanation.`,
     return { report: result.text.trim() };
   } catch (err) {
     return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
+  }
+}
+
+// ── Multi-day / date-range report ───────────────────────────────────────────────
+
+type RangeEntry = { entry_date: string; entry_time: string; entry: string; location: string | null };
+
+function groupByDate(entries: RangeEntry[]): Array<{ date: string; entries: RangeEntry[] }> {
+  const map = new Map<string, RangeEntry[]>();
+  for (const e of entries) {
+    if (!map.has(e.entry_date)) map.set(e.entry_date, []);
+    map.get(e.entry_date)!.push(e);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, list]) => ({ date, entries: list }));
+}
+
+function buildRangeFallbackReport(
+  reportType: ReportType,
+  caseNumber: string,
+  startDate: string,
+  endDate: string,
+  entries: RangeEntry[],
+): string {
+  const days = groupByDate(entries);
+  const isThai = reportType === "thai_client";
+
+  if (isThai) {
+    const sections = days.length
+      ? days
+          .map((d) => {
+            const lines = d.entries.map(
+              (e) => `${e.entry_time.slice(0, 5)} น. — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+            );
+            return `วันที่: ${formatThaiDate(d.date)}\n--------------------\n${lines.join("\n")}`;
+          })
+          .join("\n\n")
+      : "(ไม่มีรายการบันทึก)";
+    return `รายงานการเฝ้าสังเกตการณ์
+==================================
+เลขคดี: ${caseNumber}
+ช่วงวันที่: ${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}
+
+${sections}
+
+สิ้นสุดรายงาน`;
+  }
+
+  const heading = reportType === "internal" ? "SURVEILLANCE OPERATIONS REPORT" : "DAILY SURVEILLANCE REPORT";
+  const sections = days.length
+    ? days
+        .map((d) => {
+          const lines = d.entries.map(
+            (e) => `${e.entry_time.slice(0, 5)} hrs — ${e.entry}${e.location ? ` [${e.location}]` : ""}`,
+          );
+          return `Date: ${d.date}\n--------------------\n${lines.join("\n")}`;
+        })
+        .join("\n\n")
+    : "(No entries recorded)";
+  return `${heading}
+=========================
+Case Number: ${caseNumber}
+Period: ${startDate} to ${endDate}
+
+${sections}
+
+End of Report`;
+}
+
+export async function generateRangeReport(
+  caseId: string,
+  startDate: string,
+  endDate: string,
+  reportType: ReportType,
+): Promise<{ report?: string; error?: string }> {
+  if (startDate > endDate) {
+    return { error: "Start date must be on or before end date." };
+  }
+
+  const supabase = await createClient();
+
+  const [entriesRes, caseRes] = await Promise.all([
+    supabase
+      .from("timeline_entries")
+      .select("id, entry_date, entry_time, entry, location")
+      .eq("case_id", caseId)
+      .gte("entry_date", startDate)
+      .lte("entry_date", endDate)
+      .is("deleted_at", null)
+      .order("entry_date", { ascending: true })
+      .order("entry_time", { ascending: true }),
+    supabase.from("cases").select("case_number, client_name").eq("id", caseId).maybeSingle(),
+  ]);
+
+  const entries = (entriesRes.data ?? []) as Array<RangeEntry & { id: string }>;
+  const caseRow = caseRes.data;
+  const caseNumber = caseRow?.case_number ?? caseId;
+
+  // Count linked evidence per entry to surface in observations.
+  const evidenceCountByEntryId: Record<string, number> = {};
+  if (entries.length > 0) {
+    const { data: evRows } = await supabase
+      .from("evidence")
+      .select("timeline_entry_id")
+      .in("timeline_entry_id", entries.map((e) => e.id));
+    for (const row of evRows ?? []) {
+      if (row.timeline_entry_id) {
+        evidenceCountByEntryId[row.timeline_entry_id] =
+          (evidenceCountByEntryId[row.timeline_entry_id] ?? 0) + 1;
+      }
+    }
+  }
+
+  const days = groupByDate(entries);
+  const timelineText = days.length
+    ? days
+        .map((d) => {
+          const header = reportType === "thai_client"
+            ? `=== ${formatThaiDate(d.date)} (${d.date}) ===`
+            : `=== ${d.date} ===`;
+          const lines = d.entries.map((e) => {
+            const id = (e as RangeEntry & { id: string }).id;
+            const evCount = evidenceCountByEntryId[id] ?? 0;
+            const evNote = evCount > 0 ? ` [${evCount} photo${evCount > 1 ? "s" : ""} attached]` : "";
+            return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}${evNote}`;
+          });
+          return `${header}\n${lines.join("\n")}`;
+        })
+        .join("\n\n")
+    : "(ไม่มีรายการบันทึก / No entries recorded)";
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries) };
+  }
+
+  const thaiStart = formatThaiDate(startDate);
+  const thaiEnd = formatThaiDate(endDate);
+
+  const prompts: Record<ReportType, string> = {
+    thai_client: `คุณเป็นนักเขียนรายงานการเฝ้าสังเกตการณ์ระดับมืออาชีพ
+
+จงเขียนรายงานการเฝ้าสังเกตการณ์หลายวันเป็นภาษาไทยทางการ โดยใช้รูปแบบด้านล่างนี้เท่านั้น:
+
+รายงานการเฝ้าสังเกตการณ์
+==================================
+เลขคดี: ${caseNumber}
+ช่วงวันที่: ${thaiStart} - ${thaiEnd}
+
+[สำหรับแต่ละวันที่มีรายการ ให้ขึ้นหัวข้อวันที่ แล้วตามด้วยรายการตามลำดับเวลา]
+วันที่: [วันที่ภาษาไทย]
+--------------------
+[HH:MM น. — การสังเกตการณ์]
+
+สิ้นสุดรายงาน
+
+${FACTUAL_RULES_TH}
+
+จัดรายการตามวันที่ เรียงตามเวลาในแต่ละวัน
+รูปแบบแต่ละรายการ: "HH:MM น. — [การสังเกตการณ์เป็นภาษาไทยทางการ]"
+ใช้คำว่า "ผู้ต้องสงสัย" หรือ "บุคคลเป้าหมาย" เท่านั้น
+แปลงบันทึกภาคสนามเป็นภาษาไทยทางการ ห้ามเพิ่มเนื้อหาใด ๆ ที่ไม่มีในบันทึกต้นฉบับ
+Return only the report text, no extra explanation.`,
+
+    english_client: `You are a professional surveillance report writer.
+
+Write a multi-day surveillance report in English using ONLY the format below:
+
+DAILY SURVEILLANCE REPORT
+=========================
+Case Number: ${caseNumber}
+Period: ${startDate} to ${endDate}
+
+[For each day that has entries, start a dated section then list its observations chronologically]
+Date: [date]
+--------------------
+[HH:MM hrs — observation]
+
+End of Report
+
+${FACTUAL_RULES_EN}
+
+Group observations under each date, ordered by time within each day.
+Format each entry as: "HH:MM hrs — [observation in professional English, third person, past tense]"
+Use "the subject" or "the individual". Convert field notes into professional surveillance English.
+Do NOT add any content not present in the original notes.
+Return only the report text, no extra explanation.`,
+
+    internal: `You are writing an internal multi-day surveillance operations report.
+
+Write the report using ONLY the format below:
+
+SURVEILLANCE OPERATIONS REPORT
+===============================
+Case: ${caseNumber}
+Period: ${startDate} to ${endDate}
+
+[For each day that has entries, start a dated section then list its observations chronologically]
+Date: [date]
+--------------------
+[HH:MM hrs — observation]
+
+End of Report
+
+${FACTUAL_RULES_EN}
+
+Group observations under each date, ordered by time within each day.
+Format each entry as: "HH:MM hrs — [observation preserving all operational detail: vehicles, locations, descriptions]"
+Preserve every operational detail from the original notes exactly as recorded.
+Do NOT add any content not present in the original notes.
+Return only the report text, no extra explanation.`,
+  };
+
+  // Range reports can be large; start higher and retry once if truncated.
+  const INITIAL_TOKENS = 8000;
+  const RETRY_TOKENS = 16000;
+
+  try {
+    const system = prompts[reportType];
+    const user = `Case: ${caseNumber}\nPeriod: ${startDate} to ${endDate}\n\nTimeline:\n${timelineText}`;
+
+    let result = await callAnthropicRaw(system, user, INITIAL_TOKENS);
+
+    console.log("[generateRangeReport]", {
+      model: AI_MODEL,
+      max_tokens: INITIAL_TOKENS,
+      stop_reason: result.stop_reason,
+      input_length: user.length,
+      output_length: result.text.length,
+      day_count: days.length,
+      entry_count: entries.length,
+    });
+
+    if (result.stop_reason === "max_tokens") {
+      console.log("[generateRangeReport] truncated — retrying with", RETRY_TOKENS, "tokens");
+      result = await callAnthropicRaw(system, user, RETRY_TOKENS);
+    }
+
+    if (result.stop_reason === "max_tokens") {
+      return {
+        report: result.text.trimEnd() +
+          "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณาลดช่วงวันที่หรือกด Download TXT" +
+          "\n⚠️ Report truncated due to data size. Narrow the date range or use Download TXT.",
+      };
+    }
+
+    return { report: result.text.trim() };
+  } catch {
+    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries) };
   }
 }
 

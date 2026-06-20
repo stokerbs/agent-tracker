@@ -701,61 +701,33 @@
     }
   },
   "reports": {
-    "title": "รายงานการสอดแนม",
-    "description": "รายงานที่สร้างโดย AI ในทุกคดี อนุมัติเพื่อเผยแพร่ให้ลูกค้า",
-    "noTitle": "ยังไม่มีรายงาน",
-    "noDescription": "เปิดคดีและใช้ \"สร้างรายงาน AI\" เพื่อสร้างรายงาน",
-    "generateButton": "สร้างรายงาน AI",
-    "approveButton": "อนุมัติ",
-    "approveInternal": "อนุมัติ (ภายในเท่านั้น)",
-    "approvePublish": "อนุมัติ + เผยแพร่ให้ลูกค้า",
-    "editButton": "แก้ไข",
-    "visibleToClient": "มองเห็นโดยลูกค้า",
-    "exportLabel": "ส่งออก",
-    "downloadPdf": "ดาวน์โหลด PDF",
-    "downloadDocx": "ดาวน์โหลด DOCX",
-    "viewFull": "ดูรายงานฉบับเต็ม",
-    "hide": "ซ่อน",
-    "sections": {
-      "chronological": "รายงานตามลำดับเวลา",
-      "observations": "การสังเกตการณ์",
-      "conclusion": "บทสรุป"
-    },
-    "status": {
-      "draft": "ร่าง",
-      "review": "รอรีวิว",
-      "approved": "อนุมัติแล้ว",
-      "rejected": "ปฏิเสธแล้ว"
-    },
-    "generated": "สร้างเมื่อ {date}",
-    "rejectButton": "ปฏิเสธ",
-    "rejectDialog": {
-      "title": "ปฏิเสธรายงาน",
-      "description": "ระบุเหตุผลเพื่อให้เจ้าหน้าที่ทราบสิ่งที่ต้องแก้ไข รายงานจะถูกส่งกลับเป็นร่าง",
-      "notesPlaceholder": "อธิบายเหตุผลที่ปฏิเสธรายงานนี้…",
-      "cancel": "ยกเลิก",
-      "confirm": "ปฏิเสธรายงาน"
-    },
-    "toast": {
-      "generated": "สร้างรายงาน AI เรียบร้อยแล้ว",
-      "approved": "อนุมัติรายงานเรียบร้อยแล้ว",
-      "rejected": "ปฏิเสธรายงานเรียบร้อยแล้ว"
-    },
-    "statusBadge": {
-      "draft": "ร่าง",
-      "review": "รีวิว",
-      "submitted": "รีวิว",
-      "approved": "อนุมัติ",
-      "rejected": "ปฏิเสธ"
-    },
-    "filters": {
-      "searchPlaceholder": "ค้นหาชื่อหรือหมายเลขคดี…",
-      "allStatuses": "ทุกสถานะ",
-      "clearFilters": "ล้างตัวกรอง",
-      "results": "{count} รายงาน",
-      "noResults": "ไม่พบรายงานที่ตรงกัน",
-      "noResultsDescription": "ลองค้นหาด้วยคำอื่นหรือเปลี่ยนตัวกรองสถานะ"
-    }
+    "title": "เครื่องมือสร้างรายงาน",
+    "description": "เลือกคดีและช่วงวันที่ จากนั้นสร้างรายงานการเฝ้าสังเกตการณ์ภาษาไทย อังกฤษ หรือรายงานภายในจากบันทึกไทม์ไลน์",
+    "case": "คดี",
+    "caseSearchPlaceholder": "ค้นหาด้วยเลขคดีหรือชื่อลูกค้า…",
+    "noCasesFound": "ไม่พบคดี",
+    "modeSingle": "รายวัน",
+    "modeRange": "ช่วงวันที่",
+    "date": "วันที่",
+    "startDate": "วันที่เริ่มต้น",
+    "endDate": "วันที่สิ้นสุด",
+    "reportType": "ประเภทรายงาน",
+    "typeThai": "รายงาน TH",
+    "typeEnglish": "Report EN",
+    "typeInternal": "Internal",
+    "generate": "สร้างรายงาน",
+    "generating": "กำลังสร้าง…",
+    "headerTitle": "เครื่องมือสร้างรายงานประจำวัน",
+    "noCasesAssignedTitle": "ไม่มีคดีที่ได้รับมอบหมาย",
+    "noCasesAssignedDescription": "คุณยังไม่มีคดีที่ได้รับมอบหมายสำหรับสร้างรายงาน",
+    "noCasesTitle": "ไม่มีคดี",
+    "noCasesDescription": "กรุณาสร้างคดีก่อนจึงจะสร้างรายงานได้",
+    "print": "PDF / พิมพ์",
+    "downloadTxt": "ดาวน์โหลด TXT",
+    "copy": "คัดลอก",
+    "copied": "คัดลอกแล้ว",
+    "rangeError": "วันที่เริ่มต้นต้องอยู่ก่อนหรือตรงกับวันที่สิ้นสุด",
+    "generateError": "สร้างรายงานไม่สำเร็จ"
   },
   "messages": {
     "tab": "ข้อความ",

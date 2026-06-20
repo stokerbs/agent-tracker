@@ -10,6 +10,7 @@ import {
   Printer,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { generateReport } from "@/app/(dashboard)/timeline/actions";
+import { generateReport, generateRangeReport } from "@/app/(dashboard)/timeline/actions";
 import type { ReportType } from "@/app/(dashboard)/timeline/actions";
 
 interface CaseOption {
@@ -30,6 +31,8 @@ interface CaseOption {
 interface Props {
   cases: CaseOption[];
 }
+
+type Mode = "single" | "range";
 
 function todayBangkok() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
@@ -61,15 +64,14 @@ function printReport(text: string, title: string) {
   win.print();
 }
 
-const REPORT_TYPES: { value: ReportType; label: string }[] = [
-  { value: "thai_client", label: "รายงาน TH" },
-  { value: "english_client", label: "Report EN" },
-  { value: "internal", label: "Internal" },
-];
-
 export function ReportGenerator({ cases }: Props) {
+  const t = useTranslations("reports");
+
   const [caseId, setCaseId] = useState(cases[0]?.id ?? "");
+  const [mode, setMode] = useState<Mode>("single");
   const [date, setDate] = useState(todayBangkok());
+  const [startDate, setStartDate] = useState(todayBangkok());
+  const [endDate, setEndDate] = useState(todayBangkok());
   const [reportType, setReportType] = useState<ReportType>("thai_client");
   const [search, setSearch] = useState("");
 
@@ -77,6 +79,12 @@ export function ReportGenerator({ cases }: Props) {
   const [reportText, setReportText] = useState("");
   const [copied, setCopied] = useState(false);
   const [generating, startGenerate] = useTransition();
+
+  const REPORT_TYPES: { value: ReportType; label: string }[] = [
+    { value: "thai_client", label: t("typeThai") },
+    { value: "english_client", label: t("typeEnglish") },
+    { value: "internal", label: t("typeInternal") },
+  ];
 
   const filtered = search.trim()
     ? cases.filter(
@@ -89,10 +97,23 @@ export function ReportGenerator({ cases }: Props) {
   const selectedCase = cases.find((c) => c.id === caseId);
 
   function handleGenerate() {
-    if (!caseId || !date) return;
+    if (!caseId) return;
+    if (mode === "single" && !date) return;
+    if (mode === "range" && (!startDate || !endDate)) return;
+    if (mode === "range" && startDate > endDate) {
+      toast.error(t("rangeError"));
+      return;
+    }
+
     startGenerate(async () => {
-      const res = await generateReport(caseId, date, reportType);
-      if (res.error) { toast.error(res.error); return; }
+      const res =
+        mode === "single"
+          ? await generateReport(caseId, date, reportType)
+          : await generateRangeReport(caseId, startDate, endDate, reportType);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
       setReportText(res.report ?? "");
       setCopied(false);
       setDialogOpen(true);
@@ -105,19 +126,27 @@ export function ReportGenerator({ cases }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const filename = `${selectedCase?.caseNumber ?? "report"}-${date}-${reportType}.txt`;
-  const dialogTitle = `${selectedCase?.caseNumber ?? ""} · ${date}`;
+  const dateSuffix = mode === "single" ? date : `${startDate}_${endDate}`;
+  const filename = `${selectedCase?.caseNumber ?? "report"}-${dateSuffix}-${reportType}.txt`;
+  const dialogTitle = `${selectedCase?.caseNumber ?? ""} · ${
+    mode === "single" ? date : `${startDate} – ${endDate}`
+  }`;
+
+  const disabled =
+    generating ||
+    !caseId ||
+    (mode === "single" ? !date : !startDate || !endDate);
 
   return (
     <>
       <div className="space-y-6">
         {/* Case search + selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Case</label>
+          <label className="text-sm font-medium">{t("case")}</label>
           {cases.length > 8 && (
             <input
               type="text"
-              placeholder="Search by case number or client…"
+              placeholder={t("caseSearchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -125,7 +154,7 @@ export function ReportGenerator({ cases }: Props) {
           )}
           <div className="max-h-56 overflow-y-auto rounded-md border border-border">
             {filtered.length === 0 ? (
-              <p className="px-3 py-4 text-center text-sm text-muted-foreground">No cases found</p>
+              <p className="px-3 py-4 text-center text-sm text-muted-foreground">{t("noCasesFound")}</p>
             ) : (
               filtered.map((c) => (
                 <button
@@ -147,21 +176,74 @@ export function ReportGenerator({ cases }: Props) {
           </div>
         </div>
 
-        {/* Date */}
-        <div className="space-y-2">
-          <label htmlFor="report-date" className="text-sm font-medium">Date</label>
-          <input
-            id="report-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+        {/* Mode toggle: single day vs date range */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("single")}
+            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "single"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            }`}
+          >
+            {t("modeSingle")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("range")}
+            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "range"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            }`}
+          >
+            {t("modeRange")}
+          </button>
         </div>
+
+        {/* Date inputs */}
+        {mode === "single" ? (
+          <div className="space-y-2">
+            <label htmlFor="report-date" className="text-sm font-medium">{t("date")}</label>
+            <input
+              id="report-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label htmlFor="start-date" className="text-sm font-medium">{t("startDate")}</label>
+              <input
+                id="start-date"
+                type="date"
+                value={startDate}
+                max={endDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="end-date" className="text-sm font-medium">{t("endDate")}</label>
+              <input
+                id="end-date"
+                type="date"
+                value={endDate}
+                min={startDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Report type */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Report type</label>
+          <label className="text-sm font-medium">{t("reportType")}</label>
           <div className="flex gap-2">
             {REPORT_TYPES.map((rt) => (
               <button
@@ -184,13 +266,13 @@ export function ReportGenerator({ cases }: Props) {
         <Button
           type="button"
           onClick={handleGenerate}
-          disabled={generating || !caseId || !date}
+          disabled={disabled}
           className="w-full gap-2"
         >
           {generating ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</>
+            <><Loader2 className="h-4 w-4 animate-spin" /> {t("generating")}</>
           ) : (
-            <><FileText className="h-4 w-4" /> Generate Report</>
+            <><FileText className="h-4 w-4" /> {t("generate")}</>
           )}
         </Button>
       </div>
@@ -212,7 +294,7 @@ export function ReportGenerator({ cases }: Props) {
               className="gap-1.5"
               onClick={() => printReport(reportText, dialogTitle)}
             >
-              <Printer className="h-3.5 w-3.5" /> PDF / Print
+              <Printer className="h-3.5 w-3.5" /> {t("print")}
             </Button>
             <Button
               variant="outline"
@@ -220,13 +302,13 @@ export function ReportGenerator({ cases }: Props) {
               className="gap-1.5"
               onClick={() => downloadText(reportText, filename)}
             >
-              <Download className="h-3.5 w-3.5" /> Download TXT
+              <Download className="h-3.5 w-3.5" /> {t("downloadTxt")}
             </Button>
             <Button size="sm" className="gap-1.5" onClick={handleCopy}>
               {copied ? (
-                <><Check className="h-3.5 w-3.5 text-green-500" /> Copied</>
+                <><Check className="h-3.5 w-3.5 text-green-500" /> {t("copied")}</>
               ) : (
-                <><Copy className="h-3.5 w-3.5" /> Copy</>
+                <><Copy className="h-3.5 w-3.5" /> {t("copy")}</>
               )}
             </Button>
           </div>

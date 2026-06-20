@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
@@ -15,6 +16,7 @@ export default async function ReportsPage() {
   const profile = await requireProfile();
   if (!isStaff(profile.role)) redirect("/");
 
+  const t = await getTranslations("reports");
   const supabase = await createClient();
 
   let caseQuery = supabase
@@ -39,14 +41,11 @@ export default async function ReportsPage() {
       if (myCaseIds.length === 0) {
         return (
           <div className="space-y-6">
-            <PageHeader
-              title="Daily Report Generator"
-              description="Generate Thai, English, or Internal reports from timeline entries."
-            />
+            <PageHeader title={t("headerTitle")} description={t("description")} />
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
-              title="No cases assigned"
-              description="You have no assigned cases to generate reports for."
+              title={t("noCasesAssignedTitle")}
+              description={t("noCasesAssignedDescription")}
             />
           </div>
         );
@@ -66,16 +65,13 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Daily Report Generator"
-        description="Select a case and date, then generate a Thai, English, or Internal surveillance report from timeline entries."
-      />
+      <PageHeader title={t("headerTitle")} description={t("description")} />
 
       {caseOptions.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title="No cases"
-          description="Create a case first before generating reports."
+          title={t("noCasesTitle")}
+          description={t("noCasesDescription")}
         />
       ) : (
         <div className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 shadow-sm">

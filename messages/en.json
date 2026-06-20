@@ -810,61 +810,33 @@
     }
   },
   "reports": {
-    "title": "Surveillance Reports",
-    "description": "AI-generated reports across all cases. Approve to publish to clients.",
-    "noTitle": "No reports yet",
-    "noDescription": "Open a case and use \"Generate AI Report\" to produce one.",
-    "generateButton": "Generate AI Report",
-    "approveButton": "Approve",
-    "approveInternal": "Approve (internal only)",
-    "approvePublish": "Approve + Publish to client",
-    "editButton": "Edit",
-    "visibleToClient": "Visible to client",
-    "exportLabel": "Export",
-    "downloadPdf": "Download PDF",
-    "downloadDocx": "Download DOCX",
-    "viewFull": "View full report",
-    "hide": "Hide",
-    "sections": {
-      "chronological": "Chronological Report",
-      "observations": "Observations",
-      "conclusion": "Conclusion"
-    },
-    "status": {
-      "draft": "Draft",
-      "review": "In Review",
-      "approved": "Approved",
-      "rejected": "Rejected"
-    },
-    "generated": "Generated {date}",
-    "rejectButton": "Reject",
-    "rejectDialog": {
-      "title": "Reject Report",
-      "description": "Provide feedback so the agent knows what to fix. The report will be returned to draft.",
-      "notesPlaceholder": "Explain why this report is being rejected…",
-      "cancel": "Cancel",
-      "confirm": "Reject report"
-    },
-    "toast": {
-      "generated": "AI report generated",
-      "approved": "Report approved",
-      "rejected": "Report rejected"
-    },
-    "statusBadge": {
-      "draft": "DRAFT",
-      "review": "REVIEW",
-      "submitted": "REVIEW",
-      "approved": "APPROVED",
-      "rejected": "REJECTED"
-    },
-    "filters": {
-      "searchPlaceholder": "Search by title or case…",
-      "allStatuses": "All statuses",
-      "clearFilters": "Clear filters",
-      "results": "{count} reports",
-      "noResults": "No reports match",
-      "noResultsDescription": "Try a different search or status filter."
-    }
+    "title": "Report Generator",
+    "description": "Select a case and date range, then generate a Thai, English, or Internal surveillance report from timeline entries.",
+    "case": "Case",
+    "caseSearchPlaceholder": "Search by case number or client…",
+    "noCasesFound": "No cases found",
+    "modeSingle": "Single Day",
+    "modeRange": "Date Range",
+    "date": "Date",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "reportType": "Report type",
+    "typeThai": "รายงาน TH",
+    "typeEnglish": "Report EN",
+    "typeInternal": "Internal",
+    "generate": "Generate Report",
+    "generating": "Generating…",
+    "headerTitle": "Daily Report Generator",
+    "noCasesAssignedTitle": "No cases assigned",
+    "noCasesAssignedDescription": "You have no assigned cases to generate reports for.",
+    "noCasesTitle": "No cases",
+    "noCasesDescription": "Create a case first before generating reports.",
+    "print": "PDF / Print",
+    "downloadTxt": "Download TXT",
+    "copy": "Copy",
+    "copied": "Copied",
+    "rangeError": "Start date must be on or before end date.",
+    "generateError": "Failed to generate report"
   },
   "emergency": {
     "title": "Emergency Alert System",
