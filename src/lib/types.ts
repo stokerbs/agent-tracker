@@ -363,16 +363,18 @@ export interface TargetVehicle {
   photoSignedUrl?: string | null;
 }
 
-export type LocationType = "home" | "workplace" | "other";
+export type LocationType = "home" | "workplace" | "school" | "gym" | "other";
 
 export interface TargetLocation {
   id: string;
   case_id: string;
   location_type: LocationType;
+  location_name: string | null;
   label: string | null;
   address_enc: string | null;
   lat: number | null;
   lng: number | null;
+  maps_url: string | null;
   notes: string | null;
   photo_url: string | null;
   created_by: string | null;

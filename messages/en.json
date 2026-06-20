@@ -1547,7 +1547,17 @@
       "deleteConfirm": "Delete",
       "deleteSuccess": "Location deleted",
       "deleteError": "Failed to delete location",
-      "empty": "No locations recorded"
+      "empty": "No locations recorded",
+      "name": "Location Name",
+      "namePlaceholder": "e.g. Mom's house, ABC School",
+      "typeSchool": "School",
+      "typeGym": "Gym",
+      "mapsUrl": "Google Maps URL",
+      "mapsUrlPlaceholder": "Paste a Google Maps or maps.app.goo.gl link",
+      "coordsFound": "Found: {lat}, {lng}",
+      "coordsResolving": "Resolving link…",
+      "coordsNotFound": "Could not extract coordinates — URL will be stored for navigation",
+      "navigate": "Navigate"
     },
     "documents": {
       "title": "Reference Documents",

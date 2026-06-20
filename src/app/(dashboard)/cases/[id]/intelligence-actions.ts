@@ -283,20 +283,47 @@ export async function deleteVehiclePhoto(photoId: string, vehicleId: string, cas
 
 // ─── Locations ────────────────────────────────────────────────────────────────
 
+function parseGoogleMapsCoords(url: string): { lat: number; lng: number } | null {
+  const atMatch = url.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  const qMatch = url.match(/[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+  return null;
+}
+
+export async function resolveGoogleMapsUrl(
+  url: string,
+): Promise<{ lat: number | null; lng: number | null }> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (compatible)" },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const coords = parseGoogleMapsCoords(res.url);
+    return { lat: coords?.lat ?? null, lng: coords?.lng ?? null };
+  } catch {
+    return { lat: null, lng: null };
+  }
+}
+
 export async function createLocation(caseId: string, formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
 
-  const address = (formData.get("address") as string | null)?.trim() || null;
-  const latRaw  = formData.get("lat") as string | null;
-  const lngRaw  = formData.get("lng") as string | null;
+  const latRaw = formData.get("lat") as string | null;
+  const lngRaw = formData.get("lng") as string | null;
+  const mapsUrl = (formData.get("maps_url") as string | null)?.trim() || null;
 
   const supabase = await createClient();
   const { error } = await supabase.from("target_locations").insert({
     case_id: caseId,
     location_type: (formData.get("location_type") as LocationType) ?? "other",
-    label:   (formData.get("label") as string | null)?.trim() || null,
-    address_enc: address ? encryptField(address) : null,
+    location_name: (formData.get("location_name") as string | null)?.trim() || null,
+    maps_url: mapsUrl,
     lat: latRaw ? parseFloat(latRaw) : null,
     lng: lngRaw ? parseFloat(lngRaw) : null,
     notes: (formData.get("notes") as string | null)?.trim() || null,
@@ -310,15 +337,15 @@ export async function updateLocation(locationId: string, caseId: string, formDat
   const profile = await getCurrentProfile();
   if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
 
-  const address = (formData.get("address") as string | null)?.trim() || null;
-  const latRaw  = formData.get("lat") as string | null;
-  const lngRaw  = formData.get("lng") as string | null;
+  const latRaw = formData.get("lat") as string | null;
+  const lngRaw = formData.get("lng") as string | null;
+  const mapsUrl = (formData.get("maps_url") as string | null)?.trim() || null;
 
   const supabase = await createClient();
   const { error } = await supabase.from("target_locations").update({
     location_type: (formData.get("location_type") as LocationType) ?? "other",
-    label:   (formData.get("label") as string | null)?.trim() || null,
-    address_enc: address ? encryptField(address) : null,
+    location_name: (formData.get("location_name") as string | null)?.trim() || null,
+    maps_url: mapsUrl,
     lat: latRaw ? parseFloat(latRaw) : null,
     lng: lngRaw ? parseFloat(lngRaw) : null,
     notes: (formData.get("notes") as string | null)?.trim() || null,

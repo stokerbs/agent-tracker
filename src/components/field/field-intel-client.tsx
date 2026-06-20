@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Car, Download, ExternalLink, File, FileImage, FileText, FileVideo, Home, ImageIcon, MapPin, Paperclip, Phone, User } from "lucide-react";
+import { Briefcase, Car, Download, Dumbbell, ExternalLink, File, FileImage, FileText, FileVideo, GraduationCap, Home, ImageIcon, MapPin, Navigation, Phone, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,15 +11,17 @@ import {
 import { cn } from "@/lib/utils";
 import type { Evidence, LocationType, TargetLocation, TargetPhoto, TargetVehicle, VehiclePhoto } from "@/lib/types";
 
+const LOCATION_ICONS: Record<LocationType, React.ReactNode> = {
+  home:      <Home className="h-5 w-5 text-blue-500" />,
+  workplace: <Briefcase className="h-5 w-5 text-amber-500" />,
+  school:    <GraduationCap className="h-5 w-5 text-emerald-500" />,
+  gym:       <Dumbbell className="h-5 w-5 text-violet-500" />,
+  other:     <MapPin className="h-5 w-5 text-muted-foreground" />,
+};
+
 interface IntelDoc extends Evidence {
   signedUrl?: string;
 }
-
-const LOCATION_ICONS: Record<LocationType, React.ReactNode> = {
-  home:      <Home className="h-4 w-4 text-blue-500" />,
-  workplace: <Briefcase className="h-4 w-4 text-amber-500" />,
-  other:     <MapPin className="h-4 w-4 text-muted-foreground" />,
-};
 
 interface ProfileData {
   name: string | null;
@@ -47,45 +49,69 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
 
   const primary = photos.find((p) => p.is_primary) ?? photos[0] ?? null;
   const primaryVehicle = vehicles.find((v) => v.is_primary) ?? vehicles[0] ?? null;
-  const home = locations.find((l) => l.location_type === "home");
-  const workplace = locations.find((l) => l.location_type === "workplace");
-  const others = locations.filter((l) => l.location_type === "other");
+  void primaryVehicle; // kept for type safety
 
-  function mapsUrl(loc: TargetLocation): string | null {
+  function getNavigateUrl(loc: TargetLocation): string | null {
+    if (loc.maps_url) return loc.maps_url;
     if (loc.lat && loc.lng) return `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
     if (loc.address) return `https://maps.google.com/?q=${encodeURIComponent(loc.address)}`;
     return null;
   }
 
-  function LocationChip({ loc }: { loc: TargetLocation }) {
-    const url = mapsUrl(loc);
-    const label = loc.location_type === "home"
-      ? tI("locations.typeHome")
-      : loc.location_type === "workplace"
-      ? tI("locations.typeWorkplace")
-      : (loc.label ?? tI("locations.typeOther"));
+  function getTypeLabel(loc: TargetLocation): string {
+    switch (loc.location_type) {
+      case "home":      return tI("locations.typeHome");
+      case "workplace": return tI("locations.typeWorkplace");
+      case "school":    return tI("locations.typeSchool");
+      case "gym":       return tI("locations.typeGym");
+      default:          return tI("locations.typeOther");
+    }
+  }
 
-    const inner = (
-      <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2.5">
-        {LOCATION_ICONS[loc.location_type]}
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-          {loc.address && <p className="truncate text-sm font-medium">{loc.address}</p>}
-          {!loc.address && loc.lat && loc.lng && (
-            <p className="text-xs font-mono text-muted-foreground">{loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}</p>
-          )}
-          {loc.notes && <p className="text-xs text-muted-foreground mt-0.5">{loc.notes}</p>}
+  function getDisplayName(loc: TargetLocation): string | null {
+    return loc.location_name || loc.label || loc.address || null;
+  }
+
+  function LocationCard({ loc }: { loc: TargetLocation }) {
+    const navUrl = getNavigateUrl(loc);
+    const displayName = getDisplayName(loc);
+    const typeLabel = getTypeLabel(loc);
+
+    return (
+      <div className="rounded-xl border border-border/60 bg-card px-4 py-3 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 shrink-0">
+            {LOCATION_ICONS[loc.location_type] ?? LOCATION_ICONS.other}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {typeLabel}
+            </p>
+            {displayName && (
+              <p className="mt-0.5 text-sm font-semibold leading-tight">{displayName}</p>
+            )}
+            {loc.lat && loc.lng && (
+              <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+              </p>
+            )}
+            {loc.notes && (
+              <p className="text-xs text-muted-foreground mt-1 leading-snug">{loc.notes}</p>
+            )}
+          </div>
         </div>
-        {url && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />}
+        {navUrl && (
+          <a
+            href={navUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground active:opacity-80"
+          >
+            <Navigation className="h-4 w-4" />
+            {tI("locations.navigate")}
+          </a>
+        )}
       </div>
-    );
-
-    return url ? (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
-        {inner}
-      </a>
-    ) : (
-      <div>{inner}</div>
     );
   }
 
@@ -252,17 +278,15 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
       )}
 
       {/* Locations */}
-      {(home || workplace || others.length > 0) && (
+      {locations.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-semibold text-muted-foreground">
-              {tI("locations.title")}
+              {tI("locations.title")} ({locations.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-2">
-            {home && <LocationChip loc={home} />}
-            {workplace && <LocationChip loc={workplace} />}
-            {others.map((loc) => <LocationChip key={loc.id} loc={loc} />)}
+            {locations.map((loc) => <LocationCard key={loc.id} loc={loc} />)}
           </CardContent>
         </Card>
       )}

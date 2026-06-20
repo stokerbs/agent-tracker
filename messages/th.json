@@ -1547,7 +1547,17 @@
       "deleteConfirm": "ลบ",
       "deleteSuccess": "ลบสถานที่แล้ว",
       "deleteError": "ลบสถานที่ไม่สำเร็จ",
-      "empty": "ยังไม่มีข้อมูลสถานที่"
+      "empty": "ยังไม่มีข้อมูลสถานที่",
+      "name": "ชื่อสถานที่",
+      "namePlaceholder": "เช่น บ้านแม่, โรงเรียน ABC",
+      "typeSchool": "โรงเรียน",
+      "typeGym": "ฟิตเนส",
+      "mapsUrl": "ลิงก์ Google Maps",
+      "mapsUrlPlaceholder": "วางลิงก์ Google Maps หรือ maps.app.goo.gl",
+      "coordsFound": "พบพิกัด: {lat}, {lng}",
+      "coordsResolving": "กำลังค้นหาพิกัด…",
+      "coordsNotFound": "ไม่พบพิกัด — จะบันทึก URL ไว้เพื่อนำทาง",
+      "navigate": "นำทาง"
     },
     "documents": {
       "title": "เอกสารอ้างอิง",

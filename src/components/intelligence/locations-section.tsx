@@ -2,13 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, ExternalLink, Home, Loader2, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Briefcase, CheckCircle, Dumbbell, ExternalLink, GraduationCap,
+  Home, Loader2, MapPin, Navigation, Pencil, Plus, Trash2, XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
   createLocation,
   updateLocation,
   deleteLocation,
+  resolveGoogleMapsUrl,
 } from "@/app/(dashboard)/cases/[id]/intelligence-actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,19 +26,36 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { LocationType, TargetLocation } from "@/lib/types";
 
 const LOCATION_ICONS: Record<LocationType, React.ReactNode> = {
   home:      <Home className="h-4 w-4 text-blue-500" />,
   workplace: <Briefcase className="h-4 w-4 text-amber-500" />,
+  school:    <GraduationCap className="h-4 w-4 text-emerald-500" />,
+  gym:       <Dumbbell className="h-4 w-4 text-violet-500" />,
   other:     <MapPin className="h-4 w-4 text-muted-foreground" />,
 };
+
+function parseGoogleMapsCoords(url: string): { lat: number; lng: number } | null {
+  const atMatch = url.match(/@(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  const qMatch = url.match(/[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/);
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+  return null;
+}
+
+function isShortLink(url: string): boolean {
+  return url.includes("goo.gl") || url.includes("maps.app");
+}
 
 interface Props {
   caseId: string;
   locations: TargetLocation[];
   isStaff: boolean;
 }
+
+// ── Location Form ─────────────────────────────────────────────────────────────
 
 function LocationForm({
   location,
@@ -49,11 +70,70 @@ function LocationForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [locType, setLocType] = useState<LocationType>(location?.location_type ?? "other");
+  const [urlInput, setUrlInput] = useState(location?.maps_url ?? "");
+  const [resolving, setResolving] = useState(false);
+  const [parsedLat, setParsedLat] = useState<number | null>(location?.lat ?? null);
+  const [parsedLng, setParsedLng] = useState<number | null>(location?.lng ?? null);
+  const [coordStatus, setCoordStatus] = useState<"idle" | "found" | "failed" | "resolving">(
+    location?.lat && location?.lng ? "found" : "idle",
+  );
+
+  async function handleUrlChange(raw: string) {
+    setUrlInput(raw);
+    const url = raw.trim();
+
+    if (!url) {
+      setParsedLat(null);
+      setParsedLng(null);
+      setCoordStatus("idle");
+      return;
+    }
+
+    // Try client-side regex first (works for full Google Maps URLs)
+    const coords = parseGoogleMapsCoords(url);
+    if (coords) {
+      setParsedLat(coords.lat);
+      setParsedLng(coords.lng);
+      setCoordStatus("found");
+      return;
+    }
+
+    // Short links need server-side resolution
+    if (isShortLink(url)) {
+      setCoordStatus("resolving");
+      setResolving(true);
+      try {
+        const result = await resolveGoogleMapsUrl(url);
+        if (result.lat !== null && result.lng !== null) {
+          setParsedLat(result.lat);
+          setParsedLng(result.lng);
+          setCoordStatus("found");
+        } else {
+          setParsedLat(null);
+          setParsedLng(null);
+          setCoordStatus("failed");
+        }
+      } catch {
+        setCoordStatus("failed");
+      } finally {
+        setResolving(false);
+      }
+      return;
+    }
+
+    // Unknown URL format — store URL but no coords
+    setParsedLat(null);
+    setParsedLng(null);
+    setCoordStatus("failed");
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     fd.set("location_type", locType);
+    fd.set("maps_url", urlInput.trim());
+    fd.set("lat", parsedLat !== null ? String(parsedLat) : "");
+    fd.set("lng", parsedLng !== null ? String(parsedLng) : "");
     start(async () => {
       try {
         if (location) {
@@ -72,43 +152,80 @@ function LocationForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Location Name */}
+      <div className="space-y-1.5">
+        <Label htmlFor="location_name">{t("name")}</Label>
+        <Input
+          id="location_name"
+          name="location_name"
+          defaultValue={location?.location_name ?? location?.label ?? ""}
+          placeholder={t("namePlaceholder")}
+        />
+      </div>
+
+      {/* Type */}
       <div className="space-y-1.5">
         <Label>{t("type")}</Label>
         <Select value={locType} onValueChange={(v) => setLocType(v as LocationType)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="home">{t("typeHome")}</SelectItem>
             <SelectItem value="workplace">{t("typeWorkplace")}</SelectItem>
+            <SelectItem value="school">{t("typeSchool")}</SelectItem>
+            <SelectItem value="gym">{t("typeGym")}</SelectItem>
             <SelectItem value="other">{t("typeOther")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      {locType === "other" && (
-        <div className="space-y-1.5">
-          <Label htmlFor="label">{t("label")}</Label>
-          <Input id="label" name="label" defaultValue={location?.label ?? ""} placeholder={t("labelPlaceholder")} />
-        </div>
-      )}
+
+      {/* Google Maps URL */}
       <div className="space-y-1.5">
-        <Label htmlFor="address">{t("address")}</Label>
-        <Input id="address" name="address" defaultValue={location?.address ?? ""} placeholder={t("addressPlaceholder")} />
+        <Label htmlFor="maps_url">{t("mapsUrl")}</Label>
+        <Input
+          id="maps_url"
+          value={urlInput}
+          onChange={(e) => handleUrlChange(e.target.value)}
+          placeholder={t("mapsUrlPlaceholder")}
+          autoComplete="off"
+          inputMode="url"
+        />
+        {/* Coordinate extraction status */}
+        {urlInput.trim() && (
+          <div className={cn(
+            "flex items-center gap-1.5 text-xs",
+            coordStatus === "found" && "text-emerald-600",
+            coordStatus === "failed" && "text-muted-foreground",
+            coordStatus === "resolving" && "text-muted-foreground",
+          )}>
+            {coordStatus === "resolving" && (
+              <><Loader2 className="h-3 w-3 animate-spin" /> {t("coordsResolving")}</>
+            )}
+            {coordStatus === "found" && (
+              <><CheckCircle className="h-3 w-3" /> {t("coordsFound", { lat: parsedLat?.toFixed(5), lng: parsedLng?.toFixed(5) })}</>
+            )}
+            {coordStatus === "failed" && (
+              <><XCircle className="h-3 w-3" /> {t("coordsNotFound")}</>
+            )}
+          </div>
+        )}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="lat">{t("lat")}</Label>
-          <Input id="lat" name="lat" type="number" step="any" defaultValue={location?.lat ?? ""} placeholder="13.7563" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="lng">{t("lng")}</Label>
-          <Input id="lng" name="lng" type="number" step="any" defaultValue={location?.lng ?? ""} placeholder="100.5018" />
-        </div>
-      </div>
+
+      {/* Notes */}
       <div className="space-y-1.5">
         <Label htmlFor="notes">{t("notes")}</Label>
-        <Textarea id="notes" name="notes" defaultValue={location?.notes ?? ""} placeholder={t("notesPlaceholder")} rows={2} />
+        <Textarea
+          id="notes"
+          name="notes"
+          defaultValue={location?.notes ?? ""}
+          placeholder={t("notesPlaceholder")}
+          rows={2}
+        />
       </div>
+
       <DialogFooter>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || resolving}>
           {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {location ? t("update") : t("create")}
         </Button>
@@ -116,6 +233,8 @@ function LocationForm({
     </form>
   );
 }
+
+// ── Locations Section ─────────────────────────────────────────────────────────
 
 export function LocationsSection({ caseId, locations, isStaff }: Props) {
   const t = useTranslations("intelligence.locations");
@@ -139,10 +258,25 @@ export function LocationsSection({ caseId, locations, isStaff }: Props) {
     });
   }
 
-  function mapsUrl(loc: TargetLocation): string | null {
+  function getNavigateUrl(loc: TargetLocation): string | null {
+    if (loc.maps_url) return loc.maps_url;
     if (loc.lat && loc.lng) return `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
     if (loc.address) return `https://maps.google.com/?q=${encodeURIComponent(loc.address)}`;
     return null;
+  }
+
+  function getDisplayName(loc: TargetLocation): string | null {
+    return loc.location_name || loc.label || loc.address || null;
+  }
+
+  function getTypeLabel(loc: TargetLocation): string {
+    switch (loc.location_type) {
+      case "home":      return t("typeHome");
+      case "workplace": return t("typeWorkplace");
+      case "school":    return t("typeSchool");
+      case "gym":       return t("typeGym");
+      default:          return t("typeOther");
+    }
   }
 
   return (
@@ -172,26 +306,23 @@ export function LocationsSection({ caseId, locations, isStaff }: Props) {
       ) : (
         <div className="space-y-2">
           {locations.map((loc) => {
-            const mapUrl = mapsUrl(loc);
-            const typeLabel = loc.location_type === "home"
-              ? t("typeHome")
-              : loc.location_type === "workplace"
-              ? t("typeWorkplace")
-              : (loc.label ?? t("typeOther"));
+            const navUrl = getNavigateUrl(loc);
+            const displayName = getDisplayName(loc);
+            const typeLabel = getTypeLabel(loc);
 
             return (
               <Card key={loc.id}>
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 shrink-0">
-                      {LOCATION_ICONS[loc.location_type]}
+                      {LOCATION_ICONS[loc.location_type] ?? LOCATION_ICONS.other}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
-                        {mapUrl && (
+                        {navUrl && (
                           <a
-                            href={mapUrl}
+                            href={navUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-0.5 text-[10px] text-primary hover:underline"
@@ -201,8 +332,8 @@ export function LocationsSection({ caseId, locations, isStaff }: Props) {
                           </a>
                         )}
                       </div>
-                      {loc.address && (
-                        <p className="mt-1 text-sm font-medium">{loc.address}</p>
+                      {displayName && (
+                        <p className="mt-1 text-sm font-medium">{displayName}</p>
                       )}
                       {loc.lat && loc.lng && (
                         <p className="text-xs text-muted-foreground font-mono">
