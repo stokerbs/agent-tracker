@@ -88,10 +88,15 @@ export async function generateMetadata({
 
 export default async function CaseDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
+  const validTabs = ["intelligence", "timeline", "evidence", "expenses", "payroll", "messages"];
+  const initialTab = tab && validTabs.includes(tab) ? tab : "intelligence";
   const profile = await requireProfile();
   const t = await getTranslations("cases.detail");
   const tCommon = await getTranslations("common");
@@ -515,7 +520,7 @@ export default async function CaseDetailPage({
 
       {/* Tabs */}
       <FadeUp delay={0.1}>
-        <Tabs defaultValue="intelligence">
+        <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="intelligence">
               <ShieldAlert className="mr-1 h-4 w-4" />

@@ -718,7 +718,12 @@
       "supportTeam": "Support Team",
       "replyPlaceholder": "Send a message to the team..."
     },
-    "typing": "{name} is typing…"
+    "typing": "{name} is typing…",
+    "bell": {
+      "title": "Messages",
+      "empty": "No unread messages",
+      "unreadCount": "{count} unread"
+    }
   },
   "payroll": {
     "title": "Agent Payroll",

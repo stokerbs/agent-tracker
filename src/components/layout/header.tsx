@@ -11,6 +11,7 @@ import { GlobalSearch } from "@/components/layout/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { MessagesBell } from "@/components/layout/messages-bell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,7 @@ export function Header({ profile }: { profile: Profile }) {
 
       {/* Right controls */}
       <div className="flex items-center gap-1">
+        <MessagesBell userId={profile.id} />
         <NotificationBell userId={profile.id} />
         <LanguageSwitcher />
         <ThemeToggle />
