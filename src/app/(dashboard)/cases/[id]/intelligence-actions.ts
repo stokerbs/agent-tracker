@@ -151,29 +151,6 @@ export async function updateVehicle(vehicleId: string, caseId: string, formData:
   revalidate(caseId);
 }
 
-export async function uploadVehiclePhoto(vehicleId: string, caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
-
-  const file = formData.get("file") as File | null;
-  if (!file) throw new Error("No file provided");
-  validateImageUpload(file);
-
-  const ext  = file.name.split(".").pop() ?? "jpg";
-  const path = `${caseId}/vehicles/${vehicleId}/${Date.now()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-
-  const supabase = await createClient();
-  const { error: uploadErr } = await supabase.storage
-    .from(BUCKETS.intelligence)
-    .upload(path, bytes, { contentType: file.type, upsert: true });
-  if (uploadErr) throw new Error(handleDbError(uploadErr as any, "uploadVehiclePhoto"));
-
-  const { error } = await supabase.from("target_vehicles").update({ photo_url: path }).eq("id", vehicleId);
-  if (error) throw new Error(handleDbError(error, "uploadVehiclePhoto.update"));
-  revalidate(caseId);
-}
-
 export async function deleteVehicle(vehicleId: string, caseId: string) {
   const profile = await getCurrentProfile();
   if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
