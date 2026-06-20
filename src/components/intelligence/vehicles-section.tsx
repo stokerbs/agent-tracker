@@ -174,23 +174,24 @@ function VehicleGallery({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex h-full min-h-[88px] w-full items-center justify-center"
+        className="relative flex h-full min-h-[88px] w-full flex-col items-center justify-center gap-1"
       >
         {primaryPhoto?.signedUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={primaryPhoto.signedUrl} alt="Vehicle" className="h-full w-full object-cover" />
         ) : (
-          <Car className="h-6 w-6 text-muted-foreground/50" />
+          <>
+            <Car className="h-6 w-6 text-muted-foreground/40" />
+            <span className="text-[9px] font-medium text-muted-foreground">
+              {isStaff ? t("photos.addFromGallery") : t("photos.empty")}
+            </span>
+          </>
         )}
         {photos.length > 0 && (
-          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white">
+          <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white">
+            <ImageIcon className="h-2.5 w-2.5" />
             {photos.length}
           </span>
-        )}
-        {isStaff && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
-            <ImageIcon className="h-5 w-5 text-white" />
-          </div>
         )}
       </button>
 
