@@ -3,13 +3,12 @@
  * ======================================================
  * Clients may ONLY see:
  *   - cases    : cases.client_id → clients.profile_id = their own profile
- *   - reports  : status = 'approved' AND is_client_visible = true, scoped to
- *                their own cases (inherits case ownership, no direct client_id)
  *   - invoices : invoices.client_id → clients.profile_id = their own profile
  *
  * Clients CANNOT see (intentional, enforced by RLS with no client read policy):
  *   - evidence         — raw surveillance files, operational security
  *   - timeline_entries — internal agent log, may contain PII on tactics
+ *   - target_photos / target_vehicles / target_locations — intel, no client policy
  *   - gps_devices      — tracker IMEI/SIM, operational security
  *   - expenses         — internal cost records, not client-facing
  *   - emergency_alerts — SOS records, internal only
@@ -22,19 +21,24 @@
  */
 
 import type { Metadata } from "next";
-import { AlertTriangle, Banknote, Briefcase, Receipt } from "lucide-react";
+import { AlertTriangle, Banknote, Briefcase, ChevronRight, Receipt } from "lucide-react";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceCard } from "@/components/invoices/invoice-card";
+import { CaseStatusBadge } from "@/components/shared/status-badges";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatCard } from "@/components/shared/stat-card";
 import { FadeUp } from "@/components/shared/motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import type { Case, Invoice } from "@/lib/types";
+import type { Case, CaseStatus, Invoice } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Client Portal" };
 export const dynamic = "force-dynamic";
+
+type CaseSummary = Pick<Case, "id" | "case_number" | "case_type" | "status" | "start_date" | "end_date">;
 
 export default async function PortalPage() {
   const profile = await requireProfile();
@@ -42,9 +46,6 @@ export default async function PortalPage() {
   const supabase = await createClient();
 
   // ── Step 1: resolve client identity ─────────────────────────────────────────
-  // This is the anchor for all ownership filtering below.
-  // If there is no clients row linked to this profile we show an empty state
-  // rather than executing queries that RLS alone would need to scope.
   const { data: clientRow } = await supabase
     .from("clients")
     .select("id, name, company")
@@ -52,8 +53,6 @@ export default async function PortalPage() {
     .maybeSingle();
 
   if (!clientRow) {
-    // Profile is authenticated as 'client' role but has no clients row yet.
-    // This can happen in the window between registration and admin linking.
     return (
       <div className="space-y-6">
         <FadeUp>
@@ -73,12 +72,10 @@ export default async function PortalPage() {
   }
 
   // ── Step 2: fetch cases + invoices in parallel ───────────────────────────────
-  // Both queries carry explicit ownership + visibility filters.
-  // RLS enforces the same constraints — the app-layer filters are defence-in-depth.
   const [{ data: casesRaw }, { data: invoicesRaw }] = await Promise.all([
     supabase
       .from("cases")
-      .select("id, status")
+      .select("id, case_number, case_type, status, start_date, end_date")
       .eq("client_id", clientRow.id)        // ← explicit ownership filter
       .order("created_at", { ascending: false }),
     supabase
@@ -89,7 +86,7 @@ export default async function PortalPage() {
       .order("issued_date", { ascending: false }),
   ]);
 
-  const cases    = (casesRaw    ?? []) as Pick<Case, "id" | "status">[];
+  const cases    = (casesRaw    ?? []) as CaseSummary[];
   const invoices = (invoicesRaw ?? []) as Invoice[];
 
   // ── Stats ────────────────────────────────────────────────────────────────────
@@ -105,6 +102,13 @@ export default async function PortalPage() {
     .reduce((s, i) => s + i.amount, 0);
   const overdueInvoices = invoices.filter((i) => i.status === "overdue");
   const overdueTotal    = overdueInvoices.reduce((s, i) => s + i.amount, 0);
+
+  function fmtDate(d: string | null) {
+    if (!d) return null;
+    return new Date(d).toLocaleDateString("en-GB", {
+      day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok",
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -123,7 +127,7 @@ export default async function PortalPage() {
 
       {/* Stat cards */}
       <FadeUp delay={0.04}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-3">
           <StatCard
             label={t("stats.openCases")}
             value={openCases}
@@ -160,8 +164,55 @@ export default async function PortalPage() {
         </FadeUp>
       )}
 
-      {/* Tabs */}
+      {/* Cases section */}
       <FadeUp delay={0.1}>
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("tabs.cases")}
+          </h2>
+          {cases.length === 0 ? (
+            <EmptyState
+              icon={<Briefcase className="h-6 w-6" />}
+              title={t("cases.noCases")}
+              description={t("cases.noCasesDescription")}
+            />
+          ) : (
+            cases.map((c) => (
+              <Link key={c.id} href={`/portal/cases/${c.id}`}>
+                <Card className="transition-colors hover:bg-muted/40">
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-bold text-primary">
+                          {c.case_number}
+                        </span>
+                        <CaseStatusBadge status={c.status as CaseStatus} />
+                      </div>
+                      {c.case_type && (
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {c.case_type.replace(/_/g, " ")}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {fmtDate(c.start_date) ?? "—"}
+                        {c.status === "closed" && c.end_date
+                          ? ` → ${fmtDate(c.end_date)}`
+                          : c.status !== "closed"
+                          ? ` · ${t("cases.ongoing")}`
+                          : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          )}
+        </div>
+      </FadeUp>
+
+      {/* Invoices section */}
+      <FadeUp delay={0.14}>
         <div className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             {t("tabs.invoices")}

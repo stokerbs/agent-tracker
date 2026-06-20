@@ -1192,20 +1192,28 @@
   "portal": {
     "clientPortal": "Client Portal",
     "welcome": "Welcome, {name}",
-    "subtitle": "Your approved surveillance reports and invoices.",
+    "subtitle": "Track your cases and manage invoices.",
     "overdueAlert": "You have {count} overdue invoice(s) totalling {total}. Please contact us to arrange payment.",
     "stats": {
       "openCases": "Open Cases",
-      "reports": "Reports",
       "outstanding": "Outstanding",
       "paid": "Total Paid"
     },
     "tabs": {
-      "reports": "Reports",
+      "cases": "My Cases",
       "invoices": "Invoices"
     },
-    "noReports": "No reports available yet",
-    "noReportsDescription": "Approved reports for your cases will appear here. You can read and download each as a PDF.",
+    "cases": {
+      "title": "My Cases",
+      "caseDetail": "Case Detail",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "ongoing": "Ongoing",
+      "view": "View",
+      "closed": "Closed",
+      "noCases": "No cases yet",
+      "noCasesDescription": "Your cases will appear here once opened by your account manager."
+    },
     "noInvoices": "No invoices yet",
     "noInvoicesDescription": "Invoices issued for your engagements will be listed here.",
     "notLinked": "Account not yet linked",
