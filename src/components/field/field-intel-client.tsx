@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Car, ExternalLink, Home, ImageIcon, MapPin, Phone, User } from "lucide-react";
+import { Briefcase, Car, Download, ExternalLink, File, FileImage, FileText, FileVideo, Home, ImageIcon, MapPin, Paperclip, Phone, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,11 @@ import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { LocationType, TargetLocation, TargetPhoto, TargetVehicle } from "@/lib/types";
+import type { Evidence, LocationType, TargetLocation, TargetPhoto, TargetVehicle } from "@/lib/types";
+
+interface IntelDoc extends Evidence {
+  signedUrl?: string;
+}
 
 const LOCATION_ICONS: Record<LocationType, React.ReactNode> = {
   home:      <Home className="h-4 w-4 text-blue-500" />,
@@ -32,9 +36,10 @@ interface Props {
   photos: TargetPhoto[];
   vehicles: TargetVehicle[];
   locations: TargetLocation[];
+  documents?: IntelDoc[];
 }
 
-export function FieldIntelClient({ profile, photos, vehicles, locations }: Props) {
+export function FieldIntelClient({ profile, photos, vehicles, locations, documents = [] }: Props) {
   const t = useTranslations("field.intel");
   const tI = useTranslations("intelligence");
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -234,6 +239,51 @@ export function FieldIntelClient({ profile, photos, vehicles, locations }: Props
             {home && <LocationChip loc={home} />}
             {workplace && <LocationChip loc={workplace} />}
             {others.map((loc) => <LocationChip key={loc.id} loc={loc} />)}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Documents */}
+      {documents.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-semibold text-muted-foreground">
+              {tI("documents.fieldView", { count: documents.length })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 divide-y divide-border/50">
+            {documents.map((doc) => {
+              const mime = doc.mime_type ?? "";
+              const Icon = mime.startsWith("image/")
+                ? FileImage
+                : mime === "application/pdf"
+                ? FileText
+                : mime.startsWith("video/")
+                ? FileVideo
+                : File;
+
+              return (
+                <div key={doc.id} className="flex items-center gap-3 py-2">
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm">{doc.file_name ?? tI("documents.untitled")}</p>
+                    {doc.notes && <p className="truncate text-xs text-muted-foreground">{doc.notes}</p>}
+                  </div>
+                  {doc.signedUrl && (
+                    <a
+                      href={doc.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={doc.file_name ?? undefined}
+                      className="shrink-0 text-primary"
+                      title={tI("documents.download")}
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}

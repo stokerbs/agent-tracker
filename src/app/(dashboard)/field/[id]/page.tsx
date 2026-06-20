@@ -9,7 +9,7 @@ import { BUCKETS } from "@/lib/constants";
 import { decryptField } from "@/lib/security/encryption";
 import { Button } from "@/components/ui/button";
 import { FieldIntelClient } from "@/components/field/field-intel-client";
-import type { TargetPhoto, TargetVehicle, TargetLocation } from "@/lib/types";
+import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +47,12 @@ export default async function FieldIntelPage({
     { data: targetPhotosRaw },
     { data: targetVehiclesRaw },
     { data: targetLocationsRaw },
+    { data: intelDocsRaw },
   ] = await Promise.all([
     supabase.from("target_photos").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
+    supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
   ]);
 
   const allPaths = [
@@ -78,6 +80,18 @@ export default async function FieldIntelPage({
     ...l,
     address: l.address_enc ? decryptField(l.address_enc) : null,
   }));
+
+  // Intel documents — sign from evidence bucket
+  const rawDocs = (intelDocsRaw ?? []) as Evidence[];
+  const docPaths = rawDocs.map((d) => d.storage_path);
+  const docSignedMap: Record<string, string> = {};
+  if (docPaths.length > 0) {
+    const { data: docSigned } = await supabase.storage
+      .from(BUCKETS.evidence)
+      .createSignedUrls(docPaths, 3600);
+    (docSigned ?? []).forEach((s, i) => { docSignedMap[docPaths[i]] = s.signedUrl ?? ""; });
+  }
+  const intelDocs = rawDocs.map((d) => ({ ...d, signedUrl: docSignedMap[d.storage_path] ?? "" }));
 
   const c = caseRaw as any;
   const profileData = {
@@ -109,6 +123,7 @@ export default async function FieldIntelPage({
         photos={photos}
         vehicles={vehicles}
         locations={locations}
+        documents={intelDocs}
       />
     </div>
   );

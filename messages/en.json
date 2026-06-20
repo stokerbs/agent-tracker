@@ -1504,7 +1504,26 @@
       "empty": "No locations recorded"
     },
     "documents": {
-      "title": "Reference Documents"
+      "title": "Reference Documents",
+      "upload": "Upload",
+      "uploadTitle": "Upload Reference Document",
+      "uploadDescription": "Images, PDFs, and documents for reference during the operation.",
+      "fileLabel": "File",
+      "notesLabel": "Description (optional)",
+      "notesPlaceholder": "e.g. ID card scan, property deed",
+      "uploadButton": "Upload",
+      "uploadSuccess": "Document uploaded",
+      "uploadError": "Upload failed",
+      "cancel": "Cancel",
+      "download": "Download",
+      "untitled": "Untitled",
+      "deleteTitle": "Delete this document?",
+      "deleteDescription": "will be permanently deleted. This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "deleteSuccess": "Document deleted",
+      "deleteError": "Failed to delete document",
+      "empty": "No reference documents uploaded",
+      "fieldView": "Documents ({count})"
     }
   }
 }

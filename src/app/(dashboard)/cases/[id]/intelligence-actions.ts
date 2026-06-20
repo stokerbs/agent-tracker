@@ -6,12 +6,27 @@ import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { BUCKETS } from "@/lib/constants";
 import { encryptField, createLicensePlateBlindIndex, normalizeLicensePlate } from "@/lib/security/encryption";
-import { validateImageUpload } from "@/lib/security/file-validation";
-import type { LocationType } from "@/lib/types";
+import {
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  FileValidationError,
+  validateDocumentUpload,
+  validateImageUpload,
+  validateVideoUpload,
+} from "@/lib/security/file-validation";
+import type { EvidenceType, LocationType } from "@/lib/types";
 
 function revalidate(caseId: string) {
   revalidatePath(`/cases/${caseId}`);
   revalidatePath(`/field/${caseId}`);
+}
+
+function detectEvidenceType(mime: string): EvidenceType {
+  if (mime.startsWith("image/")) return "photo";
+  if (mime.startsWith("video/")) return "video";
+  if (mime === "application/pdf") return "pdf";
+  if (mime.startsWith("audio/")) return "audio";
+  return "document";
 }
 
 // ─── Target profile ────────────────────────────────────────────────────────────
@@ -227,5 +242,65 @@ export async function deleteLocation(locationId: string, caseId: string) {
 
   const { error } = await supabase.from("target_locations").delete().eq("id", locationId);
   if (error) throw new Error(handleDbError(error, "deleteLocation"));
+  revalidate(caseId);
+}
+
+// ─── Intelligence documents ───────────────────────────────────────────────────
+// Stored in the evidence table with category = 'intelligence'.
+// Uses the evidence bucket (private, existing RLS: staff full, assigned agents read).
+
+export async function uploadIntelDocument(caseId: string, formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No file provided");
+
+  try {
+    if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
+      await validateImageUpload(file);
+    } else if ((ALLOWED_VIDEO_TYPES as readonly string[]).includes(file.type)) {
+      await validateVideoUpload(file);
+    } else {
+      await validateDocumentUpload(file);
+    }
+  } catch (err) {
+    if (err instanceof FileValidationError) throw new Error(err.message);
+    throw err;
+  }
+
+  const ext  = file.name.split(".").pop() ?? "bin";
+  const path = `${caseId}/${crypto.randomUUID()}.${ext}`;
+
+  const supabase = await createClient();
+  const { error: uploadErr } = await supabase.storage
+    .from(BUCKETS.evidence)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploadErr) throw new Error(handleDbError(uploadErr as any, "uploadIntelDocument:storage"));
+
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const { error } = await supabase.from("evidence").insert({
+    case_id: caseId,
+    type: detectEvidenceType(file.type),
+    category: "intelligence",
+    storage_path: path,
+    file_name: file.name,
+    file_size: file.size,
+    mime_type: file.type,
+    notes,
+    uploaded_by: profile.id,
+  });
+  if (error) throw new Error(handleDbError(error, "uploadIntelDocument:insert"));
+  revalidate(caseId);
+}
+
+export async function deleteIntelDocument(evidenceId: string, caseId: string, storagePath: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  await supabase.storage.from(BUCKETS.evidence).remove([storagePath]);
+  const { error } = await supabase.from("evidence").delete().eq("id", evidenceId);
+  if (error) throw new Error(handleDbError(error, "deleteIntelDocument"));
   revalidate(caseId);
 }

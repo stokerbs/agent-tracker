@@ -1504,7 +1504,26 @@
       "empty": "ยังไม่มีข้อมูลสถานที่"
     },
     "documents": {
-      "title": "เอกสารอ้างอิง"
+      "title": "เอกสารอ้างอิง",
+      "upload": "อัปโหลด",
+      "uploadTitle": "อัปโหลดเอกสารอ้างอิง",
+      "uploadDescription": "รูปภาพ PDF และเอกสารสำหรับอ้างอิงระหว่างปฏิบัติการ",
+      "fileLabel": "ไฟล์",
+      "notesLabel": "คำอธิบาย (ไม่บังคับ)",
+      "notesPlaceholder": "เช่น สแกนบัตรประชาชน, โฉนดที่ดิน",
+      "uploadButton": "อัปโหลด",
+      "uploadSuccess": "อัปโหลดเอกสารสำเร็จ",
+      "uploadError": "อัปโหลดไม่สำเร็จ",
+      "cancel": "ยกเลิก",
+      "download": "ดาวน์โหลด",
+      "untitled": "ไม่มีชื่อ",
+      "deleteTitle": "ลบเอกสารนี้?",
+      "deleteDescription": "จะถูกลบถาวร การดำเนินการนี้ไม่สามารถยกเลิกได้",
+      "deleteConfirm": "ลบ",
+      "deleteSuccess": "ลบเอกสารแล้ว",
+      "deleteError": "ลบเอกสารไม่สำเร็จ",
+      "empty": "ยังไม่มีเอกสารอ้างอิง",
+      "fieldView": "เอกสาร ({count})"
     }
   }
 }

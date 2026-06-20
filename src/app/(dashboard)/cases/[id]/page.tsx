@@ -43,6 +43,7 @@ import { TargetProfileCard } from "@/components/intelligence/target-profile-card
 import { TargetPhotosSection } from "@/components/intelligence/target-photos-section";
 import { VehiclesSection } from "@/components/intelligence/vehicles-section";
 import { LocationsSection } from "@/components/intelligence/locations-section";
+import { DocumentsSection } from "@/components/intelligence/documents-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,6 +128,7 @@ export default async function CaseDetailPage({
     { data: targetPhotosRaw },
     { data: targetVehiclesRaw },
     { data: targetLocationsRaw },
+    { data: intelDocsRaw },
   ] = await Promise.all([
     supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
@@ -166,6 +168,7 @@ export default async function CaseDetailPage({
     supabase.from("target_photos").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
+    supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
   ]);
 
   // Enrich timeline entries with linked evidence + server-signed URLs
@@ -264,6 +267,18 @@ export default async function CaseDetailPage({
     address: l.address_enc ? decryptField(l.address_enc) : null,
     photoSignedUrl: l.photo_url ? (intelSignedMap[l.photo_url] ?? null) : null,
   }));
+
+  // Intel documents: sign URLs from the evidence bucket
+  const rawIntelDocs = (intelDocsRaw ?? []) as Evidence[];
+  const intelDocPaths = rawIntelDocs.map((d) => d.storage_path);
+  const intelDocSignedMap: Record<string, string> = {};
+  if (intelDocPaths.length > 0) {
+    const { data: docSigned } = await supabase.storage
+      .from(BUCKETS.evidence)
+      .createSignedUrls(intelDocPaths, 3600);
+    (docSigned ?? []).forEach((s, i) => { intelDocSignedMap[intelDocPaths[i]] = s.signedUrl ?? ""; });
+  }
+  const intelDocs = rawIntelDocs.map((d) => ({ ...d, signedUrl: intelDocSignedMap[d.storage_path] ?? "" }));
 
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
@@ -527,6 +542,11 @@ export default async function CaseDetailPage({
             <LocationsSection
               caseId={id}
               locations={targetLocations}
+              isStaff={staff}
+            />
+            <DocumentsSection
+              caseId={id}
+              documents={intelDocs}
               isStaff={staff}
             />
           </TabsContent>
