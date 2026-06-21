@@ -8,7 +8,7 @@ export const maxDuration = 60;
  * Vercel Cron (daily) — bounds the growth of the two high-write position tables
  * by deleting rows older than the retention window:
  *   - gps_device_positions   (GPS903 tracker polling, ~1/min/device)
- *   - agent_location_history (agent phone pings + Traccar webhook)
+ *   - agent_location_history (agent phone pings)
  *
  * Reads are already time-windowed; this prevents unbounded TABLE growth
  * (index bloat, vacuum pressure, storage cost). Retention is configurable via

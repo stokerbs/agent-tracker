@@ -135,7 +135,6 @@ export interface GpsDevice {
   provider: GpsProvider | null;
   notes: string | null;
   agent_id: string | null;
-  traccar_id: number | null;
   gps903_device_id: number | null;
   credential_id: string | null;
   last_polled_at: string | null;

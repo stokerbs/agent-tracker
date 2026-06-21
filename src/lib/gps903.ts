@@ -748,7 +748,7 @@ export async function getOrRefreshCredentialSession(
  * the denormalized last-known position on gps_devices.
  *
  * GPS devices are independent entities — this does NOT update the agents table.
- * Agent locations come from the agent's own mobile GPS reporter or Traccar.
+ * Agent locations come from the agent's own mobile GPS reporter.
  */
 export async function applyPositionToDevice(
   svc: SvcClient,
