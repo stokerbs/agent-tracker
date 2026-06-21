@@ -82,6 +82,47 @@ export async function requestSmsOtp(
 }
 
 /**
+ * Portal variant of requestSmsOtp: sends OTP then redirects to the
+ * portal-specific verify page (/portal/login/verify) instead of /login/verify.
+ */
+export async function requestPortalOtp(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const ip = await requestIp();
+  const rl = checkRateLimit("otp", ip);
+  if (!rl.allowed) {
+    const s = Math.ceil(rl.retryAfterMs / 1000);
+    return { error: `Too many requests. Try again in ${s} second${s === 1 ? "" : "s"}.` };
+  }
+
+  const raw = String(formData.get("phone") ?? "").trim();
+  const phone = normalizeThaiPhone(raw);
+  if (!phone) {
+    return { error: "Please enter a valid Thai mobile number (e.g. 081 234 5678)." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    phone,
+    options: { shouldCreateUser: false },
+  });
+
+  if (error) {
+    console.error("[auth] portal signInWithOtp error:", error.code, error.status);
+    if (error.status === 429) {
+      return { error: "Too many requests. Please wait a moment before trying again." };
+    }
+    if (error.message?.toLowerCase().includes("sms")) {
+      return { error: "SMS delivery failed. Please check your number and try again." };
+    }
+    return { error: "Account not found. Please contact your case manager." };
+  }
+
+  redirect(`/portal/login/verify?phone=${encodeURIComponent(phone)}`);
+}
+
+/**
  * Step 2 of SMS OTP login: verify the 6-digit code and create a session.
  */
 export async function verifyOtp(

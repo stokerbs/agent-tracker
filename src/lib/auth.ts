@@ -19,10 +19,10 @@ export async function getCurrentProfile(): Promise<Profile | null> {
   return (data as Profile) ?? null;
 }
 
-/** Requires an authenticated profile; redirects to /login otherwise. */
-export async function requireProfile(): Promise<Profile> {
+/** Requires an authenticated profile; redirects to loginPath otherwise. */
+export async function requireProfile(loginPath = "/login"): Promise<Profile> {
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
+  if (!profile) redirect(loginPath);
   return profile;
 }
 

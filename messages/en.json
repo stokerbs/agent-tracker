@@ -1191,6 +1191,11 @@
   },
   "portal": {
     "clientPortal": "Client Portal",
+    "login": {
+      "title": "Access your portal",
+      "subtitle": "Enter your registered mobile number to receive a verification code.",
+      "sendCode": "Send verification code"
+    },
     "welcome": "Welcome, {name}",
     "subtitle": "Track your cases and manage invoices.",
     "overdueAlert": "You have {count} overdue invoice(s) totalling {total}. Please contact us to arrange payment.",

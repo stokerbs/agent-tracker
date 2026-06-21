@@ -12,7 +12,7 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireProfile("/portal/login");
   const t = await getTranslations("portal");
   const tAuth = await getTranslations("auth");
 
