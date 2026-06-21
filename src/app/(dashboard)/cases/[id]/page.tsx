@@ -30,7 +30,7 @@ import {
   CasePriorityBadge,
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
-import { StatCard } from "@/components/shared/stat-card";
+import { CaseOpsDashboard } from "./ops-dashboard";
 import { CaseTimelineClient } from "@/components/cases/case-timeline-client";
 import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
@@ -257,6 +257,10 @@ export default async function CaseDetailPage({
 
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
+  const latestEntryEvidence = timelineEntries[0]
+    ? evidenceByEntryId.get(timelineEntries[0].id) ?? []
+    : [];
+
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
@@ -303,28 +307,18 @@ export default async function CaseDetailPage({
         </PageHeader>
       </FadeUp>
 
-      {/* Stat cards */}
+      {/* Ops Dashboard */}
       <FadeUp delay={0.04}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard
-            label={t("stats.timeline")}
-            value={timelineEntries.length}
-            icon={<Clock className="h-4 w-4" />}
-            accentBar="primary"
-          />
-          <StatCard
-            label={t("stats.evidence")}
-            value={caseEvidence.length}
-            icon={<FolderLock className="h-4 w-4" />}
-            accentBar={caseEvidence.length > 0 ? "success" : undefined}
-          />
-          <StatCard
-            label={t("stats.expenses")}
-            value={formatCurrency(totalExpenses)}
-            icon={<Receipt className="h-4 w-4" />}
-            accentBar={totalExpenses > 0 ? "warning" : undefined}
-          />
-        </div>
+        <CaseOpsDashboard
+          gpsDevices={gpsDevices}
+          timelineEntries={timelineEntries}
+          caseEvidence={caseEvidence}
+          caseMessages={caseMessages}
+          unreadMessageCount={unreadMessageCount}
+          assignedAgentsCount={assignedAgents.length}
+          todayBKK={todayBKK}
+          latestEntryEvidence={latestEntryEvidence}
+        />
       </FadeUp>
 
       <FadeUp delay={0.07}>

@@ -285,6 +285,31 @@
       "gpsSection": {
         "title": "GPS Devices",
         "noDevices": "No GPS devices on this case."
+      },
+      "ops": {
+        "lastLocation": "Last Location",
+        "noLocation": "No location recorded",
+        "sourceGps": "GPS",
+        "sourceTimeline": "Timeline",
+        "gpsStatus": "GPS Status",
+        "gpsOnline": "{online}/{total} Online",
+        "noGps": "No GPS devices",
+        "updatedAgo": "Updated {time}",
+        "todayActivity": "Today",
+        "timelineEntries": "{count} Timeline Entries",
+        "evidenceFiles": "{count} Evidence Files",
+        "noActivityToday": "No activity today",
+        "communications": "Communications",
+        "unreadMessages": "{count} Unread",
+        "noUnread": "No Unread",
+        "assignedAgents": "{count} Assigned",
+        "lastMessage": "Last msg {time}",
+        "noMessages": "No messages yet",
+        "latestObservation": "Latest Observation",
+        "noObservation": "No timeline entries yet",
+        "photosAttached": "{count} Photos",
+        "videosAttached": "{count} Videos",
+        "filesAttached": "{count} Files"
       }
     },
     "createDialog": {

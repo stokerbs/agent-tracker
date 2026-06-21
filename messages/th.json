@@ -285,6 +285,31 @@
       "gpsSection": {
         "title": "อุปกรณ์ GPS",
         "noDevices": "ไม่มีอุปกรณ์ GPS ในคดีนี้"
+      },
+      "ops": {
+        "lastLocation": "ตำแหน่งล่าสุด",
+        "noLocation": "ไม่มีข้อมูลตำแหน่ง",
+        "sourceGps": "GPS",
+        "sourceTimeline": "ไทม์ไลน์",
+        "gpsStatus": "สถานะ GPS",
+        "gpsOnline": "{online}/{total} ออนไลน์",
+        "noGps": "ไม่มีอุปกรณ์ GPS",
+        "updatedAgo": "อัปเดต {time}",
+        "todayActivity": "วันนี้",
+        "timelineEntries": "{count} รายการ",
+        "evidenceFiles": "{count} หลักฐาน",
+        "noActivityToday": "ไม่มีกิจกรรมวันนี้",
+        "communications": "การสื่อสาร",
+        "unreadMessages": "{count} ยังไม่ได้อ่าน",
+        "noUnread": "ไม่มีข้อความใหม่",
+        "assignedAgents": "{count} เจ้าหน้าที่",
+        "lastMessage": "ข้อความล่าสุด {time}",
+        "noMessages": "ยังไม่มีข้อความ",
+        "latestObservation": "บันทึกล่าสุด",
+        "noObservation": "ยังไม่มีรายการในไทม์ไลน์",
+        "photosAttached": "{count} รูปภาพ",
+        "videosAttached": "{count} วิดีโอ",
+        "filesAttached": "{count} ไฟล์"
       }
     },
     "createDialog": {
