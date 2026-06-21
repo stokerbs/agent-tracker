@@ -281,7 +281,11 @@
         "success": "Case closed.",
         "alreadyClosed": "Case is already closed"
       },
-      "fieldOps": "Field Operations"
+      "fieldOps": "Field Operations",
+      "gpsSection": {
+        "title": "GPS Devices",
+        "noDevices": "No GPS devices on this case."
+      }
     },
     "createDialog": {
       "title": "Open a new case",
@@ -621,7 +625,10 @@
     "stats": {
       "pending": "Pending",
       "paid": "Paid",
-      "reimbursed": "Reimbursed"
+      "reimbursed": "Reimbursed",
+      "thisMonth": "This Month",
+      "allTime": "All Time",
+      "entriesThisMonth": "Entries This Month"
     },
     "summaryByCategory": "Monthly Summary by Category",
     "table": {
@@ -1000,7 +1007,11 @@
       "speed": "Speed (km/h)"
     },
     "heatmap": {
-      "points": "{count} data points"
+      "points": "{count} data points",
+      "density": {
+        "low": "Low",
+        "high": "High"
+      }
     },
     "route": {
       "start": "Start",

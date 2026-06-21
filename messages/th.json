@@ -281,7 +281,11 @@
         "success": "ปิดคดีแล้ว",
         "alreadyClosed": "คดีถูกปิดแล้ว"
       },
-      "fieldOps": "ปฏิบัติการภาคสนาม"
+      "fieldOps": "ปฏิบัติการภาคสนาม",
+      "gpsSection": {
+        "title": "อุปกรณ์ GPS",
+        "noDevices": "ไม่มีอุปกรณ์ GPS ในคดีนี้"
+      }
     },
     "createDialog": {
       "title": "เปิดคดีใหม่",
@@ -621,7 +625,10 @@
     "stats": {
       "pending": "รอดำเนินการ",
       "paid": "จ่ายแล้ว",
-      "reimbursed": "เบิกแล้ว"
+      "reimbursed": "เบิกแล้ว",
+      "thisMonth": "เดือนนี้",
+      "allTime": "ทั้งหมด",
+      "entriesThisMonth": "รายการเดือนนี้"
     },
     "summaryByCategory": "สรุปรายเดือนตามหมวดหมู่",
     "table": {
@@ -1001,7 +1008,11 @@
       "speed": "ความเร็ว (km/h)"
     },
     "heatmap": {
-      "points": "{count} จุดข้อมูล"
+      "points": "{count} จุดข้อมูล",
+      "density": {
+        "low": "ต่ำ",
+        "high": "สูง"
+      }
     },
     "route": {
       "start": "เริ่ม",
