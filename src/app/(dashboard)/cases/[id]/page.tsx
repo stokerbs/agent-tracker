@@ -36,7 +36,8 @@ import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
-import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
+import { CaseExpenseSheet } from "@/components/expenses/case-expense-sheet";
+import { ExpenseRowActions } from "@/components/expenses/expense-row-actions";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
@@ -58,7 +59,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -574,16 +575,16 @@ export default async function CaseDetailPage({
 
           {/* Expenses */}
           <TabsContent value="expenses" className="space-y-4">
-            {staff && (
+            {canInsert && (
               <div className="flex justify-end">
-                <AddExpenseDialog caseId={id} />
+                <CaseExpenseSheet caseId={id} />
               </div>
             )}
             {caseExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="h-6 w-6" />}
-                title={t("noExpenses")}
-                description={t("noExpensesDescription")}
+                title="No expenses recorded"
+                description="No expenses have been recorded for this case yet."
               />
             ) : (
               <Card>
@@ -591,18 +592,22 @@ export default async function CaseDetailPage({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t("expenseTable.date")}</TableHead>
-                        <TableHead>{t("expenseTable.agent")}</TableHead>
+                        <TableHead className="hidden sm:table-cell">{t("expenseTable.date")}</TableHead>
+                        <TableHead className="hidden sm:table-cell">{t("expenseTable.agent")}</TableHead>
                         <TableHead>{t("expenseTable.category")}</TableHead>
-                        <TableHead>{t("expenseTable.notes")}</TableHead>
+                        <TableHead className="hidden sm:table-cell">{t("expenseTable.notes")}</TableHead>
                         <TableHead className="text-right">{t("expenseTable.amount")}</TableHead>
+                        <TableHead>Status</TableHead>
+                        {staff && <TableHead className="w-10" />}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {caseExpenses.map((e) => (
                         <TableRow key={e.id}>
-                          <TableCell className="text-sm whitespace-nowrap">{formatDate(e.expense_date)}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="hidden whitespace-nowrap text-sm sm:table-cell">
+                            {formatDate(e.expense_date)}
+                          </TableCell>
+                          <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                             {e.agents?.full_name ?? "—"}
                           </TableCell>
                           <TableCell>
@@ -610,21 +615,54 @@ export default async function CaseDetailPage({
                               {CATEGORY_LABELS[e.category] ?? e.category}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                          <TableCell className="hidden max-w-xs truncate text-sm text-muted-foreground sm:table-cell">
                             {e.notes ?? "—"}
                           </TableCell>
-                          <TableCell className="text-right font-medium whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap text-right font-medium">
                             {formatCurrency(Number(e.amount))}
                           </TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                "rounded-full border px-2 py-0.5 text-xs font-medium",
+                                e.status === "paid"
+                                  ? "border-success/20 bg-success/10 text-success"
+                                  : e.status === "reimbursed"
+                                    ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                                    : e.status === "cancelled"
+                                      ? "border-border bg-muted text-muted-foreground"
+                                      : "border-amber-500/20 bg-amber-500/10 text-amber-500",
+                              )}
+                            >
+                              {e.status === "paid"
+                                ? "Paid"
+                                : e.status === "reimbursed"
+                                  ? "Reimbursed"
+                                  : e.status === "cancelled"
+                                    ? "Cancelled"
+                                    : "Pending"}
+                            </span>
+                          </TableCell>
+                          {staff && (
+                            <TableCell className="p-1">
+                              <ExpenseRowActions
+                                expenseId={e.id}
+                                currentStatus={e.status}
+                              />
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/30 font-medium">
-                        <TableCell colSpan={4} className="text-sm">
-                          {t("expenseTable.total")}
-                        </TableCell>
-                        <TableCell className="text-right text-sm text-primary">
+                        <TableCell className="hidden sm:table-cell" />
+                        <TableCell className="hidden sm:table-cell" />
+                        <TableCell className="text-sm">{t("expenseTable.total")}</TableCell>
+                        <TableCell className="hidden sm:table-cell" />
+                        <TableCell className="whitespace-nowrap text-right text-sm text-primary">
                           {formatCurrency(totalExpenses)}
                         </TableCell>
+                        <TableCell />
+                        {staff && <TableCell />}
                       </TableRow>
                     </TableBody>
                   </Table>
