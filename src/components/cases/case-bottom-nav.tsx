@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { Clock, Images, MessageSquare, Receipt, Wallet } from "lucide-react";
+import { Clock, Images, MessageSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -27,10 +27,9 @@ type BadgeKind = "count" | "alert";
  * most-used module; Messages carries a red alert badge, Timeline/Evidence carry
  * muted content-count badges. Hidden at md+ where the top tabs take over.
  */
-export function CaseBottomNav({ counts, staff }: Props) {
+export function CaseBottomNav({ counts, staff: _staff }: Props) {
   const tCase = useTranslations("cases.detail");
   const tMsgs = useTranslations("messages");
-  const tPayroll = useTranslations("payroll");
 
   // Portal to <body> so position:fixed anchors to the viewport, not the
   // transform-animated (FadeUp) ancestor. The portal preserves the Radix Tabs
@@ -38,27 +37,19 @@ export function CaseBottomNav({ counts, staff }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Order: least-frequent on the hard-to-reach far left → Timeline centred →
-  // capture/alert modules on the easy right.
-  // 4 items for agents/clients; staff adds Payroll → 5.
   const items: Array<{
     value: string;
     label: string;
     Icon: typeof Clock;
     badge?: { n: number; kind: BadgeKind };
   }> = [
-    { value: "expenses", label: tCase("tabs.expenses"), Icon: Receipt },
-    { value: "timeline", label: tCase("tabs.timeline"), Icon: Clock,
-      badge: counts.timeline > 0 ? { n: counts.timeline, kind: "count" } : undefined },
     { value: "evidence", label: tCase("tabs.evidence"), Icon: Images,
       badge: counts.evidence > 0 ? { n: counts.evidence, kind: "count" } : undefined },
+    { value: "timeline", label: tCase("tabs.timeline"), Icon: Clock,
+      badge: counts.timeline > 0 ? { n: counts.timeline, kind: "count" } : undefined },
     { value: "messages", label: tMsgs("tab"), Icon: MessageSquare,
       badge: counts.messagesUnread > 0 ? { n: counts.messagesUnread, kind: "alert" } : undefined },
   ];
-
-  if (staff) {
-    items.push({ value: "payroll", label: tPayroll("title"), Icon: Wallet });
-  }
 
   if (!mounted) return null;
 
@@ -68,7 +59,7 @@ export function CaseBottomNav({ counts, staff }: Props) {
       className={cn(
         "fixed inset-x-0 bottom-0 z-40 grid border-t border-border/60 bg-background/85 backdrop-blur-md md:hidden",
         "pb-[env(safe-area-inset-bottom)]",
-        staff ? "grid-cols-5" : "grid-cols-4",
+        "grid-cols-3",
       )}
     >
       {items.map(({ value, label, Icon, badge }) => (

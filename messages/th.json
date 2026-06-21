@@ -310,7 +310,21 @@
         "photosAttached": "{count} รูปภาพ",
         "videosAttached": "{count} วิดีโอ",
         "filesAttached": "{count} ไฟล์"
-      }
+      },
+      "intel": {
+        "target": "เป้าหมาย",
+        "noPhotos": "ไม่มีรูปภาพ",
+        "nPhotos": "{count} รูปภาพ",
+        "vehicle": "ยานพาหนะ",
+        "noVehicle": "ยังไม่บันทึกยานพาหนะ",
+        "nMoreVehicles": "+{n} เพิ่มเติม",
+        "locations": "สถานที่",
+        "noLocations": "ยังไม่บันทึกสถานที่",
+        "lastKnown": "ตำแหน่งล่าสุด",
+        "gpsOnline": "GPS ออนไลน์",
+        "gpsOffline": "GPS ออฟไลน์"
+      },
+      "finance": "การเงิน"
     },
     "createDialog": {
       "title": "เปิดคดีใหม่",

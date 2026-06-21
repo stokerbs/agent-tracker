@@ -12,10 +12,9 @@ interface Props {
   canInsert: boolean;
 }
 
-function shouldShow(tab: string, staff: boolean, canInsert: boolean) {
+function shouldShow(tab: string, _staff: boolean, canInsert: boolean) {
   if (tab === "timeline") return canInsert;
   if (tab === "evidence") return true;
-  if (tab === "expenses") return staff;
   return false;
 }
 

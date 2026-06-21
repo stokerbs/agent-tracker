@@ -310,7 +310,21 @@
         "photosAttached": "{count} Photos",
         "videosAttached": "{count} Videos",
         "filesAttached": "{count} Files"
-      }
+      },
+      "intel": {
+        "target": "Target",
+        "noPhotos": "No photos",
+        "nPhotos": "{count} Photos",
+        "vehicle": "Vehicle",
+        "noVehicle": "No vehicles recorded",
+        "nMoreVehicles": "+{n} more",
+        "locations": "Locations",
+        "noLocations": "No locations saved",
+        "lastKnown": "Last Known",
+        "gpsOnline": "GPS Online",
+        "gpsOffline": "GPS Offline"
+      },
+      "finance": "Finance"
     },
     "createDialog": {
       "title": "Open a new case",

@@ -5,19 +5,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Banknote,
-  Briefcase,
-  Car,
   Clock,
   Crosshair,
   FolderLock,
-  MapPin,
   MessageSquare,
-  Phone,
   Radio,
   Receipt,
-  Smartphone,
-  User,
-  Users,
   Wallet,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -31,8 +24,8 @@ import {
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
 import { CaseOpsDashboard } from "./ops-dashboard";
+import { IntelligenceOverview, IntelligenceOverviewSkeleton } from "./intelligence-overview";
 import { CaseTimelineClient } from "@/components/cases/case-timeline-client";
-import { AssignAgentControl } from "@/components/cases/assign-agent-control";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
@@ -43,14 +36,13 @@ import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { CollapsibleCard } from "@/components/shared/collapsible-card";
-import { CaseFieldOpsPanel } from "@/components/field/case-field-ops-panel";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
 import { CaseMessagesClient } from "@/components/messages/case-messages-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -93,13 +85,10 @@ export default async function CaseDetailPage({
 }) {
   const { id } = await params;
   const { tab } = await searchParams;
-  const validTabs = ["timeline", "evidence", "expenses", "payroll", "messages"];
-  // Timeline is the most-used module — default to it (mobile + desktop) unless
-  // a specific tab is deep-linked via ?tab=.
+  const validTabs = ["timeline", "evidence", "messages"];
   const initialTab = tab && validTabs.includes(tab) ? tab : "timeline";
   const profile = await requireProfile();
   const t = await getTranslations("cases.detail");
-  const tCommon = await getTranslations("common");
   const tInvoices = await getTranslations("invoices");
   const tExpenses = await getTranslations("expenses");
   const tPayroll  = await getTranslations("payroll");
@@ -116,13 +105,10 @@ export default async function CaseDetailPage({
   if (!caseRecord) notFound();
   const c = caseRecord as Case;
 
-  const targetName    = c.target_name_enc    ? decryptField(c.target_name_enc)    : null;
-  const targetPhone   = c.target_phone_enc   ? decryptField(c.target_phone_enc)   : null;
-  const targetVehicle = c.target_vehicle_enc ? decryptField(c.target_vehicle_enc) : null;
-  const licensePlate  = c.license_plate_enc  ? decryptField(c.license_plate_enc)  : null;
-  const targetAddress = c.target_address_enc ? decryptField(c.target_address_enc) : null;
-  const targetAlias   = (c as any).target_alias_enc   ? decryptField((c as any).target_alias_enc)   : null;
-  const targetNotes   = (c as any).target_notes_enc   ? decryptField((c as any).target_notes_enc)   : null;
+  const targetName  = c.target_name_enc  ? decryptField(c.target_name_enc)  : null;
+  const targetPhone = c.target_phone_enc ? decryptField(c.target_phone_enc) : null;
+  const targetAlias = (c as any).target_alias_enc ? decryptField((c as any).target_alias_enc) : null;
+  const targetNotes = (c as any).target_notes_enc ? decryptField((c as any).target_notes_enc) : null;
 
   const [
     { data: caseAgentRows },
@@ -171,7 +157,6 @@ export default async function CaseDetailPage({
       .select("*, agents(full_name), profiles!agent_payments_paid_by_fkey(full_name)")
       .eq("case_id", id)
       .order("work_date", { ascending: false }),
-    // Most recent 50; reversed to ascending below. Older pages load on demand.
     supabase
       .from("case_messages")
       .select("*, profiles(id, full_name, role)")
@@ -223,19 +208,14 @@ export default async function CaseDetailPage({
   const caseClient = clientRaw as Client | null;
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
 
-  const [allAgents, allClients, fieldAgentRaw] = await Promise.all([
+  const [allAgents, allClients] = await Promise.all([
     staff
       ? supabase.from("agents").select("*").order("full_name").then((r) => (r.data as Agent[] ?? []))
       : Promise.resolve([] as Agent[]),
     staff
       ? supabase.from("clients").select("id, name").order("name").then((r) => (r.data as Pick<Client, "id" | "name">[] ?? []))
       : Promise.resolve([] as Pick<Client, "id" | "name">[]),
-    // Field ops panel: fetch current user's agent record if they're an agent role.
-    profile.role === "agent"
-      ? supabase.from("agents").select("*").eq("profile_id", profile.id).maybeSingle().then((r) => r.data)
-      : Promise.resolve(null),
   ]);
-  const fieldAgent = fieldAgentRaw as Agent | null;
 
   const assignedAgents = ((caseAgentRows ?? []) as unknown as { agents: Agent }[])
     .map((r) => r.agents)
@@ -265,8 +245,6 @@ export default async function CaseDetailPage({
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
 
-  // Group timeline entries by date DESC, entries ASC within each day.
-  // timelineEntries arrives sorted DESC — first-seen date is newest.
   const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
   const dateMap = new Map<string, typeof timelineEntries>();
   for (const e of timelineEntries) {
@@ -274,13 +252,12 @@ export default async function CaseDetailPage({
     dateMap.get(e.entry_date)!.push(e);
   }
   const dateGroups = Array.from(dateMap.entries())
-    .sort(([a], [b]) => b.localeCompare(a)) // dates DESC
+    .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, entries]) => ({
       date,
-      entries: [...entries].reverse(), // time ASC within day
+      entries: [...entries].reverse(),
     }));
 
-  // Messages + unread count (fetched newest-first; reverse to chronological)
   const caseMessages = [...((messagesRaw ?? []) as CaseMessageWithSender[])].reverse();
   const lastSeen = myView?.last_seen_at ? new Date(myView.last_seen_at) : null;
   const unreadMessageCount = caseMessages.filter(
@@ -288,7 +265,6 @@ export default async function CaseDetailPage({
   ).length;
 
   return (
-    // Bottom padding on mobile clears the fixed bottom nav (md+ has no bottom bar).
     <div className="space-y-6 pb-24 md:pb-0">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/cases">
@@ -304,6 +280,16 @@ export default async function CaseDetailPage({
           <CasePriorityBadge priority={c.priority} />
           <CaseStatusBadge status={c.status} />
           {staff && <EditCaseDialog caseRecord={c} clients={allClients} />}
+          {staff && c.status !== "closed" && (
+            <CloseCaseDialog
+              caseId={c.id}
+              caseNumber={c.case_number}
+              clientName={c.client_name}
+              timelineCount={timelineEntries.length}
+              evidenceCount={caseEvidence.length}
+              hasInvoice={hasInvoice}
+            />
+          )}
         </PageHeader>
       </FadeUp>
 
@@ -321,98 +307,43 @@ export default async function CaseDetailPage({
         />
       </FadeUp>
 
-      <FadeUp delay={0.07}>
-        <div className="grid gap-3 lg:gap-6 lg:grid-cols-3">
-          {/* Case info — collapsed by default on mobile */}
-          <CollapsibleCard
-            title={t("caseFile")}
-            icon={<User className="h-4 w-4" />}
-          >
-            <div className="space-y-3 text-sm">
-              <InfoRow icon={<User className="h-4 w-4" />} label={t("infoLabels.target")} value={targetName} />
-              <InfoRow icon={<Phone className="h-4 w-4" />} label={t("infoLabels.phone")} value={targetPhone} />
-              <InfoRow icon={<Car className="h-4 w-4" />} label={t("infoLabels.vehicle")} value={targetVehicle} />
-              <InfoRow icon={<Car className="h-4 w-4" />} label={t("infoLabels.plate")} value={licensePlate} />
-              <InfoRow icon={<MapPin className="h-4 w-4" />} label={t("infoLabels.address")} value={targetAddress} />
-              <InfoRow icon={<Clock className="h-4 w-4" />} label={t("infoLabels.start")} value={formatDate(c.start_date)} />
-              <InfoRow
-                icon={<Clock className="h-4 w-4" />}
-                label={t("infoLabels.end")}
-                value={c.end_date ? formatDate(c.end_date) : t("infoLabels.ongoing")}
-              />
-              {caseClient && c.client_id && (
-                <InfoRow
-                  icon={<Briefcase className="h-4 w-4" />}
-                  label={t("infoLabels.client")}
-                >
-                  <Link
-                    href={`/clients/${c.client_id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {caseClient.company ?? caseClient.name}
-                  </Link>
-                </InfoRow>
-              )}
-              {c.description && (
-                <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
-                  {c.description}
-                </div>
-              )}
-            </div>
-          </CollapsibleCard>
-
-          {/* Assigned agents — collapsed by default on mobile */}
-          <CollapsibleCard
-            title={t("assignedAgents")}
-            icon={<Users className="h-4 w-4" />}
-            count={assignedAgents.length > 0 ? assignedAgents.length : undefined}
-          >
-            <AssignAgentControl
-              caseId={id}
-              assigned={assignedAgents}
-              available={allAgents}
-              canManage={staff}
-            />
-          </CollapsibleCard>
-
-          {/* Quick actions — collapsed by default on mobile */}
-          <CollapsibleCard title={t("reporting")}>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {timelineEntries.length === 1
-                  ? t("reportingHint", { count: timelineEntries.length })
-                  : t("reportingHintPlural", { count: timelineEntries.length })}
-              </p>
-              {staff && caseClient && c.client_id && (
-                <CreateInvoiceDialog
-                  clients={[caseClient]}
-                  cases={[c]}
-                  defaultClientId={c.client_id}
-                  defaultCaseId={c.id}
-                  trigger={
-                    <Button variant="outline" size="sm" className="w-full gap-2">
-                      <Banknote className="h-4 w-4" />
-                      {tInvoices("createFromCase")}
-                    </Button>
-                  }
-                />
-              )}
-              {staff && c.status !== "closed" && (
-                <CloseCaseDialog
-                  caseId={c.id}
-                  caseNumber={c.case_number}
-                  clientName={c.client_name}
-                  timelineCount={timelineEntries.length}
-                  evidenceCount={caseEvidence.length}
-                  hasInvoice={hasInvoice}
-                />
-              )}
-            </div>
-          </CollapsibleCard>
-        </div>
+      {/* Intelligence Overview — 4 dossier cards */}
+      <FadeUp delay={0.06}>
+        <Suspense fallback={<IntelligenceOverviewSkeleton />}>
+          <IntelligenceOverview
+            caseId={id}
+            targetName={targetName}
+            gpsDevices={gpsDevices}
+            timelineEntries={timelineEntries}
+          />
+        </Suspense>
       </FadeUp>
 
-      {/* GPS Tracker Information — visible to staff + assigned agents, hidden from clients */}
+      {/* Target Intelligence — expanded by default */}
+      <FadeUp delay={0.08}>
+        <CollapsibleCard
+          title={tIntel("section")}
+          icon={<Crosshair className="h-4 w-4" />}
+          defaultOpen
+        >
+          <Suspense fallback={<IntelligenceTabSkeleton />}>
+            <IntelligenceTab
+              caseId={id}
+              staff={staff}
+              targetProfile={{
+                name: targetName,
+                alias: targetAlias,
+                phone: targetPhone,
+                gender: (c as any).target_gender ?? null,
+                age: (c as any).target_age ?? null,
+                notes: targetNotes,
+              }}
+            />
+          </Suspense>
+        </CollapsibleCard>
+      </FadeUp>
+
+      {/* GPS Devices — collapsed by default */}
       {!profile.role.startsWith("client") && (gpsDevices.length > 0 || staff) && (
         <FadeUp delay={0.09}>
           <CollapsibleCard
@@ -442,42 +373,214 @@ export default async function CaseDetailPage({
         </FadeUp>
       )}
 
-      {/* Field Operations — agent-only: GPS broadcasting, status selector, SOS */}
-      {fieldAgent && (
+      {/* Finance — expenses + payroll + invoice creation, collapsed by default */}
+      {!profile.role.startsWith("client") && (
         <FadeUp delay={0.10}>
           <CollapsibleCard
-            title={t("fieldOps")}
-            icon={<Smartphone className="h-4 w-4" />}
+            title={t("finance")}
+            icon={<Receipt className="h-4 w-4" />}
+            count={caseExpenses.length > 0 ? caseExpenses.length : undefined}
+            headerAction={canInsert ? <CaseExpenseSheet caseId={id} /> : undefined}
           >
-            <CaseFieldOpsPanel agent={fieldAgent} />
+            <div className="space-y-6">
+              {/* Cost summary — staff only */}
+              {staff && (
+                <div className="grid grid-cols-3 gap-3">
+                  <Card>
+                    <CardContent className="py-3 px-4">
+                      <p className="text-xs text-muted-foreground">{tPayroll("caseSection.payrollTotal")}</p>
+                      <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalPayroll)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="py-3 px-4">
+                      <p className="text-xs text-muted-foreground">{tPayroll("caseSection.expensesTotal")}</p>
+                      <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalExpenses)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-primary/30">
+                    <CardContent className="py-3 px-4">
+                      <p className="text-xs text-muted-foreground">{tPayroll("caseSection.totalCost")}</p>
+                      <p className="mt-0.5 font-semibold tabular-nums text-primary">{formatCurrency(totalPayroll + totalExpenses)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Expenses */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Receipt className="h-3.5 w-3.5" /> {tExpenses("title")}
+                </p>
+                {caseExpenses.length === 0 ? (
+                  <EmptyState
+                    icon={<Receipt className="h-6 w-6" />}
+                    title={t("noExpenses")}
+                    description={t("noExpensesDescription")}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="hidden sm:table-cell">{t("expenseTable.date")}</TableHead>
+                            <TableHead className="hidden sm:table-cell">{t("expenseTable.agent")}</TableHead>
+                            <TableHead>{t("expenseTable.category")}</TableHead>
+                            <TableHead className="hidden sm:table-cell">{t("expenseTable.notes")}</TableHead>
+                            <TableHead className="text-right">{t("expenseTable.amount")}</TableHead>
+                            <TableHead>{t("expenseTable.status")}</TableHead>
+                            {staff && <TableHead className="w-10" />}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {caseExpenses.map((e) => (
+                            <TableRow key={e.id}>
+                              <TableCell className="hidden whitespace-nowrap text-sm sm:table-cell">
+                                {formatDate(e.expense_date)}
+                              </TableCell>
+                              <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
+                                {e.agents?.full_name ?? "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="text-xs">
+                                  {tExpenses(`categories.${e.category}` as any)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="hidden max-w-xs truncate text-sm text-muted-foreground sm:table-cell">
+                                {e.notes ?? "—"}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap text-right font-medium">
+                                {formatCurrency(Number(e.amount))}
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={cn(
+                                    "rounded-full border px-2 py-0.5 text-xs font-medium",
+                                    e.status === "paid"
+                                      ? "border-success/20 bg-success/10 text-success"
+                                      : e.status === "reimbursed"
+                                        ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                                        : e.status === "cancelled"
+                                          ? "border-border bg-muted text-muted-foreground"
+                                          : "border-amber-500/20 bg-amber-500/10 text-amber-500",
+                                  )}
+                                >
+                                  {tExpenses(`status.${e.status}` as any)}
+                                </span>
+                              </TableCell>
+                              {staff && (
+                                <TableCell className="p-1">
+                                  <ExpenseRowActions
+                                    expenseId={e.id}
+                                    currentStatus={e.status}
+                                  />
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/30 font-medium">
+                            <TableCell className="hidden sm:table-cell" />
+                            <TableCell className="hidden sm:table-cell" />
+                            <TableCell className="text-sm">{t("expenseTable.total")}</TableCell>
+                            <TableCell className="hidden sm:table-cell" />
+                            <TableCell className="whitespace-nowrap text-right text-sm text-primary">
+                              {formatCurrency(totalExpenses)}
+                            </TableCell>
+                            <TableCell />
+                            {staff && <TableCell />}
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Payroll — staff only */}
+              {staff && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Wallet className="h-3.5 w-3.5" /> {tPayroll("title")}
+                  </p>
+                  {casePayments.length === 0 ? (
+                    <EmptyState
+                      icon={<Wallet className="h-6 w-6" />}
+                      title={tPayroll("noTitle")}
+                      description={tPayroll("noDescription")}
+                    />
+                  ) : (
+                    <Card>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>{tPayroll("table.date")}</TableHead>
+                              <TableHead>{tPayroll("table.agent")}</TableHead>
+                              <TableHead>{tPayroll("table.notes")}</TableHead>
+                              <TableHead>{tPayroll("table.status")}</TableHead>
+                              <TableHead className="text-right">{tPayroll("table.amount")}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {casePayments.map((p: any) => (
+                              <TableRow key={p.id}>
+                                <TableCell className="text-sm whitespace-nowrap">{p.work_date}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {p.agents?.full_name ?? "—"}
+                                </TableCell>
+                                <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                                  {p.notes ?? "—"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {tPayroll(`status.${p.status}` as any)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-medium whitespace-nowrap">
+                                  {formatCurrency(Number(p.amount))}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="bg-muted/30 font-medium">
+                              <TableCell colSpan={4} className="text-sm">
+                                {tPayroll("table.total")}
+                              </TableCell>
+                              <TableCell className="text-right text-sm text-primary">
+                                {formatCurrency(totalPayroll)}
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              {/* Invoice creation — staff + client exists */}
+              {staff && caseClient && c.client_id && (
+                <div className="pt-1">
+                  <CreateInvoiceDialog
+                    clients={[caseClient]}
+                    cases={[c]}
+                    defaultClientId={c.client_id}
+                    defaultCaseId={c.id}
+                    trigger={
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Banknote className="h-4 w-4" />
+                        {tInvoices("createFromCase")}
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+            </div>
           </CollapsibleCard>
         </FadeUp>
       )}
 
-      {/* Target Intelligence — streamed independently; always in page, never a separate tab */}
-      <FadeUp delay={0.11}>
-        <CollapsibleCard
-          title={tIntel("section")}
-          icon={<Crosshair className="h-4 w-4" />}
-        >
-          <Suspense fallback={<IntelligenceTabSkeleton />}>
-            <IntelligenceTab
-              caseId={id}
-              staff={staff}
-              targetProfile={{
-                name: targetName,
-                alias: targetAlias,
-                phone: targetPhone,
-                gender: (c as any).target_gender ?? null,
-                age: (c as any).target_age ?? null,
-                notes: targetNotes,
-              }}
-            />
-          </Suspense>
-        </CollapsibleCard>
-      </FadeUp>
-
-      {/* Tabs */}
+      {/* Tabs — Timeline, Evidence, Messages */}
       <FadeUp delay={0.11}>
         <CaseTabShell
           defaultValue={initialTab}
@@ -501,18 +604,6 @@ export default async function CaseDetailPage({
               {t("tabs.evidence")}
               <TabCount n={caseEvidence.length} />
             </TabsTrigger>
-            <TabsTrigger value="expenses">
-              <Receipt className="mr-1 h-4 w-4" />
-              {t("tabs.expenses")}
-              <TabCount n={caseExpenses.length} />
-            </TabsTrigger>
-            {staff && (
-              <TabsTrigger value="payroll">
-                <Wallet className="mr-1 h-4 w-4" />
-                {tPayroll("title")}
-                <TabCount n={casePayments.length} />
-              </TabsTrigger>
-            )}
             <TabsTrigger value="messages" className="relative">
               <MessageSquare className="mr-1 h-4 w-4" />
               {tMsgs("tab")}
@@ -563,98 +654,6 @@ export default async function CaseDetailPage({
             )}
           </TabsContent>
 
-          {/* Expenses */}
-          <TabsContent value="expenses" className="space-y-4">
-            {canInsert && (
-              <div className="flex justify-end">
-                <CaseExpenseSheet caseId={id} />
-              </div>
-            )}
-            {caseExpenses.length === 0 ? (
-              <EmptyState
-                icon={<Receipt className="h-6 w-6" />}
-                title={t("noExpenses")}
-                description={t("noExpensesDescription")}
-              />
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="hidden sm:table-cell">{t("expenseTable.date")}</TableHead>
-                        <TableHead className="hidden sm:table-cell">{t("expenseTable.agent")}</TableHead>
-                        <TableHead>{t("expenseTable.category")}</TableHead>
-                        <TableHead className="hidden sm:table-cell">{t("expenseTable.notes")}</TableHead>
-                        <TableHead className="text-right">{t("expenseTable.amount")}</TableHead>
-                        <TableHead>{t("expenseTable.status")}</TableHead>
-                        {staff && <TableHead className="w-10" />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {caseExpenses.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell className="hidden whitespace-nowrap text-sm sm:table-cell">
-                            {formatDate(e.expense_date)}
-                          </TableCell>
-                          <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
-                            {e.agents?.full_name ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {tExpenses(`categories.${e.category}` as any)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden max-w-xs truncate text-sm text-muted-foreground sm:table-cell">
-                            {e.notes ?? "—"}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-right font-medium">
-                            {formatCurrency(Number(e.amount))}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={cn(
-                                "rounded-full border px-2 py-0.5 text-xs font-medium",
-                                e.status === "paid"
-                                  ? "border-success/20 bg-success/10 text-success"
-                                  : e.status === "reimbursed"
-                                    ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
-                                    : e.status === "cancelled"
-                                      ? "border-border bg-muted text-muted-foreground"
-                                      : "border-amber-500/20 bg-amber-500/10 text-amber-500",
-                              )}
-                            >
-                              {tExpenses(`status.${e.status}` as any)}
-                            </span>
-                          </TableCell>
-                          {staff && (
-                            <TableCell className="p-1">
-                              <ExpenseRowActions
-                                expenseId={e.id}
-                                currentStatus={e.status}
-                              />
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                      <TableRow className="bg-muted/30 font-medium">
-                        <TableCell className="hidden sm:table-cell" />
-                        <TableCell className="hidden sm:table-cell" />
-                        <TableCell className="text-sm">{t("expenseTable.total")}</TableCell>
-                        <TableCell className="hidden sm:table-cell" />
-                        <TableCell className="whitespace-nowrap text-right text-sm text-primary">
-                          {formatCurrency(totalExpenses)}
-                        </TableCell>
-                        <TableCell />
-                        {staff && <TableCell />}
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
           {/* Messages */}
           <TabsContent value="messages">
             <CaseMessagesClient
@@ -665,86 +664,6 @@ export default async function CaseDetailPage({
               isStaff={staff}
             />
           </TabsContent>
-
-          {/* Payroll */}
-          {staff && (
-            <TabsContent value="payroll" className="space-y-4">
-              {/* Cost summary */}
-              <div className="grid grid-cols-3 gap-3">
-                <Card>
-                  <CardContent className="py-3 px-4">
-                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.payrollTotal")}</p>
-                    <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalPayroll)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="py-3 px-4">
-                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.expensesTotal")}</p>
-                    <p className="mt-0.5 font-semibold tabular-nums">{formatCurrency(totalExpenses)}</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-primary/30">
-                  <CardContent className="py-3 px-4">
-                    <p className="text-xs text-muted-foreground">{tPayroll("caseSection.totalCost")}</p>
-                    <p className="mt-0.5 font-semibold tabular-nums text-primary">{formatCurrency(totalPayroll + totalExpenses)}</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {casePayments.length === 0 ? (
-                <EmptyState
-                  icon={<Wallet className="h-6 w-6" />}
-                  title={tPayroll("noTitle")}
-                  description={tPayroll("noDescription")}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{tPayroll("table.date")}</TableHead>
-                          <TableHead>{tPayroll("table.agent")}</TableHead>
-                          <TableHead>{tPayroll("table.notes")}</TableHead>
-                          <TableHead>{tPayroll("table.status")}</TableHead>
-                          <TableHead className="text-right">{tPayroll("table.amount")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {casePayments.map((p: any) => (
-                          <TableRow key={p.id}>
-                            <TableCell className="text-sm whitespace-nowrap">{p.work_date}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {p.agents?.full_name ?? "—"}
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                              {p.notes ?? "—"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="text-xs">
-                                {tPayroll(`status.${p.status}` as any)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-medium whitespace-nowrap">
-                              {formatCurrency(Number(p.amount))}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="bg-muted/30 font-medium">
-                          <TableCell colSpan={4} className="text-sm">
-                            {tPayroll("table.total")}
-                          </TableCell>
-                          <TableCell className="text-right text-sm text-primary">
-                            {formatCurrency(totalPayroll)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          )}
 
         </CaseTabShell>
       </FadeUp>
@@ -758,27 +677,5 @@ function TabCount({ n }: { n: number }) {
     <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
       {n}
     </span>
-  );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value?: string | null;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-2">
-      <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {children ?? <p>{value || "—"}</p>}
-      </div>
-    </div>
   );
 }
