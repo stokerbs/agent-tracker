@@ -79,7 +79,7 @@ export async function updateTimelineEntry(
   if (!entry) return { error: "Entry text is required" };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("timeline_entries")
     .update({
       entry_date: data.entry_date,
@@ -90,9 +90,15 @@ export async function updateTimelineEntry(
       updated_by: profile.id,
     })
     .eq("id", id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id");
 
   if (error) return { error: handleDbError(error, "timeline") };
+  // RLS (0048) restricts supervisor writes to assigned cases. A blocked write
+  // returns no error but affects 0 rows — surface that instead of faking success.
+  if (!updated || updated.length === 0) {
+    return { error: "Not authorized to edit this entry, or it no longer exists" };
+  }
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/timeline");
@@ -103,16 +109,21 @@ export async function deleteTimelineEntry(id: string, caseId: string) {
   const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from("timeline_entries")
     .update({
       deleted_at: new Date().toISOString(),
       deleted_by: profile.id,
     })
     .eq("id", id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id");
 
   if (error) return { error: handleDbError(error, "timeline") };
+  // See updateTimelineEntry: 0 rows = RLS-blocked or already deleted.
+  if (!deleted || deleted.length === 0) {
+    return { error: "Not authorized to delete this entry, or it no longer exists" };
+  }
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/timeline");
@@ -479,6 +490,13 @@ export async function generateReport(
   date: string,
   reportType: ReportType,
 ): Promise<{ report?: string; error?: string }> {
+  // Auth: must be an authenticated, non-client user. Case access is enforced
+  // below via the RLS-scoped cases lookup (admins see all, supervisors via
+  // is_staff, agents only their assigned cases). Blocks invoking the paid AI
+  // endpoint for cases the caller cannot access.
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role === "client") return { error: "Not authorized" };
+
   const supabase = await createClient();
 
   const [entriesRes, caseRes] = await Promise.all([
@@ -494,7 +512,8 @@ export async function generateReport(
 
   const entries = entriesRes.data ?? [];
   const caseRow = caseRes.data;
-  const caseNumber = caseRow?.case_number ?? caseId;
+  if (!caseRow) return { error: "Case not found or access denied" };
+  const caseNumber = caseRow.case_number ?? caseId;
 
   // Count linked evidence per entry to include in report observations.
   let evidenceCountByEntryId: Record<string, number> = {};
@@ -712,6 +731,11 @@ export async function generateRangeReport(
   endDate: string,
   reportType: ReportType,
 ): Promise<{ report?: string; error?: string }> {
+  // Auth: authenticated, non-client only. Case access enforced via the
+  // RLS-scoped cases lookup below (see generateReport).
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role === "client") return { error: "Not authorized" };
+
   if (startDate > endDate) {
     return { error: "Start date must be on or before end date." };
   }
@@ -733,7 +757,8 @@ export async function generateRangeReport(
 
   const entries = (entriesRes.data ?? []) as Array<RangeEntry & { id: string }>;
   const caseRow = caseRes.data;
-  const caseNumber = caseRow?.case_number ?? caseId;
+  if (!caseRow) return { error: "Case not found or access denied" };
+  const caseNumber = caseRow.case_number ?? caseId;
 
   // Count linked evidence per entry to surface in observations.
   const evidenceCountByEntryId: Record<string, number> = {};

@@ -21,12 +21,13 @@ export const maxDuration = 30;
  *   5. Update gps903_credentials.last_synced_at / last_sync_ok
  */
 export async function GET(request: NextRequest) {
+  // Fail closed: this cron uses a service-role client and drives the GPS903
+  // polling loop. If CRON_SECRET is unset or the bearer token does not match,
+  // reject — never run unauthenticated. Vercel Cron supplies the bearer token.
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = request.headers.get("authorization");
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const svc = createServiceClient();

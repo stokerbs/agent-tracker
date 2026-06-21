@@ -22,12 +22,13 @@ export const maxDuration = 60;
 export const dynamic     = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // Fail closed: this endpoint uses a service-role client and exposes GPS903
+  // credential summaries + live discovery diagnostics. If CRON_SECRET is not
+  // configured, or the bearer token does not match, reject. Never run open.
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = request.headers.get("authorization");
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const svc = createServiceClient();
