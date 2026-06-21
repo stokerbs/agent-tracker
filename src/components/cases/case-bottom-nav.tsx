@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { Clock, Crosshair, Images, MessageSquare, Receipt, Wallet } from "lucide-react";
+import { Clock, Images, MessageSquare, Receipt, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,6 @@ type BadgeKind = "count" | "alert";
  * muted content-count badges. Hidden at md+ where the top tabs take over.
  */
 export function CaseBottomNav({ counts, staff }: Props) {
-  const tIntel = useTranslations("intelligence");
   const tCase = useTranslations("cases.detail");
   const tMsgs = useTranslations("messages");
   const tPayroll = useTranslations("payroll");
@@ -41,6 +40,7 @@ export function CaseBottomNav({ counts, staff }: Props) {
 
   // Order: least-frequent on the hard-to-reach far left → Timeline centred →
   // capture/alert modules on the easy right.
+  // 4 items for agents/clients; staff adds Payroll → 5.
   const items: Array<{
     value: string;
     label: string;
@@ -48,7 +48,6 @@ export function CaseBottomNav({ counts, staff }: Props) {
     badge?: { n: number; kind: BadgeKind };
   }> = [
     { value: "expenses", label: tCase("tabs.expenses"), Icon: Receipt },
-    { value: "intelligence", label: tIntel("tab"), Icon: Crosshair },
     { value: "timeline", label: tCase("tabs.timeline"), Icon: Clock,
       badge: counts.timeline > 0 ? { n: counts.timeline, kind: "count" } : undefined },
     { value: "evidence", label: tCase("tabs.evidence"), Icon: Images,
@@ -69,7 +68,7 @@ export function CaseBottomNav({ counts, staff }: Props) {
       className={cn(
         "fixed inset-x-0 bottom-0 z-40 grid border-t border-border/60 bg-background/85 backdrop-blur-md md:hidden",
         "pb-[env(safe-area-inset-bottom)]",
-        staff ? "grid-cols-6" : "grid-cols-5",
+        staff ? "grid-cols-5" : "grid-cols-4",
       )}
     >
       {items.map(({ value, label, Icon, badge }) => (

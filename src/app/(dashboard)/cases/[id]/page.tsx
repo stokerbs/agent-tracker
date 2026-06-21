@@ -8,13 +8,13 @@ import {
   Briefcase,
   Car,
   Clock,
+  Crosshair,
   FolderLock,
   MapPin,
   MessageSquare,
   Phone,
   Radio,
   Receipt,
-  ShieldAlert,
   User,
   Users,
   Wallet,
@@ -94,7 +94,7 @@ export default async function CaseDetailPage({
 }) {
   const { id } = await params;
   const { tab } = await searchParams;
-  const validTabs = ["intelligence", "timeline", "evidence", "expenses", "payroll", "messages"];
+  const validTabs = ["timeline", "evidence", "expenses", "payroll", "messages"];
   // Timeline is the most-used module — default to it (mobile + desktop) unless
   // a specific tab is deep-linked via ?tab=.
   const initialTab = tab && validTabs.includes(tab) ? tab : "timeline";
@@ -444,8 +444,31 @@ export default async function CaseDetailPage({
         </FadeUp>
       )}
 
+      {/* Target Intelligence — streamed independently; always in page, never a separate tab */}
+      <FadeUp delay={0.10}>
+        <CollapsibleCard
+          title={tIntel("section")}
+          icon={<Crosshair className="h-4 w-4" />}
+        >
+          <Suspense fallback={<IntelligenceTabSkeleton />}>
+            <IntelligenceTab
+              caseId={id}
+              staff={staff}
+              targetProfile={{
+                name: targetName,
+                alias: targetAlias,
+                phone: targetPhone,
+                gender: (c as any).target_gender ?? null,
+                age: (c as any).target_age ?? null,
+                notes: targetNotes,
+              }}
+            />
+          </Suspense>
+        </CollapsibleCard>
+      </FadeUp>
+
       {/* Tabs */}
-      <FadeUp delay={0.1}>
+      <FadeUp delay={0.11}>
         <CaseTabShell
           defaultValue={initialTab}
           counts={{
@@ -458,10 +481,6 @@ export default async function CaseDetailPage({
         >
           {/* Desktop/tablet: top tab strip. Mobile uses the fixed bottom nav. */}
           <TabsList className="hidden md:inline-flex">
-            <TabsTrigger value="intelligence">
-              <ShieldAlert className="mr-1 h-4 w-4" />
-              {tIntel("tab")}
-            </TabsTrigger>
             <TabsTrigger value="timeline">
               <Clock className="mr-1 h-4 w-4" />
               {t("tabs.timeline")}
@@ -496,25 +515,6 @@ export default async function CaseDetailPage({
               )}
             </TabsTrigger>
           </TabsList>
-
-          {/* Intelligence — streamed independently so its signed-URL round-trips
-              don't block the page shell / other tabs. */}
-          <TabsContent value="intelligence" className="space-y-6">
-            <Suspense fallback={<IntelligenceTabSkeleton />}>
-              <IntelligenceTab
-                caseId={id}
-                staff={staff}
-                targetProfile={{
-                  name: targetName,
-                  alias: targetAlias,
-                  phone: targetPhone,
-                  gender: (c as any).target_gender ?? null,
-                  age: (c as any).target_age ?? null,
-                  notes: targetNotes,
-                }}
-              />
-            </Suspense>
-          </TabsContent>
 
           {/* Timeline */}
           <TabsContent value="timeline" className="space-y-2">

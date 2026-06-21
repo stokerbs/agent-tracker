@@ -1422,6 +1422,7 @@
   },
   "intelligence": {
     "tab": "Intelligence",
+    "section": "Target Intelligence",
     "profile": {
       "title": "Target Profile",
       "editTitle": "Edit Target Profile",
