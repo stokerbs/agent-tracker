@@ -39,6 +39,7 @@ import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
+import { CaseBottomNav } from "@/components/cases/case-bottom-nav";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
@@ -93,7 +94,9 @@ export default async function CaseDetailPage({
   const { id } = await params;
   const { tab } = await searchParams;
   const validTabs = ["intelligence", "timeline", "evidence", "expenses", "payroll", "messages"];
-  const initialTab = tab && validTabs.includes(tab) ? tab : "intelligence";
+  // Timeline is the most-used module — default to it (mobile + desktop) unless
+  // a specific tab is deep-linked via ?tab=.
+  const initialTab = tab && validTabs.includes(tab) ? tab : "timeline";
   const profile = await requireProfile();
   const t = await getTranslations("cases.detail");
   const tCommon = await getTranslations("common");
@@ -276,7 +279,8 @@ export default async function CaseDetailPage({
   ).length;
 
   return (
-    <div className="space-y-6">
+    // Bottom padding on mobile clears the fixed bottom nav (md+ has no bottom bar).
+    <div className="space-y-6 pb-24 md:pb-0">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/cases">
           <ArrowLeft className="h-4 w-4" /> {t("allCases")}
@@ -458,7 +462,8 @@ export default async function CaseDetailPage({
       {/* Tabs */}
       <FadeUp delay={0.1}>
         <Tabs defaultValue={initialTab}>
-          <TabsList>
+          {/* Desktop/tablet: top tab strip. Mobile uses the fixed bottom nav. */}
+          <TabsList className="hidden md:inline-flex">
             <TabsTrigger value="intelligence">
               <ShieldAlert className="mr-1 h-4 w-4" />
               {tIntel("tab")}
@@ -705,6 +710,16 @@ export default async function CaseDetailPage({
               )}
             </TabsContent>
           )}
+
+          {/* Mobile bottom navigation — drives the same Tabs; hidden at md+ */}
+          <CaseBottomNav
+            counts={{
+              timeline: timelineEntries.length,
+              evidence: caseEvidence.length,
+              messagesUnread: unreadMessageCount,
+            }}
+            staff={staff}
+          />
         </Tabs>
       </FadeUp>
     </div>
