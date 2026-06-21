@@ -2,12 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { getCurrentProfile, requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 
 export async function sendMessage(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const caseId = formData.get("case_id") as string;
   const body = (formData.get("body") as string ?? "").trim();

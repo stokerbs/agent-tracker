@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { BUCKETS } from "@/lib/constants";
 import { encryptField, createLicensePlateBlindIndex, normalizeLicensePlate } from "@/lib/security/encryption";
@@ -32,8 +32,7 @@ function detectEvidenceType(mime: string): EvidenceType {
 // ─── Target profile ────────────────────────────────────────────────────────────
 
 export async function updateTargetProfile(caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const alias    = (formData.get("target_alias") as string | null)?.trim() || null;
   const gender   = (formData.get("target_gender") as string | null) || null;
@@ -56,8 +55,7 @@ export async function updateTargetProfile(caseId: string, formData: FormData) {
 // ─── Target photos ─────────────────────────────────────────────────────────────
 
 export async function uploadTargetPhoto(caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
@@ -85,8 +83,7 @@ export async function uploadTargetPhoto(caseId: string, formData: FormData) {
 }
 
 export async function setPrimaryPhoto(photoId: string, caseId: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   await supabase.from("target_photos").update({ is_primary: false }).eq("case_id", caseId);
@@ -96,8 +93,7 @@ export async function setPrimaryPhoto(photoId: string, caseId: string) {
 }
 
 export async function deleteTargetPhoto(photoId: string, caseId: string, storagePath: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   await supabase.storage.from(BUCKETS.intelligence).remove([storagePath]);
@@ -109,8 +105,7 @@ export async function deleteTargetPhoto(photoId: string, caseId: string, storage
 // ─── Vehicles ─────────────────────────────────────────────────────────────────
 
 export async function createVehicle(caseId: string, formData: FormData): Promise<string> {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const plate = (formData.get("license_plate") as string | null)?.trim() || null;
 
@@ -132,8 +127,7 @@ export async function createVehicle(caseId: string, formData: FormData): Promise
 }
 
 export async function updateVehicle(vehicleId: string, caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const plate = (formData.get("license_plate") as string | null)?.trim() || null;
 
@@ -152,8 +146,7 @@ export async function updateVehicle(vehicleId: string, caseId: string, formData:
 }
 
 export async function deleteVehicle(vehicleId: string, caseId: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const { data } = await supabase.from("target_vehicles").select("photo_url").eq("id", vehicleId).single();
@@ -167,8 +160,7 @@ export async function deleteVehicle(vehicleId: string, caseId: string) {
 // ─── Vehicle photos (gallery) ─────────────────────────────────────────────────
 
 export async function addVehiclePhoto(vehicleId: string, caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
@@ -209,8 +201,7 @@ export async function addVehiclePhoto(vehicleId: string, caseId: string, formDat
 }
 
 export async function setPrimaryVehiclePhoto(photoId: string, vehicleId: string, caseId: string, storagePath: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   await supabase.from("vehicle_photos").update({ is_primary: false }).eq("vehicle_id", vehicleId);
@@ -224,8 +215,7 @@ export async function setPrimaryVehiclePhoto(photoId: string, vehicleId: string,
 }
 
 export async function deleteVehiclePhoto(photoId: string, vehicleId: string, caseId: string, storagePath: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const { data: photo } = await supabase
@@ -288,8 +278,7 @@ export async function resolveGoogleMapsUrl(
 }
 
 export async function createLocation(caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const latRaw = formData.get("lat") as string | null;
   const lngRaw = formData.get("lng") as string | null;
@@ -311,8 +300,7 @@ export async function createLocation(caseId: string, formData: FormData) {
 }
 
 export async function updateLocation(locationId: string, caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const latRaw = formData.get("lat") as string | null;
   const lngRaw = formData.get("lng") as string | null;
@@ -332,8 +320,7 @@ export async function updateLocation(locationId: string, caseId: string, formDat
 }
 
 export async function deleteLocation(locationId: string, caseId: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const { data } = await supabase.from("target_locations").select("photo_url").eq("id", locationId).single();
@@ -349,8 +336,7 @@ export async function deleteLocation(locationId: string, caseId: string) {
 // Uses the evidence bucket (private, existing RLS: staff full, assigned agents read).
 
 export async function uploadIntelDocument(caseId: string, formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
@@ -394,8 +380,7 @@ export async function uploadIntelDocument(caseId: string, formData: FormData) {
 }
 
 export async function deleteIntelDocument(evidenceId: string, caseId: string, storagePath: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   await supabase.storage.from(BUCKETS.evidence).remove([storagePath]);

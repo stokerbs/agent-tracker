@@ -189,8 +189,8 @@ export function PayrollListClient({ payments, userRole }: Props) {
           <p className="text-xs text-muted-foreground">{t("filters.noResultsDescription")}</p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 {isStaff && (

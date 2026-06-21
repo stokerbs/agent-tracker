@@ -37,6 +37,18 @@ export function isStaff(role: UserRole): boolean {
   return role === "admin" || role === "supervisor";
 }
 
+/**
+ * Requires an authenticated staff (admin|supervisor) profile, throwing
+ * "Unauthorized" otherwise. Centralizes the guard used by mutation server
+ * actions whose clients catch the thrown error (vs. page guards which redirect
+ * via requireRole, or form actions which return a typed { error }).
+ */
+export async function requireStaff(): Promise<Profile> {
+  const profile = await getCurrentProfile();
+  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  return profile;
+}
+
 export function isClient(role: UserRole): boolean {
   return role === "client";
 }

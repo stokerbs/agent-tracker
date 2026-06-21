@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import type { PayrollStatus } from "@/lib/types";
 
@@ -11,8 +11,7 @@ function bangkokToday(): string {
 }
 
 export async function createPayment(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const { error } = await supabase.from("agent_payments").insert({
@@ -31,8 +30,7 @@ export async function createPayment(formData: FormData) {
 }
 
 export async function updatePaymentStatus(id: string, status: PayrollStatus) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const update: Record<string, unknown> = { status };
@@ -56,8 +54,7 @@ export async function updatePaymentStatus(id: string, status: PayrollStatus) {
 }
 
 export async function adjustPayment(id: string, newAmount: number, reason: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
 
@@ -91,8 +88,7 @@ export async function adjustPayment(id: string, newAmount: number, reason: strin
 
 export async function bulkMarkPaid(ids: string[]) {
   if (!ids.length) return;
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const now = new Date().toISOString();
@@ -114,8 +110,7 @@ export async function bulkMarkPaid(ids: string[]) {
 }
 
 export async function deletePayment(id: string) {
-  const profile = await getCurrentProfile();
-  if (!profile || !isStaff(profile.role)) throw new Error("Unauthorized");
+  const profile = await requireStaff();
 
   const supabase = await createClient();
   const { error } = await supabase.from("agent_payments").delete().eq("id", id);
