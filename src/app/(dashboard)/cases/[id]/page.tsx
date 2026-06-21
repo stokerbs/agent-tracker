@@ -40,6 +40,7 @@ import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
+import { CollapsibleCard } from "@/components/shared/collapsible-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
@@ -323,13 +324,13 @@ export default async function CaseDetailPage({
       </FadeUp>
 
       <FadeUp delay={0.07}>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Case info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("caseFile")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+        <div className="grid gap-3 lg:gap-6 lg:grid-cols-3">
+          {/* Case info — collapsed by default on mobile */}
+          <CollapsibleCard
+            title={t("caseFile")}
+            icon={<User className="h-4 w-4" />}
+          >
+            <div className="space-y-3 text-sm">
               <InfoRow icon={<User className="h-4 w-4" />} label={t("infoLabels.target")} value={targetName} />
               <InfoRow icon={<Phone className="h-4 w-4" />} label={t("infoLabels.phone")} value={targetPhone} />
               <InfoRow icon={<Car className="h-4 w-4" />} label={t("infoLabels.vehicle")} value={targetVehicle} />
@@ -359,32 +360,26 @@ export default async function CaseDetailPage({
                   {c.description}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </CollapsibleCard>
 
-          {/* Assigned agents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-4 w-4" /> {t("assignedAgents")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AssignAgentControl
-                caseId={id}
-                assigned={assignedAgents}
-                available={allAgents}
-                canManage={staff}
-              />
-            </CardContent>
-          </Card>
+          {/* Assigned agents — collapsed by default on mobile */}
+          <CollapsibleCard
+            title={t("assignedAgents")}
+            icon={<Users className="h-4 w-4" />}
+            count={assignedAgents.length > 0 ? assignedAgents.length : undefined}
+          >
+            <AssignAgentControl
+              caseId={id}
+              assigned={assignedAgents}
+              available={allAgents}
+              canManage={staff}
+            />
+          </CollapsibleCard>
 
-          {/* Quick actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("reporting")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          {/* Quick actions — collapsed by default on mobile */}
+          <CollapsibleCard title={t("reporting")}>
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 {timelineEntries.length === 1
                   ? t("reportingHint", { count: timelineEntries.length })
@@ -414,48 +409,38 @@ export default async function CaseDetailPage({
                   hasInvoice={hasInvoice}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </CollapsibleCard>
         </div>
       </FadeUp>
 
       {/* GPS Tracker Information — visible to staff + assigned agents, hidden from clients */}
       {!profile.role.startsWith("client") && (gpsDevices.length > 0 || staff) && (
         <FadeUp delay={0.09}>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Radio className="h-4 w-4 text-emerald-500" />
-                  {t("gpsSection.title")}
-                </CardTitle>
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    <ImportFromGps903Dialog caseId={id} />
-                  </div>
-                )}
+          <CollapsibleCard
+            title={t("gpsSection.title")}
+            icon={<Radio className="h-4 w-4 text-emerald-500" />}
+            count={gpsDevices.length > 0 ? gpsDevices.length : undefined}
+            headerAction={isAdmin ? <ImportFromGps903Dialog caseId={id} /> : undefined}
+          >
+            {gpsDevices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("gpsSection.noDevices")}</p>
+            ) : (
+              <div className="space-y-3">
+                {gpsDevices.map((device, i) => (
+                  <GpsDeviceCard
+                    key={device.id}
+                    device={device}
+                    index={i}
+                    caseId={id}
+                    canEdit={isAdmin || isSupervisor}
+                    canDelete={isAdmin}
+                    agents={allAgents}
+                  />
+                ))}
               </div>
-            </CardHeader>
-            <CardContent>
-              {gpsDevices.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("gpsSection.noDevices")}</p>
-              ) : (
-                <div className="space-y-3">
-                  {gpsDevices.map((device, i) => (
-                    <GpsDeviceCard
-                      key={device.id}
-                      device={device}
-                      index={i}
-                      caseId={id}
-                      canEdit={isAdmin || isSupervisor}
-                      canDelete={isAdmin}
-                      agents={allAgents}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            )}
+          </CollapsibleCard>
         </FadeUp>
       )}
 
