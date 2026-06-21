@@ -322,7 +322,15 @@
         "noLocations": "No locations saved",
         "lastKnown": "Last Known",
         "gpsOnline": "GPS Online",
-        "gpsOffline": "GPS Offline"
+        "gpsOffline": "GPS Offline",
+        "opsStatus": "Operational",
+        "todayEntries": "{count} today",
+        "noEntries": "No entries today",
+        "unreadMsgs": "{count} unread",
+        "allRead": "All read",
+        "lastSeenGps": "{time} ago",
+        "nLocations": "{count} locations",
+        "nVehicles": "{count} vehicles"
       },
       "finance": "Finance"
     },

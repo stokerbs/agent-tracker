@@ -37,6 +37,7 @@ import { CollapsibleCard } from "@/components/shared/collapsible-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
+import { IntelligenceOverview, IntelligenceOverviewSkeleton } from "./intelligence-overview";
 import { CaseMessagesClient } from "@/components/messages/case-messages-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -235,6 +236,7 @@ export default async function CaseDetailPage({
   const canInsert = profile.role !== "client";
 
   const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const todayEntryCount = timelineEntries.filter((e) => e.entry_date === todayBKK).length;
   const dateMap = new Map<string, typeof timelineEntries>();
   for (const e of timelineEntries) {
     if (!dateMap.has(e.entry_date)) dateMap.set(e.entry_date, []);
@@ -282,11 +284,25 @@ export default async function CaseDetailPage({
         </PageHeader>
       </FadeUp>
 
-      {/* Target Intelligence — collapsed by default */}
+      {/* Intelligence summary cards */}
       <FadeUp delay={0.04}>
+        <Suspense fallback={<IntelligenceOverviewSkeleton />}>
+          <IntelligenceOverview
+            caseId={id}
+            targetName={targetName}
+            gpsDevices={gpsDevices}
+            todayEntryCount={todayEntryCount}
+            unreadMessageCount={unreadMessageCount}
+          />
+        </Suspense>
+      </FadeUp>
+
+      {/* Target Intelligence — collapsed by default */}
+      <FadeUp delay={0.05}>
         <CollapsibleCard
           title={tIntel("section")}
           icon={<Crosshair className="h-4 w-4" />}
+          triggerId="intelligence"
         >
           <Suspense fallback={<IntelligenceTabSkeleton />}>
             <IntelligenceTab
@@ -307,12 +323,13 @@ export default async function CaseDetailPage({
 
       {/* GPS Devices — collapsed by default */}
       {!profile.role.startsWith("client") && (gpsDevices.length > 0 || staff) && (
-        <FadeUp delay={0.06}>
+        <FadeUp delay={0.07}>
           <CollapsibleCard
             title={t("gpsSection.title")}
             icon={<Radio className="h-4 w-4 text-emerald-500" />}
             count={gpsDevices.length > 0 ? gpsDevices.length : undefined}
             headerAction={isAdmin ? <ImportFromGps903Dialog caseId={id} /> : undefined}
+            triggerId="gps"
           >
             {gpsDevices.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("gpsSection.noDevices")}</p>
@@ -337,7 +354,7 @@ export default async function CaseDetailPage({
 
       {/* Finance — expenses + payroll + invoice creation, collapsed by default */}
       {!profile.role.startsWith("client") && (
-        <FadeUp delay={0.08}>
+        <FadeUp delay={0.09}>
           <CollapsibleCard
             title={t("finance")}
             icon={<Receipt className="h-4 w-4" />}
@@ -543,7 +560,7 @@ export default async function CaseDetailPage({
       )}
 
       {/* Tabs — Timeline, Evidence, Messages */}
-      <FadeUp delay={0.10}>
+      <FadeUp delay={0.11}>
         <CaseTabShell
           defaultValue={initialTab}
           counts={{

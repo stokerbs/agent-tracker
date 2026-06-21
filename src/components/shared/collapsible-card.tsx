@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,8 @@ interface Props {
   headerAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** When set, listens for a `case:openSection` CustomEvent with matching detail.section and auto-opens + scrolls into view. */
+  triggerId?: string;
 }
 
 /**
@@ -30,11 +32,26 @@ export function CollapsibleCard({
   headerAction,
   children,
   className,
+  triggerId,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!triggerId) return;
+    function onOpenSection(e: Event) {
+      const section = (e as CustomEvent<{ section: string }>).detail?.section;
+      if (section !== triggerId) return;
+      setOpen(true);
+      // Small delay so the grid-rows animation has a frame to start before scroll
+      setTimeout(() => cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    }
+    document.addEventListener("case:openSection", onOpenSection);
+    return () => document.removeEventListener("case:openSection", onOpenSection);
+  }, [triggerId]);
 
   return (
-    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}>
+    <div ref={cardRef} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}>
       {/* Header row — button drives mobile toggle, non-interactive on desktop */}
       <div className="flex items-center">
         <button

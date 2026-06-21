@@ -322,7 +322,15 @@
         "noLocations": "ยังไม่บันทึกสถานที่",
         "lastKnown": "ตำแหน่งล่าสุด",
         "gpsOnline": "GPS ออนไลน์",
-        "gpsOffline": "GPS ออฟไลน์"
+        "gpsOffline": "GPS ออฟไลน์",
+        "opsStatus": "ปฏิบัติการ",
+        "todayEntries": "{count} วันนี้",
+        "noEntries": "ไม่มีรายการวันนี้",
+        "unreadMsgs": "{count} ยังไม่อ่าน",
+        "allRead": "อ่านแล้วทั้งหมด",
+        "lastSeenGps": "{time} ที่แล้ว",
+        "nLocations": "{count} สถานที่",
+        "nVehicles": "{count} ยานพาหนะ"
       },
       "finance": "การเงิน"
     },
