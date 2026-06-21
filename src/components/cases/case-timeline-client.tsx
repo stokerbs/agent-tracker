@@ -51,17 +51,8 @@ export function CaseTimelineClient({
 }: Props) {
   const locale = useLocale();
 
-  // Only today is open by default. Empty dict = use todayBangkok as initial open state.
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    if (dateGroups.some((dg) => dg.date === todayBangkok)) {
-      init[todayBangkok] = true;
-    } else if (dateGroups.length > 0) {
-      // No entries today — open the most recent day instead
-      init[dateGroups[0].date] = true;
-    }
-    return init;
-  });
+  // All groups collapsed by default — user taps to expand.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const [addOpen, setAddOpen] = useState(false);
 

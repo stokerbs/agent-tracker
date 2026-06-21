@@ -23,8 +23,6 @@ import {
   CasePriorityBadge,
   CaseStatusBadge,
 } from "@/components/shared/status-badges";
-import { CaseOpsDashboard } from "./ops-dashboard";
-import { IntelligenceOverview, IntelligenceOverviewSkeleton } from "./intelligence-overview";
 import { CaseTimelineClient } from "@/components/cases/case-timeline-client";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
@@ -111,7 +109,6 @@ export default async function CaseDetailPage({
   const targetNotes = (c as any).target_notes_enc ? decryptField((c as any).target_notes_enc) : null;
 
   const [
-    { data: caseAgentRows },
     { data: rawTimeline },
     { data: evidence },
     { data: expenses },
@@ -122,7 +119,6 @@ export default async function CaseDetailPage({
     { data: messagesRaw },
     { data: myView },
   ] = await Promise.all([
-    supabase.from("case_agents").select("agents(*)").eq("case_id", id),
     supabase
       .from("timeline_entries")
       .select("*, agents(full_name, nickname)")
@@ -209,6 +205,7 @@ export default async function CaseDetailPage({
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
 
   const [allAgents, allClients] = await Promise.all([
+
     staff
       ? supabase.from("agents").select("*").order("full_name").then((r) => (r.data as Agent[] ?? []))
       : Promise.resolve([] as Agent[]),
@@ -216,10 +213,6 @@ export default async function CaseDetailPage({
       ? supabase.from("clients").select("id, name").order("name").then((r) => (r.data as Pick<Client, "id" | "name">[] ?? []))
       : Promise.resolve([] as Pick<Client, "id" | "name">[]),
   ]);
-
-  const assignedAgents = ((caseAgentRows ?? []) as unknown as { agents: Agent }[])
-    .map((r) => r.agents)
-    .filter(Boolean);
 
   const timelineEntries = rawTimelineTyped.map((e) => ({
     ...e,
@@ -236,10 +229,6 @@ export default async function CaseDetailPage({
   const totalPayroll  = casePayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
 
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
-
-  const latestEntryEvidence = timelineEntries[0]
-    ? evidenceByEntryId.get(timelineEntries[0].id) ?? []
-    : [];
 
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
@@ -293,38 +282,11 @@ export default async function CaseDetailPage({
         </PageHeader>
       </FadeUp>
 
-      {/* Ops Dashboard */}
+      {/* Target Intelligence — collapsed by default */}
       <FadeUp delay={0.04}>
-        <CaseOpsDashboard
-          gpsDevices={gpsDevices}
-          timelineEntries={timelineEntries}
-          caseEvidence={caseEvidence}
-          caseMessages={caseMessages}
-          unreadMessageCount={unreadMessageCount}
-          assignedAgentsCount={assignedAgents.length}
-          todayBKK={todayBKK}
-          latestEntryEvidence={latestEntryEvidence}
-        />
-      </FadeUp>
-
-      {/* Intelligence Overview — 4 dossier cards */}
-      <FadeUp delay={0.06}>
-        <Suspense fallback={<IntelligenceOverviewSkeleton />}>
-          <IntelligenceOverview
-            caseId={id}
-            targetName={targetName}
-            gpsDevices={gpsDevices}
-            timelineEntries={timelineEntries}
-          />
-        </Suspense>
-      </FadeUp>
-
-      {/* Target Intelligence — expanded by default */}
-      <FadeUp delay={0.08}>
         <CollapsibleCard
           title={tIntel("section")}
           icon={<Crosshair className="h-4 w-4" />}
-          defaultOpen
         >
           <Suspense fallback={<IntelligenceTabSkeleton />}>
             <IntelligenceTab
@@ -345,7 +307,7 @@ export default async function CaseDetailPage({
 
       {/* GPS Devices — collapsed by default */}
       {!profile.role.startsWith("client") && (gpsDevices.length > 0 || staff) && (
-        <FadeUp delay={0.09}>
+        <FadeUp delay={0.06}>
           <CollapsibleCard
             title={t("gpsSection.title")}
             icon={<Radio className="h-4 w-4 text-emerald-500" />}
@@ -375,7 +337,7 @@ export default async function CaseDetailPage({
 
       {/* Finance — expenses + payroll + invoice creation, collapsed by default */}
       {!profile.role.startsWith("client") && (
-        <FadeUp delay={0.10}>
+        <FadeUp delay={0.08}>
           <CollapsibleCard
             title={t("finance")}
             icon={<Receipt className="h-4 w-4" />}
@@ -581,7 +543,7 @@ export default async function CaseDetailPage({
       )}
 
       {/* Tabs — Timeline, Evidence, Messages */}
-      <FadeUp delay={0.11}>
+      <FadeUp delay={0.10}>
         <CaseTabShell
           defaultValue={initialTab}
           counts={{

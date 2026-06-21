@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
 import { cn } from "@/lib/utils";
 import type { TargetVehicle, VehiclePhoto } from "@/lib/types";
 
@@ -304,85 +305,31 @@ function VehicleForm({
   );
 }
 
-// ── Vehicle Photo Gallery (card trigger) ─────────────────────────────────────
+// ── Vehicle Photo Gallery (card trigger — tap image → fullscreen lightbox) ────
 
 function VehicleGallery({
   vehicle,
-  caseId,
   photos,
-  isStaff,
 }: {
   vehicle: TargetVehicle;
-  caseId: string;
   photos: VehiclePhoto[];
-  isStaff: boolean;
 }) {
   const t = useTranslations("intelligence.vehicles");
-  const tCommon = useTranslations("common");
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [open, setOpen] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<VehiclePhoto | null>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-  const cameraRef  = useRef<HTMLInputElement>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  function uploadPhoto(file: File) {
-    const fd = new FormData();
-    fd.set("file", file);
-    start(async () => {
-      try {
-        await addVehiclePhoto(vehicle.id, caseId, fd);
-        toast.success(t("photos.uploadSuccess"));
-        router.refresh();
-      } catch {
-        toast.error(t("photos.uploadError"));
-      }
-    });
-  }
-
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) uploadPhoto(file);
-    e.target.value = "";
-  }
-
-  function handleSetPrimary(photo: VehiclePhoto) {
-    start(async () => {
-      try {
-        await setPrimaryVehiclePhoto(photo.id, vehicle.id, caseId, photo.storage_path);
-        toast.success(t("photos.primarySet"));
-        router.refresh();
-      } catch {
-        toast.error(t("photos.primaryError"));
-      }
-    });
-  }
-
-  function handleDelete() {
-    if (!deleteTarget) return;
-    start(async () => {
-      try {
-        await deleteVehiclePhoto(deleteTarget.id, vehicle.id, caseId, deleteTarget.storage_path);
-        toast.success(t("photos.deleteSuccess"));
-        setDeleteTarget(null);
-        router.refresh();
-      } catch {
-        toast.error(t("photos.deleteError"));
-      }
-    });
-  }
-
-  const label = [vehicle.color, vehicle.make, vehicle.model].filter(Boolean).join(" ") || t("unknownVehicle");
   const primaryPhoto = photos.find((p) => p.is_primary) ?? photos[0];
+  const lightboxImages = photos.map((p) => ({
+    url: p.signedUrl ?? "",
+    alt: [vehicle.color, vehicle.make, vehicle.model].filter(Boolean).join(" "),
+  }));
 
   return (
     <>
-      {/* Trigger: tap the photo area on the vehicle card */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => photos.length > 0 ? setLightboxIndex(0) : undefined}
         className="relative flex h-full min-h-[88px] w-full flex-col items-center justify-center gap-1"
+        disabled={photos.length === 0}
       >
         {primaryPhoto?.signedUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -390,12 +337,10 @@ function VehicleGallery({
         ) : (
           <>
             <Car className="h-6 w-6 text-muted-foreground/40" />
-            <span className="text-[9px] font-medium text-muted-foreground">
-              {isStaff ? t("photos.addFromGallery") : t("photos.empty")}
-            </span>
+            <span className="text-[9px] font-medium text-muted-foreground">{t("photos.empty")}</span>
           </>
         )}
-        {photos.length > 0 && (
+        {photos.length > 1 && (
           <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white">
             <ImageIcon className="h-2.5 w-2.5" />
             {photos.length}
@@ -403,137 +348,12 @@ function VehicleGallery({
         )}
       </button>
 
-      {/* Gallery Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">{label}</DialogTitle>
-          </DialogHeader>
-
-          {photos.length === 0 ? (
-            <div className="flex h-28 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-              {t("photos.empty")}
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-1.5">
-              {photos.map((p) => (
-                <div
-                  key={p.id}
-                  className={cn(
-                    "relative aspect-square overflow-hidden rounded-md border bg-muted",
-                    p.is_primary && "ring-2 ring-primary ring-offset-1",
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.signedUrl ?? ""}
-                    alt=""
-                    className="h-full w-full cursor-pointer object-cover"
-                    onClick={() => setLightbox(p.signedUrl ?? null)}
-                  />
-                  {p.is_primary && (
-                    <span className="absolute left-1 top-1 rounded bg-primary/90 p-0.5">
-                      <Star className="h-2.5 w-2.5 text-primary-foreground" />
-                    </span>
-                  )}
-                  {/* Always-visible action bar — works on mobile touch */}
-                  {isStaff && (
-                    <div className="absolute bottom-0 left-0 right-0 flex justify-end gap-0.5 bg-gradient-to-t from-black/70 to-transparent px-1 pb-1 pt-3">
-                      {!p.is_primary && (
-                        <button
-                          type="button"
-                          onClick={() => handleSetPrimary(p)}
-                          disabled={pending}
-                          className="rounded bg-white/10 p-1 hover:bg-white/20 active:bg-white/30"
-                          title={t("photos.setPrimary")}
-                        >
-                          <Star className="h-3 w-3 text-yellow-300" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(p)}
-                        disabled={pending}
-                        className="rounded bg-white/10 p-1 hover:bg-red-500/60 active:bg-red-500/70"
-                        title={t("photos.delete")}
-                      >
-                        <Trash2 className="h-3 w-3 text-white" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isStaff && (
-            <div className="flex gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5"
-                disabled={pending}
-                onClick={() => galleryRef.current?.click()}
-              >
-                <ImageIcon className="h-3.5 w-3.5" />
-                {t("photos.addFromGallery")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5"
-                disabled={pending}
-                onClick={() => cameraRef.current?.click()}
-              >
-                <Camera className="h-3.5 w-3.5" />
-                {t("photos.takePhoto")}
-              </Button>
-              <input
-                ref={galleryRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileInput}
-              />
-              <input
-                ref={cameraRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleFileInput}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirm */}
-      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{t("photos.deleteTitle")}</DialogTitle></DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>
-              {tCommon("cancel")}
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={pending} className="gap-2">
-              {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Trash2 className="h-4 w-4" /> {t("photos.deleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Lightbox */}
-      {lightbox && (
-        <Dialog open onOpenChange={() => setLightbox(null)}>
-          <DialogContent className="max-w-sm p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox} alt="" className="max-h-[80vh] w-full rounded object-contain" />
-          </DialogContent>
-        </Dialog>
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
     </>
   );
@@ -603,12 +423,7 @@ export function VehiclesSection({ caseId, vehicles, vehiclePhotos, isStaff }: Pr
                 <div className="flex">
                   {/* Photo area — opens gallery */}
                   <div className="relative w-24 shrink-0 bg-muted">
-                    <VehicleGallery
-                      vehicle={v}
-                      caseId={caseId}
-                      photos={photos}
-                      isStaff={isStaff}
-                    />
+                    <VehicleGallery vehicle={v} photos={photos} />
                   </div>
 
                   {/* Info */}

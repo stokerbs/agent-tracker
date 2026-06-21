@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
 import { cn } from "@/lib/utils";
 import type { TargetPhoto } from "@/lib/types";
 
@@ -28,7 +29,7 @@ export function TargetPhotosSection({ caseId, photos, isStaff }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<TargetPhoto | null>(null);
-  const [lightbox, setLightbox] = useState<TargetPhoto | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -73,7 +74,7 @@ export function TargetPhotosSection({ caseId, photos, isStaff }: Props) {
     });
   }
 
-  const primary = photos.find((p) => p.is_primary) ?? photos[0] ?? null;
+  const lightboxImages = photos.map((p) => ({ url: p.signedUrl ?? "", alt: p.caption ?? "Target photo" }));
 
   return (
     <div className="space-y-3">
@@ -97,14 +98,14 @@ export function TargetPhotosSection({ caseId, photos, isStaff }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {photos.map((photo) => (
+          {photos.map((photo, i) => (
             <div
               key={photo.id}
               className={cn(
                 "group relative aspect-square cursor-pointer overflow-hidden rounded-md border",
                 photo.is_primary && "ring-2 ring-primary ring-offset-1",
               )}
-              onClick={() => setLightbox(photo)}
+              onClick={() => setLightboxIndex(i)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={photo.signedUrl ?? ""} alt={photo.caption ?? "Target photo"} className="h-full w-full object-cover" />
@@ -130,15 +131,13 @@ export function TargetPhotosSection({ caseId, photos, isStaff }: Props) {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
-        <Dialog open onOpenChange={() => setLightbox(null)}>
-          <DialogContent className="max-w-2xl p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox.signedUrl ?? ""} alt={lightbox.caption ?? ""} className="max-h-[80vh] w-full rounded object-contain" />
-            {lightbox.caption && <p className="mt-1 text-center text-xs text-muted-foreground">{lightbox.caption}</p>}
-          </DialogContent>
-        </Dialog>
+      {/* Fullscreen lightbox with swipe + pinch-zoom */}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
 
       {/* Delete confirm */}
