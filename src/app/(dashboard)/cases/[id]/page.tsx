@@ -15,6 +15,7 @@ import {
   Phone,
   Radio,
   Receipt,
+  Smartphone,
   User,
   Users,
   Wallet,
@@ -41,6 +42,7 @@ import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { CollapsibleCard } from "@/components/shared/collapsible-card";
+import { CaseFieldOpsPanel } from "@/components/field/case-field-ops-panel";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
@@ -224,14 +226,19 @@ export default async function CaseDetailPage({
   const caseClient = clientRaw as Client | null;
   const hasInvoice = (invoiceCountRes?.count ?? 0) > 0;
 
-  const [allAgents, allClients] = await Promise.all([
+  const [allAgents, allClients, fieldAgentRaw] = await Promise.all([
     staff
       ? supabase.from("agents").select("*").order("full_name").then((r) => (r.data as Agent[] ?? []))
       : Promise.resolve([] as Agent[]),
     staff
       ? supabase.from("clients").select("id, name").order("name").then((r) => (r.data as Pick<Client, "id" | "name">[] ?? []))
       : Promise.resolve([] as Pick<Client, "id" | "name">[]),
+    // Field ops panel: fetch current user's agent record if they're an agent role.
+    profile.role === "agent"
+      ? supabase.from("agents").select("*").eq("profile_id", profile.id).maybeSingle().then((r) => r.data)
+      : Promise.resolve(null),
   ]);
+  const fieldAgent = fieldAgentRaw as Agent | null;
 
   const assignedAgents = ((caseAgentRows ?? []) as unknown as { agents: Agent }[])
     .map((r) => r.agents)
@@ -444,8 +451,20 @@ export default async function CaseDetailPage({
         </FadeUp>
       )}
 
+      {/* Field Operations — agent-only: GPS broadcasting, status selector, SOS */}
+      {fieldAgent && (
+        <FadeUp delay={0.10}>
+          <CollapsibleCard
+            title="Field Operations"
+            icon={<Smartphone className="h-4 w-4" />}
+          >
+            <CaseFieldOpsPanel agent={fieldAgent} />
+          </CollapsibleCard>
+        </FadeUp>
+      )}
+
       {/* Target Intelligence — streamed independently; always in page, never a separate tab */}
-      <FadeUp delay={0.10}>
+      <FadeUp delay={0.11}>
         <CollapsibleCard
           title={tIntel("section")}
           icon={<Crosshair className="h-4 w-4" />}
