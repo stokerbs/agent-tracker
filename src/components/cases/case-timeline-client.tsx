@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useLocale } from "next-intl";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
@@ -64,6 +64,14 @@ export function CaseTimelineClient({
   });
 
   const [addOpen, setAddOpen] = useState(false);
+
+  useEffect(() => {
+    function onFab(e: Event) {
+      if ((e as CustomEvent<{ tab: string }>).detail?.tab === "timeline") setAddOpen(true);
+    }
+    document.addEventListener("case:fab", onFab);
+    return () => document.removeEventListener("case:fab", onFab);
+  }, []);
 
   function toggle(date: string) {
     setExpanded((prev) => ({ ...prev, [date]: !prev[date] }));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +15,16 @@ export function EvidenceUploader({ caseId }: { caseId: string }) {
   const [pending, start] = useTransition();
   const [fileName, setFileName] = useState<string>("");
   const formRef = useRef<HTMLFormElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    function onFab(e: Event) {
+      if ((e as CustomEvent<{ tab: string }>).detail?.tab === "evidence") fileRef.current?.click();
+    }
+    document.addEventListener("case:fab", onFab);
+    return () => document.removeEventListener("case:fab", onFab);
+  }, []);
 
   function onSubmit(formData: FormData) {
     start(async () => {
@@ -42,6 +51,7 @@ export function EvidenceUploader({ caseId }: { caseId: string }) {
             id="file"
             name="file"
             type="file"
+            ref={fileRef}
             accept="image/jpeg,image/png,image/webp,application/pdf"
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
             required

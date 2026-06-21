@@ -40,6 +40,13 @@ export function AddExpenseDialog({ caseId }: { caseId?: string } = {}) {
   useEffect(() => {
     setToday(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
   }, []);
+  useEffect(() => {
+    function onFab(e: Event) {
+      if ((e as CustomEvent<{ tab: string }>).detail?.tab === "expenses") setOpen(true);
+    }
+    document.addEventListener("case:fab", onFab);
+    return () => document.removeEventListener("case:fab", onFab);
+  }, []);
 
   function onSubmit(formData: FormData) {
     start(async () => {

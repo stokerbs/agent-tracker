@@ -39,7 +39,7 @@ import { AddExpenseDialog } from "@/components/expenses/add-expense-dialog";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
-import { CaseBottomNav } from "@/components/cases/case-bottom-nav";
+import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
@@ -461,7 +461,16 @@ export default async function CaseDetailPage({
 
       {/* Tabs */}
       <FadeUp delay={0.1}>
-        <Tabs defaultValue={initialTab}>
+        <CaseTabShell
+          defaultValue={initialTab}
+          counts={{
+            timeline: timelineEntries.length,
+            evidence: caseEvidence.length,
+            messagesUnread: unreadMessageCount,
+          }}
+          staff={staff}
+          canInsert={canInsert}
+        >
           {/* Desktop/tablet: top tab strip. Mobile uses the fixed bottom nav. */}
           <TabsList className="hidden md:inline-flex">
             <TabsTrigger value="intelligence">
@@ -711,16 +720,7 @@ export default async function CaseDetailPage({
             </TabsContent>
           )}
 
-          {/* Mobile bottom navigation — drives the same Tabs; hidden at md+ */}
-          <CaseBottomNav
-            counts={{
-              timeline: timelineEntries.length,
-              evidence: caseEvidence.length,
-              messagesUnread: unreadMessageCount,
-            }}
-            staff={staff}
-          />
-        </Tabs>
+        </CaseTabShell>
       </FadeUp>
     </div>
   );
