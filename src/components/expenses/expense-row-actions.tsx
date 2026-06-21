@@ -31,6 +31,7 @@ interface Props {
 
 export function ExpenseRowActions({ expenseId, currentStatus }: Props) {
   const t = useTranslations("expenses.actions");
+  const tCommon = useTranslations("common");
   const [pending, start] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const router = useRouter();
@@ -48,7 +49,7 @@ export function ExpenseRowActions({ expenseId, currentStatus }: Props) {
       const res = await softDeleteExpense(expenseId);
       if ("error" in res) { toast.error(res.error); return; }
       setDeleteOpen(false);
-      toast.success("Expense deleted");
+      toast.success(t("deletedToast"));
       router.refresh();
     });
   }
@@ -110,7 +111,7 @@ export function ExpenseRowActions({ expenseId, currentStatus }: Props) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={pending}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={pending} className="gap-2">
               <Trash2 className="h-4 w-4" />

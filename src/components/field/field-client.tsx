@@ -424,6 +424,8 @@ interface ObsDialogProps {
 
 function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
   const t = useTranslations("field");
+  const tObs = useTranslations("field.addObservation");
+  const tLog = useTranslations("field.log");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -506,9 +508,9 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
         );
         const failed = results.filter((r) => r?.error).length;
         if (failed > 0) {
-          toast.warning(`Saved. ${failed} file(s) failed to upload.`);
+          toast.warning(tLog("uploadWarning", { failed }));
         } else {
-          toast.success(`${t("log.success")} · ${files.length} file${files.length > 1 ? "s" : ""} attached`);
+          toast.success(`${t("log.success")} ${tLog("filesAttachedSuffix", { count: files.length })}`);
         }
       } else {
         toast.success(t("log.success"));
@@ -584,12 +586,12 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
           {/* Date + Time row */}
           <div className="flex gap-2">
             <div className="flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">Date</Label>
+              <Label className="text-xs text-muted-foreground">{tObs("date")}</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)}
                 className="h-9 text-sm" disabled={pending} />
             </div>
             <div className="w-28 space-y-1">
-              <Label className="text-xs text-muted-foreground">Time</Label>
+              <Label className="text-xs text-muted-foreground">{tObs("time")}</Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)}
                 className="h-9 text-sm" disabled={pending} />
             </div>
@@ -607,7 +609,7 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
                   className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500 hover:bg-emerald-500/20 disabled:opacity-50"
                 >
                   <Navigation className="h-2.5 w-2.5" />
-                  Use GPS · ±{Math.round(lastPos!.accuracy)}m
+                  {tObs("useGps", { accuracy: Math.round(lastPos!.accuracy) })}
                 </button>
               )}
             </div>
@@ -655,17 +657,17 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
             <button type="button" onClick={() => photoRef.current?.click()} disabled={pending}
               className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50">
               <ImageIcon className="h-3 w-3" />
-              {photos.length > 0 ? `${photos.length} Photo${photos.length > 1 ? "s" : ""}` : "Photos"}
+              {photos.length > 0 ? `${photos.length} Photo${photos.length > 1 ? "s" : ""}` : tObs("photos")}
             </button>
             <button type="button" onClick={() => videoRef.current?.click()} disabled={pending}
               className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50">
               <Film className="h-3 w-3" />
-              {videos.length > 0 ? `${videos.length} Video${videos.length > 1 ? "s" : ""}` : "Videos"}
+              {videos.length > 0 ? `${videos.length} Video${videos.length > 1 ? "s" : ""}` : tObs("videos")}
             </button>
             <button type="button" onClick={() => fileRef.current?.click()} disabled={pending}
               className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50">
               <Paperclip className="h-3 w-3" />
-              {docs.length > 0 ? `${docs.length} File${docs.length > 1 ? "s" : ""}` : "Files"}
+              {docs.length > 0 ? `${docs.length} File${docs.length > 1 ? "s" : ""}` : tObs("files")}
             </button>
             <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
@@ -685,9 +687,9 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
             disabled={pending || !entry.trim() || !selectedCase}
           >
             {pending ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> {tObs("saving")}</>
             ) : (
-              <><Plus className="h-4 w-4" /> Save Observation</>
+              <><Plus className="h-4 w-4" /> {tObs("save")}</>
             )}
           </Button>
         </div>

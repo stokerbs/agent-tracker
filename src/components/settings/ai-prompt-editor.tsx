@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ChevronDown, ChevronUp, History, Loader2, RotateCcw, Save } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ function VersionHistory({
   onRestore: (text: string) => void;
   pending: boolean;
 }) {
+  const t = useTranslations("settings");
   const [open, setOpen] = useState(false);
   if (!versions.length) return null;
 
@@ -41,7 +43,7 @@ function VersionHistory({
       >
         <span className="flex items-center gap-2 text-muted-foreground">
           <History className="h-3.5 w-3.5" />
-          Version history
+          {t("promptEditor.versionHistory")}
           <Badge variant="secondary" className="text-[10px]">{versions.length}</Badge>
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
@@ -62,7 +64,7 @@ function VersionHistory({
                 className="h-7 shrink-0 text-xs"
                 onClick={() => onRestore(v.prompt_text)}
               >
-                Restore
+                {t("promptEditor.restore")}
               </Button>
             </div>
           ))}
@@ -79,6 +81,7 @@ export function AiPromptEditor({
   prompt: AiPrompt;
   versions: AiPromptVersion[];
 }) {
+  const t = useTranslations("settings");
   const [text, setText] = useState(prompt.prompt_text);
   const [pending, start] = useTransition();
   const isDirty = text !== prompt.prompt_text;
@@ -87,27 +90,27 @@ export function AiPromptEditor({
     start(async () => {
       const res = await saveAiPrompt(prompt.id, text);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Prompt saved — takes effect on next report generation.");
+      toast.success(t("promptEditor.savedToast"));
     });
   }
 
   function handleReset() {
-    if (!confirm("Reset to the default prompt? Your current text will be saved to version history.")) return;
+    if (!window.confirm(t("promptEditor.resetConfirm"))) return;
     start(async () => {
       const res = await resetAiPromptToDefault(prompt.id);
       if (res?.error) { toast.error(res.error); return; }
       setText(prompt.default_text);
-      toast.success("Prompt reset to default.");
+      toast.success(t("promptEditor.resetToast"));
     });
   }
 
   function handleRestore(versionText: string) {
-    if (!confirm("Restore this version as the active prompt?")) return;
+    if (!window.confirm(t("promptEditor.restoreConfirm"))) return;
     start(async () => {
       const res = await restoreAiPromptVersion(prompt.id, versionText);
       if (res?.error) { toast.error(res.error); return; }
       setText(versionText);
-      toast.success("Version restored.");
+      toast.success(t("promptEditor.restoreToast"));
     });
   }
 
@@ -129,7 +132,7 @@ export function AiPromptEditor({
         value={text}
         onChange={(e) => setText(e.target.value)}
         className="min-h-[260px] font-mono text-xs leading-relaxed"
-        placeholder="Enter system prompt…"
+        placeholder={t("promptEditor.placeholder")}
       />
 
       <div className="flex items-center gap-2">
@@ -140,7 +143,7 @@ export function AiPromptEditor({
           className="gap-1.5"
         >
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Save prompt
+          {t("promptEditor.saveButton")}
         </Button>
         <Button
           variant="outline"
@@ -150,10 +153,10 @@ export function AiPromptEditor({
           className="gap-1.5"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Reset to default
+          {t("promptEditor.resetButton")}
         </Button>
         {isDirty && (
-          <span className="text-xs text-amber-500">Unsaved changes</span>
+          <span className="text-xs text-amber-500">{t("promptEditor.unsavedChanges")}</span>
         )}
       </div>
 

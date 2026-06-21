@@ -123,9 +123,9 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
       );
       const failed = results.filter((r) => r?.error).length;
       if (failed > 0) {
-        toast.warning(`${files.length - failed} file(s) attached, ${failed} failed.`);
+        toast.warning(t("toast.uploadPartial", { saved: files.length - failed, failed }));
       } else {
-        toast.success(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
+        toast.success(t("toast.uploadSuccess", { count: files.length }));
       }
       router.refresh();
     });
@@ -136,7 +136,7 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
     startUpload(async () => {
       const res = await deleteEvidence(evidenceId);
       if (res?.error) { toast.error(res.error); return; }
-      toast.success("Attachment removed");
+      toast.success(t("toast.attachmentRemoved"));
       router.refresh();
     });
   }
@@ -163,7 +163,7 @@ export function TimelineEntryCard({ entry, canEdit, isAdmin = false, linkedEvide
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 text-xs" disabled={pending} />
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-7 text-xs" disabled={pending} />
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="col-span-2 h-7 text-xs" disabled={pending} />
+          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("locationPlaceholder")} className="col-span-2 h-7 text-xs" disabled={pending} />
         </div>
 
         {/* Textarea — also acts as drop target */}

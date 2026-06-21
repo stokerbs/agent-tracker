@@ -21,7 +21,14 @@
     "upload": "อัปโหลด",
     "export": "ส่งออก",
     "download": "ดาวน์โหลด",
-    "optional": "ไม่บังคับ"
+    "optional": "ไม่บังคับ",
+    "never": "ไม่เคย",
+    "justNow": "เมื่อกี้",
+    "staff": "เจ้าหน้าที่",
+    "agent": "สายสืบ",
+    "details": "รายละเอียด",
+    "less": "ย่อ",
+    "refresh": "รีเฟรช"
   },
   "lang": {
     "switcher": "ภาษา",
@@ -250,14 +257,15 @@
       "noReports": "ยังไม่มีรายงาน",
       "noReportsDescription": "ใช้ \"สร้างรายงาน AI\" เพื่อสร้างรายงานจากไทม์ไลน์",
       "noExpenses": "ยังไม่มีการบันทึกค่าใช้จ่าย",
-      "noExpensesDescription": "บันทึกค่าใช้จ่ายภาคสนามสำหรับคดีนี้โดยใช้ปุ่มด้านบน",
+      "noExpensesDescription": "ยังไม่มีการบันทึกค่าใช้จ่ายสำหรับคดีนี้",
       "expenseTable": {
         "date": "วันที่",
         "agent": "เจ้าหน้าที่",
         "category": "หมวดหมู่",
         "notes": "หมายเหตุ",
         "amount": "จำนวน",
-        "total": "รวม"
+        "total": "รวม",
+        "status": "สถานะ"
       },
       "closeCase": {
         "button": "ปิดคดี",
@@ -272,7 +280,8 @@
         "confirm": "ปิดคดี",
         "success": "ปิดคดีแล้ว",
         "alreadyClosed": "คดีถูกปิดแล้ว"
-      }
+      },
+      "fieldOps": "ปฏิบัติการภาคสนาม"
     },
     "createDialog": {
       "title": "เปิดคดีใหม่",
@@ -518,8 +527,12 @@
         "saved": "อัปเดตรายการไทม์ไลน์แล้ว",
         "deleted": "ลบรายการไทม์ไลน์แล้ว",
         "saveError": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้",
-        "deleteError": "ไม่สามารถลบรายการได้"
-      }
+        "deleteError": "ไม่สามารถลบรายการได้",
+        "uploadPartial": "แนบไฟล์สำเร็จ {saved} ไฟล์, ล้มเหลว {failed} ไฟล์",
+        "uploadSuccess": "แนบไฟล์แล้ว {count} ไฟล์",
+        "attachmentRemoved": "ลบไฟล์แนบแล้ว"
+      },
+      "locationPlaceholder": "สถานที่"
     },
     "ai": {
       "quickEntry": "บันทึกด่วน",
@@ -616,7 +629,8 @@
       "agent": "เจ้าหน้าที่",
       "category": "หมวดหมู่",
       "notes": "หมายเหตุ",
-      "amount": "จำนวนเงิน"
+      "amount": "จำนวนเงิน",
+      "status": "สถานะ"
     },
     "dialog": {
       "title": "ส่งค่าใช้จ่าย",
@@ -648,7 +662,8 @@
       "deleteConfirmTitle": "ลบค่าใช้จ่ายนี้?",
       "deleteConfirmDescription": "ระบบจะซ่อนรายการนี้ถาวร ไม่สามารถกู้คืนได้",
       "deleteConfirm": "ใช่ ลบเลย",
-      "paidBy": "จ่ายโดย {name}"
+      "paidBy": "จ่ายโดย {name}",
+      "deletedToast": "ลบค่าใช้จ่ายแล้ว"
     },
     "exportPdf": "ส่งออก PDF",
     "exportTitle": "รายงานค่าใช้จ่าย",
@@ -688,7 +703,16 @@
       "toast": {
         "success": "บันทึกค่าใช้จ่ายแล้ว",
         "scanError": "ไม่สามารถอ่านใบเสร็จได้ — โปรดตรวจสอบภาพหรือกรอกข้อมูลเอง"
-      }
+      },
+      "amountRequired": "กรุณากรอกจำนวนเงิน",
+      "dateRequired": "กรุณากรอกวันที่",
+      "manualEntry": "กรอกข้อมูลเอง",
+      "manualEntryHint": "พิมพ์รายละเอียดค่าใช้จ่ายด้วยตนเอง",
+      "pdfManual": "PDF — กรอกรายละเอียดด้วยตนเอง",
+      "confidenceHigh": "ดูดี — ตรวจสอบก่อนบันทึก",
+      "vendorPlaceholder": "เช่น ปตท., แกร็บ, เซ็นทรัล",
+      "notesPlaceholder": "คำอธิบายเพิ่มเติม",
+      "confidencePct": "ความเชื่อมั่น {confidence}%"
     },
     "filters": {
       "searchPlaceholder": "ชื่อเจ้าหน้าที่หรือหมายเหตุ…",
@@ -892,6 +916,18 @@
       "linked": "เชื่อมต่อกับคดี",
       "unlinked": "ยังไม่เชื่อมต่อ",
       "lastSync": "ซิงค์ล่าสุด"
+    },
+    "importDialog": {
+      "selectCaseFirst": "กรุณาเลือกคดีก่อน",
+      "attachedToast": "เชื่อมต่ออุปกรณ์กับคดีแล้ว",
+      "title": "เชื่อมต่อกับคดี",
+      "defaultDeviceName": "อุปกรณ์ GPS",
+      "description": "เชื่อมต่อกับคดีและมอบหมายเจ้าหน้าที่ได้ (ไม่บังคับ)",
+      "caseLabel": "คดี",
+      "casePlaceholder": "เลือกคดี…",
+      "agentLabel": "เจ้าหน้าที่",
+      "noAgent": "ไม่มีเจ้าหน้าที่",
+      "attachButton": "เชื่อมต่ออุปกรณ์"
     }
   },
   "gpsDevices": {
@@ -1094,6 +1130,18 @@
         },
         "success": "อัปเดตข้อมูลลูกค้าแล้ว"
       }
+    },
+    "createDialog": {
+      "trigger": "ลูกค้าใหม่",
+      "title": "สร้างลูกค้า",
+      "description": "เพิ่มบันทึกลูกค้าใหม่ เชื่อมบัญชีพอร์ทัลได้ภายหลังจากหน้ารายละเอียดลูกค้า",
+      "fullName": "ชื่อ-นามสกุล",
+      "company": "บริษัท",
+      "email": "อีเมล",
+      "phone": "โทรศัพท์",
+      "notes": "หมายเหตุ",
+      "submit": "สร้างลูกค้า",
+      "createdToast": "สร้างลูกค้าเรียบร้อยแล้ว"
     }
   },
   "users": {
@@ -1176,7 +1224,27 @@
     "aboutText": "Detective Pulse ศูนย์บัญชาการปฏิบัติการ · v1.0.0",
     "aboutDescription": "สร้างด้วย Next.js 15, TypeScript, Tailwind CSS, Shadcn UI และ Supabase รักษาความปลอดภัยด้วย Row Level Security, RBAC และการบันทึกตรวจสอบ",
     "configured": "ตั้งค่าแล้ว",
-    "missing": "ยังไม่ได้ตั้งค่า"
+    "missing": "ยังไม่ได้ตั้งค่า",
+    "aiConfiguration": "การตั้งค่า AI",
+    "aiPrompts": "ชุดคำสั่ง AI",
+    "aiPromptsTitle": "จัดการชุดคำสั่ง AI",
+    "aiPromptsLinkHint": "แก้ไขชุดคำสั่งสำหรับการสร้างรายงาน",
+    "aiPromptsDescription": "ปรับแต่งชุดคำสั่งที่ส่งให้ Claude เมื่อสร้างรายงานการสอดแนม การเปลี่ยนแปลงมีผลทันที",
+    "aiPromptsSecurityNote": "หมายเหตุความปลอดภัย: ชุดคำสั่งต้องสั่งให้ Claude ตอบกลับด้วย JSON เสมอ",
+    "aiPromptsEmpty": "ไม่พบชุดคำสั่ง AI กรุณาเรียกใช้ migration เพื่อสร้างชุดคำสั่งเริ่มต้น",
+    "promptEditor": {
+      "versionHistory": "ประวัติเวอร์ชัน",
+      "restore": "กู้คืน",
+      "savedToast": "บันทึกชุดคำสั่งแล้ว — มีผลในการสร้างรายงานครั้งถัดไป",
+      "resetConfirm": "รีเซ็ตเป็นชุดคำสั่งเริ่มต้น? ข้อความปัจจุบันจะถูกบันทึกในประวัติเวอร์ชัน",
+      "resetToast": "รีเซ็ตชุดคำสั่งเป็นค่าเริ่มต้นแล้ว",
+      "restoreConfirm": "กู้คืนเวอร์ชันนี้เป็นชุดคำสั่งที่ใช้งาน?",
+      "restoreToast": "กู้คืนเวอร์ชันสำเร็จ",
+      "placeholder": "ป้อนชุดคำสั่ง…",
+      "saveButton": "บันทึกชุดคำสั่ง",
+      "resetButton": "รีเซ็ตเป็นค่าเริ่มต้น",
+      "unsavedChanges": "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+    }
   },
   "profile": {
     "title": "โปรไฟล์ของฉัน",
@@ -1406,7 +1474,9 @@
       "entry": "การสังเกตการณ์",
       "entryPlaceholder": "สิ่งที่พบเห็น…",
       "submit": "บันทึก",
-      "success": "บันทึกไทม์ไลน์สำเร็จ"
+      "success": "บันทึกไทม์ไลน์สำเร็จ",
+      "uploadWarning": "บันทึกแล้ว ไฟล์ล้มเหลว {failed} ไฟล์",
+      "filesAttachedSuffix": "· แนบไฟล์ {count} ไฟล์"
     },
     "sos": {
       "button": "SOS"
@@ -1424,6 +1494,16 @@
       "noVehicle": "ไม่มียานพาหนะ",
       "noLocation": "ไม่มีสถานที่",
       "openMaps": "แผนที่"
+    },
+    "addObservation": {
+      "date": "วันที่",
+      "time": "เวลา",
+      "useGps": "ใช้ GPS · ±{accuracy}ม.",
+      "photos": "รูปภาพ",
+      "videos": "วิดีโอ",
+      "files": "ไฟล์",
+      "saving": "กำลังบันทึก…",
+      "save": "บันทึกการสังเกตการณ์"
     }
   },
   "intelligence": {
@@ -1491,8 +1571,8 @@
       "photoError": "อัปโหลดรูปไม่สำเร็จ",
       "empty": "ยังไม่มีข้อมูลยานพาหนะ",
       "photos": {
-        "sectionLabel": "Vehicle Photos",
-        "cover": "Cover",
+        "sectionLabel": "รูปภาพยานพาหนะ",
+        "cover": "รูปหลัก",
         "empty": "ยังไม่มีรูปภาพ",
         "uploadSuccess": "อัปโหลดรูปสำเร็จ",
         "uploadError": "อัปโหลดไม่สำเร็จ",
@@ -1569,5 +1649,87 @@
       "empty": "ยังไม่มีเอกสารอ้างอิง",
       "fieldView": "เอกสาร ({count})"
     }
+  },
+  "gps903Credentials": {
+    "title": "ข้อมูลรับรอง GPS903",
+    "description": "ข้อมูลรับรองแบบ IMEI สำหรับการ polling GPS903 อุปกรณ์แต่ละตัวล็อกอินอิสระ",
+    "stats": {
+      "totalDevices": "อุปกรณ์ทั้งหมด",
+      "active": "ใช้งานอยู่",
+      "lastSyncOk": "ซิงค์ล่าสุดสำเร็จ"
+    },
+    "empty": "ยังไม่มีข้อมูลรับรอง GPS903",
+    "emptyHint": "เพิ่มข้อมูลรับรองอุปกรณ์อย่างน้อยหนึ่งรายการเพื่อเปิดใช้การ polling GPS",
+    "addFirst": "เพิ่มอุปกรณ์แรก",
+    "addButton": "เพิ่มอุปกรณ์",
+    "row": {
+      "active": "ใช้งาน",
+      "inactive": "ไม่ได้ใช้งาน",
+      "noDeviceId": "ไม่มี Device ID — กด Test",
+      "justDetected": "(ตรวจพบเมื่อกี้)",
+      "idUnknown": "ไม่ทราบ ID",
+      "lastSync": "ซิงค์ล่าสุด: {timeAgo}",
+      "sim": "ซิม: {phone}",
+      "testing": "กำลังทดสอบ…",
+      "test": "ทดสอบ",
+      "disable": "ปิดใช้งาน",
+      "enable": "เปิดใช้งาน",
+      "disabled": "ปิดใช้งานอุปกรณ์แล้ว",
+      "enabled": "เปิดใช้งานอุปกรณ์แล้ว",
+      "testOk": "ตรวจพบ Device ID #{id} — ยืนยันตำแหน่งสำเร็จ",
+      "testLoginOnly": "ล็อกอินสำเร็จ — กรุณากรอก Device ID ผ่านเมนูแก้ไข",
+      "deleteConfirm": "ลบข้อมูลรับรองของ \"{name}\"? การดำเนินการนี้ไม่สามารถยกเลิกได้",
+      "deletedToast": "ลบข้อมูลรับรองแล้ว"
+    },
+    "form": {
+      "addTitle": "เพิ่มอุปกรณ์ GPS903",
+      "editTitle": "แก้ไข — {name}",
+      "deviceName": "ชื่ออุปกรณ์",
+      "deviceNamePlaceholder": "เช่น GPS ติดตามรถ A",
+      "imei": "IMEI",
+      "imeiPlaceholder": "IMEI 15 หลัก",
+      "password": "รหัสผ่านอุปกรณ์",
+      "passwordKeepHint": "(เว้นว่างเพื่อคงรหัสผ่านเดิม)",
+      "passwordPlaceholder": "รหัสผ่านอุปกรณ์ GPS903",
+      "testButton": "ทดสอบการเชื่อมต่อและตรวจหา Device ID",
+      "testing": "กำลังทดสอบ…",
+      "testResult": "ล็อกอินสำเร็จ · Device ID #{id} · {lat}, {lng} · {speed} km/h · แบต {battery}%",
+      "deviceId": "GPS903 Device ID",
+      "deviceIdHint": "(ตรวจพบอัตโนมัติด้านบน หรือกรอกเอง)",
+      "deviceIdPlaceholder": "ตรวจพบอัตโนมัติโดย Test Connection",
+      "noDeviceIdHint": "อุปกรณ์จะไม่ถูก polling จนกว่าจะมี Device ID",
+      "phone": "หมายเลขโทรศัพท์ (ซิม)",
+      "provider": "ผู้ให้บริการ",
+      "providerPlaceholder": "เลือกผู้ให้บริการ…",
+      "providerNone": "ไม่มี",
+      "active": "ใช้งาน",
+      "activeHint": "อุปกรณ์ที่ปิดใช้งานจะไม่ถูกรวมในการ polling",
+      "addButton": "เพิ่มอุปกรณ์",
+      "saveButton": "บันทึกการเปลี่ยนแปลง",
+      "imeiRequiredToast": "กรุณากรอก IMEI 15 หลักที่ถูกต้องก่อนทดสอบ",
+      "passwordRequiredToast": "กรุณากรอกรหัสผ่านอุปกรณ์ก่อนทดสอบ",
+      "testSuccessToast": "ตรวจพบ Device ID #{id} — ยืนยันตำแหน่งสำเร็จ",
+      "testLoginOnlyToast": "ล็อกอินสำเร็จ — กรุณากรอก Device ID ด้วยตนเอง",
+      "imeiInvalidToast": "IMEI ต้องมีความยาว 15 หลักพอดี",
+      "passwordMissingToast": "กรุณากรอกรหัสผ่านอุปกรณ์",
+      "deviceIdInvalidToast": "Device ID ต้องเป็นตัวเลขบวก",
+      "addedToast": "เพิ่มข้อมูลรับรองอุปกรณ์แล้ว",
+      "updatedToast": "อัปเดตข้อมูลรับรองแล้ว"
+    }
+  },
+  "gpsMonitor": {
+    "title": "ติดตาม GPS",
+    "descriptionAgent": "อุปกรณ์ GPS ที่ติดตั้งในคดีของคุณ",
+    "descriptionStaff": "ตำแหน่ง GPS สดจากอุปกรณ์ทุกตัวในทุกคดี",
+    "accOn": "เครื่องยนต์ติด",
+    "accOff": "เครื่องยนต์ดับ",
+    "devices": "อุปกรณ์",
+    "devicesHeader": "อุปกรณ์ GPS",
+    "searchPlaceholder": "ค้นหาอุปกรณ์…",
+    "noDevices": "ไม่มีอุปกรณ์ GPS ในคดีของคุณ",
+    "noResults": "ไม่พบผลลัพธ์",
+    "noApiKey": "ยังไม่ได้ตั้งค่า Google Maps API (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)",
+    "fullscreen": "เต็มหน้าจอ",
+    "exitFullscreen": "ออกจากโหมดเต็มหน้าจอ"
   }
 }

@@ -21,7 +21,14 @@
     "upload": "Upload",
     "export": "Export",
     "download": "Download",
-    "optional": "optional"
+    "optional": "optional",
+    "never": "Never",
+    "justNow": "just now",
+    "staff": "Staff",
+    "agent": "Agent",
+    "details": "Details",
+    "less": "Less",
+    "refresh": "Refresh"
   },
   "lang": {
     "switcher": "Language",
@@ -249,15 +256,16 @@
       "noEvidenceDescription": "Upload photos, videos or PDF files for this case.",
       "noReports": "No reports yet",
       "noReportsDescription": "Use \"Generate AI Report\" to create one from the timeline.",
-      "noExpenses": "No expenses logged",
-      "noExpensesDescription": "Log field expenses against this case using the button above.",
+      "noExpenses": "No expenses recorded",
+      "noExpensesDescription": "No expenses have been recorded for this case yet.",
       "expenseTable": {
         "date": "Date",
         "agent": "Agent",
         "category": "Category",
         "notes": "Notes",
         "amount": "Amount",
-        "total": "Total"
+        "total": "Total",
+        "status": "Status"
       },
       "closeCase": {
         "button": "Close Case",
@@ -272,7 +280,8 @@
         "confirm": "Close Case",
         "success": "Case closed.",
         "alreadyClosed": "Case is already closed"
-      }
+      },
+      "fieldOps": "Field Operations"
     },
     "createDialog": {
       "title": "Open a new case",
@@ -518,8 +527,12 @@
         "saved": "Timeline entry updated",
         "deleted": "Timeline entry deleted",
         "saveError": "Failed to save changes",
-        "deleteError": "Failed to delete entry"
-      }
+        "deleteError": "Failed to delete entry",
+        "uploadPartial": "{saved} file(s) attached, {failed} failed.",
+        "uploadSuccess": "{count} file(s) attached",
+        "attachmentRemoved": "Attachment removed"
+      },
+      "locationPlaceholder": "Location"
     },
     "ai": {
       "quickEntry": "Quick entry",
@@ -648,7 +661,8 @@
       "deleteConfirmTitle": "Delete this expense?",
       "deleteConfirmDescription": "This will permanently hide the record. This cannot be undone.",
       "deleteConfirm": "Yes, delete",
-      "paidBy": "Paid by {name}"
+      "paidBy": "Paid by {name}",
+      "deletedToast": "Expense deleted"
     },
     "exportPdf": "Export PDF",
     "exportTitle": "Expense Report",
@@ -688,7 +702,16 @@
       "toast": {
         "success": "Expense saved",
         "scanError": "Could not read receipt — please check the image or enter manually"
-      }
+      },
+      "amountRequired": "Amount is required",
+      "dateRequired": "Date is required",
+      "manualEntry": "Manual Entry",
+      "manualEntryHint": "Type in expense details manually",
+      "pdfManual": "PDF — enter details manually",
+      "confidenceHigh": "Looks good — verify before saving",
+      "vendorPlaceholder": "e.g. PTT, Grab, Central Food",
+      "notesPlaceholder": "Optional description",
+      "confidencePct": "{confidence}% confidence"
     },
     "filters": {
       "searchPlaceholder": "Agent name or notes…",
@@ -892,6 +915,18 @@
       "linked": "Linked to Case",
       "unlinked": "Unlinked",
       "lastSync": "Last Sync"
+    },
+    "importDialog": {
+      "selectCaseFirst": "Select a case first",
+      "attachedToast": "Device attached to case",
+      "title": "Attach to Case",
+      "defaultDeviceName": "GPS Device",
+      "description": "Link to a case and optionally assign an agent.",
+      "caseLabel": "Case",
+      "casePlaceholder": "Select a case…",
+      "agentLabel": "Agent",
+      "noAgent": "No agent",
+      "attachButton": "Attach Device"
     }
   },
   "gpsDevices": {
@@ -1094,6 +1129,18 @@
         },
         "success": "Client updated."
       }
+    },
+    "createDialog": {
+      "trigger": "New client",
+      "title": "Create client",
+      "description": "Add a new client record. Link a portal account afterwards from the client detail page.",
+      "fullName": "Full name",
+      "company": "Company",
+      "email": "Email",
+      "phone": "Phone",
+      "notes": "Notes",
+      "submit": "Create client",
+      "createdToast": "Client created"
     }
   },
   "users": {
@@ -1176,7 +1223,27 @@
     "aboutText": "Detective Pulse Operations Command Center · v1.0.0",
     "aboutDescription": "Built with Next.js 15, TypeScript, Tailwind CSS, Shadcn UI and Supabase. Secured with Row Level Security, RBAC and audit logging.",
     "configured": "Configured",
-    "missing": "Missing"
+    "missing": "Missing",
+    "aiConfiguration": "AI Configuration",
+    "aiPrompts": "AI Prompts",
+    "aiPromptsTitle": "AI Prompt Management",
+    "aiPromptsLinkHint": "Edit system prompts for report generation",
+    "aiPromptsDescription": "Customize the system prompts sent to Claude when generating surveillance reports. Changes take effect immediately — no redeploy needed.",
+    "aiPromptsSecurityNote": "Security note: Prompts must always instruct Claude to respond with strict JSON.",
+    "aiPromptsEmpty": "No AI prompts found. Run the database migration to seed the default prompts.",
+    "promptEditor": {
+      "versionHistory": "Version history",
+      "restore": "Restore",
+      "savedToast": "Prompt saved — takes effect on next report generation.",
+      "resetConfirm": "Reset to the default prompt? Your current text will be saved to version history.",
+      "resetToast": "Prompt reset to default.",
+      "restoreConfirm": "Restore this version as the active prompt?",
+      "restoreToast": "Version restored.",
+      "placeholder": "Enter system prompt…",
+      "saveButton": "Save prompt",
+      "resetButton": "Reset to default",
+      "unsavedChanges": "Unsaved changes"
+    }
   },
   "profile": {
     "title": "My Profile",
@@ -1406,7 +1473,9 @@
       "entry": "Observation",
       "entryPlaceholder": "What did you observe…",
       "submit": "Save entry",
-      "success": "Timeline entry saved"
+      "success": "Timeline entry saved",
+      "uploadWarning": "Saved. {failed} file(s) failed to upload.",
+      "filesAttachedSuffix": "· {count} file(s) attached"
     },
     "sos": {
       "button": "SOS"
@@ -1424,6 +1493,16 @@
       "noVehicle": "No vehicle",
       "noLocation": "No location",
       "openMaps": "Maps"
+    },
+    "addObservation": {
+      "date": "Date",
+      "time": "Time",
+      "useGps": "Use GPS · ±{accuracy}m",
+      "photos": "Photos",
+      "videos": "Videos",
+      "files": "Files",
+      "saving": "Saving…",
+      "save": "Save Observation"
     }
   },
   "intelligence": {
@@ -1569,5 +1648,87 @@
       "empty": "No reference documents uploaded",
       "fieldView": "Documents ({count})"
     }
+  },
+  "gps903Credentials": {
+    "title": "GPS903 Credentials",
+    "description": "Per-device IMEI credentials for GPS903 polling. Each device logs in independently.",
+    "stats": {
+      "totalDevices": "Total Devices",
+      "active": "Active",
+      "lastSyncOk": "Last Sync OK"
+    },
+    "empty": "No GPS903 credentials configured",
+    "emptyHint": "Add at least one device credential to enable GPS polling and map display.",
+    "addFirst": "Add First Device",
+    "addButton": "Add Device",
+    "row": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "noDeviceId": "No Device ID — click Test",
+      "justDetected": "(just detected)",
+      "idUnknown": "ID unknown",
+      "lastSync": "Last sync: {timeAgo}",
+      "sim": "SIM: {phone}",
+      "testing": "Testing…",
+      "test": "Test",
+      "disable": "Disable",
+      "enable": "Enable",
+      "disabled": "Device disabled",
+      "enabled": "Device enabled",
+      "testOk": "Device ID #{id} detected — position confirmed",
+      "testLoginOnly": "Login succeeded — enter Device ID manually via Edit",
+      "deleteConfirm": "Delete credential for \"{name}\"? This cannot be undone.",
+      "deletedToast": "Credential deleted"
+    },
+    "form": {
+      "addTitle": "Add GPS903 Device",
+      "editTitle": "Edit — {name}",
+      "deviceName": "Device Name",
+      "deviceNamePlaceholder": "e.g. Vehicle A Tracker",
+      "imei": "IMEI",
+      "imeiPlaceholder": "15-digit IMEI",
+      "password": "Device Password",
+      "passwordKeepHint": "(leave blank to keep existing)",
+      "passwordPlaceholder": "GPS903 device password",
+      "testButton": "Test Connection & Auto-Detect Device ID",
+      "testing": "Testing…",
+      "testResult": "Login OK · Device ID #{id} detected · {lat}, {lng} · {speed} km/h · {battery}% battery",
+      "deviceId": "GPS903 Device ID",
+      "deviceIdHint": "(auto-detected above, or enter manually)",
+      "deviceIdPlaceholder": "Auto-detected by Test Connection",
+      "noDeviceIdHint": "The device won't be polled until a Device ID is detected or entered.",
+      "phone": "Phone Number (SIM)",
+      "provider": "Provider",
+      "providerPlaceholder": "Select provider…",
+      "providerNone": "None",
+      "active": "Active",
+      "activeHint": "Inactive devices are excluded from the polling cron.",
+      "addButton": "Add Device",
+      "saveButton": "Save Changes",
+      "imeiRequiredToast": "Enter a valid 15-digit IMEI before testing",
+      "passwordRequiredToast": "Enter the device password before testing",
+      "testSuccessToast": "Device ID #{id} detected — position confirmed",
+      "testLoginOnlyToast": "Login succeeded — enter Device ID manually",
+      "imeiInvalidToast": "IMEI must be exactly 15 digits",
+      "passwordMissingToast": "Device password is required",
+      "deviceIdInvalidToast": "Device ID must be a positive number",
+      "addedToast": "Device credential added",
+      "updatedToast": "Credential updated"
+    }
+  },
+  "gpsMonitor": {
+    "title": "GPS Monitor",
+    "descriptionAgent": "GPS trackers assigned to your cases.",
+    "descriptionStaff": "Live GPS device positions across all active cases.",
+    "accOn": "ACC ON",
+    "accOff": "ACC OFF",
+    "devices": "Devices",
+    "devicesHeader": "GPS Devices",
+    "searchPlaceholder": "Search devices…",
+    "noDevices": "No GPS devices on your cases.",
+    "noResults": "No results.",
+    "noApiKey": "Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen"
   }
 }

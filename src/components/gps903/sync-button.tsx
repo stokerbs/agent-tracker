@@ -3,11 +3,13 @@
 import { useTransition } from "react";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { syncGps903Devices } from "@/app/(dashboard)/gps903-discovery/actions";
 
 export function SyncButton() {
   const [pending, start] = useTransition();
+  const t = useTranslations("gps903Discovery");
 
   function handleSync() {
     start(async () => {
@@ -23,7 +25,7 @@ export function SyncButton() {
   return (
     <Button onClick={handleSync} disabled={pending} className="gap-2">
       <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} />
-      {pending ? "Syncing…" : "Sync Devices"}
+      {pending ? t("syncing") : t("syncDevices")}
     </Button>
   );
 }

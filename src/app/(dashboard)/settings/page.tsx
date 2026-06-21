@@ -76,7 +76,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-500" /> AI Configuration
+            <Sparkles className="h-4 w-4 text-violet-500" /> {t("aiConfiguration")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -89,8 +89,8 @@ export default async function SettingsPage() {
                 <Sparkles className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium">AI Prompt Management</p>
-                <p className="text-xs text-muted-foreground">Edit system prompts for report generation</p>
+                <p className="text-sm font-medium">{t("aiPromptsTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("aiPromptsLinkHint")}</p>
               </div>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />

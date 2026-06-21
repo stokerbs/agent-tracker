@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,15 @@ interface Props {
 
 export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: Props) {
   const router = useRouter();
+  const t = useTranslations("gps903Discovery");
+  const tCommon = useTranslations("common");
   const [open, setOpen]               = useState(false);
   const [selectedCase,  setCase]      = useState("");
   const [selectedAgent, setAgent]     = useState("none");
   const [pending, start]              = useTransition();
 
   function handleImport() {
-    if (!selectedCase) { toast.error("Select a case first"); return; }
+    if (!selectedCase) { toast.error(t("importDialog.selectCaseFirst")); return; }
     start(async () => {
       const res = await attachCredentialToCase(
         credentialId,
@@ -42,7 +45,7 @@ export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: 
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success("Device attached to case");
+        toast.success(t("importDialog.attachedToast"));
         setOpen(false);
         router.refresh();
       }
@@ -54,24 +57,24 @@ export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: 
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs">
           <Link2 className="h-3 w-3" />
-          Attach to Case
+          {t("importDialog.title")}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Attach to Case</DialogTitle>
+          <DialogTitle>{t("importDialog.title")}</DialogTitle>
           <DialogDescription>
-            {deviceName ? deviceName : "GPS Device"} — link to a case and optionally assign an agent.
+            {deviceName ? deviceName : t("importDialog.defaultDeviceName")} — {t("importDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="itc-case">Case</Label>
+            <Label htmlFor="itc-case">{t("importDialog.caseLabel")}</Label>
             <Select value={selectedCase} onValueChange={setCase}>
               <SelectTrigger id="itc-case">
-                <SelectValue placeholder="Select a case…" />
+                <SelectValue placeholder={t("importDialog.casePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {cases.map((c) => (
@@ -83,15 +86,14 @@ export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: 
 
           <div className="space-y-2">
             <Label htmlFor="itc-agent">
-              Agent
-              <span className="ml-1 text-[10px] text-muted-foreground">(optional)</span>
+              {t("importDialog.agentLabel")}
             </Label>
             <Select value={selectedAgent} onValueChange={setAgent}>
               <SelectTrigger id="itc-agent">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No agent</SelectItem>
+                <SelectItem value="none">{t("importDialog.noAgent")}</SelectItem>
                 {agents.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.full_name} ({a.agent_code})
@@ -103,10 +105,10 @@ export function ImportToCaseDialog({ credentialId, deviceName, cases, agents }: 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>{tCommon("cancel")}</Button>
           <Button onClick={handleImport} disabled={pending || !selectedCase}>
             {pending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Attach Device
+            {t("importDialog.attachButton")}
           </Button>
         </DialogFooter>
       </DialogContent>

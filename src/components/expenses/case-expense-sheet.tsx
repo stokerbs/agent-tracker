@@ -98,6 +98,7 @@ function todayBkk() {
 }
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const t = useTranslations("expenses.capture");
   const color =
     confidence >= 80
       ? "border-success/40 bg-success/10 text-success"
@@ -106,7 +107,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
         : "border-destructive/40 bg-destructive/10 text-destructive";
   return (
     <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", color)}>
-      {confidence}% confidence
+      {t("confidencePct", { confidence })}
     </span>
   );
 }
@@ -143,6 +144,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
   const t = useTranslations("expenses.capture");
   const tCat = useTranslations("expenses.categories");
   const tDialog = useTranslations("expenses.dialog");
+  const tExpenses = useTranslations("expenses");
   const router = useRouter();
 
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -244,11 +246,11 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
     if (!review) return;
     const amount = parseFloat(review.amount);
     if (!amount || isNaN(amount)) {
-      toast.error("Amount is required");
+      toast.error(t("amountRequired"));
       return;
     }
     if (!review.expense_date) {
-      toast.error("Date is required");
+      toast.error(t("dateRequired"));
       return;
     }
     startSave(async () => {
@@ -297,8 +299,8 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
     step === "review"
       ? t("reviewTitle")
       : step === "manual"
-        ? "Manual Entry"
-        : "Add Expense";
+        ? t("manualEntry")
+        : tExpenses("addExpense");
 
   return (
     <>
@@ -339,7 +341,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
         <SheetTrigger asChild>
           <Button className="h-9 gap-2">
             <Plus className="h-4 w-4" />
-            Add Expense
+            {tExpenses("addExpense")}
           </Button>
         </SheetTrigger>
 
@@ -377,8 +379,8 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                 />
                 <OptionTile
                   icon={<Pencil className="h-5 w-5" />}
-                  title="Manual Entry"
-                  description="Type in expense details manually"
+                  title={t("manualEntry")}
+                  description={t("manualEntryHint")}
                   onClick={() => setStep("manual")}
                 />
               </div>
@@ -399,7 +401,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                 <div className="flex items-center justify-between gap-2">
                   {review.isPdf ? (
                     <span className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" /> PDF — enter details manually
+                      <FileText className="h-3 w-3" /> {t("pdfManual")}
                     </span>
                   ) : (
                     <ConfidenceBadge confidence={confidence} />
@@ -413,7 +415,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                   {!review.isPdf && confidence >= 80 && (
                     <span className="flex items-center gap-1 text-xs text-success">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Looks good — verify before saving
+                      {t("confidenceHigh")}
                     </span>
                   )}
                 </div>
@@ -436,12 +438,12 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                       onChange={(e) =>
                         setReview((r) => r && { ...r, vendor_name: e.target.value })
                       }
-                      placeholder="e.g. PTT, Grab, Central Food"
+                      placeholder={t("vendorPlaceholder")}
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Category</Label>
+                    <Label>{tDialog("categoryLabel")}</Label>
                     <Select
                       value={review.category}
                       onValueChange={(v) =>
@@ -462,7 +464,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Amount (THB)</Label>
+                    <Label>{tDialog("amountLabel")}</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -489,7 +491,7 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Date</Label>
+                    <Label>{tDialog("dateLabel")}</Label>
                     <Input
                       type="date"
                       value={review.expense_date}
@@ -500,13 +502,13 @@ export function CaseExpenseSheet({ caseId }: { caseId: string }) {
                   </div>
 
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label>Notes</Label>
+                    <Label>{tDialog("notesLabel")}</Label>
                     <Input
                       value={review.notes}
                       onChange={(e) =>
                         setReview((r) => r && { ...r, notes: e.target.value })
                       }
-                      placeholder="Optional description"
+                      placeholder={t("notesPlaceholder")}
                     />
                   </div>
                 </div>

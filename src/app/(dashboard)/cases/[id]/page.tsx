@@ -64,10 +64,6 @@ import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, Gps
 
 export const dynamic = "force-dynamic";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  fuel: "Fuel", toll: "Toll", parking: "Parking",
-  food: "Food", hotel: "Hotel", misc: "Misc",
-};
 
 export async function generateMetadata({
   params,
@@ -456,7 +452,7 @@ export default async function CaseDetailPage({
       {fieldAgent && (
         <FadeUp delay={0.10}>
           <CollapsibleCard
-            title="Field Operations"
+            title={t("fieldOps")}
             icon={<Smartphone className="h-4 w-4" />}
           >
             <CaseFieldOpsPanel agent={fieldAgent} />
@@ -583,8 +579,8 @@ export default async function CaseDetailPage({
             {caseExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="h-6 w-6" />}
-                title="No expenses recorded"
-                description="No expenses have been recorded for this case yet."
+                title={t("noExpenses")}
+                description={t("noExpensesDescription")}
               />
             ) : (
               <Card>
@@ -597,7 +593,7 @@ export default async function CaseDetailPage({
                         <TableHead>{t("expenseTable.category")}</TableHead>
                         <TableHead className="hidden sm:table-cell">{t("expenseTable.notes")}</TableHead>
                         <TableHead className="text-right">{t("expenseTable.amount")}</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("expenseTable.status")}</TableHead>
                         {staff && <TableHead className="w-10" />}
                       </TableRow>
                     </TableHeader>
@@ -612,7 +608,7 @@ export default async function CaseDetailPage({
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary" className="text-xs">
-                              {CATEGORY_LABELS[e.category] ?? e.category}
+                              {tExpenses(`categories.${e.category}` as any)}
                             </Badge>
                           </TableCell>
                           <TableCell className="hidden max-w-xs truncate text-sm text-muted-foreground sm:table-cell">
@@ -634,13 +630,7 @@ export default async function CaseDetailPage({
                                       : "border-amber-500/20 bg-amber-500/10 text-amber-500",
                               )}
                             >
-                              {e.status === "paid"
-                                ? "Paid"
-                                : e.status === "reimbursed"
-                                  ? "Reimbursed"
-                                  : e.status === "cancelled"
-                                    ? "Cancelled"
-                                    : "Pending"}
+                              {tExpenses(`status.${e.status}` as any)}
                             </span>
                           </TableCell>
                           {staff && (

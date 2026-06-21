@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { getGpsMonitorDevices } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
@@ -10,17 +11,18 @@ export const dynamic = "force-dynamic";
 export default async function GpsMonitorPage() {
   const profile = await requireRole(["admin", "supervisor", "agent"]);
   const devices  = await getGpsMonitorDevices();
+  const t        = await getTranslations("gpsMonitor");
 
   return (
     <div className="flex flex-col gap-3">
       {/* Header hidden on mobile to maximise map area */}
       <div className="hidden md:block">
         <PageHeader
-          title="GPS Monitor"
+          title={t("title")}
           description={
             profile.role === "agent"
-              ? "GPS trackers assigned to your cases."
-              : "Live GPS device positions across all active cases."
+              ? t("descriptionAgent")
+              : t("descriptionStaff")
           }
         />
       </div>

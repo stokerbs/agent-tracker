@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, Loader2, TriangleAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ const EMPTY = {
 };
 
 export function CredentialFormDialog({ open, onOpenChange, mode, credential }: Props) {
+  const t = useTranslations("gps903Credentials");
+  const tCommon = useTranslations("common");
   const [form, setForm]             = useState(EMPTY);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [saving, startSave]         = useTransition();
@@ -79,11 +82,11 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
 
   function handleTest() {
     if (!/^\d{15}$/.test(form.imei.trim())) {
-      toast.error("Enter a valid 15-digit IMEI before testing");
+      toast.error(t("form.imeiInvalidToast"));
       return;
     }
     if (!form.device_password) {
-      toast.error("Enter the device password before testing");
+      toast.error(t("form.passwordMissingToast"));
       return;
     }
 
@@ -97,9 +100,9 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
       }
 
       if (res.ok) {
-        toast.success(`Device ID #${res.device_id} detected — position confirmed`);
+        toast.success(t("form.testSuccessToast", { id: res.device_id }));
       } else if (res.loginOk) {
-        toast.warning("Login succeeded — enter Device ID manually");
+        toast.warning(t("form.testLoginOnlyToast"));
       } else if (res.error) {
         toast.error(res.error);
       }
@@ -110,18 +113,18 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
     e.preventDefault();
 
     if (!/^\d{15}$/.test(form.imei.trim())) {
-      toast.error("IMEI must be exactly 15 digits");
+      toast.error(t("form.imeiRequiredToast"));
       return;
     }
     if (mode === "add" && !form.device_password) {
-      toast.error("Device password is required");
+      toast.error(t("form.passwordRequiredToast"));
       return;
     }
 
     const rawId = form.gps903_device_id.trim();
     const deviceId = rawId ? Number(rawId) : null;
     if (rawId && (isNaN(deviceId!) || deviceId! <= 0)) {
-      toast.error("Device ID must be a positive number");
+      toast.error(t("form.deviceIdInvalidToast"));
       return;
     }
 
@@ -144,7 +147,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success(mode === "add" ? "Device credential added" : "Credential updated");
+        toast.success(mode === "add" ? t("form.addedToast") : t("form.updatedToast"));
         onOpenChange(false);
       }
     });
@@ -157,17 +160,17 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === "add" ? "Add GPS903 Device" : `Edit — ${credential?.device_name}`}
+            {mode === "add" ? t("form.addTitle") : t("form.editTitle", { name: credential?.device_name })}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Device Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="device_name">Device Name</Label>
+            <Label htmlFor="device_name">{t("form.deviceName")}</Label>
             <Input
               id="device_name"
-              placeholder="e.g. Vehicle A Tracker"
+              placeholder={t("form.deviceNamePlaceholder")}
               value={form.device_name}
               onChange={(e) => set("device_name", e.target.value)}
               required
@@ -176,10 +179,10 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
 
           {/* IMEI */}
           <div className="space-y-1.5">
-            <Label htmlFor="imei">IMEI</Label>
+            <Label htmlFor="imei">{t("form.imei")}</Label>
             <Input
               id="imei"
-              placeholder="15-digit IMEI"
+              placeholder={t("form.imeiPlaceholder")}
               value={form.imei}
               onChange={(e) => set("imei", e.target.value.replace(/\D/g, "").slice(0, 15))}
               maxLength={15}
@@ -190,17 +193,17 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
           {/* Password */}
           <div className="space-y-1.5">
             <Label htmlFor="device_password">
-              Device Password
+              {t("form.password")}
               {mode === "edit" && (
                 <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                  (leave blank to keep existing)
+                  ({t("form.passwordKeepHint")})
                 </span>
               )}
             </Label>
             <Input
               id="device_password"
               type="password"
-              placeholder={mode === "edit" ? "••••••••" : "GPS903 device password"}
+              placeholder={mode === "edit" ? "••••••••" : t("form.passwordPlaceholder")}
               value={form.device_password}
               onChange={(e) => set("device_password", e.target.value)}
               required={mode === "add"}
@@ -222,7 +225,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
               ) : (
                 <Zap className="h-3.5 w-3.5" />
               )}
-              {testing ? "Testing…" : "Test Connection & Auto-Detect Device ID"}
+              {testing ? t("form.testing") : t("form.testButton")}
             </Button>
 
             {/* Test result */}
@@ -244,16 +247,13 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
                 <span>
                   {testResult.ok ? (
                     <>
-                      Login OK · Device ID{" "}
-                      <span className="font-mono font-bold">#{testResult.device_id}</span>{" "}
-                      detected
-                      {testResult.lat != null && (
-                        <>
-                          {" "}· {testResult.lat.toFixed(5)}, {testResult.lng!.toFixed(5)}
-                          {testResult.speed != null && <> · {Math.round(testResult.speed)} km/h</>}
-                          {testResult.battery != null && <> · {testResult.battery}% battery</>}
-                        </>
-                      )}
+                      {t("form.testResult", {
+                        id: testResult.device_id ?? "",
+                        lat: testResult.lat != null ? testResult.lat.toFixed(5) : "",
+                        lng: testResult.lng != null ? testResult.lng.toFixed(5) : "",
+                        speed: testResult.speed != null ? Math.round(testResult.speed) : "",
+                        battery: testResult.battery ?? "",
+                      })}
                     </>
                   ) : (
                     testResult.error
@@ -266,22 +266,22 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
           {/* Device ID (optional) */}
           <div className="space-y-1.5">
             <Label htmlFor="gps903_device_id">
-              GPS903 Device ID
+              {t("form.deviceId")}
               <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                (auto-detected above, or enter manually)
+                ({t("form.deviceIdHint")})
               </span>
             </Label>
             <Input
               id="gps903_device_id"
               type="number"
-              placeholder="Auto-detected by Test Connection"
+              placeholder={t("form.deviceIdPlaceholder")}
               value={form.gps903_device_id}
               onChange={(e) => set("gps903_device_id", e.target.value)}
               min={1}
             />
             {!form.gps903_device_id && (
               <p className="text-[11px] text-muted-foreground">
-                The device won&apos;t be polled until a Device ID is detected or entered.
+                {t("form.noDeviceIdHint")}
               </p>
             )}
           </div>
@@ -289,8 +289,7 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
           {/* Phone Number */}
           <div className="space-y-1.5">
             <Label htmlFor="phone_number">
-              Phone Number (SIM)
-              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">(optional)</span>
+              {t("form.phone")}
             </Label>
             <Input
               id="phone_number"
@@ -304,15 +303,14 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
           {/* Provider */}
           <div className="space-y-1.5">
             <Label htmlFor="provider">
-              Provider
-              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">(optional)</span>
+              {t("form.provider")}
             </Label>
             <Select value={form.provider} onValueChange={(v) => set("provider", v === "none" ? "" : v)}>
               <SelectTrigger id="provider">
-                <SelectValue placeholder="Select provider…" />
+                <SelectValue placeholder={t("form.providerPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">{t("form.providerNone")}</SelectItem>
                 <SelectItem value="AIS">AIS</SelectItem>
                 <SelectItem value="TRUE">TRUE</SelectItem>
                 <SelectItem value="DTAC">DTAC</SelectItem>
@@ -323,9 +321,9 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
           {/* Active toggle */}
           <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
             <div>
-              <p className="text-sm font-medium">Active</p>
+              <p className="text-sm font-medium">{t("form.active")}</p>
               <p className="text-xs text-muted-foreground">
-                Inactive devices are excluded from the polling cron.
+                {t("form.activeHint")}
               </p>
             </div>
             <input
@@ -338,11 +336,11 @@ export function CredentialFormDialog({ open, onOpenChange, mode, credential }: P
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={saving} className="gap-1.5">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {mode === "add" ? "Add Device" : "Save Changes"}
+              {mode === "add" ? t("form.addButton") : t("form.saveButton")}
             </Button>
           </DialogFooter>
         </form>

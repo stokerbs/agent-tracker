@@ -238,6 +238,7 @@ function LocationForm({
 
 export function LocationsSection({ caseId, locations, isStaff }: Props) {
   const t = useTranslations("intelligence.locations");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
@@ -377,7 +378,7 @@ export function LocationsSection({ caseId, locations, isStaff }: Props) {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{t("deleteTitle")}</DialogTitle></DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>{tCommon("cancel")}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={pending} className="gap-2">
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               <Trash2 className="h-4 w-4" /> {t("deleteConfirm")}

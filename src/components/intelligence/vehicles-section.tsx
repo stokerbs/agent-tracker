@@ -45,6 +45,7 @@ function VehicleForm({
   onDone: () => void;
 }) {
   const t = useTranslations("intelligence.vehicles");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; preview: string }>>([]);
@@ -290,7 +291,7 @@ function VehicleForm({
           <DialogHeader><DialogTitle>{t("photos.deleteTitle")}</DialogTitle></DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletePhotoTarget(null)} disabled={pending}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDeletePhoto} disabled={pending} className="gap-2">
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -317,6 +318,7 @@ function VehicleGallery({
   isStaff: boolean;
 }) {
   const t = useTranslations("intelligence.vehicles");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
@@ -514,7 +516,7 @@ function VehicleGallery({
           <DialogHeader><DialogTitle>{t("photos.deleteTitle")}</DialogTitle></DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={pending} className="gap-2">
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -541,6 +543,7 @@ function VehicleGallery({
 
 export function VehiclesSection({ caseId, vehicles, vehiclePhotos, isStaff }: Props) {
   const t = useTranslations("intelligence.vehicles");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
@@ -666,7 +669,7 @@ export function VehiclesSection({ caseId, vehicles, vehiclePhotos, isStaff }: Pr
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{t("deleteTitle")}</DialogTitle></DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={pending}>{tCommon("cancel")}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={pending} className="gap-2">
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               <Trash2 className="h-4 w-4" /> {t("deleteConfirm")}

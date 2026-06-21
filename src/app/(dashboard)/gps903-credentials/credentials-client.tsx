@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   AlertCircle,
   CheckCircle2,
@@ -30,11 +31,11 @@ interface Props {
   credentials: Gps903Credential[];
 }
 
-function timeAgo(ts: string | null): string {
-  if (!ts) return "Never";
+function timeAgo(ts: string | null, never: string, justNow: string): string {
+  if (!ts) return never;
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
+  if (mins < 1) return justNow;
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -46,6 +47,8 @@ function maskImei(imei: string): string {
 }
 
 export function CredentialsClient({ credentials }: Props) {
+  const t = useTranslations("gps903Credentials");
+  const tCommon = useTranslations("common");
   const [addOpen, setAddOpen] = useState(false);
 
   if (credentials.length === 0) {
@@ -54,13 +57,13 @@ export function CredentialsClient({ credentials }: Props) {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
             <Satellite className="h-8 w-8 text-muted-foreground/30" />
-            <p className="font-medium">No GPS903 credentials configured</p>
+            <p className="font-medium">{t("empty")}</p>
             <p className="text-sm text-muted-foreground">
-              Add at least one device credential to enable GPS polling and map display.
+              {t("emptyHint")}
             </p>
             <Button onClick={() => setAddOpen(true)} className="mt-2 gap-1.5">
               <Plus className="h-4 w-4" />
-              Add First Device
+              {t("addFirst")}
             </Button>
           </CardContent>
         </Card>
@@ -74,7 +77,7 @@ export function CredentialsClient({ credentials }: Props) {
       <div className="flex justify-end">
         <Button onClick={() => setAddOpen(true)} size="sm" className="gap-1.5">
           <Plus className="h-4 w-4" />
-          Add Device
+          {t("addButton")}
         </Button>
       </div>
 
@@ -90,6 +93,8 @@ export function CredentialsClient({ credentials }: Props) {
 }
 
 function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
+  const t = useTranslations("gps903Credentials");
+  const tCommon = useTranslations("common");
   const [editOpen, setEditOpen]     = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [, startTransition]         = useTransition();
@@ -107,7 +112,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
       const res = await toggleCredentialActive(cred.id, !cred.is_active);
       setToggling(false);
       if (res.error) toast.error(res.error);
-      else toast.success(cred.is_active ? "Device disabled" : "Device enabled");
+      else toast.success(cred.is_active ? t("row.disabled") : t("row.enabled"));
     });
   }
 
@@ -125,11 +130,11 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
         }
         toast.success(
           res.device_id && !cred.gps903_device_id
-            ? `Device ID #${res.device_id} detected — position confirmed`
-            : "Device is online",
+            ? t("row.testOk", { id: res.device_id })
+            : t("row.test"),
         );
       } else if (res.loginOk) {
-        toast.warning("Login succeeded — enter Device ID manually via Edit");
+        toast.warning(t("row.testLoginOnly"));
       } else if (res.error) {
         toast.error(res.error);
       }
@@ -137,13 +142,13 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
   }
 
   function handleDelete() {
-    if (!confirm(`Delete credential for "${cred.device_name}"? This cannot be undone.`)) return;
+    if (!window.confirm(t("row.deleteConfirm", { name: cred.device_name }))) return;
     setDeleting(true);
     startTransition(async () => {
       const res = await deleteCredential(cred.id);
       setDeleting(false);
       if (res.error) toast.error(res.error);
-      else toast.success("Credential deleted");
+      else toast.success(t("row.deletedToast"));
     });
   }
 
@@ -177,7 +182,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
                     : "bg-muted text-muted-foreground",
                 )}
               >
-                {cred.is_active ? "Active" : "Inactive"}
+                {cred.is_active ? t("row.active") : t("row.inactive")}
               </Badge>
 
               {!hasDeviceId && (
@@ -186,7 +191,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
                   className="gap-0.5 border border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
                 >
                   <AlertCircle className="h-2.5 w-2.5" />
-                  No Device ID — click Test
+                  {t("row.noDeviceId")}
                 </Badge>
               )}
 
@@ -200,18 +205,18 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
                 <span className="font-mono">
                   ID #{displayId}
                   {detectedId && !cred.gps903_device_id && (
-                    <span className="ml-1 text-emerald-600 dark:text-emerald-400">(just detected)</span>
+                    <span className="ml-1 text-emerald-600 dark:text-emerald-400">({t("row.justDetected")})</span>
                   )}
                 </span>
               ) : (
-                <span className="font-mono text-muted-foreground/50">ID unknown</span>
+                <span className="font-mono text-muted-foreground/50">{t("row.idUnknown")}</span>
               )}
-              <span>Last sync: {timeAgo(cred.last_synced_at)}</span>
+              <span>{t("row.lastSync", { timeAgo: timeAgo(cred.last_synced_at, tCommon("never"), tCommon("justNow")) })}</span>
             </div>
             {(cred.phone_number || cred.provider) && (
               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground/70">
                 {cred.phone_number && (
-                  <span className="font-mono">SIM: {cred.phone_number}</span>
+                  <span className="font-mono">{t("row.sim", { phone: cred.phone_number })}</span>
                 )}
                 {cred.provider && (
                   <span className="font-mono">{cred.provider}</span>
@@ -270,7 +275,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               ) : (
                 <Zap className="h-3.5 w-3.5" />
               )}
-              {testing ? "Testing…" : "Test"}
+              {testing ? t("row.testing") : t("row.test")}
             </Button>
 
             <Button
@@ -280,7 +285,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
               onClick={() => setEditOpen(true)}
             >
               <Settings2 className="h-3.5 w-3.5" />
-              Edit
+              {tCommon("edit")}
             </Button>
 
             <Button
@@ -292,7 +297,7 @@ function CredentialRow({ credential: cred }: { credential: Gps903Credential }) {
             >
               {toggling
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : (cred.is_active ? "Disable" : "Enable")}
+                : (cred.is_active ? t("row.disable") : t("row.enable"))}
             </Button>
 
             <Button

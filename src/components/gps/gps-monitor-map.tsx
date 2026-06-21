@@ -31,6 +31,7 @@ import {
   Timer,
   Zap,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,11 +67,11 @@ function formatStopMinutes(m: number | null | undefined): string {
   return `${h}h ${r}m`;
 }
 
-function timeAgo(ts: string | null | undefined): string {
-  if (!ts) return "—";
+function timeAgo(ts: string | null | undefined, justNow: string, never: string): string {
+  if (!ts) return never;
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
+  if (mins < 1) return justNow;
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -153,6 +154,8 @@ function GpsMarker({ device, isSelected, onClick }: {
 
 function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const t        = useTranslations("gpsMonitor");
+  const tCommon  = useTranslations("common");
   const lk       = getLocateKey(device);
   const cfg      = LOCATE_CFG[lk];
   const name     = deviceName(device);
@@ -226,7 +229,7 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
             <div className="flex items-center gap-1">
               <Zap className={`h-3.5 w-3.5 shrink-0 ${device.last_ignition ? "text-emerald-500" : "text-muted-foreground/40"}`} />
               <span className={device.last_ignition ? "font-medium text-emerald-500" : "text-muted-foreground"}>
-                {device.last_ignition == null ? "—" : device.last_ignition ? "ACC ON" : "ACC OFF"}
+                {device.last_ignition == null ? "—" : device.last_ignition ? t("accOn") : t("accOff")}
               </span>
             </div>
             {device.case_number && (
@@ -240,7 +243,7 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
           onClick={() => setExpanded((v) => !v)}
           className="flex w-full items-center justify-end gap-0.5 text-[11px] font-medium text-primary hover:underline"
         >
-          {expanded ? "Less" : "Details"}
+          {expanded ? tCommon("less") : tCommon("details")}
           {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
       </div>
@@ -250,8 +253,9 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
 
 // ─── Desktop sidebar card ────────────────────────────────────────────────────
 
-function DeviceCard({ device, isSelected, onClick }: {
+function DeviceCard({ device, isSelected, onClick, justNow, never }: {
   device: GpsDeviceForMap; isSelected: boolean; onClick: () => void;
+  justNow: string; never: string;
 }) {
   const lk = getLocateKey(device);
   const { label, cls, color } = LOCATE_CFG[lk];
@@ -279,7 +283,7 @@ function DeviceCard({ device, isSelected, onClick }: {
         )}
         <div className="mt-0.5 flex items-center gap-2.5 text-[10px] text-muted-foreground">
           {device.last_battery_pct != null && <span>{device.last_battery_pct}%</span>}
-          <span>{timeAgo(device.last_seen_at)}</span>
+          <span>{timeAgo(device.last_seen_at, justNow, never)}</span>
         </div>
       </div>
     </button>
@@ -297,6 +301,8 @@ function BottomSheet({ devices, filtered, selected, search, onSearch, onSelect }
   onSelect: (d: GpsDeviceForMap) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const t       = useTranslations("gpsMonitor");
+  const tCommon = useTranslations("common");
 
   return (
     <div
@@ -314,7 +320,7 @@ function BottomSheet({ devices, filtered, selected, search, onSearch, onSelect }
         <div className="flex items-center gap-2">
           <div className="h-1 w-8 rounded-full bg-border" />
           <span className="text-sm font-medium">
-            Devices
+            {t("devices")}
             <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
               {devices.length}
             </span>
@@ -333,7 +339,7 @@ function BottomSheet({ devices, filtered, selected, search, onSearch, onSelect }
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
               <Input
-                placeholder="Search devices…"
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => onSearch(e.target.value)}
                 className="h-8 pl-7 text-sm"
@@ -347,7 +353,7 @@ function BottomSheet({ devices, filtered, selected, search, onSearch, onSelect }
               <div className="flex flex-col items-center gap-2 py-8">
                 <MapPinOff className="h-7 w-7 text-muted-foreground/25" />
                 <p className="text-xs text-muted-foreground">
-                  {devices.length === 0 ? "No GPS devices on your cases." : "No results."}
+                  {devices.length === 0 ? t("noDevices") : t("noResults")}
                 </p>
               </div>
             ) : (
@@ -357,6 +363,8 @@ function BottomSheet({ devices, filtered, selected, search, onSearch, onSelect }
                   device={d}
                   isSelected={selected?.id === d.id}
                   onClick={() => { onSelect(d); setOpen(false); }}
+                  justNow={tCommon("justNow")}
+                  never={tCommon("never")}
                 />
               ))
             )}
@@ -394,6 +402,9 @@ interface Props {
 }
 
 export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
+  const t       = useTranslations("gpsMonitor");
+  const tCommon = useTranslations("common");
+
   const [devices,      setDevices]      = useState(initialDevices);
   const [selected,     setSelected]     = useState<GpsDeviceForMap | null>(null);
   const [search,       setSearch]       = useState("");
@@ -476,7 +487,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   if (!apiKey) {
     return (
       <div className="rounded-lg border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
-        Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).
+        {t("noApiKey")}
       </div>
     );
   }
@@ -511,12 +522,12 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
           <div className="flex items-center gap-2">
             <Satellite className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">GPS Devices</span>
+            <span className="text-sm font-medium">{t("devicesHeader")}</span>
             <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
               {filtered.length}
             </span>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh} disabled={refreshing} title="Refresh">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh} disabled={refreshing} title={tCommon("refresh")}>
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -524,7 +535,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
         <div className="border-b border-border/40 p-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-            <Input placeholder="Search devices…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 pl-7 text-xs" />
+            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 pl-7 text-xs" />
           </div>
         </div>
         {/* List */}
@@ -533,7 +544,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <MapPinOff className="h-8 w-8 text-muted-foreground/25" />
               <p className="text-xs text-muted-foreground">
-                {devices.length === 0 ? "No GPS devices on your cases." : "No results."}
+                {devices.length === 0 ? t("noDevices") : t("noResults")}
               </p>
             </div>
           ) : (
@@ -543,6 +554,8 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
                 device={d}
                 isSelected={selected?.id === d.id}
                 onClick={() => handleSelect(d)}
+                justNow={tCommon("justNow")}
+                never={tCommon("never")}
               />
             ))
           )}
@@ -585,14 +598,14 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            title="Refresh"
+            title={tCommon("refresh")}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card shadow-md transition-opacity hover:bg-muted disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 text-muted-foreground ${refreshing ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            title={isFullscreen ? t("exitFullscreen") : t("fullscreen")}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card shadow-md transition-opacity hover:bg-muted"
           >
             {isFullscreen
