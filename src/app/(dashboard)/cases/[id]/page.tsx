@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -40,11 +41,7 @@ import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
-import { TargetProfileCard } from "@/components/intelligence/target-profile-card";
-import { TargetPhotosSection } from "@/components/intelligence/target-photos-section";
-import { VehiclesSection } from "@/components/intelligence/vehicles-section";
-import { LocationsSection } from "@/components/intelligence/locations-section";
-import { DocumentsSection } from "@/components/intelligence/documents-section";
+import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
 import { CaseMessagesClient } from "@/components/messages/case-messages-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +55,7 @@ import {
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TargetPhoto, TargetVehicle, TargetLocation, TimelineEntry, VehiclePhoto } from "@/lib/types";
+import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -133,11 +130,6 @@ export default async function CaseDetailPage({
     invoiceCountRes,
     { data: gpsDevicesRaw },
     { data: paymentsRaw },
-    { data: targetPhotosRaw },
-    { data: targetVehiclesRaw },
-    { data: targetLocationsRaw },
-    { data: intelDocsRaw },
-    { data: vehiclePhotosRaw },
     { data: messagesRaw },
     { data: myView },
   ] = await Promise.all([
@@ -176,11 +168,6 @@ export default async function CaseDetailPage({
       .select("*, agents(full_name), profiles!agent_payments_paid_by_fkey(full_name)")
       .eq("case_id", id)
       .order("work_date", { ascending: false }),
-    supabase.from("target_photos").select("*").eq("case_id", id).order("created_at"),
-    supabase.from("target_vehicles").select("*").eq("case_id", id).order("created_at"),
-    supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
-    supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
-    supabase.from("vehicle_photos").select("*").eq("case_id", id).order("created_at"),
     // Most recent 50; reversed to ascending below. Older pages load on demand.
     supabase
       .from("case_messages")
@@ -259,58 +246,6 @@ export default async function CaseDetailPage({
     paid_by_name: (p.profiles as { full_name: string | null } | null)?.full_name ?? null,
   }));
   const totalPayroll  = casePayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
-
-  // Intelligence: sign photo URLs, decrypt vehicle plates and location addresses
-  const rawPhotos = (targetPhotosRaw ?? []) as TargetPhoto[];
-  const rawVehicles = (targetVehiclesRaw ?? []) as TargetVehicle[];
-  const rawLocations = (targetLocationsRaw ?? []) as TargetLocation[];
-  const rawVehiclePhotos = (vehiclePhotosRaw ?? []) as VehiclePhoto[];
-
-  const allIntelPaths = [
-    ...rawPhotos.map((p) => p.storage_path),
-    ...rawVehicles.filter((v) => v.photo_url).map((v) => v.photo_url as string),
-    ...rawLocations.filter((l) => l.photo_url).map((l) => l.photo_url as string),
-    ...rawVehiclePhotos.map((p) => p.storage_path),
-  ];
-  const intelSignedMap: Record<string, string> = {};
-  if (allIntelPaths.length > 0) {
-    const { data: signed } = await supabase.storage
-      .from(BUCKETS.intelligence)
-      .createSignedUrls(allIntelPaths, 3600);
-    (signed ?? []).forEach((s, i) => { intelSignedMap[allIntelPaths[i]] = s.signedUrl ?? ""; });
-  }
-
-  const targetPhotos: TargetPhoto[] = rawPhotos.map((p) => ({
-    ...p,
-    signedUrl: intelSignedMap[p.storage_path] ?? "",
-  }));
-  const targetVehicles: TargetVehicle[] = rawVehicles.map((v) => ({
-    ...v,
-    licensePlate: v.license_plate_enc ? decryptField(v.license_plate_enc) : null,
-    photoSignedUrl: v.photo_url ? (intelSignedMap[v.photo_url] ?? null) : null,
-  }));
-  const targetLocations: TargetLocation[] = rawLocations.map((l) => ({
-    ...l,
-    address: l.address_enc ? decryptField(l.address_enc) : null,
-    photoSignedUrl: l.photo_url ? (intelSignedMap[l.photo_url] ?? null) : null,
-  }));
-
-  const vehiclePhotos = rawVehiclePhotos.map((p) => ({
-    ...p,
-    signedUrl: intelSignedMap[p.storage_path] ?? "",
-  }));
-
-  // Intel documents: sign URLs from the evidence bucket
-  const rawIntelDocs = (intelDocsRaw ?? []) as Evidence[];
-  const intelDocPaths = rawIntelDocs.map((d) => d.storage_path);
-  const intelDocSignedMap: Record<string, string> = {};
-  if (intelDocPaths.length > 0) {
-    const { data: docSigned } = await supabase.storage
-      .from(BUCKETS.evidence)
-      .createSignedUrls(intelDocPaths, 3600);
-    (docSigned ?? []).forEach((s, i) => { intelDocSignedMap[intelDocPaths[i]] = s.signedUrl ?? ""; });
-  }
-  const intelDocs = rawIntelDocs.map((d) => ({ ...d, signedUrl: intelDocSignedMap[d.storage_path] ?? "" }));
 
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
@@ -563,12 +498,14 @@ export default async function CaseDetailPage({
             </TabsTrigger>
           </TabsList>
 
-          {/* Intelligence */}
+          {/* Intelligence — streamed independently so its signed-URL round-trips
+              don't block the page shell / other tabs. */}
           <TabsContent value="intelligence" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <TargetProfileCard
+            <Suspense fallback={<IntelligenceTabSkeleton />}>
+              <IntelligenceTab
                 caseId={id}
-                data={{
+                staff={staff}
+                targetProfile={{
                   name: targetName,
                   alias: targetAlias,
                   phone: targetPhone,
@@ -576,30 +513,8 @@ export default async function CaseDetailPage({
                   age: (c as any).target_age ?? null,
                   notes: targetNotes,
                 }}
-                isStaff={staff}
               />
-              <TargetPhotosSection
-                caseId={id}
-                photos={targetPhotos}
-                isStaff={staff}
-              />
-            </div>
-            <VehiclesSection
-              caseId={id}
-              vehicles={targetVehicles}
-              vehiclePhotos={vehiclePhotos}
-              isStaff={staff}
-            />
-            <LocationsSection
-              caseId={id}
-              locations={targetLocations}
-              isStaff={staff}
-            />
-            <DocumentsSection
-              caseId={id}
-              documents={intelDocs}
-              isStaff={staff}
-            />
+            </Suspense>
           </TabsContent>
 
           {/* Timeline */}
