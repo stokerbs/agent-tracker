@@ -2,7 +2,8 @@
 
 import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Smartphone } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, Radio, SendHorizonal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { requestPortalOtp, type AuthState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
@@ -23,16 +24,24 @@ function PortalLoginForm() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="space-y-1.5">
+      <div className="text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-[0_0_32px_hsl(var(--primary)/0.18)]">
+          <Radio className="h-7 w-7 text-primary" />
+        </div>
         <h1 className="text-2xl font-semibold tracking-tight">
           {tPortal("login.title")}
         </h1>
-        <p className="text-sm text-muted-foreground">{tPortal("login.subtitle")}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {tPortal("login.subtitle")}
+        </p>
       </div>
 
-      <form action={action} className="space-y-4">
+      {/* Form */}
+      <form action={action} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="phone">{t("phone")}</Label>
+          <Label htmlFor="phone" className="text-sm font-medium">
+            {t("phone")}
+          </Label>
           <Input
             id="phone"
             name="phone"
@@ -42,23 +51,42 @@ function PortalLoginForm() {
             autoFocus
             defaultValue={prefillPhone}
             required
+            className="h-11 text-base transition-shadow focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]"
           />
           <p className="text-xs text-muted-foreground">{t("phoneHint")}</p>
         </div>
 
-        {state?.error && (
-          <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {state.error}
-          </p>
-        )}
-
-        <Button type="submit" className="w-full h-11 gap-2 font-semibold" disabled={pending}>
-          {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Smartphone className="h-4 w-4" />
+        <AnimatePresence mode="wait">
+          {state?.error && (
+            <motion.p
+              key={state.error}
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              {state.error}
+            </motion.p>
           )}
-          {tPortal("login.sendCode")}
+        </AnimatePresence>
+
+        <Button
+          type="submit"
+          className="w-full h-11 gap-2 text-sm font-semibold"
+          disabled={pending}
+        >
+          {pending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Sending…
+            </>
+          ) : (
+            <>
+              <SendHorizonal className="h-4 w-4" />
+              {tPortal("login.sendCode")}
+            </>
+          )}
         </Button>
       </form>
     </div>
