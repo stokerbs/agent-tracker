@@ -181,11 +181,13 @@ export default async function CaseDetailPage({
     supabase.from("target_locations").select("*").eq("case_id", id).order("created_at"),
     supabase.from("evidence").select("*").eq("case_id", id).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
     supabase.from("vehicle_photos").select("*").eq("case_id", id).order("created_at"),
+    // Most recent 50; reversed to ascending below. Older pages load on demand.
     supabase
       .from("case_messages")
       .select("*, profiles(id, full_name, role)")
       .eq("case_id", id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .limit(50),
     supabase
       .from("case_message_views")
       .select("last_seen_at")
@@ -331,8 +333,8 @@ export default async function CaseDetailPage({
       entries: [...entries].reverse(), // time ASC within day
     }));
 
-  // Messages + unread count
-  const caseMessages = (messagesRaw ?? []) as CaseMessageWithSender[];
+  // Messages + unread count (fetched newest-first; reverse to chronological)
+  const caseMessages = [...((messagesRaw ?? []) as CaseMessageWithSender[])].reverse();
   const lastSeen = myView?.last_seen_at ? new Date(myView.last_seen_at) : null;
   const unreadMessageCount = caseMessages.filter(
     (m) => m.sender_id !== profile.id && (!lastSeen || new Date(m.created_at) > lastSeen),

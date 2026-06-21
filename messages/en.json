@@ -723,7 +723,9 @@
       "title": "Messages",
       "empty": "No unread messages",
       "unreadCount": "{count} unread"
-    }
+    },
+    "loadOlder": "Load older messages",
+    "loadingOlder": "Loading…"
   },
   "payroll": {
     "title": "Agent Payroll",

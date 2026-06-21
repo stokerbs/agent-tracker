@@ -25,7 +25,7 @@ export function CaseMessagesClient({ caseId, messages: initialMessages, currentP
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { messages, typingName, notifyTyping, bottomRef, scrollToBottom } = useCaseMessages({
+  const { messages, typingName, notifyTyping, bottomRef, scrollToBottom, hasMore, loadOlder, loadingOlder } = useCaseMessages({
     caseId,
     initialMessages,
     currentProfileId,
@@ -59,6 +59,20 @@ export function CaseMessagesClient({ caseId, messages: initialMessages, currentP
         />
       ) : (
         <div className="space-y-3 px-1">
+          {hasMore && (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                disabled={loadingOlder}
+                onClick={loadOlder}
+              >
+                {loadingOlder ? t("loadingOlder") : t("loadOlder")}
+              </Button>
+            </div>
+          )}
           {messages.map((msg) => {
             const isMine = msg.sender_id === currentProfileId;
             const isClient = msg.profiles?.role === "client";

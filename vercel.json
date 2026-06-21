@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/gps903-sync",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-positions",
+      "schedule": "17 3 * * *"
     }
   ]
 }

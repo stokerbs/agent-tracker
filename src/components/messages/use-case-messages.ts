@@ -6,6 +6,9 @@ import type { CaseMessageWithSender } from "@/lib/types";
 
 const TYPING_TIMEOUT_MS = 3500;
 const TYPING_THROTTLE_MS = 1500;
+export const MESSAGE_PAGE_SIZE = 50;
+
+const SELECT = "*, profiles(id, full_name, role)";
 
 interface Options {
   caseId: string;
@@ -23,13 +26,13 @@ interface TypingPayload {
 /**
  * Live case-message thread.
  *
- * - Subscribes to INSERTs on case_messages for this case and re-fetches the
- *   thread (RLS keeps clients from ever receiving internal notes).
- * - Broadcasts/receives ephemeral "typing" events on the same channel.
- * - Auto-scrolls and marks the thread read when a new inbound message lands.
+ * Scalability: the initial window is the most recent MESSAGE_PAGE_SIZE messages
+ * (bounded server-side). On a realtime INSERT we fetch ONLY the new rows since
+ * the latest we hold and append them — not the whole thread — so per-message
+ * cost is O(new) rather than O(all). Older history loads on demand via loadOlder.
  *
- * Matches the codebase realtime convention (see emergency-feed.tsx):
- * channel -> postgres_changes -> re-fetch.
+ * Also broadcasts/receives ephemeral "typing" events on the same channel, and
+ * auto-scrolls + marks read when a new inbound message lands.
  */
 export function useCaseMessages({
   caseId,
@@ -41,17 +44,21 @@ export function useCaseMessages({
   const supabase = createClient();
   const [messages, setMessages] = useState<CaseMessageWithSender[]>(initialMessages);
   const [typingName, setTypingName] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialMessages.length >= MESSAGE_PAGE_SIZE);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentAt = useRef(0);
   const typingClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const knownCount = useRef(initialMessages.length);
+  // Mirror of messages for use inside stable callbacks/subscriptions.
+  const messagesRef = useRef(initialMessages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Re-sync when the server re-renders (e.g. after a server action + refresh).
   useEffect(() => {
     setMessages(initialMessages);
-    knownCount.current = initialMessages.length;
+    setHasMore(initialMessages.length >= MESSAGE_PAGE_SIZE);
   }, [initialMessages]);
 
   // Mark read + scroll on first mount.
@@ -61,28 +68,41 @@ export function useCaseMessages({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 
+  function mergeAppend(prev: CaseMessageWithSender[], incoming: CaseMessageWithSender[]) {
+    const seen = new Set(prev.map((m) => m.id));
+    const added = incoming.filter((m) => !seen.has(m.id));
+    return added.length ? [...prev, ...added] : prev;
+  }
+
   useEffect(() => {
-    async function reload() {
-      const { data } = await supabase
+    // Fetch only messages newer than the latest we already hold, then append.
+    async function appendNew() {
+      const current = messagesRef.current;
+      const latest = current[current.length - 1]?.created_at;
+      let q = supabase
         .from("case_messages")
-        .select("*, profiles(id, full_name, role)")
+        .select(SELECT)
         .eq("case_id", caseId)
         .order("created_at", { ascending: true });
+      // gte + id-dedupe is robust against identical-timestamp rows.
+      if (latest) q = q.gte("created_at", latest);
+      const { data } = await q;
+      const incoming = (data ?? []) as CaseMessageWithSender[];
+      if (incoming.length === 0) return;
 
-      const fresh = (data ?? []) as CaseMessageWithSender[];
-      setMessages(fresh);
+      const known = new Set(current.map((m) => m.id));
+      const trulyNew = incoming.filter((m) => !known.has(m.id));
+      if (trulyNew.length === 0) return;
 
-      // New inbound message while the thread is open: scroll + mark read.
-      if (fresh.length > knownCount.current) {
-        const newest = fresh[fresh.length - 1];
-        if (newest && newest.sender_id !== currentProfileId) {
-          void markRead(caseId);
-          requestAnimationFrame(() =>
-            bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
-          );
-        }
+      setMessages((prev) => mergeAppend(prev, trulyNew));
+
+      const newest = trulyNew[trulyNew.length - 1];
+      if (newest && newest.sender_id !== currentProfileId) {
+        void markRead(caseId);
+        requestAnimationFrame(() =>
+          bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+        );
       }
-      knownCount.current = fresh.length;
     }
 
     const channel = supabase
@@ -97,7 +117,7 @@ export function useCaseMessages({
           table: "case_messages",
           filter: `case_id=eq.${caseId}`,
         },
-        () => reload(),
+        () => appendNew(),
       )
       .on("broadcast", { event: "typing" }, ({ payload }) => {
         const p = payload as TypingPayload;
@@ -116,6 +136,34 @@ export function useCaseMessages({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId, currentProfileId]);
+
+  // Load the previous page of older messages and prepend.
+  const loadOlder = useCallback(async () => {
+    if (loadingOlder) return;
+    const current = messagesRef.current;
+    const earliest = current[0]?.created_at;
+    if (!earliest) return;
+    setLoadingOlder(true);
+    try {
+      const { data } = await supabase
+        .from("case_messages")
+        .select(SELECT)
+        .eq("case_id", caseId)
+        .lt("created_at", earliest)
+        .order("created_at", { ascending: false })
+        .limit(MESSAGE_PAGE_SIZE);
+      const older = ((data ?? []) as CaseMessageWithSender[]).reverse(); // ascending
+      setMessages((prev) => {
+        const seen = new Set(prev.map((m) => m.id));
+        const add = older.filter((m) => !seen.has(m.id));
+        return add.length ? [...add, ...prev] : prev;
+      });
+      setHasMore(older.length >= MESSAGE_PAGE_SIZE);
+    } finally {
+      setLoadingOlder(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseId, loadingOlder]);
 
   // Throttled "I am typing" broadcast.
   const notifyTyping = useCallback(() => {
@@ -136,5 +184,5 @@ export function useCaseMessages({
     );
   }, []);
 
-  return { messages, typingName, notifyTyping, bottomRef, scrollToBottom };
+  return { messages, typingName, notifyTyping, bottomRef, scrollToBottom, hasMore, loadOlder, loadingOlder };
 }

@@ -68,11 +68,13 @@ export default async function PortalCasePage({
       .eq("case_id", id)
       .neq("status", "draft")
       .order("issued_date", { ascending: false }),
+    // Most recent 50; reversed to ascending below. Older pages load on demand.
     supabase
       .from("case_messages")
       .select("*, profiles(id, full_name, role)")
       .eq("case_id", id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .limit(50),
     supabase
       .from("case_message_views")
       .select("last_seen_at")
@@ -82,7 +84,7 @@ export default async function PortalCasePage({
   ]);
 
   const invoices = (invoicesRaw ?? []) as Invoice[];
-  const messages = (messagesRaw ?? []) as CaseMessageWithSender[];
+  const messages = [...((messagesRaw ?? []) as CaseMessageWithSender[])].reverse();
 
   // Unread: staff messages the client hasn't seen yet
   const lastSeen = myView?.last_seen_at ? new Date(myView.last_seen_at) : null;
