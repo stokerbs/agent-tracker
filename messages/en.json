@@ -84,12 +84,13 @@
       "sendCode": "Send SMS code"
     },
     "verify": {
-      "title": "Enter your code",
+      "title": "Verify Your Identity",
       "subtitle": "We sent a 6-digit code to your phone.",
       "subtitleWithPhone": "We sent a 6-digit code to {phone}.",
+      "sentTo": "Enter the 6-digit code sent to:",
       "code": "One-time code",
       "codePlaceholder": "000000",
-      "codeHint": "Enter the 6-digit code from your SMS. It expires in 5 minutes.",
+      "codeHint": "Code expires in 5 minutes.",
       "verify": "Verify and sign in",
       "noCode": "Didn't receive the code?",
       "resend": "Send a new one"
