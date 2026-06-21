@@ -754,7 +754,8 @@
       "unreadCount": "ยังไม่ได้อ่าน {count}"
     },
     "loadOlder": "ดูข้อความเก่ากว่า",
-    "loadingOlder": "กำลังโหลด…"
+    "loadingOlder": "กำลังโหลด…",
+    "sendError": "ส่งข้อความไม่สำเร็จ"
   },
   "payroll": {
     "title": "บัญชีเงินเดือนสายสืบ",

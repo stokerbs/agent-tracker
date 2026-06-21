@@ -2,6 +2,7 @@
 
 import { useRef, useTransition } from "react";
 import { MessageSquare, Send } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,9 +35,13 @@ export function PortalMessagesClient({ caseId, messages: initialMessages, curren
 
   function handleSubmit(formData: FormData) {
     start(async () => {
-      await sendClientMessage(formData);
-      formRef.current?.reset();
-      scrollToBottom();
+      try {
+        await sendClientMessage(formData);
+        formRef.current?.reset();
+        scrollToBottom();
+      } catch {
+        toast.error(t("sendError"));
+      }
     });
   }
 

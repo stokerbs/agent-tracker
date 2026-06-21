@@ -2,15 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, requireStaff } from "@/lib/auth";
+import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 
 export async function sendMessage(formData: FormData) {
-  const profile = await requireStaff();
+  // Allow any non-client (admin, supervisor, assigned agent) — this mirrors the
+  // case_messages RLS (msgs_agent_insert in 0058), which permits agents to post
+  // non-internal messages on their assigned cases. Clients use sendClientMessage.
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role === "client") throw new Error("Unauthorized");
 
   const caseId = formData.get("case_id") as string;
   const body = (formData.get("body") as string ?? "").trim();
-  const isInternal = formData.get("is_internal") === "true";
+  // Internal notes are staff-only; RLS rejects is_internal=true from agents, so
+  // never let a non-staff sender mark a message internal.
+  const isInternal = isStaff(profile.role) && formData.get("is_internal") === "true";
 
   if (!body) throw new Error("Message body is required");
   if (body.length > 2000) throw new Error("Message too long");

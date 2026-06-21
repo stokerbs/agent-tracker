@@ -725,7 +725,8 @@
       "unreadCount": "{count} unread"
     },
     "loadOlder": "Load older messages",
-    "loadingOlder": "Loading…"
+    "loadingOlder": "Loading…",
+    "sendError": "Failed to send message"
   },
   "payroll": {
     "title": "Agent Payroll",

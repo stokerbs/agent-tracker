@@ -2,6 +2,7 @@
 
 import { useRef, useTransition } from "react";
 import { Lock, MessageSquare, Send } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +19,10 @@ interface Props {
   messages: CaseMessageWithSender[];
   currentProfileId: string;
   currentUserName: string;
+  isStaff: boolean;
 }
 
-export function CaseMessagesClient({ caseId, messages: initialMessages, currentProfileId, currentUserName }: Props) {
+export function CaseMessagesClient({ caseId, messages: initialMessages, currentProfileId, currentUserName, isStaff }: Props) {
   const t = useTranslations("messages");
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -35,9 +37,13 @@ export function CaseMessagesClient({ caseId, messages: initialMessages, currentP
 
   function handleSubmit(formData: FormData) {
     start(async () => {
-      await sendMessage(formData);
-      formRef.current?.reset();
-      scrollToBottom();
+      try {
+        await sendMessage(formData);
+        formRef.current?.reset();
+        scrollToBottom();
+      } catch {
+        toast.error(t("sendError"));
+      }
     });
   }
 
@@ -138,16 +144,21 @@ export function CaseMessagesClient({ caseId, messages: initialMessages, currentP
             required
           />
           <div className="flex items-center justify-between gap-2">
-            <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                name="is_internal"
-                value="true"
-                className="h-3.5 w-3.5 accent-amber-500"
-              />
-              <Lock className="h-3 w-3 text-amber-500" />
-              {t("internalToggle")}
-            </label>
+            {/* Internal notes are staff-only (RLS rejects is_internal from agents). */}
+            {isStaff ? (
+              <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="is_internal"
+                  value="true"
+                  className="h-3.5 w-3.5 accent-amber-500"
+                />
+                <Lock className="h-3 w-3 text-amber-500" />
+                {t("internalToggle")}
+              </label>
+            ) : (
+              <span />
+            )}
             <Button type="submit" size="sm" disabled={pending}>
               <Send className="mr-1.5 h-3.5 w-3.5" />
               {t("send")}
