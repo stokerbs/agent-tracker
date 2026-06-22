@@ -116,6 +116,16 @@ export interface Case {
   license_plate_enc: string | null;
   license_plate_bidx: string | null;
   target_address_enc: string | null;
+  // additional target profile fields (migration 0065)
+  target_alias_enc: string | null;
+  target_gender: string | null;
+  target_age: number | null;
+  target_notes_enc: string | null;
+  target_dob_enc: string | null;
+  target_nationality: string | null;
+  target_occupation: string | null;
+  target_email_enc: string | null;
+  target_socials_enc: string | null;
   start_date: string | null;
   end_date: string | null;
   status: CaseStatus;
@@ -125,6 +135,27 @@ export interface Case {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+}
+
+export type RelationKind =
+  | "spouse"
+  | "partner"
+  | "friend"
+  | "associate"
+  | "family"
+  | "other";
+
+export interface TargetRelationship {
+  id: string;
+  case_id: string;
+  name_enc: string | null;
+  relation: RelationKind;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  /** decrypted on the server for display */
+  name?: string | null;
 }
 
 export interface GpsDevice {
@@ -504,4 +535,127 @@ export interface CaseMessage {
 
 export interface CaseMessageWithSender extends CaseMessage {
   profiles: Pick<Profile, "id" | "full_name" | "role"> | null;
+}
+
+// ─── AI Case Intake ────────────────────────────────────────────────────────
+// The extraction contract returned by Claude (forced tool use) and edited on
+// the review screen before any database write. Every item carries a confidence
+// (0-100) and the source filenames it was derived from.
+
+export type IntakeImageKind =
+  | "target_photo"
+  | "vehicle_photo"
+  | "document"
+  | "screenshot"
+  | "location"
+  | "other";
+
+export type IntakeDocKind =
+  | "id_card"
+  | "passport"
+  | "drivers_license"
+  | "vehicle_reg"
+  | "contract"
+  | "other";
+
+export interface IntakeSocial {
+  platform: string | null;
+  handle: string | null;
+}
+
+export interface IntakeTarget {
+  full_name: string | null;
+  nickname: string | null;
+  gender: string | null;
+  dob: string | null;
+  age: number | null;
+  nationality: string | null;
+  occupation: string | null;
+  phones: string[];
+  emails: string[];
+  socials: IntakeSocial[];
+  notes: string | null;
+  confidence: number;
+  source_files: string[];
+}
+
+export interface IntakeVehicle {
+  make: string | null;
+  model: string | null;
+  color: string | null;
+  plate: string | null;
+  is_primary: boolean;
+  confidence: number;
+  source_files: string[];
+}
+
+export interface IntakeLocation {
+  type: "home" | "workplace" | "other";
+  label: string | null;
+  address: string | null;
+  notes: string | null;
+  confidence: number;
+  source_files: string[];
+}
+
+export interface IntakeRelationship {
+  name: string | null;
+  relation: RelationKind;
+  notes: string | null;
+  confidence: number;
+  source_files: string[];
+}
+
+export interface IntakeTimelineEvent {
+  date: string | null;
+  time: string | null;
+  entry: string;
+  location: string | null;
+  confidence: number;
+  source_files: string[];
+}
+
+export interface IntakeDocument {
+  source_file: string;
+  doc_kind: IntakeDocKind;
+  summary: string | null;
+  confidence: number;
+}
+
+export interface IntakeImageClassification {
+  file: string;
+  kind: IntakeImageKind;
+  confidence: number;
+  vehicle_index?: number | null;
+}
+
+export interface IntakeExtraction {
+  case: {
+    suggested_title: string | null;
+    summary: string | null;
+    case_type: string | null;
+  };
+  targets: IntakeTarget[];
+  vehicles: IntakeVehicle[];
+  locations: IntakeLocation[];
+  relationships: IntakeRelationship[];
+  timeline: IntakeTimelineEvent[];
+  documents: IntakeDocument[];
+  image_classifications: IntakeImageClassification[];
+}
+
+/** A file staged in the evidence bucket under `_intake/{intakeId}/` during analysis. */
+export interface IntakeStagedFile {
+  /** original filename as uploaded (the key Claude references in source_files) */
+  name: string;
+  /** storage path within the evidence bucket */
+  path: string;
+  mime_type: string;
+  size: number;
+}
+
+export interface IntakeAnalyzeResult {
+  intakeId: string;
+  files: IntakeStagedFile[];
+  extraction: IntakeExtraction;
 }

@@ -25,6 +25,11 @@ interface ProfileData {
   gender: string | null;
   age: number | null;
   notes: string | null;
+  dob: string | null;
+  nationality: string | null;
+  occupation: string | null;
+  email: string | null;
+  socials: string | null;
 }
 
 interface Props {
@@ -125,14 +130,21 @@ export function TargetProfileCard({ caseId, data, isStaff }: Props) {
         <Row label={t("name")} value={data.name} />
         <Row label={t("alias")} value={data.alias} />
         <Row label={t("phone")} value={data.phone} />
+        <Row label={t("email")} value={data.email} />
         <Row label={t("gender")} value={data.gender} />
         <Row label={t("age")} value={data.age} />
+        <Row label={t("dob")} value={data.dob} />
+        <Row label={t("nationality")} value={data.nationality} />
+        <Row label={t("occupation")} value={data.occupation} />
+        <Row label={t("socials")} value={data.socials} />
         {data.notes && (
           <div className="mt-2 rounded-md border border-border/50 bg-muted/30 p-2 text-xs text-muted-foreground">
             {data.notes}
           </div>
         )}
-        {!data.name && !data.alias && !data.phone && !data.gender && !data.age && !data.notes && (
+        {!data.name && !data.alias && !data.phone && !data.email && !data.gender &&
+          !data.age && !data.dob && !data.nationality && !data.occupation &&
+          !data.socials && !data.notes && (
           <p className="text-xs text-muted-foreground">{t("empty")}</p>
         )}
       </CardContent>

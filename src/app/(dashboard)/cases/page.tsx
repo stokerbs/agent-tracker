@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, Briefcase, Archive } from "lucide-react";
+import { ArrowRight, Briefcase, Archive, Sparkles } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { decryptField } from "@/lib/security/encryption";
 import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog";
 import { CaseFilters } from "@/components/cases/case-filters";
 import { CaseActionMenu } from "@/components/cases/case-action-menu";
@@ -100,7 +101,15 @@ export default async function CasesPage({ searchParams }: Props) {
             {showArchived ? "ดูคดีที่ใช้งาน" : "เก็บถาวร"}
           </Link>
           {isStaff(profile.role) && !showArchived && (
-            <CreateCaseDialog suggestedNumber={suggestedNumber} clients={clients} />
+            <>
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link href="/cases/intake">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {t("intake.button")}
+                </Link>
+              </Button>
+              <CreateCaseDialog suggestedNumber={suggestedNumber} clients={clients} />
+            </>
           )}
         </div>
       </PageHeader>

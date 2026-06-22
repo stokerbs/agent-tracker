@@ -145,3 +145,23 @@ export const BUCKETS = {
   reports: "reports",
   intelligence: "intelligence",
 } as const;
+
+// ─── AI Case Intake ──────────────────────────────────────────────────────────
+// Files are staged under this prefix in the evidence bucket while a case is
+// being reviewed, then moved into `{caseId}/…` on confirm (or swept on discard).
+export const INTAKE_STAGING_PREFIX = "_intake";
+
+// File types the intake pipeline can analyse natively (no conversion deps).
+// Images + PDF go to Claude as vision/document blocks; text/plain is inlined.
+export const INTAKE_ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+] as const;
+
+// Accept attribute for the upload input (includes common extensions).
+export const INTAKE_ACCEPT = ".pdf,.txt,.jpg,.jpeg,.png,.webp,image/*,application/pdf,text/plain";
+
+export const INTAKE_MAX_FILES = 20;
