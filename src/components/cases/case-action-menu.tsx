@@ -7,9 +7,11 @@ import {
   ArchiveRestore,
   MoreVertical,
   Trash2,
+  Users,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
+import { AssignAgentsDialog } from "@/components/cases/assign-agents-dialog";
 import {
   archiveCase,
   unarchiveCase,
@@ -43,7 +46,9 @@ export function CaseActionMenu({
   isAdmin,
 }: CaseActionMenuProps) {
   const router = useRouter();
+  const t = useTranslations("assignAgents");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [, start] = useTransition();
 
   function run(action: () => Promise<{ error?: string } | { ok: boolean }>) {
@@ -72,6 +77,15 @@ export function CaseActionMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+          {!isArchived && status !== "closed" && status !== "cancelled" && (
+            <>
+              <DropdownMenuItem onClick={() => setAssignOpen(true)}>
+                <Users className="mr-2 h-4 w-4" />
+                {t("quickAssign")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {!isArchived && status !== "cancelled" && (
             <DropdownMenuItem onClick={() => run(() => cancelCase(caseId))}>
               <XCircle className="mr-2 h-4 w-4 text-rose-500" />
@@ -111,6 +125,8 @@ export function CaseActionMenu({
         description="การดำเนินการนี้ไม่สามารถย้อนกลับได้ บันทึกคดีทั้งหมด ไทม์ไลน์ หลักฐาน และรายงานที่เชื่อมโยงจะถูกลบถาวร"
         onConfirm={() => deleteCase(caseId)}
       />
+
+      <AssignAgentsDialog caseId={caseId} open={assignOpen} onOpenChange={setAssignOpen} />
     </>
   );
 }
