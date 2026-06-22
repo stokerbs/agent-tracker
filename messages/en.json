@@ -1566,6 +1566,7 @@
     "cancel": "Cancel",
     "saved": "Assignments updated",
     "noAgents": "No agents available.",
+    "notLinked": "No login account — can't be assigned",
     "assignedTeam": "Assigned Team",
     "nAssigned": "{count, plural, =0 {No agents} one {# agent} other {# agents}}",
     "noneAssigned": "No agents assigned yet.",

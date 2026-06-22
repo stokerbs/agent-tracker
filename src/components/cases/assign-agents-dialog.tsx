@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Users } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -96,15 +96,21 @@ export function AssignAgentsDialog({
           <div className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1">
             {agents.map((a) => {
               const checked = selected.has(a.id);
+              // Unlinked agents have no login account, so they can never see the
+              // case in the Field App. Block newly assigning them, but still allow
+              // un-checking one that is already assigned (to fix a broken state).
+              const locked = !a.linked && !checked;
               const meta = AGENT_STATUS_META[a.status];
               return (
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => toggle(a.id)}
+                  disabled={locked}
+                  onClick={() => { if (!locked) toggle(a.id); }}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors",
                     checked ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/50",
+                    locked && "cursor-not-allowed opacity-60 hover:bg-transparent",
                   )}
                 >
                   {/* Checkbox */}
@@ -138,6 +144,12 @@ export function AssignAgentsDialog({
                     <p className="truncate text-xs text-muted-foreground">
                       {a.agent_role ? t(`role.${a.agent_role}`) : a.agent_code}
                     </p>
+                    {!a.linked && (
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-500">
+                        <AlertTriangle className="h-3 w-3" />
+                        {t("notLinked")}
+                      </span>
+                    )}
                   </div>
 
                   {/* Status label */}
