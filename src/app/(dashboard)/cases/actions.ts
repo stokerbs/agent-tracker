@@ -185,6 +185,13 @@ export interface AssignableAgent {
   photo_url: string | null;
   status: AgentStatus;
   agent_role: AgentRole | null;
+  /**
+   * Whether the agent is linked to a login account (agents.profile_id is set).
+   * Unlinked agents can be written to case_agents but will NEVER see the case in
+   * Field App → My Cases (which resolves the agent via profile_id = auth.uid()),
+   * so the dialog blocks assigning them.
+   */
+  linked: boolean;
 }
 
 /** Loads the full agent roster plus the IDs currently assigned to the case. */
@@ -197,15 +204,26 @@ export async function getCaseAssignmentData(
   const [{ data: agentsRaw, error: aErr }, { data: linksRaw, error: lErr }] = await Promise.all([
     supabase
       .from("agents")
-      .select("id, full_name, agent_code, photo_url, status, agent_role")
+      .select("id, full_name, agent_code, photo_url, status, agent_role, profile_id")
       .order("full_name"),
     supabase.from("case_agents").select("agent_id").eq("case_id", caseId),
   ]);
   if (aErr) return { error: handleDbError(aErr, "cases") };
   if (lErr) return { error: handleDbError(lErr, "cases") };
 
+  type AgentRow = Omit<AssignableAgent, "linked"> & { profile_id: string | null };
+  const agents: AssignableAgent[] = ((agentsRaw ?? []) as AgentRow[]).map((a) => ({
+    id: a.id,
+    full_name: a.full_name,
+    agent_code: a.agent_code,
+    photo_url: a.photo_url,
+    status: a.status,
+    agent_role: a.agent_role,
+    linked: a.profile_id != null,
+  }));
+
   return {
-    agents: (agentsRaw ?? []) as AssignableAgent[],
+    agents,
     assignedIds: (linksRaw ?? []).map((r) => r.agent_id as string),
   };
 }
