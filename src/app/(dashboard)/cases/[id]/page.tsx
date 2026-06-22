@@ -108,6 +108,15 @@ export default async function CaseDetailPage({
   const targetPhone = c.target_phone_enc ? decryptField(c.target_phone_enc) : null;
   const targetAlias = (c as any).target_alias_enc ? decryptField((c as any).target_alias_enc) : null;
   const targetNotes = (c as any).target_notes_enc ? decryptField((c as any).target_notes_enc) : null;
+  const targetDob   = c.target_dob_enc   ? decryptField(c.target_dob_enc)   : null;
+  const targetEmail = c.target_email_enc ? decryptField(c.target_email_enc) : null;
+  let targetSocials: string | null = null;
+  if (c.target_socials_enc) {
+    try {
+      const arr = JSON.parse(decryptField(c.target_socials_enc)) as { platform: string | null; handle: string | null }[];
+      targetSocials = arr.map((s) => [s.platform, s.handle].filter(Boolean).join(": ")).filter(Boolean).join(" · ") || null;
+    } catch { targetSocials = null; }
+  }
 
   const [
     { data: rawTimeline },
@@ -315,6 +324,11 @@ export default async function CaseDetailPage({
                 gender: (c as any).target_gender ?? null,
                 age: (c as any).target_age ?? null,
                 notes: targetNotes,
+                dob: targetDob,
+                nationality: c.target_nationality ?? null,
+                occupation: c.target_occupation ?? null,
+                email: targetEmail,
+                socials: targetSocials,
               }}
             />
           </Suspense>

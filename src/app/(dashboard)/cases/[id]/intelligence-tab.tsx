@@ -6,7 +6,8 @@ import { TargetPhotosSection } from "@/components/intelligence/target-photos-sec
 import { VehiclesSection } from "@/components/intelligence/vehicles-section";
 import { LocationsSection } from "@/components/intelligence/locations-section";
 import { DocumentsSection } from "@/components/intelligence/documents-section";
-import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation, VehiclePhoto } from "@/lib/types";
+import { RelationshipsSection } from "@/components/intelligence/relationships-section";
+import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation, VehiclePhoto, TargetRelationship } from "@/lib/types";
 
 interface TargetProfile {
   name: string | null;
@@ -15,6 +16,11 @@ interface TargetProfile {
   gender: string | null;
   age: number | null;
   notes: string | null;
+  dob: string | null;
+  nationality: string | null;
+  occupation: string | null;
+  email: string | null;
+  socials: string | null;
 }
 
 interface Props {
@@ -43,13 +49,22 @@ export async function IntelligenceTab({ caseId, staff, targetProfile }: Props) {
     { data: targetLocationsRaw },
     { data: intelDocsRaw },
     { data: vehiclePhotosRaw },
+    { data: relationshipsRaw },
   ] = await Promise.all([
     supabase.from("target_photos").select("*").eq("case_id", caseId).order("created_at"),
     supabase.from("target_vehicles").select("*").eq("case_id", caseId).order("created_at"),
     supabase.from("target_locations").select("*").eq("case_id", caseId).order("created_at"),
     supabase.from("evidence").select("*").eq("case_id", caseId).eq("category", "intelligence").order("uploaded_at", { ascending: false }),
     supabase.from("vehicle_photos").select("*").eq("case_id", caseId).order("created_at"),
+    supabase.from("target_relationships").select("*").eq("case_id", caseId).order("created_at"),
   ]);
+
+  const relationships = ((relationshipsRaw ?? []) as TargetRelationship[]).map((r) => ({
+    id: r.id,
+    name: r.name_enc ? decryptField(r.name_enc) : null,
+    relation: r.relation,
+    notes: r.notes,
+  }));
 
   const rawPhotos = (targetPhotosRaw ?? []) as TargetPhoto[];
   const rawVehicles = (targetVehiclesRaw ?? []) as TargetVehicle[];
@@ -110,6 +125,7 @@ export async function IntelligenceTab({ caseId, staff, targetProfile }: Props) {
       </div>
       <VehiclesSection caseId={caseId} vehicles={targetVehicles} vehiclePhotos={vehiclePhotos} isStaff={staff} />
       <LocationsSection caseId={caseId} locations={targetLocations} isStaff={staff} />
+      <RelationshipsSection relationships={relationships} />
       <DocumentsSection caseId={caseId} documents={intelDocs} isStaff={staff} />
     </div>
   );
