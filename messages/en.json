@@ -274,6 +274,7 @@
       "img_location": "Location",
       "img_other": "Other",
       "back": "Back",
+      "add": "Add",
       "createCase": "Create Case",
       "created": "Case created",
       "createFailed": "Failed to create case"
