@@ -72,6 +72,7 @@ function ItemCard({
 function Section({
   icon, title, count, children, onAdd,
 }: { icon: React.ReactNode; title: string; count: number; children: React.ReactNode; onAdd?: () => void }) {
+  const t = useTranslations("cases.intake");
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
@@ -82,7 +83,7 @@ function Section({
         </h3>
         {onAdd && (
           <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={onAdd}>
-            <Plus className="h-3.5 w-3.5" /> Add
+            <Plus className="h-3.5 w-3.5" /> {t("add")}
           </Button>
         )}
       </div>

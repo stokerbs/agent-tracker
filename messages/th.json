@@ -274,6 +274,7 @@
       "img_location": "สถานที่",
       "img_other": "อื่นๆ",
       "back": "ย้อนกลับ",
+      "add": "เพิ่ม",
       "createCase": "สร้างคดี",
       "created": "สร้างคดีแล้ว",
       "createFailed": "ไม่สามารถสร้างคดีได้"
