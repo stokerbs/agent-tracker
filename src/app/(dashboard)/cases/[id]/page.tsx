@@ -32,6 +32,8 @@ import { ExpenseRowActions } from "@/components/expenses/expense-row-actions";
 import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog";
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
+import { AssignCaseButton } from "@/components/cases/assign-case-button";
+import { AssignedTeamCard, type TeamMember } from "@/components/cases/assigned-team-card";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { CollapsibleCard } from "@/components/shared/collapsible-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
@@ -240,6 +242,15 @@ export default async function CaseDetailPage({
 
   const gpsDevices = (gpsDevicesRaw ?? []) as GpsDevice[];
 
+  // Assigned team for this case (single source of truth = case_agents).
+  const { data: teamRaw } = await supabase
+    .from("case_agents")
+    .select("agents(id, full_name, agent_code, photo_url, status)")
+    .eq("case_id", id);
+  const assignedTeam = ((teamRaw ?? []) as unknown as { agents: TeamMember | TeamMember[] | null }[])
+    .flatMap((r) => (Array.isArray(r.agents) ? r.agents : r.agents ? [r.agents] : []))
+    .filter((a): a is TeamMember => !!a);
+
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
@@ -279,6 +290,7 @@ export default async function CaseDetailPage({
         >
           <CasePriorityBadge priority={c.priority} />
           <CaseStatusBadge status={c.status} />
+          {staff && <AssignCaseButton caseId={id} />}
           {staff && <EditCaseDialog caseRecord={c} clients={allClients} />}
           {staff && c.status !== "closed" && (
             <CloseCaseDialog
@@ -291,6 +303,11 @@ export default async function CaseDetailPage({
             />
           )}
         </PageHeader>
+      </FadeUp>
+
+      {/* Assigned team */}
+      <FadeUp delay={0.03}>
+        <AssignedTeamCard members={assignedTeam} />
       </FadeUp>
 
       {/* Intelligence summary cards */}

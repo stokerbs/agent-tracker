@@ -1557,6 +1557,32 @@
       "removed": "Agent removed"
     }
   },
+  "assignAgents": {
+    "button": "Assign Case",
+    "quickAssign": "Assign Agents",
+    "title": "Assign Agents",
+    "description": "Select the field agents to assign to this case.",
+    "save": "Save ({count})",
+    "cancel": "Cancel",
+    "saved": "Assignments updated",
+    "noAgents": "No agents available.",
+    "assignedTeam": "Assigned Team",
+    "nAssigned": "{count, plural, =0 {No agents} one {# agent} other {# agents}}",
+    "noneAssigned": "No agents assigned yet.",
+    "role": {
+      "field_agent": "Field Agent",
+      "supervisor": "Supervisor",
+      "team_leader": "Team Leader",
+      "operations": "Operations"
+    },
+    "status": {
+      "online": "Online",
+      "moving": "Moving",
+      "idle": "Idle",
+      "offline": "Offline",
+      "emergency": "Emergency"
+    }
+  },
   "status": {
     "agent": {
       "online": "Online",

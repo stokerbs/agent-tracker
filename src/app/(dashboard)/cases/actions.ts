@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
-import type { CasePriority, CaseStatus } from "@/lib/types";
+import type { AgentRole, AgentStatus, CasePriority, CaseStatus } from "@/lib/types";
 import {
   createLicensePlateBlindIndex,
   createNameBlindIndex,
@@ -174,6 +174,155 @@ export async function unassignAgent(caseId: string, agentId: string) {
   if (error) return { error: handleDbError(error, "cases") };
   revalidatePath(`/cases/${caseId}`);
   return { ok: true };
+}
+
+// ─── Bulk assignment (checkbox dialog) ───────────────────────────────────────
+
+export interface AssignableAgent {
+  id: string;
+  full_name: string;
+  agent_code: string;
+  photo_url: string | null;
+  status: AgentStatus;
+  agent_role: AgentRole | null;
+}
+
+/** Loads the full agent roster plus the IDs currently assigned to the case. */
+export async function getCaseAssignmentData(
+  caseId: string,
+): Promise<{ agents: AssignableAgent[]; assignedIds: string[] } | { error: string }> {
+  await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const [{ data: agentsRaw, error: aErr }, { data: linksRaw, error: lErr }] = await Promise.all([
+    supabase
+      .from("agents")
+      .select("id, full_name, agent_code, photo_url, status, agent_role")
+      .order("full_name"),
+    supabase.from("case_agents").select("agent_id").eq("case_id", caseId),
+  ]);
+  if (aErr) return { error: handleDbError(aErr, "cases") };
+  if (lErr) return { error: handleDbError(lErr, "cases") };
+
+  return {
+    agents: (agentsRaw ?? []) as AssignableAgent[],
+    assignedIds: (linksRaw ?? []).map((r) => r.agent_id as string),
+  };
+}
+
+/**
+ * Sets the case's assigned agents to exactly `agentIds`, diffing against the
+ * current set: inserts new links, deletes removed ones, notifies + emails newly
+ * assigned agents, auto-advances a brand-new case to "assigned", and records an
+ * audit_logs entry per change. Single source of truth = case_agents.
+ */
+export async function setCaseAssignments(
+  caseId: string,
+  agentIds: string[],
+): Promise<{ ok: true; added: number; removed: number } | { error: string }> {
+  const profile = await requireRole(["admin", "supervisor"]);
+  const supabase = await createClient();
+
+  const { data: currentRaw, error: curErr } = await supabase
+    .from("case_agents")
+    .select("agent_id")
+    .eq("case_id", caseId);
+  if (curErr) return { error: handleDbError(curErr, "cases") };
+
+  const current = new Set((currentRaw ?? []).map((r) => r.agent_id as string));
+  const next = new Set(agentIds);
+  const toAdd = [...next].filter((id) => !current.has(id));
+  const toRemove = [...current].filter((id) => !next.has(id));
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from("case_agents")
+      .insert(toAdd.map((agentId) => ({ case_id: caseId, agent_id: agentId, assigned_by: profile.id })));
+    if (error) return { error: handleDbError(error, "cases") };
+  }
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from("case_agents")
+      .delete()
+      .eq("case_id", caseId)
+      .in("agent_id", toRemove);
+    if (error) return { error: handleDbError(error, "cases") };
+  }
+
+  // Auto-advance a brand-new case once it has at least one assignee.
+  if (next.size > 0) {
+    await supabase.from("cases").update({ status: "assigned" }).eq("id", caseId).eq("status", "new");
+  }
+
+  // Resolve names/emails for the changed agents (for audit + notifications).
+  const changedIds = [...new Set([...toAdd, ...toRemove])];
+  const { data: caseRow } = await supabase
+    .from("cases")
+    .select("case_number, case_type, client_name")
+    .eq("id", caseId)
+    .single();
+  const { data: agentRows } = changedIds.length
+    ? await supabase.from("agents").select("id, full_name, email, profile_id").in("id", changedIds)
+    : { data: [] as { id: string; full_name: string | null; email: string | null; profile_id: string | null }[] };
+  const agentById = new Map((agentRows ?? []).map((a) => [a.id, a]));
+
+  // Notify + email newly assigned agents.
+  for (const agentId of toAdd) {
+    const a = agentById.get(agentId);
+    if (!a || !caseRow) continue;
+    if (a.email) {
+      void sendAssignmentEmail({
+        to: a.email,
+        agentName: a.full_name ?? "Agent",
+        caseNumber: caseRow.case_number,
+        caseType: caseRow.case_type,
+        clientName: caseRow.client_name,
+        caseId,
+      });
+    }
+    if (a.profile_id) {
+      void notifyUsers([a.profile_id], {
+        type: "assignment",
+        title: "New case assignment",
+        body: `You have been assigned to ${caseRow.case_number}.`,
+        link: `/cases/${caseId}`,
+      });
+    }
+  }
+
+  // Audit log every assignment change.
+  const auditRows = [
+    ...toAdd.map((agentId) => ({
+      actor_id: profile.id,
+      action: "assign_agent",
+      entity: "case_agents",
+      entity_id: caseId,
+      metadata: {
+        case_number: caseRow?.case_number ?? null,
+        agent_id: agentId,
+        agent_name: agentById.get(agentId)?.full_name ?? null,
+      },
+    })),
+    ...toRemove.map((agentId) => ({
+      actor_id: profile.id,
+      action: "unassign_agent",
+      entity: "case_agents",
+      entity_id: caseId,
+      metadata: {
+        case_number: caseRow?.case_number ?? null,
+        agent_id: agentId,
+        agent_name: agentById.get(agentId)?.full_name ?? null,
+      },
+    })),
+  ];
+  if (auditRows.length > 0) {
+    await supabase.from("audit_logs").insert(auditRows);
+  }
+
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/cases");
+  revalidatePath("/field");
+  return { ok: true, added: toAdd.length, removed: toRemove.length };
 }
 
 export async function archiveCase(caseId: string) {
