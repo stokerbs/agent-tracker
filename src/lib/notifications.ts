@@ -1,6 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { sendPushToUsers } from "@/lib/push/send";
 import type { NotificationType } from "@/lib/types";
 
 interface NotifyInput {
@@ -26,6 +27,13 @@ export async function notifyUsers(
       link: notification.link ?? null,
     })),
   );
+
+  // Fan out to native devices via FCM (no-op when push isn't configured).
+  void sendPushToUsers(userIds, {
+    title: notification.title,
+    body: notification.body,
+    link: notification.link,
+  });
 }
 
 /**

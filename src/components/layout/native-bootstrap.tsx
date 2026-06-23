@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { isNative } from "@/lib/native";
-import { registerDeviceToken } from "@/app/(dashboard)/field/actions";
+import { registerDeviceToken, issueGpsToken } from "@/app/(dashboard)/field/actions";
 
 /**
  * Invisible client component that runs native-only setup once the app has
@@ -14,9 +14,24 @@ export function NativeBootstrap() {
   useEffect(() => {
     if (!isNative()) return;
     let cleanupPush: (() => void) | undefined;
+    let stopGps: (() => void) | undefined;
     let cancelled = false;
 
     (async () => {
+      // Background GPS: mint a bearer token, then start the background watcher
+      // (covers foreground + background; posts to /api/agents/location).
+      try {
+        const res = await issueGpsToken();
+        if (!cancelled && "token" in res) {
+          const { startBackgroundGps } = await import("@/lib/native/native-bg-geo");
+          const stop = await startBackgroundGps(res.token);
+          if (cancelled) stop();
+          else stopGps = stop;
+        }
+      } catch {
+        // GPS optional — continue with push setup.
+      }
+
       // Push registration → persist token server-side.
       const { initPushNotifications } = await import("@/lib/native/native-push");
       const cleanup = await initPushNotifications((token, platform) => {
@@ -50,6 +65,7 @@ export function NativeBootstrap() {
     return () => {
       cancelled = true;
       cleanupPush?.();
+      stopGps?.();
     };
   }, []);
 

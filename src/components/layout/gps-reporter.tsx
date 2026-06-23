@@ -35,24 +35,9 @@ async function readBattery(): Promise<{ battery: number; charging: boolean } | n
 export function GpsReporter() {
   const lastReportRef = useRef<number>(0);
 
-  // Native app: use the Capacitor geolocation watcher instead of the browser API.
-  useEffect(() => {
-    if (!isNative()) return;
-    let stop: (() => void) | undefined;
-    let cancelled = false;
-    import("@/lib/native/native-geo").then(({ startNativeGpsWatch }) =>
-      startNativeGpsWatch().then((s) => {
-        if (cancelled) s();
-        else stop = s;
-      }),
-    );
-    return () => {
-      cancelled = true;
-      stop?.();
-    };
-  }, []);
-
-  // Web browser: navigator.geolocation watch.
+  // Web browser only: navigator.geolocation watch. On native, GPS is handled by
+  // the background-geolocation watcher started in NativeBootstrap (covers
+  // foreground + background), so this no-ops to avoid double reporting.
   useEffect(() => {
     if (isNative()) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
