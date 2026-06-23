@@ -9,6 +9,7 @@ import {
   BatteryLow,
   BatteryMedium,
   Briefcase,
+  Camera,
   Car,
   ChevronRight,
   Clock,
@@ -57,6 +58,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AGENT_STATUS_META } from "@/lib/constants";
 import { cn, initials, timeAgo } from "@/lib/utils";
+import { isNative } from "@/lib/native";
 import type { Agent, AgentStatus, Case } from "@/lib/types";
 import type { IntelCounts } from "@/app/(dashboard)/field/page";
 
@@ -442,6 +444,19 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
   const fileRef  = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Native app only: surface a direct-to-camera capture button. Gated behind a
+  // mounted check to avoid SSR/hydration mismatch.
+  const [native, setNative] = useState(false);
+  useEffect(() => setNative(isNative()), []);
+
+  async function captureNativePhoto() {
+    const { capturePhoto } = await import("@/lib/native/native-camera");
+    const shot = await capturePhoto("camera");
+    if (shot) {
+      setFiles((prev) => [...prev, { file: shot.file, previewUrl: shot.previewUrl, kind: "photo" }]);
+    }
+  }
+
   // Reset form with fresh defaults each time the dialog opens
   useEffect(() => {
     if (open) {
@@ -654,6 +669,13 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
 
           {/* Upload buttons */}
           <div className="flex flex-wrap gap-1.5">
+            {native && (
+              <button type="button" onClick={captureNativePhoto} disabled={pending}
+                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">
+                <Camera className="h-3 w-3" />
+                {tObs("camera")}
+              </button>
+            )}
             <button type="button" onClick={() => photoRef.current?.click()} disabled={pending}
               className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50">
               <ImageIcon className="h-3 w-3" />

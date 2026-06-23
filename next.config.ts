@@ -30,11 +30,13 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // next-intl, Next.js runtime, Radix UI — inline scripts required
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com",
+      // `capacitor:` allows the Capacitor native bridge when loaded in the app shell.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' capacitor: https://maps.googleapis.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com",
+      // `capacitor:` lets native camera previews (photo.webPath) render in <img>.
+      "img-src 'self' blob: data: capacitor: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com",
+      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",

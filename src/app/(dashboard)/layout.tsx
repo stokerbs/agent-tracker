@@ -2,6 +2,7 @@ import { requireProfile } from "@/lib/auth";
 import { SidebarNav } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { GpsReporter } from "@/components/layout/gps-reporter";
+import { NativeBootstrap } from "@/components/layout/native-bootstrap";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default async function DashboardLayout({
         <Header profile={profile} />
         <main className="flex-1 p-4 sm:p-6 lg:p-7">{children}</main>
         <GpsReporter />
+        <NativeBootstrap />
       </div>
     </div>
   );

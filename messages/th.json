@@ -1659,6 +1659,7 @@
       "date": "วันที่",
       "time": "เวลา",
       "useGps": "ใช้ GPS · ±{accuracy}ม.",
+      "camera": "กล้อง",
       "photos": "รูปภาพ",
       "videos": "วิดีโอ",
       "files": "ไฟล์",
