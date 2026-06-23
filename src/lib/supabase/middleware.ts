@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // /login covers /login/verify (startsWith check), so no extra entry needed.
-const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login"];
+const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy"];
 
 /**
  * Refreshes the Supabase session on every request and enforces auth on

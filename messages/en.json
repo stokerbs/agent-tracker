@@ -1378,6 +1378,18 @@
       "unsavedChanges": "Unsaved changes"
     }
   },
+  "account": {
+    "delete": {
+      "title": "Delete account",
+      "description": "Permanently delete your account and personal profile data. Case records you contributed are kept by the case owner but unlinked from you. This cannot be undone.",
+      "button": "Delete my account",
+      "confirmTitle": "Delete your account?",
+      "confirmDescription": "This permanently removes your login and personal profile. You will be signed out immediately.",
+      "confirmLabel": "Type {word} to confirm",
+      "cancel": "Cancel",
+      "confirmButton": "Delete account"
+    }
+  },
   "profile": {
     "title": "My Profile",
     "description": "Manage your account details.",
