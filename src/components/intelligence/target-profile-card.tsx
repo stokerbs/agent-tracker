@@ -17,6 +17,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SocialLinks } from "@/components/intelligence/social-links";
+import type { SocialMap } from "@/lib/socials";
 
 interface ProfileData {
   name: string | null;
@@ -29,7 +31,7 @@ interface ProfileData {
   nationality: string | null;
   occupation: string | null;
   email: string | null;
-  socials: string | null;
+  socials: SocialMap;
 }
 
 interface Props {
@@ -111,6 +113,21 @@ export function TargetProfileCard({ caseId, data, isStaff }: Props) {
                     <Input id="target_age" name="target_age" type="number" min="1" max="120" defaultValue={data.age ?? ""} placeholder="—" />
                   </div>
                 </div>
+                {/* Social media handles */}
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="target_facebook">Facebook</Label>
+                    <Input id="target_facebook" name="target_facebook" defaultValue={data.socials.facebook ?? ""} placeholder="facebook.com/username" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="target_instagram">Instagram</Label>
+                    <Input id="target_instagram" name="target_instagram" defaultValue={data.socials.instagram ?? ""} placeholder="@username" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="target_tiktok">TikTok</Label>
+                    <Input id="target_tiktok" name="target_tiktok" defaultValue={data.socials.tiktok ?? ""} placeholder="@username" />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="target_notes">{t("notes")}</Label>
                   <Textarea id="target_notes" name="target_notes" defaultValue={data.notes ?? ""} placeholder={t("notesPlaceholder")} rows={3} />
@@ -131,12 +148,19 @@ export function TargetProfileCard({ caseId, data, isStaff }: Props) {
         <Row label={t("alias")} value={data.alias} />
         <Row label={t("phone")} value={data.phone} />
         <Row label={t("email")} value={data.email} />
+
+        {/* Social media — part of the dossier, directly below name/phone */}
+        {(data.socials.facebook || data.socials.instagram || data.socials.tiktok) && (
+          <div className="pt-1">
+            <SocialLinks socials={data.socials} />
+          </div>
+        )}
+
         <Row label={t("gender")} value={data.gender} />
         <Row label={t("age")} value={data.age} />
         <Row label={t("dob")} value={data.dob} />
         <Row label={t("nationality")} value={data.nationality} />
         <Row label={t("occupation")} value={data.occupation} />
-        <Row label={t("socials")} value={data.socials} />
         {data.notes && (
           <div className="mt-2 rounded-md border border-border/50 bg-muted/30 p-2 text-xs text-muted-foreground">
             {data.notes}
@@ -144,7 +168,8 @@ export function TargetProfileCard({ caseId, data, isStaff }: Props) {
         )}
         {!data.name && !data.alias && !data.phone && !data.email && !data.gender &&
           !data.age && !data.dob && !data.nationality && !data.occupation &&
-          !data.socials && !data.notes && (
+          !data.socials.facebook && !data.socials.instagram && !data.socials.tiktok &&
+          !data.notes && (
           <p className="text-xs text-muted-foreground">{t("empty")}</p>
         )}
       </CardContent>

@@ -8,6 +8,7 @@ import { LocationsSection } from "@/components/intelligence/locations-section";
 import { DocumentsSection } from "@/components/intelligence/documents-section";
 import { RelationshipsSection } from "@/components/intelligence/relationships-section";
 import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation, VehiclePhoto, TargetRelationship } from "@/lib/types";
+import type { SocialMap } from "@/lib/socials";
 
 interface TargetProfile {
   name: string | null;
@@ -20,7 +21,7 @@ interface TargetProfile {
   nationality: string | null;
   occupation: string | null;
   email: string | null;
-  socials: string | null;
+  socials: SocialMap;
 }
 
 interface Props {

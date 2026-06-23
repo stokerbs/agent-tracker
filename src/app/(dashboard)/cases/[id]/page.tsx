@@ -18,6 +18,7 @@ import { requireProfile, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BUCKETS } from "@/lib/constants";
 import { decryptField } from "@/lib/security/encryption";
+import { parseSocials } from "@/lib/socials";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   CasePriorityBadge,
@@ -112,13 +113,9 @@ export default async function CaseDetailPage({
   const targetNotes = (c as any).target_notes_enc ? decryptField((c as any).target_notes_enc) : null;
   const targetDob   = c.target_dob_enc   ? decryptField(c.target_dob_enc)   : null;
   const targetEmail = c.target_email_enc ? decryptField(c.target_email_enc) : null;
-  let targetSocials: string | null = null;
-  if (c.target_socials_enc) {
-    try {
-      const arr = JSON.parse(decryptField(c.target_socials_enc)) as { platform: string | null; handle: string | null }[];
-      targetSocials = arr.map((s) => [s.platform, s.handle].filter(Boolean).join(": ")).filter(Boolean).join(" · ") || null;
-    } catch { targetSocials = null; }
-  }
+  const { map: targetSocials } = parseSocials(
+    c.target_socials_enc ? decryptField(c.target_socials_enc) : null,
+  );
 
   const [
     { data: rawTimeline },
