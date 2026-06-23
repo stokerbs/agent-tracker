@@ -47,16 +47,39 @@ function isInsideGeofence(
  *      at the application layer by filtering on the verified user.id.
  */
 export async function POST(request: NextRequest) {
-  // Step 1: verify session — user-session client only for auth check
+  // Step 1: resolve the acting user — cookie session, or a background GPS bearer
+  // token (native background reporting, where WebView cookies aren't available).
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
+  let userId = user?.id ?? null;
+
+  if (!userId) {
+    const authHeader = request.headers.get("authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (token) {
+      const svcAuth = createServiceClient();
+      const { data: tokenRow } = await svcAuth
+        .from("gps_tokens")
+        .select("profile_id, revoked_at")
+        .eq("token", token)
+        .maybeSingle();
+      if (tokenRow && !tokenRow.revoked_at) {
+        userId = tokenRow.profile_id as string;
+        void svcAuth
+          .from("gps_tokens")
+          .update({ last_used_at: new Date().toISOString() })
+          .eq("token", token);
+      }
+    }
+  }
+
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limit = checkRateLimit("gps", user.id);
+  const limit = checkRateLimit("gps", userId);
   if (!limit.allowed) {
     const retryAfter = Math.ceil(limit.retryAfterMs / 1000);
     return NextResponse.json(
@@ -78,7 +101,7 @@ export async function POST(request: NextRequest) {
   const { data: agent } = await svc
     .from("agents")
     .select("id, status, current_lat, current_lng")
-    .eq("profile_id", user.id)
+    .eq("profile_id", userId)
     .maybeSingle();
 
   if (!agent) {
@@ -121,7 +144,7 @@ export async function POST(request: NextRequest) {
     .from("agents")
     .update(update)
     .eq("id", agent.id)
-    .eq("profile_id", user.id); // redundant safety filter
+    .eq("profile_id", userId); // redundant safety filter
 
   if (error) {
     return NextResponse.json(

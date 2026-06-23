@@ -64,15 +64,44 @@ supabase db push     # applies supabase/migrations/0068_device_tokens.sql
 - **Push token**: on launch the device token is stored in `device_tokens`
   (delivery is wired in Phase B).
 
-## Phase B — background GPS, push delivery, store submission (not built yet)
-- Background GPS: add `@capacitor-community/background-geolocation`; add a Bearer
-  device-token auth branch to `/api/agents/location` (background HTTP has no webview
-  cookies); iOS background mode + Android foreground service.
-- Push delivery: Firebase project (FCM) with an APNs `.p8` key; add
-  `google-services.json` / `GoogleService-Info.plist`; `src/lib/push/send.ts` (FCM
-  HTTP v1) hooked into `notifyUsers()`.
-- Store: Apple Developer ($99/yr) + Google Play ($25 once); app icons/splash,
-  screenshots, privacy (location/camera) declarations; TestFlight / internal testing.
+## Phase B — background GPS + push delivery (code shipped; native config + keys on you)
+
+The app-side code is implemented. What remains is native config, Firebase/APNs
+provisioning, and store submission.
+
+### Background GPS (code done)
+- Plugin `@capacitor-community/background-geolocation` is added; the watcher is
+  started from `NativeBootstrap` and POSTs to `/api/agents/location` with a Bearer
+  GPS token (`issueGpsToken` → `gps_tokens`, migration **0069**). Apply it:
+  `supabase db push`.
+- Native config you must add:
+  - **iOS** (`ios/App/App/Info.plist`): `NSLocationAlwaysAndWhenInUseUsageDescription`
+    and enable Background Mode **Location updates** (Xcode → Signing & Capabilities).
+  - **Android** (`AndroidManifest.xml`): `ACCESS_BACKGROUND_LOCATION` +
+    `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_LOCATION`. The plugin shows a
+    persistent notification while tracking (OS requirement).
+- Reliability note: the community plugin tracks while the app is running or
+  backgrounded. For tracking after the app is **force-killed**, upgrade to
+  `@transistorsoft/capacitor-background-geolocation` (paid) which does native HTTP.
+
+### Push delivery (code done — FCM HTTP v1)
+- `src/lib/push/send.ts` sends via FCM and is wired into `notifyUsers()`
+  (`src/lib/notifications.ts`), so assignments/messages/emergencies push to devices.
+  No-ops until configured.
+- **You provide** (Firebase console → Project settings → Service accounts → generate
+  key), set as Vercel env vars:
+  - `FCM_PROJECT_ID`
+  - `FCM_CLIENT_EMAIL`
+  - `FCM_PRIVATE_KEY` (the PEM; keep the `\n` escapes — the code normalises them)
+- **iOS**: upload an **APNs auth key (.p8)** to Firebase (Cloud Messaging tab); add
+  the **Push Notifications** capability in Xcode; add `GoogleService-Info.plist`.
+- **Android**: add `google-services.json` and the Google services Gradle plugin
+  (Capacitor docs / `npx cap sync` picks it up).
+- Re-run `npm run cap:sync` after adding the platform config files.
+
+### Store submission (you)
+Apple Developer ($99/yr) + Google Play ($25 once); app icons/splash, screenshots,
+privacy (location/camera/push) declarations; TestFlight / internal testing, then review.
 
 ## Notes
 - Re-run `npm run cap:sync` after changing `capacitor.config.ts`, adding plugins, or

@@ -35,3 +35,23 @@ export async function registerDeviceToken(
   if (error) return { error: handleDbError(error, "registerDeviceToken") };
   return { ok: true };
 }
+
+/**
+ * Mint a long-lived GPS token for the current user's device, used by the native
+ * background-geolocation watcher to authenticate location posts when the WebView
+ * session is unavailable. Replaces any prior token (one active per user). The
+ * native layer stores this securely and sends it as `Authorization: Bearer`.
+ */
+export async function issueGpsToken(): Promise<{ ok: true; token: string } | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "Not authenticated" };
+
+  const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+  const svc = createServiceClient();
+  await svc.from("gps_tokens").delete().eq("profile_id", profile.id);
+  const { error } = await svc
+    .from("gps_tokens")
+    .insert({ profile_id: profile.id, token });
+  if (error) return { error: handleDbError(error, "issueGpsToken") };
+  return { ok: true, token };
+}
