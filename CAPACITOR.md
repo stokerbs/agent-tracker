@@ -20,7 +20,12 @@ accounts aren't available in CI). Phase A below gets a real app on a device.
 npx cap add ios
 npx cap add android
 
-# 2. Sync web config + plugins into the native projects (re-run after any
+# 2. Generate app icons + splash screens from ./assets into the native projects.
+#    Placeholder artwork is committed; replace ./assets/*.png then re-run. See
+#    assets/README.md.
+npm run assets:generate
+
+# 3. Sync web config + plugins into the native projects (re-run after any
 #    capacitor.config.ts or plugin change).
 npm run cap:sync
 
