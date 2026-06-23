@@ -15,7 +15,8 @@
     "cap:ios": "cap run ios",
     "cap:android": "cap run android",
     "cap:open:ios": "cap open ios",
-    "cap:open:android": "cap open android"
+    "cap:open:android": "cap open android",
+    "assets:generate": "capacitor-assets generate"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^7.0.0",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
     "@types/node": "^20.17.9",
