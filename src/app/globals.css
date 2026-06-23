@@ -161,3 +161,30 @@
   .report-content li { @apply leading-relaxed; }
   .report-content hr { @apply my-3 border-border; }
 }
+
+/* ─── Native app (Capacitor) — make the WebView feel like a native app ────────
+   Applied only when running inside the native shell (the `capacitor-native`
+   class is added to <html> by NativeBootstrap). Web browsers are unaffected. */
+html.capacitor-native,
+html.capacitor-native body {
+  /* No rubber-band/overscroll glow that reveals a web page. */
+  overscroll-behavior: none;
+}
+
+html.capacitor-native body {
+  /* Respect the home indicator / gesture bar (top is handled by the native
+     status bar not overlaying the WebView). */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Kill browser-only affordances that betray a WebView. Inputs/textboxes keep
+   normal selection so users can still edit and copy field data. */
+html.capacitor-native,
+html.capacitor-native * {
+  -webkit-touch-callout: none;          /* no long-press link/image menu */
+  -webkit-tap-highlight-color: transparent;
+}
+html.capacitor-native :not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
