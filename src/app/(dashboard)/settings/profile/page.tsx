@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { DeleteAccountSection } from "@/components/settings/delete-account-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,8 @@ export default async function ProfilePage() {
           />
         </CardContent>
       </Card>
+
+      <DeleteAccountSection />
     </div>
   );
 }
