@@ -7,6 +7,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BUCKETS } from "@/lib/constants";
 import { decryptField } from "@/lib/security/encryption";
+import { parseSocials } from "@/lib/socials";
 import { Button } from "@/components/ui/button";
 import { FieldIntelClient } from "@/components/field/field-intel-client";
 import type { Evidence, TargetPhoto, TargetVehicle, TargetLocation, VehiclePhoto } from "@/lib/types";
@@ -37,7 +38,7 @@ export default async function FieldIntelPage({
   // Verify the current user (as an agent) is assigned to this case
   const { data: caseRaw } = await supabase
     .from("cases")
-    .select("id, case_number, case_type, client_name, target_name_enc, target_phone_enc, target_alias_enc, target_gender, target_age, target_notes_enc")
+    .select("id, case_number, case_type, client_name, target_name_enc, target_phone_enc, target_alias_enc, target_gender, target_age, target_notes_enc, target_socials_enc")
     .eq("id", id)
     .single();
 
@@ -117,6 +118,7 @@ export default async function FieldIntelPage({
     gender: c.target_gender     ?? null,
     age:    c.target_age        ?? null,
     notes:  c.target_notes_enc  ? decryptField(c.target_notes_enc)  : null,
+    socials: parseSocials(c.target_socials_enc ? decryptField(c.target_socials_enc) : null).map,
   };
 
   return (

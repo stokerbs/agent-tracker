@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { BUCKETS } from "@/lib/constants";
-import { encryptField, createLicensePlateBlindIndex, normalizeLicensePlate } from "@/lib/security/encryption";
+import { encryptField, decryptField, createLicensePlateBlindIndex, normalizeLicensePlate } from "@/lib/security/encryption";
+import { parseSocials, serializeSocials } from "@/lib/socials";
 import {
   ALLOWED_IMAGE_TYPES,
   ALLOWED_VIDEO_TYPES,
@@ -39,14 +40,28 @@ export async function updateTargetProfile(caseId: string, formData: FormData) {
   const ageRaw   = formData.get("target_age") as string | null;
   const notes    = (formData.get("target_notes") as string | null)?.trim() || null;
 
+  const facebook  = (formData.get("target_facebook")  as string | null)?.trim() || null;
+  const instagram = (formData.get("target_instagram") as string | null)?.trim() || null;
+  const tiktok    = (formData.get("target_tiktok")    as string | null)?.trim() || null;
+
+  const supabase = await createClient();
+
+  // Preserve any non-standard platforms previously extracted by AI intake.
+  const { data: existing } = await supabase
+    .from("cases").select("target_socials_enc").eq("id", caseId).single();
+  const { others } = parseSocials(
+    existing?.target_socials_enc ? decryptField(existing.target_socials_enc) : null,
+  );
+  const socials = serializeSocials({ facebook, instagram, tiktok }, others);
+
   const update: Record<string, unknown> = {
     target_gender: gender,
     target_age: ageRaw ? parseInt(ageRaw, 10) : null,
     target_alias_enc: alias ? encryptField(alias) : null,
     target_notes_enc: notes ? encryptField(notes) : null,
+    target_socials_enc: socials.length ? encryptField(JSON.stringify(socials)) : null,
   };
 
-  const supabase = await createClient();
   const { error } = await supabase.from("cases").update(update).eq("id", caseId);
   if (error) throw new Error(handleDbError(error, "updateTargetProfile"));
   revalidate(caseId);

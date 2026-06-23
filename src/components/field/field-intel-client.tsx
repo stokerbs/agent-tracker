@@ -9,6 +9,8 @@ import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { SocialLinks } from "@/components/intelligence/social-links";
+import type { SocialMap } from "@/lib/socials";
 import type { Evidence, LocationType, TargetLocation, TargetPhoto, TargetVehicle, VehiclePhoto } from "@/lib/types";
 
 const LOCATION_ICONS: Record<LocationType, React.ReactNode> = {
@@ -30,6 +32,7 @@ interface ProfileData {
   gender: string | null;
   age: number | null;
   notes: string | null;
+  socials: SocialMap;
 }
 
 interface Props {
@@ -155,6 +158,9 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
                 <Phone className="h-3 w-3" />
                 {profile.phone}
               </a>
+            )}
+            {(profile.socials.facebook || profile.socials.instagram || profile.socials.tiktok) && (
+              <SocialLinks socials={profile.socials} className="mt-1.5" />
             )}
             {profile.notes && (
               <p className="mt-1 text-xs text-muted-foreground leading-snug">{profile.notes}</p>
