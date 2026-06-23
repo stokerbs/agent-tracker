@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isNative } from "@/lib/native";
 
 const REPORT_INTERVAL_MS = 55_000; // slightly under the 60s map poll
 
@@ -34,7 +35,26 @@ async function readBattery(): Promise<{ battery: number; charging: boolean } | n
 export function GpsReporter() {
   const lastReportRef = useRef<number>(0);
 
+  // Native app: use the Capacitor geolocation watcher instead of the browser API.
   useEffect(() => {
+    if (!isNative()) return;
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    import("@/lib/native/native-geo").then(({ startNativeGpsWatch }) =>
+      startNativeGpsWatch().then((s) => {
+        if (cancelled) s();
+        else stop = s;
+      }),
+    );
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
+
+  // Web browser: navigator.geolocation watch.
+  useEffect(() => {
+    if (isNative()) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
 
     const report = async (position: GeolocationPosition) => {

@@ -1658,6 +1658,7 @@
       "date": "Date",
       "time": "Time",
       "useGps": "Use GPS · ±{accuracy}m",
+      "camera": "Camera",
       "photos": "Photos",
       "videos": "Videos",
       "files": "Files",
