@@ -36,7 +36,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1200,
+      // Keep the splash up until the web app mounts and calls hide()
+      // (NativeBootstrap) — avoids a white flash while the remote URL loads.
+      launchAutoHide: false,
       backgroundColor: "#0b0f14",
       showSpinner: false,
     },

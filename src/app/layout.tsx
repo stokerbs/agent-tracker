@@ -30,6 +30,8 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Required so iOS safe-area-inset env() values are non-zero in the native shell.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
