@@ -1,6 +1,8 @@
 import "server-only";
 import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { isApnsConfigured, sendApnsToTokens } from "./apns";
+import type { PushPayload } from "./types";
 
 /**
  * Firebase Cloud Messaging (HTTP v1) sender for native push.
@@ -9,13 +11,10 @@ import { createServiceClient } from "@/lib/supabase/server";
  * extra npm dependency (Node `crypto` signs the RS256 assertion). Configure via
  * env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY (PEM; literal "\n" is
  * normalised). When unset, all sends no-op so the app/web run unaffected.
+ *
+ * Delivery is split by platform in `sendPushToUsers`: iOS tokens go via APNs
+ * (see ./apns), Android/web via FCM here.
  */
-
-interface PushPayload {
-  title: string;
-  body?: string;
-  link?: string;
-}
 
 function fcmConfig() {
   const projectId = process.env.FCM_PROJECT_ID;
@@ -112,33 +111,48 @@ async function sendToToken(
 }
 
 /**
- * Fan a notification out to all device tokens of the given users via FCM.
- * Fire-and-forget safe: no-ops when FCM is not configured, and prunes stale
- * tokens. Never throws.
+ * Fan a notification out to all device tokens of the given users, routing iOS
+ * tokens to APNs and Android/web tokens to FCM. Fire-and-forget safe: no-ops
+ * when neither transport is configured, prunes stale tokens, never throws.
  */
 export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<void> {
   try {
-    const cfg = fcmConfig();
-    if (!cfg || userIds.length === 0) return;
+    const fcm = fcmConfig();
+    const apnsOn = isApnsConfigured();
+    if ((!fcm && !apnsOn) || userIds.length === 0) return;
 
     const svc = createServiceClient();
-    const { data: tokens } = await svc
+    const { data: rows } = await svc
       .from("device_tokens")
-      .select("token")
+      .select("token, platform")
       .in("profile_id", userIds);
-    if (!tokens || tokens.length === 0) return;
+    if (!rows || rows.length === 0) return;
 
-    const accessToken = await getAccessToken();
-    if (!accessToken) return;
+    const iosTokens = rows.filter((r) => r.platform === "ios").map((r) => r.token as string);
+    const otherTokens = rows.filter((r) => r.platform !== "ios").map((r) => r.token as string);
 
-    const results = await Promise.all(
-      tokens.map(async (t) => ({
-        token: t.token as string,
-        status: await sendToToken(cfg.projectId, accessToken, t.token as string, payload),
-      })),
-    );
+    const stale: string[] = [];
 
-    const stale = results.filter((r) => r.status === "stale").map((r) => r.token);
+    // iOS → APNs (single HTTP/2 session for the batch).
+    if (apnsOn && iosTokens.length > 0) {
+      const results = await sendApnsToTokens(iosTokens, payload);
+      stale.push(...results.filter((r) => r.status === "stale").map((r) => r.token));
+    }
+
+    // Android/web → FCM.
+    if (fcm && otherTokens.length > 0) {
+      const accessToken = await getAccessToken();
+      if (accessToken) {
+        const results = await Promise.all(
+          otherTokens.map(async (token) => ({
+            token,
+            status: await sendToToken(fcm.projectId, accessToken, token, payload),
+          })),
+        );
+        stale.push(...results.filter((r) => r.status === "stale").map((r) => r.token));
+      }
+    }
+
     if (stale.length > 0) {
       await svc.from("device_tokens").delete().in("token", stale);
     }
