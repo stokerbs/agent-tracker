@@ -1,0 +1,176 @@
+import "server-only";
+import crypto from "node:crypto";
+import http2 from "node:http2";
+import type { PushPayload, SendStatus } from "./types";
+
+/**
+ * Apple Push Notification service (APNs) sender — used for iOS device tokens,
+ * which the `@capacitor/push-notifications` plugin returns as raw APNs tokens
+ * (not FCM tokens). Sending them straight to APNs avoids putting the Firebase
+ * SDK in the iOS app.
+ *
+ * Auth is a provider JWT signed with the APNs Auth Key (.p8, an EC P-256 key)
+ * using ES256 — Node `crypto` signs it, no extra dependency. APNs requires
+ * HTTP/2, which `fetch`/undici can't do as a client, so this uses `node:http2`.
+ *
+ * Configure via env (all required, else every send no-ops):
+ *   APNS_KEY_ID       — the .p8 key's Key ID
+ *   APNS_TEAM_ID      — Apple Developer Team ID
+ *   APNS_BUNDLE_ID    — app bundle id, used as the apns-topic (e.g. app.detectivepulse.field)
+ *   APNS_PRIVATE_KEY  — the .p8 PEM contents (literal "\n" is normalised)
+ *   APNS_PRODUCTION   — "false" routes to the sandbox host; anything else (default) is production
+ */
+
+interface ApnsConfig {
+  keyId: string;
+  teamId: string;
+  bundleId: string;
+  privateKey: string;
+  host: string;
+}
+
+function apnsConfig(): ApnsConfig | null {
+  const keyId = process.env.APNS_KEY_ID;
+  const teamId = process.env.APNS_TEAM_ID;
+  const bundleId = process.env.APNS_BUNDLE_ID;
+  const privateKey = process.env.APNS_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  if (!keyId || !teamId || !bundleId || !privateKey) return null;
+  // TestFlight / App Store builds use the production gateway; Xcode dev builds the sandbox.
+  const host =
+    process.env.APNS_PRODUCTION === "false"
+      ? "https://api.sandbox.push.apple.com"
+      : "https://api.push.apple.com";
+  return { keyId, teamId, bundleId, privateKey, host };
+}
+
+export function isApnsConfigured(): boolean {
+  return apnsConfig() !== null;
+}
+
+function base64url(input: Buffer | string): string {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+// APNs allows reusing a provider token for up to 1h (and rejects regenerating
+// too frequently). Cache and refresh well inside the window.
+let cachedJwt: { token: string; iat: number } | null = null;
+
+function providerToken(cfg: ApnsConfig): string {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedJwt && now - cachedJwt.iat < 50 * 60) return cachedJwt.token;
+
+  const header = base64url(JSON.stringify({ alg: "ES256", kid: cfg.keyId }));
+  const claims = base64url(JSON.stringify({ iss: cfg.teamId, iat: now }));
+  const signingInput = `${header}.${claims}`;
+  // ES256/JOSE needs the raw r||s signature, not Node's default DER encoding.
+  const signature = crypto.sign("SHA256", Buffer.from(signingInput), {
+    key: cfg.privateKey,
+    dsaEncoding: "ieee-p1363",
+  });
+  const token = `${signingInput}.${base64url(signature)}`;
+  cachedJwt = { token, iat: now };
+  return token;
+}
+
+/** Send one notification over an open HTTP/2 session. Never rejects. */
+function sendOne(
+  client: http2.ClientHttp2Session,
+  jwt: string,
+  bundleId: string,
+  deviceToken: string,
+  body: string,
+): Promise<{ token: string; status: SendStatus }> {
+  return new Promise((resolve) => {
+    const req = client.request({
+      ":method": "POST",
+      ":path": `/3/device/${deviceToken}`,
+      authorization: `bearer ${jwt}`,
+      "apns-topic": bundleId,
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+      "content-type": "application/json",
+    });
+
+    let status = 0;
+    let data = "";
+    req.setEncoding("utf8");
+    req.setTimeout(10_000, () => req.close(http2.constants.NGHTTP2_CANCEL));
+    req.on("response", (headers) => {
+      status = Number(headers[":status"]) || 0;
+    });
+    req.on("data", (chunk) => {
+      data += chunk;
+    });
+    req.on("error", (err) => {
+      console.error("[apns] request error", err);
+      resolve({ token: deviceToken, status: "error" });
+    });
+    req.on("end", () => {
+      if (status === 200) return resolve({ token: deviceToken, status: "ok" });
+      let reason = "";
+      try {
+        reason = (JSON.parse(data) as { reason?: string }).reason ?? "";
+      } catch {
+        // non-JSON body
+      }
+      // Token no longer deliverable → caller prunes it.
+      if (
+        status === 410 ||
+        reason === "Unregistered" ||
+        reason === "BadDeviceToken" ||
+        reason === "DeviceTokenNotForTopic"
+      ) {
+        return resolve({ token: deviceToken, status: "stale" });
+      }
+      console.error("[apns] send failed", status, reason || data);
+      resolve({ token: deviceToken, status: "error" });
+    });
+
+    req.end(body);
+  });
+}
+
+/**
+ * Send a notification to many iOS device tokens over a single HTTP/2 session.
+ * Returns a per-token status (so the caller can prune "stale" tokens). No-ops to
+ * an empty array when APNs isn't configured. Never throws.
+ */
+export async function sendApnsToTokens(
+  tokens: string[],
+  payload: PushPayload,
+): Promise<{ token: string; status: SendStatus }[]> {
+  const cfg = apnsConfig();
+  if (!cfg || tokens.length === 0) return [];
+
+  const jwt = providerToken(cfg);
+  const body = JSON.stringify({
+    aps: {
+      alert: { title: payload.title, body: payload.body ?? "" },
+      sound: "default",
+    },
+    ...(payload.link ? { link: payload.link } : {}),
+  });
+
+  const client = http2.connect(cfg.host);
+  // A session-level error (e.g. connect failure) would otherwise leave the
+  // per-request promises unsettled — fail the whole batch instead of hanging.
+  const sessionError = new Promise<{ token: string; status: SendStatus }[]>((resolve) => {
+    client.on("error", (err) => {
+      console.error("[apns] session error", err);
+      resolve(tokens.map((token) => ({ token, status: "error" as SendStatus })));
+    });
+  });
+
+  try {
+    return await Promise.race([
+      Promise.all(tokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body))),
+      sessionError,
+    ]);
+  } finally {
+    client.close();
+  }
+}

@@ -89,20 +89,30 @@ provisioning, and store submission.
   backgrounded. For tracking after the app is **force-killed**, upgrade to
   `@transistorsoft/capacitor-background-geolocation` (paid) which does native HTTP.
 
-### Push delivery (code done — FCM HTTP v1)
-- `src/lib/push/send.ts` sends via FCM and is wired into `notifyUsers()`
+### Push delivery (code done — APNs for iOS, FCM for Android/web)
+- `sendPushToUsers()` (`src/lib/push/send.ts`) is wired into `notifyUsers()`
   (`src/lib/notifications.ts`), so assignments/messages/emergencies push to devices.
-  No-ops until configured.
-- **You provide** (Firebase console → Project settings → Service accounts → generate
-  key), set as Vercel env vars:
-  - `FCM_PROJECT_ID`
-  - `FCM_CLIENT_EMAIL`
-  - `FCM_PRIVATE_KEY` (the PEM; keep the `\n` escapes — the code normalises them)
-- **iOS**: upload an **APNs auth key (.p8)** to Firebase (Cloud Messaging tab); add
-  the **Push Notifications** capability in Xcode; add `GoogleService-Info.plist`.
-- **Android**: add `google-services.json` and the Google services Gradle plugin
-  (Capacitor docs / `npx cap sync` picks it up).
-- Re-run `npm run cap:sync` after adding the platform config files.
+  It routes by `device_tokens.platform`: **iOS → APNs** (`src/lib/push/apns.ts`),
+  **Android/web → FCM** (`send.ts`). No-ops until the relevant transport is configured.
+- **iOS / APNs — you provide** (Apple Developer → Certificates, IDs & Profiles →
+  Keys → create an **APNs Auth Key (.p8)**), set as Vercel env vars:
+  - `APNS_KEY_ID` — the .p8 Key ID
+  - `APNS_TEAM_ID` — Apple Developer Team ID
+  - `APNS_BUNDLE_ID` — `app.detectivepulse.field` (the apns-topic)
+  - `APNS_PRIVATE_KEY` — the .p8 PEM (keep the `\n` escapes — the code normalises them)
+  - `APNS_PRODUCTION` — omit/`true` for TestFlight & App Store builds; `false` for
+    Xcode dev builds (sandbox gateway)
+  - No Firebase SDK in the iOS app: the `@capacitor/push-notifications` plugin
+    returns the raw APNs token, which the sender uses directly.
+- **iOS / Xcode**: enable the **Push Notifications** capability (adds
+  `App.entitlements` with `aps-environment`) and add `remote-notification` to
+  `UIBackgroundModes`. (Not yet present in `ios/` — see open items below.)
+- **Android / FCM — you provide** (Firebase console → Project settings → Service
+  accounts → generate key), set as Vercel env vars:
+  - `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, `FCM_PRIVATE_KEY` (PEM; `\n` escapes kept)
+  - Add `google-services.json` + the Google services Gradle plugin; `npx cap sync`
+    picks it up.
+- Re-run `npm run cap:sync` after adding any platform config files.
 
 ### Store submission (you)
 Apple Developer ($99/yr) + Google Play ($25 once); app icons/splash, screenshots,
