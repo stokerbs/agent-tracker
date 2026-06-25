@@ -17,7 +17,7 @@ import { AddEntryWithAI } from "@/components/timeline/add-entry-with-ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { bangkokDateKey, cn } from "@/lib/utils";
 
 interface Props {
   caseId: string;
@@ -32,7 +32,7 @@ type FilePreview = {
 };
 
 function todayBangkok(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 
 function nowBangkok(): string {

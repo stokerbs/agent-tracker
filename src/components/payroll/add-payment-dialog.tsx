@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Agent, Case } from "@/lib/types";
+import { bangkokDateKey } from "@/lib/utils";
 
 interface Props {
   agents: Agent[];
@@ -111,7 +112,7 @@ export function AddPaymentDialog({ agents, cases }: Props) {
               id="work_date"
               name="work_date"
               type="date"
-              defaultValue={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })}
+              defaultValue={bangkokDateKey()}
               required
             />
           </div>

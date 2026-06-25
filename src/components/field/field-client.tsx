@@ -57,7 +57,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AGENT_STATUS_META } from "@/lib/constants";
-import { cn, initials, timeAgo } from "@/lib/utils";
+import { bangkokDateKey, cn, initials, timeAgo } from "@/lib/utils";
 import { isNative } from "@/lib/native";
 import type { Agent, AgentStatus, Case } from "@/lib/types";
 import type { IntelCounts } from "@/app/(dashboard)/field/page";
@@ -76,7 +76,7 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
 }
 
 function todayBangkok() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 function nowBangkok() {
   return new Date().toLocaleTimeString("en-GB", {

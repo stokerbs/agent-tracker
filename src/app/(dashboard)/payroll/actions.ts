@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import type { PayrollStatus } from "@/lib/types";
+import { bangkokDateKey } from "@/lib/utils";
 
 function bangkokToday(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 
 export async function createPayment(formData: FormData) {

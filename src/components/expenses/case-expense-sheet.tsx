@@ -39,7 +39,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+import { bangkokDateKey, cn } from "@/lib/utils";
 import type { ExpenseCategory, ExtractedExpense } from "@/lib/types";
 
 const CATEGORIES: ExpenseCategory[] = [
@@ -94,7 +94,7 @@ function emptyExtracted(): ExtractedExpense {
 }
 
 function todayBkk() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {

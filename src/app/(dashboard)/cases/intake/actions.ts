@@ -20,6 +20,7 @@ import type {
   IntakeStagedFile,
   IntakeImageClassification,
 } from "@/lib/types";
+import { bangkokDateKey } from "@/lib/utils";
 
 function enc(v: string | null | undefined): string | null {
   const s = (v ?? "").trim();
@@ -64,7 +65,7 @@ export async function confirmIntake(input: {
 
   // ─── 1. Case row ───────────────────────────────────────────────────────────
   const primary = x.targets[0] ?? null;
-  const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const todayBKK = bangkokDateKey();
 
   const targetName = primary?.full_name?.trim() || null;
   const targetPhone = primary?.phones?.[0]?.trim() || null;
