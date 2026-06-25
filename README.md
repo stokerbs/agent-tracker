@@ -183,7 +183,7 @@ Detective Pulse polls the GPS903 platform every minute (Vercel Cron) using the
 | `GPS903_IMEI` | 15-digit IMEI of the login device |
 | `GPS903_DEVICE_PASSWORD` | Device password set in the GPS903 portal |
 
-Sessions are cached in the `gps903_session` Supabase table (25-minute TTL) so
+Sessions are cached in the `gps903_credential_sessions` Supabase table (25-minute TTL) so
 the login form is only hit on expiry. Use **GPS903 Discovery** (`/gps903-discovery`)
 to sync the device catalog and import devices into cases.
 

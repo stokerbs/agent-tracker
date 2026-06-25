@@ -25,8 +25,6 @@ export type UserRole = Enums<"user_role">;
 export type CaseStatus = Enums<"case_status">;
 export type CasePriority = Enums<"case_priority">;
 export type EvidenceType = Enums<"evidence_type">;
-// NOTE: expense_category is DB-faithful and (re)includes the legacy values
-// `food`/`hotel` (no live rows carry them; DB enum cleanup is tracked as TD-10).
 export type ExpenseCategory = Enums<"expense_category">;
 export type ExpenseStatus = Enums<"expense_status">;
 export type PayrollStatus = Enums<"payroll_status">;

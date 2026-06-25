@@ -1332,27 +1332,6 @@ export type Database = {
         }
         Relationships: []
       }
-      gps903_session: {
-        Row: {
-          expires_at: string
-          id: number
-          session_cookie: string
-          updated_at: string
-        }
-        Insert: {
-          expires_at: string
-          id?: number
-          session_cookie: string
-          updated_at?: string
-        }
-        Update: {
-          expires_at?: string
-          id?: number
-          session_cookie?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       invoices: {
         Row: {
           amount: number
@@ -1930,8 +1909,6 @@ export type Database = {
         | "fuel"
         | "toll"
         | "parking"
-        | "food"
-        | "hotel"
         | "misc"
         | "meals"
         | "accommodation"
@@ -1947,7 +1924,6 @@ export type Database = {
         | "assignment"
         | "system"
       payroll_status: "pending" | "paid" | "cancelled" | "adjusted"
-      report_status: "draft" | "submitted" | "approved" | "rejected" | "review"
       user_role: "admin" | "supervisor" | "agent" | "client"
     }
     CompositeTypes: {
@@ -2091,8 +2067,6 @@ export const Constants = {
         "fuel",
         "toll",
         "parking",
-        "food",
-        "hotel",
         "misc",
         "meals",
         "accommodation",
@@ -2110,7 +2084,6 @@ export const Constants = {
         "system",
       ],
       payroll_status: ["pending", "paid", "cancelled", "adjusted"],
-      report_status: ["draft", "submitted", "approved", "rejected", "review"],
       user_role: ["admin", "supervisor", "agent", "client"],
     },
   },
