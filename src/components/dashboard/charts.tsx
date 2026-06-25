@@ -16,6 +16,12 @@ import {
   Legend,
 } from "recharts";
 import { useTranslations } from "next-intl";
+import type {
+  AgentLoad,
+  CasesTrendPoint,
+  RevenueTrendPoint,
+  StatusSlice,
+} from "@/lib/dashboard-charts.types";
 
 // ─── Shared palette ────────────────────────────────────────────────────────
 
@@ -37,11 +43,6 @@ const tooltipStyle = {
 };
 
 // ─── Cases trend (bar) ─────────────────────────────────────────────────────
-
-export interface CasesTrendPoint {
-  month: string;   // "Jun"
-  cases: number;
-}
 
 export function CasesTrendChart({ data }: { data: CasesTrendPoint[] }) {
   const t = useTranslations("dashboard.charts");
@@ -73,12 +74,6 @@ export function CasesTrendChart({ data }: { data: CasesTrendPoint[] }) {
 }
 
 // ─── Case status breakdown (donut) ─────────────────────────────────────────
-
-export interface StatusSlice {
-  name: string;
-  value: number;
-  color: string;
-}
 
 const STATUS_COLORS: Record<string, string> = {
   active:   C.primary,
@@ -121,11 +116,6 @@ export function CaseStatusChart({ data }: { data: StatusSlice[] }) {
 
 // ─── Agent workload (horizontal bar) ────────────────────────────────────────
 
-export interface AgentLoad {
-  name: string;   // short name / nickname
-  cases: number;
-}
-
 export function AgentWorkloadChart({ data }: { data: AgentLoad[] }) {
   const t = useTranslations("dashboard.charts");
   return (
@@ -158,12 +148,6 @@ export function AgentWorkloadChart({ data }: { data: AgentLoad[] }) {
 }
 
 // ─── Revenue trend (area) ───────────────────────────────────────────────────
-
-export interface RevenueTrendPoint {
-  month: string;
-  invoiced: number;
-  paid: number;
-}
 
 export function RevenueTrendChart({ data }: { data: RevenueTrendPoint[] }) {
   const t = useTranslations("dashboard.charts");
