@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendPushToUsers } from "@/lib/push/send";
