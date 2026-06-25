@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Geofence } from "@/lib/types";
 
@@ -31,6 +32,13 @@ export async function createGeofence(
     .single();
 
   if (error) return { error: error.message };
+  await logAudit({
+    actorId: profile.id,
+    action: "GEOFENCE_CREATE",
+    entity: "geofences",
+    entityId: (data as Geofence)?.id ?? null,
+    metadata: { name: input.name },
+  });
   revalidatePath("/map");
   return { fence: data as Geofence };
 }
@@ -38,7 +46,7 @@ export async function createGeofence(
 export async function deleteGeofence(
   id: string,
 ): Promise<{ ok?: boolean; error?: string }> {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin"]);
   const svc = createServiceClient();
 
   const { error } = await svc
@@ -47,6 +55,12 @@ export async function deleteGeofence(
     .eq("id", id);
 
   if (error) return { error: error.message };
+  await logAudit({
+    actorId: actor.id,
+    action: "GEOFENCE_DELETE",
+    entity: "geofences",
+    entityId: id,
+  });
   revalidatePath("/map");
   return { ok: true };
 }

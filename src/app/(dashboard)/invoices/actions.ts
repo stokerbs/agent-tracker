@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { notifyUsers } from "@/lib/notifications";
@@ -137,6 +138,12 @@ export async function deleteInvoice(id: string) {
     .eq("id", id);
 
   if (error) return { error: error.message };
+  await logAudit({
+    actorId: profile.id,
+    action: "INVOICE_SOFT_DELETE",
+    entity: "invoices",
+    entityId: id,
+  });
   revalidatePath("/invoices");
   revalidatePath("/portal");
   return { ok: true };

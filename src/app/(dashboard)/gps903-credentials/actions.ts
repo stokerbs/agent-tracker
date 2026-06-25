@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
 import {
   gps903Login,
@@ -40,18 +41,29 @@ export async function createCredential(
   const actor = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
-  const { error } = await svc.from("gps903_credentials").insert({
-    device_name:      form.device_name.trim(),
-    imei:             form.imei.trim(),
-    device_password:  form.device_password,
-    gps903_device_id: form.gps903_device_id ?? null,
-    phone_number:     form.phone_number ?? null,
-    provider:         form.provider ?? null,
-    is_active:        form.is_active,
-    created_by:       actor.id,
-  });
+  const { data, error } = await svc
+    .from("gps903_credentials")
+    .insert({
+      device_name:      form.device_name.trim(),
+      imei:             form.imei.trim(),
+      device_password:  form.device_password,
+      gps903_device_id: form.gps903_device_id ?? null,
+      phone_number:     form.phone_number ?? null,
+      provider:         form.provider ?? null,
+      is_active:        form.is_active,
+      created_by:       actor.id,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: handleDbError(error, "gps903_credentials") };
+  await logAudit({
+    actorId: actor.id,
+    action: "CREDENTIAL_CREATE",
+    entity: "gps903_credentials",
+    entityId: data?.id ?? null,
+    metadata: { device_name: form.device_name.trim(), imei: form.imei.trim() },
+  });
   revalidatePath("/gps903-credentials");
   return { ok: true };
 }
@@ -60,7 +72,7 @@ export async function updateCredential(
   id: string,
   form: Partial<CredentialFormData>,
 ): Promise<{ ok?: boolean; error?: string }> {
-  await requireRole(["admin", "supervisor"]);
+  const actor = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
   const patch: Record<string, unknown> = {};
@@ -79,17 +91,33 @@ export async function updateCredential(
     .eq("id", id);
 
   if (error) return { error: handleDbError(error, "gps903_credentials") };
+  await logAudit({
+    actorId: actor.id,
+    action: "CREDENTIAL_UPDATE",
+    entity: "gps903_credentials",
+    entityId: id,
+    metadata: {
+      fields_changed: Object.keys(patch),
+      password_changed: Boolean(form.device_password),
+    },
+  });
   revalidatePath("/gps903-credentials");
   return { ok: true };
 }
 
 export async function deleteCredential(id: string): Promise<{ ok?: boolean; error?: string }> {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin"]);
   const svc = createServiceClient();
 
   const { error } = await svc.from("gps903_credentials").delete().eq("id", id);
 
   if (error) return { error: handleDbError(error, "gps903_credentials") };
+  await logAudit({
+    actorId: actor.id,
+    action: "CREDENTIAL_DELETE",
+    entity: "gps903_credentials",
+    entityId: id,
+  });
   revalidatePath("/gps903-credentials");
   return { ok: true };
 }
@@ -98,7 +126,7 @@ export async function toggleCredentialActive(
   id: string,
   active: boolean,
 ): Promise<{ ok?: boolean; error?: string }> {
-  await requireRole(["admin", "supervisor"]);
+  const actor = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
   const { error } = await svc
@@ -107,6 +135,13 @@ export async function toggleCredentialActive(
     .eq("id", id);
 
   if (error) return { error: handleDbError(error, "gps903_credentials") };
+  await logAudit({
+    actorId: actor.id,
+    action: "CREDENTIAL_TOGGLE_ACTIVE",
+    entity: "gps903_credentials",
+    entityId: id,
+    metadata: { is_active: active },
+  });
   revalidatePath("/gps903-credentials");
   return { ok: true };
 }

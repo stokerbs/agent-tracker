@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
 import { getOrRefreshCredentialSession, gps903GetTracking, applyPositionToDevice } from "@/lib/gps903";
 
@@ -77,13 +78,20 @@ export async function grantDeviceAccess(deviceId: string, profileId: string) {
 
   if (error) return { error: handleDbError(error, "gps_device_access") };
 
+  await logAudit({
+    actorId: actor.id,
+    action: "DEVICE_ACCESS_GRANT",
+    entity: "gps_device_access",
+    entityId: deviceId,
+    metadata: { profile_id: profileId },
+  });
   revalidatePath(`/gps-devices/${deviceId}`);
   return { ok: true };
 }
 
 /** Revoke a profile's access to view a GPS device. */
 export async function revokeDeviceAccess(deviceId: string, profileId: string) {
-  await requireRole(["admin", "supervisor"]);
+  const actor = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
   const { error } = await svc
@@ -94,13 +102,20 @@ export async function revokeDeviceAccess(deviceId: string, profileId: string) {
 
   if (error) return { error: handleDbError(error, "gps_device_access") };
 
+  await logAudit({
+    actorId: actor.id,
+    action: "DEVICE_ACCESS_REVOKE",
+    entity: "gps_device_access",
+    entityId: deviceId,
+    metadata: { profile_id: profileId },
+  });
   revalidatePath(`/gps-devices/${deviceId}`);
   return { ok: true };
 }
 
 /** Link or unlink an agent from a GPS device. */
 export async function relinkAgent(deviceId: string, agentId: string | null) {
-  await requireRole(["admin", "supervisor"]);
+  const actor = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
 
   const { error } = await svc
@@ -111,6 +126,13 @@ export async function relinkAgent(deviceId: string, agentId: string | null) {
 
   if (error) return { error: handleDbError(error, "gps_devices") };
 
+  await logAudit({
+    actorId: actor.id,
+    action: "DEVICE_RELINK_AGENT",
+    entity: "gps_devices",
+    entityId: deviceId,
+    metadata: { agent_id: agentId },
+  });
   revalidatePath("/gps-devices");
   revalidatePath(`/gps-devices/${deviceId}`);
   return { ok: true };

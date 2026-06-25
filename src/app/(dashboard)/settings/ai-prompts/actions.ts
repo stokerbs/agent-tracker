@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { handleDbError } from "@/lib/errors";
 
@@ -26,6 +27,13 @@ export async function saveAiPrompt(promptId: string, promptText: string) {
     .eq("id", promptId);
   if (error) return { error: handleDbError(error, "ai_prompts") };
 
+  await logAudit({
+    actorId: profile.id,
+    action: "AI_PROMPT_UPDATE",
+    entity: "ai_prompts",
+    entityId: promptId,
+    metadata: { version_saved: true },
+  });
   revalidatePath("/settings/ai-prompts");
   return { ok: true };
 }
@@ -61,12 +69,18 @@ export async function resetAiPromptToDefault(promptId: string) {
     .eq("id", promptId);
   if (error) return { error: handleDbError(error, "ai_prompts") };
 
+  await logAudit({
+    actorId: profile.id,
+    action: "AI_PROMPT_RESET",
+    entity: "ai_prompts",
+    entityId: promptId,
+  });
   revalidatePath("/settings/ai-prompts");
   return { ok: true };
 }
 
 export async function restoreAiPromptVersion(promptId: string, versionText: string) {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin"]);
   const supabase = createServiceClient();
 
   const { error } = await supabase
@@ -75,6 +89,12 @@ export async function restoreAiPromptVersion(promptId: string, versionText: stri
     .eq("id", promptId);
   if (error) return { error: handleDbError(error, "ai_prompts") };
 
+  await logAudit({
+    actorId: actor.id,
+    action: "AI_PROMPT_RESTORE",
+    entity: "ai_prompts",
+    entityId: promptId,
+  });
   revalidatePath("/settings/ai-prompts");
   return { ok: true };
 }
