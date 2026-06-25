@@ -22,6 +22,14 @@ export const maxDuration = 60;
 export const dynamic     = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // Production guard: this service-role, live-credential-probing diagnostic must
+  // never be reachable in production. Return 404 (not 401/403) so prod does not
+  // even confirm the route exists. VERCEL_ENV is "production" only in prod;
+  // "preview"/"development"/unset elsewhere, so dev/preview workflows are kept.
+  if (process.env.VERCEL_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Fail closed: this endpoint uses a service-role client and exposes GPS903
   // credential summaries + live discovery diagnostics. If CRON_SECRET is not
   // configured, or the bearer token does not match, reject. Never run open.
