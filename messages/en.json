@@ -1920,5 +1920,22 @@
     "noApiKey": "Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen"
+  },
+  "errorBoundary": {
+    "root": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred while loading the application. Please try again.",
+      "reset": "Try again"
+    },
+    "generic": {
+      "title": "Unable to load this section",
+      "description": "Something went wrong while loading this page. You can retry, or come back in a moment.",
+      "reset": "Try again"
+    },
+    "portal": {
+      "title": "Something went wrong",
+      "description": "We couldn't load this page right now. Please try again, or contact us if the problem continues.",
+      "reset": "Try again"
+    }
   }
 }

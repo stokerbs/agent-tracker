@@ -61,3 +61,29 @@ export function handleDbError(error: AppError, context: string): string {
 
   return (error.code !== undefined && PG_MESSAGES[error.code]) || FALLBACK;
 }
+
+/**
+ * Log an error caught by a Next.js `error.tsx` route boundary.
+ *
+ * Designed to be imported and called from a client `error.tsx` Client
+ * Component. It reuses the same "[server error]" structured console.error
+ * convention as handleDbError so boundary failures land in the same log stream.
+ *
+ * Only the context label, error message, and optional Next.js error digest are
+ * logged. The full error object is never spread, so no incidental fields,
+ * tokens, environment values, or other sensitive data can leak into the logs.
+ *
+ * @param error   - The error provided to an error.tsx boundary. Next.js attaches
+ *                  an optional `digest` to correlate client/server occurrences.
+ * @param context - Short label identifying the boundary (e.g. "dashboard:error").
+ */
+export function logBoundaryError(
+  error: Error & { digest?: string },
+  context: string,
+): void {
+  console.error("[server error]", {
+    context,
+    message: error.message,
+    digest: error.digest ?? null,
+  });
+}
