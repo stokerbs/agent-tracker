@@ -56,3 +56,15 @@ export function batteryColor(pct: number | null): string {
   return "text-emerald-500";
 }
 
+/**
+ * Returns the en-CA (YYYY-MM-DD) date key for a given instant in the
+ * Asia/Bangkok timezone. Defaults to "now".
+ *
+ * This is a machine date KEY for form defaults, date grouping/comparison
+ * and "today in Bangkok" logic — it is NOT a display string. Do not route
+ * user-facing date rendering through this helper.
+ */
+export function bangkokDateKey(date: Date = new Date()): string {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+}
+

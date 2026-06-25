@@ -53,7 +53,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { FadeUp } from "@/components/shared/motion";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { bangkokDateKey, cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { Agent, Case, CaseMessageWithSender, Client, Evidence, Expense, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -252,7 +252,7 @@ export default async function CaseDetailPage({
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
 
-  const todayBKK = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const todayBKK = bangkokDateKey();
   const todayEntryCount = timelineEntries.filter((e) => e.entry_date === todayBKK).length;
   const dateMap = new Map<string, typeof timelineEntries>();
   for (const e of timelineEntries) {

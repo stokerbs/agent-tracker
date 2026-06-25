@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { generateReport, generateRangeReport } from "@/app/(dashboard)/timeline/actions";
 import type { ReportType } from "@/app/(dashboard)/timeline/actions";
+import { bangkokDateKey } from "@/lib/utils";
 
 interface CaseOption {
   id: string;
@@ -35,7 +36,7 @@ interface Props {
 type Mode = "single" | "range";
 
 function todayBangkok() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 
 function downloadText(text: string, filename: string) {

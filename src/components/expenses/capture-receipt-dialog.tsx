@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { bangkokDateKey, cn } from "@/lib/utils";
 import type { ExpenseCategory, ExtractedExpense } from "@/lib/types";
 
 const CATEGORIES: ExpenseCategory[] = [
@@ -108,7 +108,7 @@ export function CaptureReceiptDialog({ cases = [], caseId = "" }: Props) {
   const [saving, startSave] = useTransition();
 
   function todayBangkok() {
-    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+    return bangkokDateKey();
   }
 
   function reset() {

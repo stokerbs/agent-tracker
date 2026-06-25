@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ExpenseCategory } from "@/lib/types";
+import { bangkokDateKey } from "@/lib/utils";
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "fuel", "toll", "parking", "meals", "accommodation", "transportation", "office", "misc",
@@ -38,7 +39,7 @@ export function AddExpenseDialog({ caseId }: { caseId?: string } = {}) {
   const router = useRouter();
   const [today, setToday] = useState("");
   useEffect(() => {
-    setToday(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
+    setToday(bangkokDateKey());
   }, []);
   useEffect(() => {
     function onFab(e: Event) {

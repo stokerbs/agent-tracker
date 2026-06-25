@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { bangkokDateKey } from "@/lib/utils";
 
 interface Props {
   caseId: string;
@@ -32,7 +33,7 @@ type ParsedEntry = { time: string; date: string; entry: string };
 type Mode = "input" | "preview";
 
 function todayBangkok(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  return bangkokDateKey();
 }
 
 export function AddEntryWithAI({ caseId, defaultDate }: Props) {

@@ -1,6 +1,6 @@
 import { Camera, CalendarDays, Clock, Film, MapPin, MessageSquare, Paperclip, Satellite } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { cn, timeAgo } from "@/lib/utils";
+import { bangkokDateKey, cn, timeAgo } from "@/lib/utils";
 import type { CaseMessageWithSender, Evidence, GpsDevice, LinkedEvidence, TimelineEntry } from "@/lib/types";
 
 const GPS_ONLINE_MS = 15 * 60 * 1000; // 15 min
@@ -70,7 +70,7 @@ export async function CaseOpsDashboard({
   // ── Card 3: Today's Activity ─────────────────────────────────────────
   const todayTimeline = timelineEntries.filter((e) => e.entry_date === todayBKK).length;
   const todayEvidence = caseEvidence.filter(
-    (e) => new Date(e.uploaded_at).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }) === todayBKK,
+    (e) => bangkokDateKey(new Date(e.uploaded_at)) === todayBKK,
   ).length;
 
   // ── Card 4: Communications ───────────────────────────────────────────
