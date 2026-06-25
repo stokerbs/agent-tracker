@@ -247,15 +247,27 @@ export async function getRecentGeofenceEvents(limit = 20): Promise<GeofenceEvent
   }));
 }
 
-/** GPS devices that have received at least one position fix, with their case number. */
-export async function getActiveGpsDevices(): Promise<GpsDeviceForMap[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+/**
+ * Shared query skeleton for "active" GPS devices (at least one position fix,
+ * not soft-deleted), newest-seen first. The `select` string is supplied by the
+ * caller because the projected embeds differ per use site.
+ */
+function activeGpsDevicesQuery(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  select: string,
+) {
+  return supabase
     .from("gps_devices")
-    .select("*, cases(case_number)")
+    .select(select)
     .not("last_lat", "is", null)
     .is("deleted_at", null)
     .order("last_seen_at", { ascending: false });
+}
+
+/** GPS devices that have received at least one position fix, with their case number. */
+export async function getActiveGpsDevices(): Promise<GpsDeviceForMap[]> {
+  const supabase = await createClient();
+  const { data } = await activeGpsDevicesQuery(supabase, "*, cases(case_number)");
 
   return ((data ?? []) as unknown as Array<GpsDeviceForMap & { cases: { case_number: string } | null }>).map((row) => ({
     ...row,
@@ -268,7 +280,7 @@ type GpsRawRow = GpsDeviceForMap & {
   gps903_credentials: { device_name: string | null; imei: string | null; phone_number: string | null; provider: string | null } | null;
 };
 
-function flattenGpsRow(row: GpsRawRow): GpsDeviceForMap {
+export function flattenGpsRow(row: GpsRawRow): GpsDeviceForMap {
   return {
     ...row,
     case_number:   row.cases?.case_number ?? null,
@@ -287,12 +299,10 @@ function flattenGpsRow(row: GpsRawRow): GpsDeviceForMap {
  */
 export async function getGpsMonitorDevices(): Promise<GpsDeviceForMap[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("gps_devices")
-    .select("*, cases(case_number), gps903_credentials(device_name, imei, phone_number, provider)")
-    .not("last_lat", "is", null)
-    .is("deleted_at", null)
-    .order("last_seen_at", { ascending: false });
+  const { data } = await activeGpsDevicesQuery(
+    supabase,
+    "*, cases(case_number), gps903_credentials(device_name, imei, phone_number, provider)",
+  );
 
   return ((data ?? []) as unknown as GpsRawRow[]).map(flattenGpsRow);
 }
