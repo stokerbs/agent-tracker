@@ -13,7 +13,7 @@ import type {
   CasesTrendPoint,
   RevenueTrendPoint,
   StatusSlice,
-} from "@/components/dashboard/charts";
+} from "@/lib/dashboard-charts.types";
 
 // ----------------------------------------------------------------------------
 // Server-side data access helpers. All run under the caller's RLS context.
