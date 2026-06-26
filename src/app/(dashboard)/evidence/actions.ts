@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff, requireProfile } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { notifyCaseParticipants } from "@/lib/notifications";
 import { BUCKETS } from "@/lib/constants";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -113,6 +114,15 @@ export async function uploadEvidence(formData: FormData) {
     timeline_entry_id: timelineEntryId,
   });
   if (error) return { error: handleDbError(error, "evidence") };
+
+  // Notify the rest of the case team (not the uploader, not the client).
+  void notifyCaseParticipants(caseId, {
+    type: "case",
+    title: "New evidence uploaded",
+    body: `${file.name} was added to the case.`,
+    exclude: profile.id,
+    includeClient: false,
+  });
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/evidence");

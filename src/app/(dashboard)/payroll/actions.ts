@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { notifyUsers, notificationLinks, relProfileId } from "@/lib/notifications";
 import type { PayrollStatus } from "@/lib/types";
 import { bangkokDateKey } from "@/lib/utils";
 
@@ -50,6 +51,24 @@ export async function updatePaymentStatus(id: string, status: PayrollStatus) {
     entity_id: id,
     metadata: { status },
   });
+
+  if (status === "paid") {
+    const { data: row } = await supabase
+      .from("agent_payments")
+      .select("amount, agents(profile_id)")
+      .eq("id", id)
+      .maybeSingle();
+    const recipient = relProfileId(row?.agents);
+    if (recipient) {
+      void notifyUsers([recipient], {
+        type: "system",
+        title: "Payment issued",
+        body: `A payment of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,
+        url: notificationLinks.payroll(),
+        entityId: id,
+      });
+    }
+  }
 
   revalidatePath("/payroll");
 }
@@ -106,6 +125,27 @@ export async function bulkMarkPaid(ids: string[]) {
     entity_id: null,
     metadata: { ids, count: ids.length },
   });
+
+  // Notify each affected agent once (a single payment notice per recipient).
+  const { data: rows } = await supabase
+    .from("agent_payments")
+    .select("agents(profile_id)")
+    .in("id", ids);
+  const recipients = [
+    ...new Set(
+      (rows ?? [])
+        .map((r) => relProfileId(r.agents))
+        .filter((p): p is string => !!p),
+    ),
+  ];
+  for (const recipient of recipients) {
+    void notifyUsers([recipient], {
+      type: "system",
+      title: "Payment issued",
+      body: "One or more payments have been marked paid.",
+      url: notificationLinks.payroll(),
+    });
+  }
 
   revalidatePath("/payroll");
 }

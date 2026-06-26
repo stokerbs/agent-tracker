@@ -1,3 +1,6 @@
+/** Delivery urgency. Maps to APNs `apns-priority` / FCM `android.priority`. */
+export type PushPriority = "high" | "normal";
+
 /** Shared shape for a native push notification, sent via FCM (Android/web) or APNs (iOS). */
 export interface PushPayload {
   title: string;
@@ -8,6 +11,10 @@ export interface PushPayload {
   type?: string;
   /** Primary entity id the notification refers to (case id, invoice id, …). */
   entityId?: string;
+  /** Delivery urgency — defaults to "normal". Emergencies use "high". */
+  priority?: PushPriority;
+  /** ISO timestamp the notification was created. */
+  createdAt?: string;
   /** @deprecated Use `url`. Kept so existing callers keep working. */
   link?: string;
 }
@@ -26,7 +33,14 @@ export function notificationData(p: PushPayload): Record<string, string> {
   }
   if (p.type) data.type = p.type;
   if (p.entityId) data.entityId = p.entityId;
+  if (p.priority) data.priority = p.priority;
+  if (p.createdAt) data.createdAt = p.createdAt;
   return data;
+}
+
+/** Map a logical priority to the APNs `apns-priority` header value. */
+export function apnsPriority(p?: PushPriority): "10" | "5" {
+  return p === "normal" ? "5" : "10";
 }
 
 /** Result of a single send: delivered, token no longer valid (prune it), or a transient failure. */

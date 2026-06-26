@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { notifyUsers, notificationLinks, relProfileId } from "@/lib/notifications";
 import { BUCKETS } from "@/lib/constants";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -256,6 +257,25 @@ export async function updateExpenseStatus(
     .update(patch)
     .eq("id", expenseId);
   if (error) return { error: handleDbError(error, "updateExpenseStatus") };
+
+  // Tell the agent when their expense is approved/paid.
+  if (status === "paid") {
+    const { data: row } = await supabase
+      .from("expenses")
+      .select("amount, agents(profile_id)")
+      .eq("id", expenseId)
+      .maybeSingle();
+    const recipient = relProfileId(row?.agents);
+    if (recipient) {
+      void notifyUsers([recipient], {
+        type: "system",
+        title: "Expense paid",
+        body: `Your expense of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,
+        url: notificationLinks.expenses(),
+        entityId: expenseId,
+      });
+    }
+  }
 
   revalidatePath("/expenses");
   return { ok: true };

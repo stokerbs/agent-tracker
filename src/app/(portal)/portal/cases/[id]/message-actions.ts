@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { notifyCaseParticipants } from "@/lib/notifications";
 
 export async function sendClientMessage(formData: FormData) {
   const profile = await getCurrentProfile();
@@ -40,6 +41,16 @@ export async function sendClientMessage(formData: FormData) {
     is_internal: false,
   });
   if (error) throw new Error(handleDbError(error, "messages"));
+
+  // Notify the assigned agents that the client replied (client is the sender, so
+  // they're excluded; includeClient:false keeps it staff/agent-facing).
+  void notifyCaseParticipants(caseId, {
+    type: "system",
+    title: "New message from client",
+    body: body.slice(0, 140),
+    exclude: profile.id,
+    includeClient: false,
+  });
 
   revalidatePath(`/portal/cases/${caseId}`);
 }

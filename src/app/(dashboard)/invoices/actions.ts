@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { sendInvoiceEmail } from "@/lib/email";
-import { notifyUsers } from "@/lib/notifications";
+import { notifyUsers, notificationLinks } from "@/lib/notifications";
 
 export async function createInvoice(formData: FormData) {
   await requireRole(["admin", "supervisor"]);
@@ -72,7 +72,8 @@ export async function updateInvoiceStatus(id: string, status: string) {
           type: "system",
           title: `Invoice ${invoice.invoice_number}`,
           body: `A new invoice of ${invoice.amount.toLocaleString()} ${invoice.currency} has been issued.`,
-          link: "/portal",
+          url: notificationLinks.portal(),
+          entityId: id,
         });
       }
     }
