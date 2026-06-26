@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -60,13 +61,13 @@ export async function updatePaymentStatus(id: string, status: PayrollStatus) {
       .maybeSingle();
     const recipient = relProfileId(row?.agents);
     if (recipient) {
-      void notifyUsers([recipient], {
+      after(() => notifyUsers([recipient], {
         type: "system",
         title: "Payment issued",
         body: `A payment of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,
         url: notificationLinks.payroll(),
         entityId: id,
-      });
+      }));
     }
   }
 
@@ -139,12 +140,12 @@ export async function bulkMarkPaid(ids: string[]) {
     ),
   ];
   for (const recipient of recipients) {
-    void notifyUsers([recipient], {
+    after(() => notifyUsers([recipient], {
       type: "system",
       title: "Payment issued",
       body: "One or more payments have been marked paid.",
       url: notificationLinks.payroll(),
-    });
+    }));
   }
 
   revalidatePath("/payroll");

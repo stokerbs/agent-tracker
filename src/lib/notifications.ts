@@ -74,7 +74,9 @@ export async function notifyUsers(
     );
 
     // Fan out to native devices (no-op when push isn't configured / no tokens).
-    void sendPushToUsers(ids, {
+    // Awaited so that when a caller schedules notifyUsers via `after()`, the push
+    // round-trip completes before the serverless function is allowed to shut down.
+    await sendPushToUsers(ids, {
       title: notification.title,
       body: notification.body,
       url: url ?? undefined,

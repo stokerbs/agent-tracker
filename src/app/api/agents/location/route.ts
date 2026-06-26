@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest, after } from "next/server";
 import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -155,7 +155,9 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Post-update: history + geofence checks (non-fatal) ──
-  void (async () => {
+  // `after()` keeps the function alive until this completes — so the geofence
+  // notification's push round-trip isn't dropped when the response returns.
+  after(async () => {
 
     // 1. Insert location history entry for trail feature
     await svc.from("agent_location_history").insert({
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest) {
           lng: parsed.lng,
         });
         // Alert supervisors/admins of the boundary crossing through the one pipeline.
-        void notifyRole(["admin", "supervisor"], {
+        await notifyRole(["admin", "supervisor"], {
           type: "system",
           title: "Geofence alert",
           body: `${agent.full_name ?? "An agent"} ${eventType === "enter" ? "entered" : "left"} ${fence.name}.`,
@@ -217,7 +219,7 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-  })();
+  });
 
   return NextResponse.json({ ok: true });
 }
