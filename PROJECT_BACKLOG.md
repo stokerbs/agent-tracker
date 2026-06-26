@@ -32,7 +32,7 @@ The native push activation is the only in-flight feature evidenced by the source
 
 | ID | Priority | Title | Owner Agent | Dependencies | Current Status |
 |---|---|---|---|---|---|
-| AF-1 | P1 | Native app push activation (FCM env + APNs config + native rebuild) — code shipped (migrations 0068–0069, `lib/push/` APNs+FCM), activation outstanding | native-app-builder | none | IN PROGRESS |
+| AF-1 | P1 | Native app push activation (FCM env + APNs config + native rebuild) — code shipped (migrations 0068–0069, `lib/push/` APNs+FCM), activation outstanding | native-app-builder | none | IN PROGRESS — **server-side activation DONE** (verified 2026-06-26): migrations 0068–0069 applied (`device_tokens`/`gps_tokens` tables live), `lib/push/` (`apns.ts`/`send.ts`/`types.ts`) present, and FCM + APNs credentials configured in Vercel **Production** (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`, `APNS_TEAM_ID`/`APNS_BUNDLE_ID`/`APNS_PRODUCTION`). **Remaining:** native app rebuild + first device push-token registration — `device_tokens` still has **0 rows** (no device has registered an FCM/APNs token yet; `gps_tokens` has 2, so the GPS-token path is exercised but push device-registration is not). Not advanced by this session (AF-1 is outside the autonomous-run scope) |
 
 ---
 
