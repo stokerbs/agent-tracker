@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import http2 from "node:http2";
-import type { PushPayload, SendStatus } from "./types";
+import { notificationData, type PushPayload, type SendStatus } from "./types";
 
 /**
  * Apple Push Notification service (APNs) sender — used for iOS device tokens,
@@ -173,7 +173,7 @@ export async function sendApnsToTokens(
       alert: { title: payload.title, body: payload.body ?? "" },
       sound: "default",
     },
-    ...(payload.link ? { link: payload.link } : {}),
+    ...notificationData(payload),
   });
 
   const client = http2.connect(cfg.host);

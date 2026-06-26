@@ -43,7 +43,10 @@ const config: CapacitorConfig = {
       showSpinner: false,
     },
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
+      // No foreground "alert" banner — when the app is open we show an in-app
+      // toast instead (NativeBootstrap) to avoid a duplicate system banner.
+      // Background/terminated notifications are presented by iOS regardless.
+      presentationOptions: ["badge", "sound"],
     },
   },
 };
