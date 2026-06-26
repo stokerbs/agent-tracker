@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { unregisterDeviceToken } from "@/app/(dashboard)/field/actions";
 
 export type AuthState = { error?: string } | undefined;
 
@@ -178,7 +179,14 @@ export async function verifyOtp(
   redirect(next);
 }
 
-export async function signOut() {
+export async function signOut(formData?: FormData) {
+  // Native apps include their push token (hidden field) so we drop it before
+  // signing out — a logged-out phone must stop receiving this user's pushes.
+  // On web the field is absent, so this is a no-op.
+  const deviceToken = formData?.get("deviceToken");
+  if (typeof deviceToken === "string" && deviceToken) {
+    await unregisterDeviceToken(deviceToken);
+  }
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");

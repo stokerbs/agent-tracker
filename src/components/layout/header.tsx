@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Menu, Settings, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { signOut } from "@/app/(auth)/actions";
+import { DeviceTokenField } from "@/components/layout/device-token-field";
 import { SidebarNav } from "./sidebar";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -189,6 +190,7 @@ export function Header({ profile }: { profile: Profile }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <form action={signOut} className="w-full">
+                <DeviceTokenField />
                 <button type="submit" className="flex w-full items-center gap-2 text-destructive">
                   <LogOut className="h-3.5 w-3.5" /> {tAuth("signOut")}
                 </button>

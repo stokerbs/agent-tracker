@@ -39,6 +39,21 @@ export async function registerDeviceToken(
 }
 
 /**
+ * Remove a single device's push token on logout, so a signed-out phone stops
+ * receiving the previous user's notifications. Scoped to the caller's own
+ * profile (you can only remove a token currently registered to you). No-ops if
+ * the token isn't yours / doesn't exist. Logs length only, never the value.
+ */
+export async function unregisterDeviceToken(token: string): Promise<{ ok: true }> {
+  const profile = await getCurrentProfile();
+  if (!profile || !token) return { ok: true };
+  const svc = createServiceClient();
+  await svc.from("device_tokens").delete().eq("token", token).eq("profile_id", profile.id);
+  console.log(`[token] removed len=${token.length} profile=${profile.id}`);
+  return { ok: true };
+}
+
+/**
  * Mint a long-lived GPS token for the current user's device, used by the native
  * background-geolocation watcher to authenticate location posts when the WebView
  * session is unavailable. Replaces any prior token (one active per user). The
