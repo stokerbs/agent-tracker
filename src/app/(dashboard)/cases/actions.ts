@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -89,12 +88,12 @@ export async function updateCaseStatus(caseId: string, status: CaseStatus) {
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
 
-  after(() => notifyCaseParticipants(caseId, {
+  void notifyCaseParticipants(caseId, {
     type: "case",
     title: "Case status updated",
     body: `Status changed to ${CASE_STATUS_LABEL[status]}.`,
     exclude: profile.id,
-  }));
+  });
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
@@ -110,12 +109,12 @@ export async function closeCase(caseId: string, endDate: string) {
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
 
-  after(() => notifyCaseParticipants(caseId, {
+  void notifyCaseParticipants(caseId, {
     type: "case",
     title: "Case closed",
     body: "This case has been closed.",
     exclude: profile.id,
-  }));
+  });
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
@@ -154,13 +153,13 @@ export async function assignAgent(caseId: string, agentId: string) {
       });
     }
     if (agentRow?.profile_id) {
-      after(() => notifyUsers([agentRow.profile_id], {
+      void notifyUsers([agentRow.profile_id], {
         type: "assignment",
         title: "New case assignment",
         body: `You have been assigned to case ${caseRow.case_number}.`,
         url: notificationLinks.case(caseId),
         entityId: caseId,
-      }));
+      });
     }
   }
 
@@ -327,13 +326,13 @@ export async function setCaseAssignments(
       });
     }
     if (a.profile_id) {
-      after(() => notifyUsers([a.profile_id], {
+      void notifyUsers([a.profile_id], {
         type: "assignment",
         title: "New case assignment",
         body: `You have been assigned to ${caseRow.case_number}.`,
         url: notificationLinks.case(caseId),
         entityId: caseId,
-      }));
+      });
     }
   }
 
@@ -405,12 +404,12 @@ export async function cancelCase(caseId: string) {
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
 
-  after(() => notifyCaseParticipants(caseId, {
+  void notifyCaseParticipants(caseId, {
     type: "case",
     title: "Case cancelled",
     body: "This case has been cancelled.",
     exclude: profile.id,
-  }));
+  });
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");

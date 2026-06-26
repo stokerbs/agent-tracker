@@ -120,23 +120,14 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
   try {
     const fcm = fcmConfig();
     const apnsOn = isApnsConfigured();
-    if (userIds.length === 0) return;
-    if (!fcm && !apnsOn) {
-      console.log("[delivery] skipped reason=push-not-configured");
-      return;
-    }
+    if ((!fcm && !apnsOn) || userIds.length === 0) return;
 
     const svc = createServiceClient();
     const { data: rows } = await svc
       .from("device_tokens")
       .select("token, platform")
       .in("profile_id", userIds);
-    if (!rows || rows.length === 0) {
-      // The recipient set has no registered devices — the most common silent stop
-      // (e.g. an SOS whose admin/supervisor recipients never installed the app).
-      console.log(`[delivery] skipped reason=no-device-tokens recipients=${userIds.length}`);
-      return;
-    }
+    if (!rows || rows.length === 0) return;
 
     const iosTokens = rows.filter((r) => r.platform === "ios").map((r) => r.token as string);
     const otherTokens = rows.filter((r) => r.platform !== "ios").map((r) => r.token as string);
@@ -152,9 +143,6 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
     // Android/web → FCM.
     if (fcm && otherTokens.length > 0) {
       const accessToken = await getAccessToken();
-      if (!accessToken) {
-        console.log(`[delivery] skipped reason=fcm-no-access-token tokens=${otherTokens.length}`);
-      }
       if (accessToken) {
         const results = await Promise.all(
           otherTokens.map(async (token) => ({

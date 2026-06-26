@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -45,13 +44,13 @@ export async function sendClientMessage(formData: FormData) {
 
   // Notify the assigned agents that the client replied (client is the sender, so
   // they're excluded; includeClient:false keeps it staff/agent-facing).
-  after(() => notifyCaseParticipants(caseId, {
+  void notifyCaseParticipants(caseId, {
     type: "system",
     title: "New message from client",
     body: body.slice(0, 140),
     exclude: profile.id,
     includeClient: false,
-  }));
+  });
 
   revalidatePath(`/portal/cases/${caseId}`);
 }

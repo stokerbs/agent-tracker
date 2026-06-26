@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -69,14 +68,13 @@ export async function updateInvoiceStatus(id: string, status: string) {
         });
       }
       if (client.profile_id) {
-        const clientProfileId = client.profile_id;
-        after(() => notifyUsers([clientProfileId], {
+        void notifyUsers([client.profile_id], {
           type: "system",
           title: `Invoice ${invoice.invoice_number}`,
           body: `A new invoice of ${invoice.amount.toLocaleString()} ${invoice.currency} has been issued.`,
           url: notificationLinks.portal(),
           entityId: id,
-        }));
+        });
       }
     }
   }
