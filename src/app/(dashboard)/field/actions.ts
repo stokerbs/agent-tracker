@@ -33,6 +33,8 @@ export async function registerDeviceToken(
       { onConflict: "token" },
     );
   if (error) return { error: handleDbError(error, "registerDeviceToken") };
+  // [token] stored — log the platform + token LENGTH only, never the token value.
+  console.log(`[token] stored platform=${platform} len=${token.length} profile=${profile.id}`);
   return { ok: true };
 }
 

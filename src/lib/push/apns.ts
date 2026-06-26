@@ -19,6 +19,12 @@ import type { PushPayload, SendStatus } from "./types";
  *   APNS_BUNDLE_ID    — app bundle id, used as the apns-topic (e.g. app.detectivepulse.field)
  *   APNS_PRIVATE_KEY  — the .p8 PEM contents (literal "\n" is normalised)
  *   APNS_PRODUCTION   — "false" routes to the sandbox host; anything else (default) is production
+ *
+ * Reliability: failed sends are classified (ok / stale / error) and transient
+ * failures are retried once on the same HTTP/2 session — an expired provider
+ * JWT (403 ExpiredProviderToken) refreshes the token; rate-limit/5xx/network
+ * errors back off briefly. "stale" tokens (410 / Unregistered / BadDeviceToken)
+ * are surfaced so the caller prunes them. Never throws.
  */
 
 interface ApnsConfig {
@@ -55,13 +61,16 @@ function base64url(input: Buffer | string): string {
     .replace(/\//g, "_");
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // APNs allows reusing a provider token for up to 1h (and rejects regenerating
-// too frequently). Cache and refresh well inside the window.
+// too frequently). Cache and refresh well inside the window; `force` busts the
+// cache after an ExpiredProviderToken rejection.
 let cachedJwt: { token: string; iat: number } | null = null;
 
-function providerToken(cfg: ApnsConfig): string {
+function providerToken(cfg: ApnsConfig, force = false): string {
   const now = Math.floor(Date.now() / 1000);
-  if (cachedJwt && now - cachedJwt.iat < 50 * 60) return cachedJwt.token;
+  if (!force && cachedJwt && now - cachedJwt.iat < 50 * 60) return cachedJwt.token;
 
   const header = base64url(JSON.stringify({ alg: "ES256", kid: cfg.keyId }));
   const claims = base64url(JSON.stringify({ iss: cfg.teamId, iat: now }));
@@ -76,6 +85,9 @@ function providerToken(cfg: ApnsConfig): string {
   return token;
 }
 
+/** Per-send outcome; `retry` asks the batch to retry this token (refresh JWT or back off). */
+type Outcome = { token: string; status: SendStatus; retry: "jwt" | "backoff" | null };
+
 /** Send one notification over an open HTTP/2 session. Never rejects. */
 function sendOne(
   client: http2.ClientHttp2Session,
@@ -83,7 +95,7 @@ function sendOne(
   bundleId: string,
   deviceToken: string,
   body: string,
-): Promise<{ token: string; status: SendStatus }> {
+): Promise<Outcome> {
   return new Promise((resolve) => {
     const req = client.request({
       ":method": "POST",
@@ -107,10 +119,11 @@ function sendOne(
     });
     req.on("error", (err) => {
       console.error("[apns] request error", err);
-      resolve({ token: deviceToken, status: "error" });
+      // Network/stream failure — retry once with a short backoff.
+      resolve({ token: deviceToken, status: "error", retry: "backoff" });
     });
     req.on("end", () => {
-      if (status === 200) return resolve({ token: deviceToken, status: "ok" });
+      if (status === 200) return resolve({ token: deviceToken, status: "ok", retry: null });
       let reason = "";
       try {
         reason = (JSON.parse(data) as { reason?: string }).reason ?? "";
@@ -124,10 +137,19 @@ function sendOne(
         reason === "BadDeviceToken" ||
         reason === "DeviceTokenNotForTopic"
       ) {
-        return resolve({ token: deviceToken, status: "stale" });
+        return resolve({ token: deviceToken, status: "stale", retry: null });
       }
+      // Provider JWT expired → refresh it and retry.
+      if (status === 403 && reason === "ExpiredProviderToken") {
+        return resolve({ token: deviceToken, status: "error", retry: "jwt" });
+      }
+      // Rate limited / APNs server error → back off and retry once.
+      if (status === 429 || status >= 500) {
+        return resolve({ token: deviceToken, status: "error", retry: "backoff" });
+      }
+      // Non-retryable config/auth errors (InvalidProviderToken, MissingTopic, …).
       console.error("[apns] send failed", status, reason || data);
-      resolve({ token: deviceToken, status: "error" });
+      resolve({ token: deviceToken, status: "error", retry: null });
     });
 
     req.end(body);
@@ -146,7 +168,6 @@ export async function sendApnsToTokens(
   const cfg = apnsConfig();
   if (!cfg || tokens.length === 0) return [];
 
-  const jwt = providerToken(cfg);
   const body = JSON.stringify({
     aps: {
       alert: { title: payload.title, body: payload.body ?? "" },
@@ -165,11 +186,41 @@ export async function sendApnsToTokens(
     });
   });
 
+  const run = async (): Promise<{ token: string; status: SendStatus }[]> => {
+    let jwt = providerToken(cfg);
+    const first = await Promise.all(tokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body)));
+
+    const final: { token: string; status: SendStatus }[] = [];
+    const jwtRetry: string[] = [];
+    const backoffRetry: string[] = [];
+    for (const o of first) {
+      if (o.retry === "jwt") jwtRetry.push(o.token);
+      else if (o.retry === "backoff") backoffRetry.push(o.token);
+      else final.push({ token: o.token, status: o.status });
+    }
+
+    if (jwtRetry.length > 0 || backoffRetry.length > 0) {
+      if (jwtRetry.length > 0) jwt = providerToken(cfg, true); // refresh expired JWT
+      if (backoffRetry.length > 0) await sleep(500);
+      const retryTokens = [...jwtRetry, ...backoffRetry];
+      const retried = await Promise.all(
+        retryTokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body)),
+      );
+      for (const o of retried) final.push({ token: o.token, status: o.status });
+    }
+    return final;
+  };
+
   try {
-    return await Promise.race([
-      Promise.all(tokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body))),
-      sessionError,
-    ]);
+    const results = await Promise.race([run(), sessionError]);
+    const ok = results.filter((r) => r.status === "ok").length;
+    const stale = results.filter((r) => r.status === "stale").length;
+    const error = results.filter((r) => r.status === "error").length;
+    console.log(`[delivery] apns sent=${ok} stale=${stale} error=${error} total=${results.length}`);
+    return results;
+  } catch (err) {
+    console.error("[apns] batch error", err);
+    return tokens.map((token) => ({ token, status: "error" as SendStatus }));
   } finally {
     client.close();
   }
