@@ -74,7 +74,10 @@ export async function notifyUsers(
     );
 
     // Fan out to native devices (no-op when push isn't configured / no tokens).
-    void sendPushToUsers(ids, {
+    // Awaited so push completes within the caller's request — callers `await`
+    // the notify* chain, so delivery is guaranteed before the action returns
+    // (do NOT use `after()` here: it does not flush for Server Actions on Vercel).
+    await sendPushToUsers(ids, {
       title: notification.title,
       body: notification.body,
       url: url ?? undefined,

@@ -267,7 +267,7 @@ export async function updateExpenseStatus(
       .maybeSingle();
     const recipient = relProfileId(row?.agents);
     if (recipient) {
-      void notifyUsers([recipient], {
+      await notifyUsers([recipient], {
         type: "system",
         title: "Expense paid",
         body: `Your expense of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,

@@ -116,7 +116,7 @@ export async function uploadEvidence(formData: FormData) {
   if (error) return { error: handleDbError(error, "evidence") };
 
   // Notify the rest of the case team (not the uploader, not the client).
-  void notifyCaseParticipants(caseId, {
+  await notifyCaseParticipants(caseId, {
     type: "case",
     title: "New evidence uploaded",
     body: `${file.name} was added to the case.`,
