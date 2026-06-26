@@ -60,7 +60,7 @@ export async function updatePaymentStatus(id: string, status: PayrollStatus) {
       .maybeSingle();
     const recipient = relProfileId(row?.agents);
     if (recipient) {
-      void notifyUsers([recipient], {
+      await notifyUsers([recipient], {
         type: "system",
         title: "Payment issued",
         body: `A payment of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,
@@ -139,7 +139,7 @@ export async function bulkMarkPaid(ids: string[]) {
     ),
   ];
   for (const recipient of recipients) {
-    void notifyUsers([recipient], {
+    await notifyUsers([recipient], {
       type: "system",
       title: "Payment issued",
       body: "One or more payments have been marked paid.",

@@ -34,7 +34,7 @@ export async function sendMessage(formData: FormData) {
   // Notify the other case participants. Internal staff notes have no clean
   // per-case audience (agents/clients can't see them), so they aren't pushed.
   if (!isInternal) {
-    void notifyCaseParticipants(caseId, {
+    await notifyCaseParticipants(caseId, {
       type: "system",
       title: "New case message",
       body: body.slice(0, 140),

@@ -39,7 +39,7 @@ export async function triggerSos(input: {
     .single();
   if (error) return { error: handleDbError(error, "emergency") };
 
-  void notifyRole(
+  await notifyRole(
     ["admin", "supervisor"],
     {
       type: "emergency",

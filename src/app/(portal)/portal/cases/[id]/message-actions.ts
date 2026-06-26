@@ -44,7 +44,7 @@ export async function sendClientMessage(formData: FormData) {
 
   // Notify the assigned agents that the client replied (client is the sender, so
   // they're excluded; includeClient:false keeps it staff/agent-facing).
-  void notifyCaseParticipants(caseId, {
+  await notifyCaseParticipants(caseId, {
     type: "system",
     title: "New message from client",
     body: body.slice(0, 140),

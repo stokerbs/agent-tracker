@@ -68,7 +68,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
         });
       }
       if (client.profile_id) {
-        void notifyUsers([client.profile_id], {
+        await notifyUsers([client.profile_id], {
           type: "system",
           title: `Invoice ${invoice.invoice_number}`,
           body: `A new invoice of ${invoice.amount.toLocaleString()} ${invoice.currency} has been issued.`,

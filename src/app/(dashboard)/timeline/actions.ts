@@ -66,7 +66,7 @@ export async function addTimelineEntry(formData: FormData) {
   if (error) return { error: handleDbError(error, "timeline") };
 
   // Notify the rest of the case team (not the author, not the client).
-  void notifyCaseParticipants(caseId, {
+  await notifyCaseParticipants(caseId, {
     type: "case",
     title: "New timeline entry",
     body: payload.entry.slice(0, 140),
@@ -391,7 +391,7 @@ export async function addMultipleTimelineEntries(
   for (const caseId of caseIds) {
     revalidatePath(`/cases/${caseId}`);
     const added = entries.filter((e) => e.caseId === caseId).length;
-    void notifyCaseParticipants(caseId, {
+    await notifyCaseParticipants(caseId, {
       type: "case",
       title: "New timeline entries",
       body: `${added} ${added === 1 ? "entry" : "entries"} added to the case.`,
