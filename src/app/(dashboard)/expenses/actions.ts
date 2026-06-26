@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -267,13 +268,13 @@ export async function updateExpenseStatus(
       .maybeSingle();
     const recipient = relProfileId(row?.agents);
     if (recipient) {
-      void notifyUsers([recipient], {
+      after(() => notifyUsers([recipient], {
         type: "system",
         title: "Expense paid",
         body: `Your expense of ${Number(row?.amount ?? 0).toLocaleString()} THB has been marked paid.`,
         url: notificationLinks.expenses(),
         entityId: expenseId,
-      });
+      }));
     }
   }
 

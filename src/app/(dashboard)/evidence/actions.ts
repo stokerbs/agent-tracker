@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff, requireProfile } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -116,13 +117,13 @@ export async function uploadEvidence(formData: FormData) {
   if (error) return { error: handleDbError(error, "evidence") };
 
   // Notify the rest of the case team (not the uploader, not the client).
-  void notifyCaseParticipants(caseId, {
+  after(() => notifyCaseParticipants(caseId, {
     type: "case",
     title: "New evidence uploaded",
     body: `${file.name} was added to the case.`,
     exclude: profile.id,
     includeClient: false,
-  });
+  }));
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/evidence");

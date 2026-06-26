@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -34,12 +35,12 @@ export async function sendMessage(formData: FormData) {
   // Notify the other case participants. Internal staff notes have no clean
   // per-case audience (agents/clients can't see them), so they aren't pushed.
   if (!isInternal) {
-    void notifyCaseParticipants(caseId, {
+    after(() => notifyCaseParticipants(caseId, {
       type: "system",
       title: "New case message",
       body: body.slice(0, 140),
       exclude: profile.id,
-    });
+    }));
   }
 
   revalidatePath(`/cases/${caseId}`);

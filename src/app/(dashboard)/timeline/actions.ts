@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -66,13 +67,13 @@ export async function addTimelineEntry(formData: FormData) {
   if (error) return { error: handleDbError(error, "timeline") };
 
   // Notify the rest of the case team (not the author, not the client).
-  void notifyCaseParticipants(caseId, {
+  after(() => notifyCaseParticipants(caseId, {
     type: "case",
     title: "New timeline entry",
     body: payload.entry.slice(0, 140),
     exclude: profile.id,
     includeClient: false,
-  });
+  }));
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/timeline");
@@ -391,13 +392,13 @@ export async function addMultipleTimelineEntries(
   for (const caseId of caseIds) {
     revalidatePath(`/cases/${caseId}`);
     const added = entries.filter((e) => e.caseId === caseId).length;
-    void notifyCaseParticipants(caseId, {
+    after(() => notifyCaseParticipants(caseId, {
       type: "case",
       title: "New timeline entries",
       body: `${added} ${added === 1 ? "entry" : "entries"} added to the case.`,
       exclude: profile.id,
       includeClient: false,
-    });
+    }));
   }
   revalidatePath("/timeline");
 
