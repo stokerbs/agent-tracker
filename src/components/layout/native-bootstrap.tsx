@@ -1,8 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { isNative } from "@/lib/native";
 import { registerDeviceToken, issueGpsToken } from "@/app/(dashboard)/field/actions";
+
+/** Navigate to an internal app path; missing/unknown/external → field dashboard. */
+function navigateInApp(url: unknown): void {
+  if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//")) {
+    window.location.assign(url);
+  } else {
+    window.location.assign("/field");
+  }
+}
 
 /**
  * Invisible client component that runs native-only setup once the app has
@@ -16,6 +26,7 @@ export function NativeBootstrap() {
     let cleanupPush: (() => void) | undefined;
     let stopGps: (() => void) | undefined;
     let backHandle: { remove: () => void } | undefined;
+    let recvHandle: { remove: () => void } | undefined;
     let cancelled = false;
 
     // Flag for native-only CSS (safe-area, no text-selection / overscroll).
@@ -69,18 +80,30 @@ export function NativeBootstrap() {
       if (cancelled) cleanup();
       else cleanupPush = cleanup;
 
-      // Route notification taps to the in-app link.
+      // Push tap (background / terminated) → deep-link into the app.
       const { PushNotifications } = await import("@capacitor/push-notifications");
       const tapHandle = await PushNotifications.addListener(
         "pushNotificationActionPerformed",
         (action) => {
-          const link = action.notification?.data?.link;
-          if (typeof link === "string" && link.startsWith("/")) {
-            window.location.assign(link);
-          }
+          const data = action.notification?.data ?? {};
+          navigateInApp(data.url ?? data.link);
         },
       );
       if (cancelled) void tapHandle.remove();
+
+      // Push received while the app is in foreground → in-app toast instead of a
+      // duplicate system banner (presentationOptions drops "alert"). "View" deep-links.
+      recvHandle = await PushNotifications.addListener("pushNotificationReceived", (notif) => {
+        const url = notif.data?.url ?? notif.data?.link;
+        toast(notif.title ?? "Notification", {
+          description: notif.body || undefined,
+          action:
+            typeof url === "string" && url.startsWith("/")
+              ? { label: "View", onClick: () => navigateInApp(url) }
+              : undefined,
+        });
+      });
+      if (cancelled) recvHandle.remove();
     })();
 
     return () => {
@@ -88,6 +111,7 @@ export function NativeBootstrap() {
       cleanupPush?.();
       stopGps?.();
       backHandle?.remove();
+      recvHandle?.remove();
     };
   }, []);
 

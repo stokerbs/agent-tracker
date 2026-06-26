@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isApnsConfigured, sendApnsToTokens } from "./apns";
-import type { PushPayload } from "./types";
+import { notificationData, type PushPayload } from "./types";
 
 /**
  * Firebase Cloud Messaging (HTTP v1) sender for native push.
@@ -98,7 +98,7 @@ async function sendToToken(
         message: {
           token: deviceToken,
           notification: { title: payload.title, body: payload.body ?? "" },
-          data: payload.link ? { link: payload.link } : {},
+          data: notificationData(payload),
         },
       }),
     },
