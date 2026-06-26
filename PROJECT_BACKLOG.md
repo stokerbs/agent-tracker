@@ -32,7 +32,25 @@ The native push activation is the only in-flight feature evidenced by the source
 
 | ID | Priority | Title | Owner Agent | Dependencies | Current Status |
 |---|---|---|---|---|---|
-| AF-1 | P1 | Native app push activation (FCM env + APNs config + native rebuild) — code shipped (migrations 0068–0069, `lib/push/` APNs+FCM), activation outstanding | native-app-builder | none | IN PROGRESS — **server-side activation DONE** (verified 2026-06-26): migrations 0068–0069 applied (`device_tokens`/`gps_tokens` tables live), `lib/push/` (`apns.ts`/`send.ts`/`types.ts`) present, and FCM + APNs credentials configured in Vercel **Production** (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`, `APNS_TEAM_ID`/`APNS_BUNDLE_ID`/`APNS_PRODUCTION`). **Remaining:** native app rebuild + first device push-token registration — `device_tokens` still has **0 rows** (no device has registered an FCM/APNs token yet; `gps_tokens` has 2, so the GPS-token path is exercised but push device-registration is not). Not advanced by this session (AF-1 is outside the autonomous-run scope) |
+| AF-1 | P1 | Native app push activation (FCM env + APNs config + native rebuild) — code shipped (migrations 0068–0069, `lib/push/` APNs+FCM), activation outstanding | native-app-builder | none | IN PROGRESS — **server-side activation DONE** (verified 2026-06-26): migrations 0068–0069 applied (`device_tokens`/`gps_tokens` tables live), `lib/push/` (`apns.ts`/`send.ts`/`types.ts`) present, and FCM + APNs credentials configured in Vercel **Production** (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`, `APNS_TEAM_ID`/`APNS_BUNDLE_ID`/`APNS_PRODUCTION`). **Remaining:** native app rebuild + first device push-token registration — `device_tokens` still has **0 rows** (no device has registered an FCM/APNs token yet; `gps_tokens` has 2, so the GPS-token path is exercised but push device-registration is not). Not advanced by this session (AF-1 is outside the autonomous-run scope) — see the activation checklist below |
+
+**AF-1 native-push activation checklist** (investigated 2026-06-26; owner `native-app-builder`). The JS registration flow and the server send path are already shipped — the remaining work is **credentials + iOS build + verify, NOT code**. The single blocking server-side gap is the missing APNs auth key (item 6).
+
+| # | Item | Status | Notes |
+|---|---|---|---|
+| 1 | Web/JS push registration wired | ✅ DONE | `native-bootstrap.tsx` → `initPushNotifications()` (`lib/native/native-push.ts`) → on `registration` calls `registerDeviceToken(token, platform)` → upserts `device_tokens`; notification taps routed to in-app link. Served from the live site (remote-URL mode) |
+| 2 | Server-side send path | ✅ DONE | `lib/notifications.ts` fans out via `lib/push/send.ts` (FCM for Android/web) + `lib/push/apns.ts` (APNs direct for iOS — Capacitor returns raw APNs tokens, no Firebase SDK) |
+| 3 | DB tables live | ✅ DONE | `device_tokens` / `gps_tokens` (migrations 0068–0069, applied + verified) |
+| 4 | FCM credentials (Vercel Production) | ✅ DONE | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` present |
+| 5 | APNs partial credentials (Vercel Production) | ✅ DONE | `APNS_TEAM_ID` / `APNS_BUNDLE_ID` / `APNS_PRODUCTION` present |
+| 6 | **APNs auth key — `APNS_KEY_ID` + `APNS_PRIVATE_KEY` (.p8 PEM)** | 🔴 TODO — **BLOCKER** | Both MISSING in Vercel → `apnsConfig()` returns `null` → iOS push silently no-ops even after a rebuild. Add the Apple `.p8` Auth Key's Key ID + PEM contents to Vercel (Production), then redeploy |
+| 7 | iOS `aps-environment` ↔ `APNS_PRODUCTION` must match | 🟠 TODO | `App.entitlements` = `development`. Dev build on test device → `APNS_PRODUCTION=false` (sandbox host); TestFlight/App Store → flip entitlement to `production` + production host. Mismatch ⇒ APNs `BadDeviceToken` |
+| 8 | Apple Developer: Push capability + provisioning | 🟠 TODO | App ID `app.detectivepulse.field` needs the Push Notifications capability enabled and a provisioning profile that includes it; the registered `.p8` Auth Key feeds item 6 |
+| 9 | iOS rebuild + distribute | 🔵 TODO | `npx cap sync ios` (installs the already-referenced `CapacitorPushNotifications` pod) → archive in Xcode → distribute via TestFlight → install on real device(s). The native plugin only activates in a build that compiles it in + has push capability provisioned |
+| 10 | Activation proof (end-to-end) | 🔵 TODO | Install rebuilt app → grant permission → device registers → `device_tokens` flips **0 → N** (`ios` row) → send a test notification → confirm delivery + tap deep-link |
+| 11 | Android (optional / separate) | ⚪ OUT OF SCOPE for now | No `android/` project exists (`@capacitor/android` is a dep but no native project). If wanted: `npx cap add android` + `google-services.json`; FCM env already configured |
+
+> Bottom line: the only blocking server-side gap is item 6 (missing `APNS_KEY_ID` + `APNS_PRIVATE_KEY`). Items 7–10 are iOS build/provisioning/distribution work owned by `native-app-builder`; none of items 6–11 is a code change. AF-1 stays IN PROGRESS until item 10 (a real device registers, `device_tokens` > 0, and a test push is delivered).
 
 ---
 
