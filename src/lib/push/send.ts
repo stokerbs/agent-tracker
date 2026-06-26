@@ -149,12 +149,17 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
             status: await sendToToken(fcm.projectId, accessToken, token, payload),
           })),
         );
+        const ok = results.filter((r) => r.status === "ok").length;
+        const staleCount = results.filter((r) => r.status === "stale").length;
+        const error = results.filter((r) => r.status === "error").length;
+        console.log(`[delivery] fcm sent=${ok} stale=${staleCount} error=${error} total=${results.length}`);
         stale.push(...results.filter((r) => r.status === "stale").map((r) => r.token));
       }
     }
 
     if (stale.length > 0) {
       await svc.from("device_tokens").delete().in("token", stale);
+      console.log(`[token] pruned ${stale.length} stale device token(s)`);
     }
   } catch (err) {
     console.error("[push] sendPushToUsers error", err);
