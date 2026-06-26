@@ -28,7 +28,15 @@ export async function initPushNotifications(
       PushNotifications.addListener("registration", (token: Token) => {
         // Token VALUE is never logged — length only.
         void logNativePushEvent("registration", token?.value ? `tokenLen=${token.value.length}` : "no-value");
-        if (token?.value) onToken(token.value, nativePlatform());
+        if (token?.value) {
+          // Persist so the sign-out form can drop exactly this device's token.
+          try {
+            window.localStorage.setItem("dp_push_token", token.value);
+          } catch {
+            // localStorage unavailable — non-fatal.
+          }
+          onToken(token.value, nativePlatform());
+        }
       }),
       PushNotifications.addListener("registrationError", (err) => {
         console.error("[push] registration error", err);
