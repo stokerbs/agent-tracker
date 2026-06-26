@@ -55,3 +55,16 @@ export async function issueGpsToken(): Promise<{ ok: true; token: string } | { e
   if (error) return { error: handleDbError(error, "issueGpsToken") };
   return { ok: true, token };
 }
+
+/**
+ * Server-visible diagnostic for native push activation. Logs to the server
+ * (Vercel) console only — no DB write and no auth gate, so it records every
+ * stage even before/without a session. Used to trace where iOS push
+ * registration stops when public.device_tokens stays empty. It never receives
+ * the device token value (callers pass its length only). Safe to remove once
+ * activation is confirmed.
+ */
+export async function logNativePushEvent(stage: string, detail?: string): Promise<void> {
+  const safe = (detail ?? "").slice(0, 300);
+  console.log(`[native-push] ${stage}${safe ? " :: " + safe : ""}`);
+}
