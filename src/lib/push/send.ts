@@ -99,6 +99,7 @@ async function sendToToken(
           token: deviceToken,
           notification: { title: payload.title, body: payload.body ?? "" },
           data: notificationData(payload),
+          ...(payload.priority === "high" ? { android: { priority: "high" } } : {}),
         },
       }),
     },

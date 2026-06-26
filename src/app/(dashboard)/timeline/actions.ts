@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
+import { notifyCaseParticipants } from "@/lib/notifications";
 import { BUCKETS } from "@/lib/constants";
 import type { LinkedEvidence, TimelineEntry } from "@/lib/types";
 
@@ -63,6 +64,15 @@ export async function addTimelineEntry(formData: FormData) {
     .select("id")
     .single();
   if (error) return { error: handleDbError(error, "timeline") };
+
+  // Notify the rest of the case team (not the author, not the client).
+  void notifyCaseParticipants(caseId, {
+    type: "case",
+    title: "New timeline entry",
+    body: payload.entry.slice(0, 140),
+    exclude: profile.id,
+    includeClient: false,
+  });
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/timeline");
@@ -376,10 +386,18 @@ export async function addMultipleTimelineEntries(
   const { error } = await supabase.from("timeline_entries").insert(rows);
   if (error) return { error: handleDbError(error, "timeline") };
 
-  // Revalidate all affected case paths
+  // Revalidate all affected case paths + notify each case team once.
   const caseIds = [...new Set(entries.map((e) => e.caseId))];
   for (const caseId of caseIds) {
     revalidatePath(`/cases/${caseId}`);
+    const added = entries.filter((e) => e.caseId === caseId).length;
+    void notifyCaseParticipants(caseId, {
+      type: "case",
+      title: "New timeline entries",
+      body: `${added} ${added === 1 ? "entry" : "entries"} added to the case.`,
+      exclude: profile.id,
+      includeClient: false,
+    });
   }
   revalidatePath("/timeline");
 

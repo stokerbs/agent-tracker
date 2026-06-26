@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import http2 from "node:http2";
-import { notificationData, type PushPayload, type SendStatus } from "./types";
+import { apnsPriority, notificationData, type PushPayload, type SendStatus } from "./types";
 
 /**
  * Apple Push Notification service (APNs) sender — used for iOS device tokens,
@@ -95,6 +95,7 @@ function sendOne(
   bundleId: string,
   deviceToken: string,
   body: string,
+  priority: "10" | "5",
 ): Promise<Outcome> {
   return new Promise((resolve) => {
     const req = client.request({
@@ -103,7 +104,7 @@ function sendOne(
       authorization: `bearer ${jwt}`,
       "apns-topic": bundleId,
       "apns-push-type": "alert",
-      "apns-priority": "10",
+      "apns-priority": priority,
       "content-type": "application/json",
     });
 
@@ -175,6 +176,7 @@ export async function sendApnsToTokens(
     },
     ...notificationData(payload),
   });
+  const priority = apnsPriority(payload.priority);
 
   const client = http2.connect(cfg.host);
   // A session-level error (e.g. connect failure) would otherwise leave the
@@ -188,7 +190,9 @@ export async function sendApnsToTokens(
 
   const run = async (): Promise<{ token: string; status: SendStatus }[]> => {
     let jwt = providerToken(cfg);
-    const first = await Promise.all(tokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body)));
+    const first = await Promise.all(
+      tokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body, priority)),
+    );
 
     const final: { token: string; status: SendStatus }[] = [];
     const jwtRetry: string[] = [];
@@ -204,7 +208,7 @@ export async function sendApnsToTokens(
       if (backoffRetry.length > 0) await sleep(500);
       const retryTokens = [...jwtRetry, ...backoffRetry];
       const retried = await Promise.all(
-        retryTokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body)),
+        retryTokens.map((t) => sendOne(client, jwt, cfg.bundleId, t, body, priority)),
       );
       for (const o of retried) final.push({ token: o.token, status: o.status });
     }

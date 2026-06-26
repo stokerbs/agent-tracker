@@ -12,7 +12,17 @@ import {
   encryptField,
 } from "@/lib/security/encryption";
 import { sendAssignmentEmail } from "@/lib/email";
-import { notifyUsers } from "@/lib/notifications";
+import { notifyCaseParticipants, notifyUsers, notificationLinks } from "@/lib/notifications";
+
+/** Human label for a case status, used in notification copy. */
+const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
+  new: "New",
+  assigned: "Assigned",
+  active: "Active",
+  pending: "Pending",
+  closed: "Closed",
+  cancelled: "Cancelled",
+};
 
 function emptyToNull(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -70,26 +80,42 @@ export async function createCase(formData: FormData) {
 }
 
 export async function updateCaseStatus(caseId: string, status: CaseStatus) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
   const { error } = await supabase
     .from("cases")
     .update({ status })
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
+
+  void notifyCaseParticipants(caseId, {
+    type: "case",
+    title: "Case status updated",
+    body: `Status changed to ${CASE_STATUS_LABEL[status]}.`,
+    exclude: profile.id,
+  });
+
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
   return { ok: true };
 }
 
 export async function closeCase(caseId: string, endDate: string) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
   const { error } = await supabase
     .from("cases")
     .update({ status: "closed", end_date: endDate })
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
+
+  void notifyCaseParticipants(caseId, {
+    type: "case",
+    title: "Case closed",
+    body: "This case has been closed.",
+    exclude: profile.id,
+  });
+
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
   revalidatePath("/dashboard");
@@ -131,7 +157,8 @@ export async function assignAgent(caseId: string, agentId: string) {
         type: "assignment",
         title: "New case assignment",
         body: `You have been assigned to case ${caseRow.case_number}.`,
-        link: `/cases/${caseId}`,
+        url: notificationLinks.case(caseId),
+        entityId: caseId,
       });
     }
   }
@@ -303,7 +330,8 @@ export async function setCaseAssignments(
         type: "assignment",
         title: "New case assignment",
         body: `You have been assigned to ${caseRow.case_number}.`,
-        link: `/cases/${caseId}`,
+        url: notificationLinks.case(caseId),
+        entityId: caseId,
       });
     }
   }
@@ -368,13 +396,21 @@ export async function unarchiveCase(caseId: string) {
 }
 
 export async function cancelCase(caseId: string) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();
   const { error } = await supabase
     .from("cases")
     .update({ status: "cancelled" })
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
+
+  void notifyCaseParticipants(caseId, {
+    type: "case",
+    title: "Case cancelled",
+    body: "This case has been cancelled.",
+    exclude: profile.id,
+  });
+
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
   return { ok: true };

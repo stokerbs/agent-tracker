@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { handleDbError } from "@/lib/errors";
+import { notifyRole, notificationLinks } from "@/lib/notifications";
 
 const schema = z.object({
   lat: z.number().min(-90).max(90),
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agent } = await svc
     .from("agents")
-    .select("id, status, current_lat, current_lng")
+    .select("id, full_name, status, current_lat, current_lng")
     .eq("profile_id", userId)
     .maybeSingle();
 
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
     // 3. Geofence enter/exit detection
     const { data: fences } = await svc
       .from("geofences")
-      .select("id, coordinates")
+      .select("id, name, coordinates")
       .eq("active", true)
       .is("deleted_at", null);
 
@@ -198,12 +199,21 @@ export async function POST(request: NextRequest) {
         : false;
 
       if (nowInside !== wasInside) {
+        const eventType = nowInside ? "enter" : "exit";
         await svc.from("geofence_events").insert({
           geofence_id: fence.id,
           agent_id: agent.id,
-          event_type: nowInside ? "enter" : "exit",
+          event_type: eventType,
           lat: parsed.lat,
           lng: parsed.lng,
+        });
+        // Alert supervisors/admins of the boundary crossing through the one pipeline.
+        void notifyRole(["admin", "supervisor"], {
+          type: "system",
+          title: "Geofence alert",
+          body: `${agent.full_name ?? "An agent"} ${eventType === "enter" ? "entered" : "left"} ${fence.name}.`,
+          url: notificationLinks.map(),
+          entityId: fence.id,
         });
       }
     }
