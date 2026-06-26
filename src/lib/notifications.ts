@@ -132,25 +132,31 @@ export async function getCaseRecipients(
   caseId: string,
   opts?: { exclude?: string },
 ): Promise<CaseRecipients> {
-  const client = createServiceClient();
-  const [linksRes, caseRes] = await Promise.all([
-    client.from("case_agents").select("agents(profile_id)").eq("case_id", caseId),
-    client.from("cases").select("clients(profile_id)").eq("id", caseId).maybeSingle(),
-  ]);
+  try {
+    const client = createServiceClient();
+    const [linksRes, caseRes] = await Promise.all([
+      client.from("case_agents").select("agents(profile_id)").eq("case_id", caseId),
+      client.from("cases").select("clients(profile_id)").eq("id", caseId).maybeSingle(),
+    ]);
 
-  const exclude = opts?.exclude;
-  const agents = [
-    ...new Set(
-      (linksRes.data ?? [])
-        .map((r) => relProfileId(r.agents))
-        .filter((id): id is string => !!id),
-    ),
-  ].filter((id) => id !== exclude);
+    const exclude = opts?.exclude;
+    const agents = [
+      ...new Set(
+        (linksRes.data ?? [])
+          .map((r) => relProfileId(r.agents))
+          .filter((id): id is string => !!id),
+      ),
+    ].filter((id) => id !== exclude);
 
-  const clientProfileId = relProfileId(caseRes.data?.clients);
-  const clientId = clientProfileId && clientProfileId !== exclude ? clientProfileId : null;
+    const clientProfileId = relProfileId(caseRes.data?.clients);
+    const clientId = clientProfileId && clientProfileId !== exclude ? clientProfileId : null;
 
-  return { agents, client: clientId };
+    return { agents, client: clientId };
+  } catch (err) {
+    // Best-effort: a resolution failure must never reject into a void caller.
+    console.error("[notification] getCaseRecipients error", err);
+    return { agents: [], client: null };
+  }
 }
 
 /**

@@ -2,7 +2,7 @@
 -- application layer (emergency/actions.ts → notifyRole), which also delivers
 -- native push (APNs/FCM) — something the DB trigger could never do.
 --
--- This mirrors migration 0xxx, which earlier moved assignment + report-status
+-- This mirrors migration 0019, which earlier moved assignment + report-status
 -- notifications off DB triggers and into the app for the same reason. Dropping
 -- this trigger prevents duplicate notification rows now that the action inserts
 -- them via notifyUsers(). `emergency_alerts` is inserted from exactly one path
