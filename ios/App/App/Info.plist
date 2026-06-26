@@ -28,6 +28,8 @@
 	<string>Continue reporting your position to dispatch while on assignment, even in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Report your position to the operations map while on duty.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save evidence photos you capture to your device photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Attach photos from your library to case evidence.</string>
 	<key>UIBackgroundModes</key>
