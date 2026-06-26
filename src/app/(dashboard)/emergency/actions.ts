@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, requireRole } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
@@ -40,19 +39,17 @@ export async function triggerSos(input: {
     .single();
   if (error) return { error: handleDbError(error, "emergency") };
 
-  after(() =>
-    notifyRole(
-      ["admin", "supervisor"],
-      {
-        type: "emergency",
-        title: "SOS Emergency Alert",
-        body: `${agent?.full_name ?? "An agent"} triggered an emergency alert.`,
-        url: notificationLinks.emergency(alert.id),
-        entityId: alert.id,
-        priority: "high",
-      },
-      profile.id,
-    ),
+  void notifyRole(
+    ["admin", "supervisor"],
+    {
+      type: "emergency",
+      title: "SOS Emergency Alert",
+      body: `${agent?.full_name ?? "An agent"} triggered an emergency alert.`,
+      url: notificationLinks.emergency(alert.id),
+      entityId: alert.id,
+      priority: "high",
+    },
+    profile.id,
   );
 
   revalidatePath("/emergency");
