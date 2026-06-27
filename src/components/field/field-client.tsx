@@ -8,7 +8,6 @@ import {
   BatteryFull,
   BatteryLow,
   BatteryMedium,
-  Briefcase,
   Camera,
   Car,
   ChevronRight,
@@ -21,7 +20,6 @@ import {
   Paperclip,
   Plus,
   RefreshCw,
-  ShieldAlert,
   Siren,
   UserX,
   X,
@@ -232,17 +230,18 @@ export function FieldClient({ agent: initialAgent, activeCases, intelCounts, noA
     gpsState === "acquiring" ? "text-amber-500" : "text-red-500";
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-5">
       {/* Identity */}
-      <Card>
-        <CardContent className="flex items-center gap-4 p-4">
-          <Avatar className="h-14 w-14 text-base">
-            <AvatarFallback className="font-semibold">{initials(agent.full_name)}</AvatarFallback>
+      <Card className="overflow-hidden">
+        <CardContent className="flex items-center gap-3 p-4">
+          <Avatar className="h-12 w-12 text-base ring-2 ring-primary/70 ring-offset-2 ring-offset-card">
+            <AvatarFallback className="bg-secondary font-semibold text-foreground">{initials(agent.full_name)}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="font-semibold truncate">{agent.full_name}</p>
-            <p className="text-xs text-muted-foreground font-mono">{agent.agent_code}</p>
-            {agent.area && <p className="text-xs text-muted-foreground mt-0.5">{agent.area}</p>}
+            <p className="mt-0.5 truncate font-mono text-xs text-primary">
+              {agent.agent_code}{agent.area ? ` · ${agent.area}` : ""}
+            </p>
           </div>
           <div className="flex flex-col items-end gap-1">
             {agent.agent_role && <AgentRoleBadge role={agent.agent_role} />}
@@ -252,33 +251,31 @@ export function FieldClient({ agent: initialAgent, activeCases, intelCounts, noA
       </Card>
 
       {/* Status selector */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm">{t("myStatus")}</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {STATUSES.map((s) => {
-              const active = agent.status === s;
-              return (
-                <button
-                  key={s}
-                  disabled={statusPending || active}
-                  onClick={() => handleStatusChange(s)}
-                  className={cn(
-                    "flex min-h-[48px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition-all",
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/60 bg-card hover:bg-accent/40 text-foreground",
-                  )}
-                >
-                  {statusPending && active ? <Loader2 className="h-4 w-4 animate-spin" /> : tStatus(s)}
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <section>
+        <p className="mb-2 px-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+          {t("myStatus")}
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {STATUSES.map((s) => {
+            const active = agent.status === s;
+            return (
+              <button
+                key={s}
+                disabled={statusPending || active}
+                onClick={() => handleStatusChange(s)}
+                className={cn(
+                  "flex min-h-[48px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition-all",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                {statusPending && active ? <Loader2 className="h-4 w-4 animate-spin" /> : tStatus(s)}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* GPS */}
       <Card>
@@ -337,73 +334,72 @@ export function FieldClient({ agent: initialAgent, activeCases, intelCounts, noA
       </Card>
 
       {/* Active cases */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Briefcase className="h-3.5 w-3.5" />
-            {t("activeCases")} ({activeCases.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {activeCases.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("noActiveCases")}</p>
-          ) : (
-            <div className="space-y-3">
-              {activeCases.map((c) => {
-                const counts = intelCounts[c.id] ?? { photos: 0, vehicles: 0, locations: 0 };
-                return (
-                  <div key={c.id} className="space-y-2">
-                    {/* Case header row */}
-                    <Link
-                      href={`/cases/${c.id}`}
-                      className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 transition-colors hover:bg-accent/40"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm font-semibold text-primary">{c.case_number}</p>
-                        {c.client_name && <p className="truncate text-xs text-muted-foreground">{c.client_name}</p>}
-                      </div>
-                      <Badge variant="secondary" className="ml-2 shrink-0 text-xs capitalize">
-                        {c.status.replace("_", " ")}
-                      </Badge>
-                    </Link>
+      <section>
+        <div className="mb-2 flex items-center justify-between px-0.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            {t("activeCases")}
+          </span>
+          <span className="font-mono text-[11px] text-primary">
+            {String(activeCases.length).padStart(2, "0")}
+          </span>
+        </div>
 
-                    {/* Target Intel card — large, full-width, min-h-[80px] */}
-                    <Link href={`/field/${c.id}`} className="block">
-                      <div className="flex min-h-[80px] w-full items-center justify-between rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 transition-colors active:bg-primary/15 hover:bg-primary/10">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                            <ShieldAlert className="h-4.5 w-4.5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-primary">{t("intel.viewIntel")}</p>
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <ImageIcon className="h-3 w-3" />
-                                {counts.photos}
-                              </span>
-                              <span className="text-border">·</span>
-                              <span className="flex items-center gap-1">
-                                <Car className="h-3 w-3" />
-                                {counts.vehicles}
-                              </span>
-                              <span className="text-border">·</span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {counts.locations}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {activeCases.length === 0 ? (
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">{t("noActiveCases")}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {activeCases.map((c) => {
+              const counts = intelCounts[c.id] ?? { photos: 0, vehicles: 0, locations: 0 };
+              const pr = (c.priority ?? "").toLowerCase();
+              const prBorder =
+                pr === "urgent" || pr === "high" ? "border-l-destructive"
+                : pr === "medium" ? "border-l-primary"
+                : "border-l-muted-foreground/40";
+              const prChip =
+                pr === "urgent" || pr === "high" ? "border-destructive/50 text-destructive"
+                : pr === "medium" ? "border-primary/50 text-primary"
+                : "border-border text-muted-foreground";
+              return (
+                <Card key={c.id} className={cn("border-l-[3px] p-3.5", prBorder)}>
+                  <Link href={`/cases/${c.id}`} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-sm font-semibold text-primary">{c.case_number}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {c.client_name ? `${c.client_name} · ` : ""}
+                        <span className="capitalize">{c.status.replace("_", " ")}</span>
+                      </p>
+                    </div>
+                    {pr && (
+                      <span className={cn("shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide", prChip)}>
+                        {pr}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link
+                    href={`/field/${c.id}`}
+                    className="mt-3 flex items-center justify-between rounded-lg border border-border bg-secondary/40 px-3 py-2.5 transition-colors hover:border-primary/40 active:bg-secondary/70"
+                  >
+                    <div className="flex items-center gap-4 font-mono text-xs text-foreground/80">
+                      <span className="flex items-center gap-1.5"><ImageIcon className="h-3.5 w-3.5 text-sky-400" />{counts.photos}</span>
+                      <span className="flex items-center gap-1.5"><Car className="h-3.5 w-3.5 text-sky-400" />{counts.vehicles}</span>
+                      <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-sky-400" />{counts.locations}</span>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs font-medium text-primary">
+                      {t("intel.viewIntel")}
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </Link>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* ── Add Observation — primary action ── */}
       <AddObservationDialog cases={activeCases} lastPos={lastPos} gpsState={gpsState} />
@@ -545,7 +541,7 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else setOpen(true); }}>
       <DialogTrigger asChild>
-        <Button className="w-full gap-2 h-12 text-base font-semibold" size="lg">
+        <Button className="h-12 w-full gap-2 text-base font-semibold uppercase tracking-wide" size="lg">
           <Plus className="h-5 w-5" />
           {t("log.button")}
         </Button>
@@ -559,7 +555,10 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
         sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl
       ">
         <DialogHeader className="px-4 pb-2 pt-5">
-          <DialogTitle className="text-base">{t("log.title")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-mono text-sm uppercase tracking-wide">
+            <Plus className="h-4 w-4 text-primary" />
+            {t("log.title")}
+          </DialogTitle>
           <DialogDescription className="sr-only">{t("log.description")}</DialogDescription>
         </DialogHeader>
 
@@ -671,24 +670,24 @@ function AddObservationDialog({ cases, lastPos, gpsState }: ObsDialogProps) {
           <div className="flex flex-wrap gap-1.5">
             {native && (
               <button type="button" onClick={captureNativePhoto} disabled={pending}
-                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50">
                 <Camera className="h-3 w-3" />
                 {tObs("camera")}
               </button>
             )}
             <button type="button" onClick={() => photoRef.current?.click()} disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/20 disabled:opacity-50">
-              <ImageIcon className="h-3 w-3" />
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-medium text-foreground/90 hover:border-primary/40 disabled:opacity-50">
+              <ImageIcon className="h-3 w-3 text-sky-400" />
               {photos.length > 0 ? `${photos.length} Photo${photos.length > 1 ? "s" : ""}` : tObs("photos")}
             </button>
             <button type="button" onClick={() => videoRef.current?.click()} disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs font-medium text-violet-400 hover:bg-violet-500/20 disabled:opacity-50">
-              <Film className="h-3 w-3" />
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-medium text-foreground/90 hover:border-primary/40 disabled:opacity-50">
+              <Film className="h-3 w-3 text-violet-400" />
               {videos.length > 0 ? `${videos.length} Video${videos.length > 1 ? "s" : ""}` : tObs("videos")}
             </button>
             <button type="button" onClick={() => fileRef.current?.click()} disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-500/20 disabled:opacity-50">
-              <Paperclip className="h-3 w-3" />
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-medium text-foreground/90 hover:border-primary/40 disabled:opacity-50">
+              <Paperclip className="h-3 w-3 text-muted-foreground" />
               {docs.length > 0 ? `${docs.length} File${docs.length > 1 ? "s" : ""}` : tObs("files")}
             </button>
             <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only"
@@ -745,16 +744,15 @@ function SosDialog({ lat, lng }: { lat?: number; lng?: number }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
-          className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="h-14 w-full gap-2 bg-destructive text-base font-semibold uppercase tracking-wide text-destructive-foreground hover:bg-destructive/90"
         >
-          <Siren className="h-4 w-4" />
+          <Siren className="h-5 w-5" />
           {t("sos.button")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm border-destructive/40">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
+          <DialogTitle className="flex items-center gap-2 font-mono uppercase tracking-wide text-destructive">
             <Siren className="h-5 w-5" /> {tSos("dialogTitle")}
           </DialogTitle>
           <DialogDescription>{tSos("dialogDescription")}</DialogDescription>
@@ -763,7 +761,7 @@ function SosDialog({ lat, lng }: { lat?: number; lng?: number }) {
           placeholder={tSos("notesPlaceholder")} rows={3} />
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button variant="destructive" onClick={fire} disabled={pending}>
+          <Button variant="destructive" className="uppercase tracking-wide" onClick={fire} disabled={pending}>
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Siren className="h-4 w-4" />}
             {tSos("sendButton")}
           </Button>
