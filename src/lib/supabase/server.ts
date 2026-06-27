@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { persistAuthCookie } from "./cookie-options";
 
 /**
  * Server-side Supabase client bound to the request cookies.
@@ -22,7 +23,7 @@ export async function createClient() {
         ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set(name, value, persistAuthCookie(name, options)),
             );
           } catch {
             // The `setAll` method was called from a Server Component.

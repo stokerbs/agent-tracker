@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { persistAuthCookie } from "./cookie-options";
 
 // /login covers /login/verify (startsWith check), so no extra entry needed.
 const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy"];
@@ -35,7 +36,7 @@ export async function updateSession(request: NextRequest) {
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options as never),
+            response.cookies.set(name, value, persistAuthCookie(name, options) as never),
           );
         },
       },
