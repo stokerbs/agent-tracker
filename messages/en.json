@@ -1681,7 +1681,8 @@
       "field": "Field",
       "cases": "Cases",
       "map": "Map",
-      "alerts": "Alerts"
+      "alerts": "Alerts",
+      "board": "Board"
     },
     "classification": {
       "banner": "● ON DUTY · CLEARANCE FIELD",
@@ -1947,5 +1948,30 @@
       "description": "We couldn't load this page right now. Please try again, or contact us if the problem continues.",
       "reset": "Try again"
     }
+  },
+  "board": {
+    "title": "Job board",
+    "posted": "Posted to board",
+    "removed": "Removed from board",
+    "approved": "Claim approved",
+    "rejected": "Claim rejected",
+    "slotsLabel": "Slots needed",
+    "postButton": "Post to board",
+    "onBoard": "On the board · {slots} agent(s) needed",
+    "removeButton": "Remove",
+    "requests": "Claim requests",
+    "noRequests": "No pending requests.",
+    "unknownAgent": "Agent",
+    "approve": "Approve",
+    "reject": "Reject",
+    "availableTitle": "Available cases",
+    "slotsLeft": "{remaining}/{slots} left",
+    "requestSent": "Request sent",
+    "empty": "No cases available right now.",
+    "statusPending": "Awaiting approval",
+    "statusApproved": "Assigned — open case",
+    "statusRejected": "Not approved",
+    "full": "Full",
+    "claimButton": "Request case"
   }
 }

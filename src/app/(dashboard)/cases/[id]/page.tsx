@@ -35,6 +35,8 @@ import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { AssignCaseButton } from "@/components/cases/assign-case-button";
 import { AssignedTeamCard, type TeamMember } from "@/components/cases/assigned-team-card";
+import { BoardPanel } from "@/components/cases/board-panel";
+import { listPendingClaims } from "@/app/(dashboard)/cases/board-actions";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { CollapsibleCard } from "@/components/shared/collapsible-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
@@ -248,6 +250,8 @@ export default async function CaseDetailPage({
     .flatMap((r) => (Array.isArray(r.agents) ? r.agents : r.agents ? [r.agents] : []))
     .filter((a): a is TeamMember => !!a);
 
+  const pendingClaims = staff && c.on_board ? await listPendingClaims(id) : [];
+
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
@@ -306,6 +310,18 @@ export default async function CaseDetailPage({
       <FadeUp delay={0.03}>
         <AssignedTeamCard members={assignedTeam} />
       </FadeUp>
+
+      {/* Job board (staff: post + review claims) */}
+      {staff && (
+        <FadeUp delay={0.035}>
+          <BoardPanel
+            caseId={id}
+            onBoard={c.on_board}
+            slots={c.board_slots}
+            pendingClaims={pendingClaims}
+          />
+        </FadeUp>
+      )}
 
       {/* Intelligence summary cards */}
       <FadeUp delay={0.04}>
