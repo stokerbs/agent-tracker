@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Lock } from "lucide-react";
+import { requireProfile } from "@/lib/auth";
 import { FieldTabBar } from "@/components/field/field-tab-bar";
 
 /**
@@ -12,6 +13,7 @@ import { FieldTabBar } from "@/components/field/field-tab-bar";
  */
 export async function MobileFieldShell({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("field");
+  const profile = await requireProfile();
 
   return (
     <div className="theme-tactical-mobile -mx-4 -my-4 min-h-[calc(100vh-3.5rem)] bg-background px-4 pb-24 text-foreground sm:-mx-6 sm:-my-6 sm:px-6 lg:mx-0 lg:my-0 lg:min-h-0 lg:bg-transparent lg:px-0 lg:pb-0">
@@ -28,7 +30,7 @@ export async function MobileFieldShell({ children }: { children: React.ReactNode
 
       <div className="mx-auto max-w-md pt-4 lg:max-w-none lg:pt-0">{children}</div>
 
-      <FieldTabBar />
+      <FieldTabBar role={profile.role} />
     </div>
   );
 }

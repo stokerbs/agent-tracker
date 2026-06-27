@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Lock } from "lucide-react";
+import { requireProfile } from "@/lib/auth";
 import { FieldTabBar } from "@/components/field/field-tab-bar";
 
 /**
@@ -14,6 +15,7 @@ export default async function FieldLayout({
   children: React.ReactNode;
 }) {
   const t = await getTranslations("field");
+  const profile = await requireProfile();
 
   return (
     <div className="theme-tactical -mx-4 -my-4 min-h-[calc(100vh-3.5rem)] bg-background text-foreground sm:-mx-6 sm:-my-6 lg:-mx-7 lg:-my-7">
@@ -30,7 +32,7 @@ export default async function FieldLayout({
 
       <div className="mx-auto max-w-md px-4 pb-24 pt-4">{children}</div>
 
-      <FieldTabBar />
+      <FieldTabBar role={profile.role} />
     </div>
   );
 }
