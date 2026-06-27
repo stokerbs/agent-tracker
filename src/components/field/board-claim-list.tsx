@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, ClipboardCheck, Clock, Check, X } from "lucide-react";
+import { Loader2, ClipboardCheck, Clock, Check, X, Banknote, Calendar, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { requestCase, type BoardCase } from "@/app/(dashboard)/cases/board-actions";
@@ -55,6 +55,35 @@ export function BoardClaimList({ cases }: { cases: BoardCase[] }) {
                 {t("slotsLeft", { remaining: c.remaining, slots: c.slots })}
               </span>
             </div>
+
+            {(c.pay != null || c.startAt || c.duration || c.location) && (
+              <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                {c.pay != null && (
+                  <span className="flex items-center gap-1.5 font-medium text-primary">
+                    <Banknote className="h-3.5 w-3.5 shrink-0" />
+                    {t("payValue", { pay: c.pay.toLocaleString("th-TH") })}
+                  </span>
+                )}
+                {c.duration && (
+                  <span className="flex items-center gap-1.5 text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />{c.duration}
+                  </span>
+                )}
+                {c.startAt && (
+                  <span className="flex items-center gap-1.5 text-foreground/80">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {new Date(c.startAt).toLocaleString("th-TH", {
+                      dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok",
+                    })}
+                  </span>
+                )}
+                {c.location && (
+                  <span className="col-span-2 flex items-center gap-1.5 text-foreground/80">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />{c.location}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-3">
               {c.myClaim === "pending" ? (

@@ -1973,6 +1973,13 @@
     "statusApproved": "ได้รับแล้ว — เปิดเคส",
     "statusRejected": "ไม่อนุมัติ",
     "full": "เต็มแล้ว",
-    "claimButton": "ขอรับงาน"
+    "claimButton": "ขอรับงาน",
+    "payLabel": "ค่าแรง (บาท)",
+    "startLabel": "เริ่มงาน",
+    "durationLabel": "ระยะเวลา",
+    "locationLabel": "จุดเริ่มงาน",
+    "durationPlaceholder": "เช่น 8 ชม. / 3 วัน",
+    "locationPlaceholder": "จุดนัดพบ / เริ่มงาน",
+    "payValue": "฿{pay}"
   }
 }

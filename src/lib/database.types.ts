@@ -504,9 +504,13 @@ export type Database = {
       cases: {
         Row: {
           archived_at: string | null
+          board_duration: string | null
+          board_location: string | null
+          board_pay: number | null
           board_posted_at: string | null
           board_posted_by: string | null
           board_slots: number | null
+          board_start_at: string | null
           case_number: string
           case_type: string | null
           client_id: string | null
@@ -541,9 +545,13 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          board_duration?: string | null
+          board_location?: string | null
+          board_pay?: number | null
           board_posted_at?: string | null
           board_posted_by?: string | null
           board_slots?: number | null
+          board_start_at?: string | null
           case_number: string
           case_type?: string | null
           client_id?: string | null
@@ -578,9 +586,13 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          board_duration?: string | null
+          board_location?: string | null
+          board_pay?: number | null
           board_posted_at?: string | null
           board_posted_by?: string | null
           board_slots?: number | null
+          board_start_at?: string | null
           case_number?: string
           case_type?: string | null
           client_id?: string | null

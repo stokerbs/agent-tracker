@@ -28,12 +28,21 @@ export function BoardPanel({ caseId, onBoard, slots, pendingClaims }: Props) {
   const t = useTranslations("board");
   const router = useRouter();
   const [slotInput, setSlotInput] = useState("3");
+  const [pay, setPay] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const [duration, setDuration] = useState("");
+  const [location, setLocation] = useState("");
   const [pending, start] = useTransition();
 
   function post() {
-    const n = Number(slotInput);
     start(async () => {
-      const res = await postCaseToBoard(caseId, n);
+      const res = await postCaseToBoard(caseId, {
+        slots: Number(slotInput),
+        startAt: startAt || null,
+        duration: duration || null,
+        pay: pay ? Number(pay) : null,
+        location: location || null,
+      });
       if (res && "error" in res) { toast.error(res.error); return; }
       toast.success(t("posted"));
       router.refresh();
@@ -68,19 +77,33 @@ export function BoardPanel({ caseId, onBoard, slots, pendingClaims }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         {!onBoard ? (
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("slotsLabel")}</Label>
+                <Input type="number" min={1} max={50} value={slotInput}
+                  onChange={(e) => setSlotInput(e.target.value)} className="h-9" disabled={pending} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("payLabel")}</Label>
+                <Input type="number" min={0} value={pay} placeholder="฿"
+                  onChange={(e) => setPay(e.target.value)} className="h-9" disabled={pending} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("startLabel")}</Label>
+                <Input type="datetime-local" value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)} className="h-9" disabled={pending} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("durationLabel")}</Label>
+                <Input value={duration} placeholder={t("durationPlaceholder")}
+                  onChange={(e) => setDuration(e.target.value)} className="h-9" disabled={pending} />
+              </div>
+            </div>
             <div className="space-y-1">
-              <Label htmlFor="board-slots" className="text-xs text-muted-foreground">{t("slotsLabel")}</Label>
-              <Input
-                id="board-slots"
-                type="number"
-                min={1}
-                max={50}
-                value={slotInput}
-                onChange={(e) => setSlotInput(e.target.value)}
-                className="h-9 w-24"
-                disabled={pending}
-              />
+              <Label className="text-xs text-muted-foreground">{t("locationLabel")}</Label>
+              <Input value={location} placeholder={t("locationPlaceholder")}
+                onChange={(e) => setLocation(e.target.value)} className="h-9" disabled={pending} />
             </div>
             <Button onClick={post} disabled={pending} className="gap-2">
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}

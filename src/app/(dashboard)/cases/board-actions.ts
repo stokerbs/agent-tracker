@@ -24,10 +24,22 @@ const BOARD_PATH = "/field/board";
 
 // ── Admin: post / remove from board ─────────────────────────────────────────
 
-export async function postCaseToBoard(caseId: string, slots: number) {
+export interface BoardPostInput {
+  slots: number;
+  startAt?: string | null;
+  duration?: string | null;
+  pay?: number | null;
+  location?: string | null;
+}
+
+export async function postCaseToBoard(caseId: string, input: BoardPostInput) {
   await requireRole(["admin", "supervisor"]);
+  const { slots, startAt, duration, pay, location } = input;
   if (!Number.isInteger(slots) || slots < 1 || slots > 50) {
     return { error: "Slots must be a whole number between 1 and 50." };
+  }
+  if (pay != null && (Number.isNaN(pay) || pay < 0)) {
+    return { error: "Pay must be a non-negative number." };
   }
   const supabase = await createClient();
   const { error } = await supabase
@@ -35,6 +47,10 @@ export async function postCaseToBoard(caseId: string, slots: number) {
     .update({
       on_board: true,
       board_slots: slots,
+      board_start_at: startAt || null,
+      board_duration: duration?.trim() || null,
+      board_pay: pay ?? null,
+      board_location: location?.trim() || null,
       board_posted_at: new Date().toISOString(),
     })
     .eq("id", caseId);
@@ -69,6 +85,10 @@ export interface BoardCase {
   case_number: string;
   case_type: string;
   priority: string;
+  startAt: string | null;
+  duration: string | null;
+  pay: number | null;
+  location: string | null;
   slots: number;
   approved: number;
   remaining: number;
@@ -86,7 +106,7 @@ export async function listBoardCases(): Promise<BoardCase[]> {
 
   const { data: cases } = await svc
     .from("cases")
-    .select("id, case_number, case_type, priority, board_slots")
+    .select("id, case_number, case_type, priority, board_slots, board_start_at, board_duration, board_pay, board_location")
     .eq("on_board", true)
     .is("archived_at", null)
     .order("board_posted_at", { ascending: false });
@@ -116,6 +136,10 @@ export async function listBoardCases(): Promise<BoardCase[]> {
       case_number: c.case_number,
       case_type: c.case_type,
       priority: c.priority,
+      startAt: c.board_start_at ?? null,
+      duration: c.board_duration ?? null,
+      pay: c.board_pay ?? null,
+      location: c.board_location ?? null,
       slots,
       approved,
       remaining: Math.max(0, slots - approved),

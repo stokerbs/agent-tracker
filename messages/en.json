@@ -1972,6 +1972,13 @@
     "statusApproved": "Assigned — open case",
     "statusRejected": "Not approved",
     "full": "Full",
-    "claimButton": "Request case"
+    "claimButton": "Request case",
+    "payLabel": "Pay (THB)",
+    "startLabel": "Start",
+    "durationLabel": "Duration",
+    "locationLabel": "Start location",
+    "durationPlaceholder": "e.g. 8 hrs / 3 days",
+    "locationPlaceholder": "Where to meet / start",
+    "payValue": "฿{pay}"
   }
 }
