@@ -20,9 +20,11 @@ licensed field investigators** — not a consumer app.
 > **Demo account (required to review — the app is login-gated)**
 > Login is by **phone number + 6-digit SMS code**. A fixed test code is
 > configured for this number, so no real SMS is needed:
-> Phone: `<DEMO_PHONE>` (enter exactly as shown)
-> Verification code: `<DEMO_TEST_OTP>`
-> This account is a supervisor pre-seeded with a sample case, so every screen has data.
+> Phone: `0900000001`
+> Verification code: `123456`
+> This account ("Apple Reviewer", a supervisor) is pre-seeded with two sample
+> cases (CASE-2026-0003, CASE-2026-0002) containing target photos, vehicles, and
+> locations, so every screen has data.
 >
 > **How to exercise the core native features**
 > 1. Sign in with the demo account above → you land on the Field screen.
@@ -59,13 +61,16 @@ licensed field investigators** — not a consumer app.
 ---
 
 ## 2. Things YOU must fill in before submitting
-- [ ] **Configure a deterministic test OTP** (the login is phone + SMS code; the
-      reviewer cannot receive your SMS). Supabase Dashboard → Authentication →
-      Sign In / Providers → Phone → **Test OTP**: add the demo phone (e.g.
-      `+66968461406`) → fixed code (e.g. `123456`). This logs in without sending SMS.
-- [ ] Fill `<DEMO_PHONE>`, `<DEMO_TEST_OTP>`, `<CONTACT_EMAIL>` in the notes above.
-      The demo account should be a **supervisor/admin** with a sample case so all
-      screens (incl. Map/Alerts) have data.
+- [x] Demo account created: **"Apple Reviewer"** (supervisor) — phone
+      `+66900000001`, agent code `DEMO-001`, assigned to CASE-2026-0003 and
+      CASE-2026-0002 (both have target photos/vehicles/locations).
+- [ ] **Configure the Test OTP** (the login is phone + SMS code; the reviewer
+      cannot receive your SMS). Supabase Dashboard → Authentication →
+      Sign In / Providers → Phone → **Test OTP**: add `+66900000001` → `123456`.
+      This logs the demo account in without sending a real SMS. **Without this the
+      reviewer cannot get past login — App Review will fail.** (The reviewer types
+      `0900000001`; the app normalizes it to `+66900000001`.)
+- [ ] Fill `<CONTACT_EMAIL>` in the notes above (e.g. `privacy@detectivepulse.app`).
 - [ ] **Privacy Policy URL**: `https://detectivepulse.app/privacy` (page already
       exists at `src/app/privacy/page.tsx` — confirm its content matches what the
       app collects: location, photos, account/contact).
