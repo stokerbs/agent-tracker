@@ -62,7 +62,7 @@ licensed field investigators** — not a consumer app.
 > The app is not offered to consumers and is not intended for tracking people one
 > is not lawfully authorized to investigate.
 >
-> Contact for review questions: `<CONTACT_EMAIL>`
+> Contact for review questions: thedemonking001@gmail.com
 
 ---
 
@@ -76,7 +76,7 @@ licensed field investigators** — not a consumer app.
       This logs the demo account in without sending a real SMS. **Without this the
       reviewer cannot get past login — App Review will fail.** (The reviewer types
       `0900000001`; the app normalizes it to `+66900000001`.)
-- [ ] Fill `<CONTACT_EMAIL>` in the notes above (e.g. `privacy@detectivepulse.app`).
+- [x] Contact email set: `thedemonking001@gmail.com`.
 - [ ] **Privacy Policy URL**: `https://detectivepulse.app/privacy` (page already
       exists at `src/app/privacy/page.tsx` — confirm its content matches what the
       app collects: location, photos, account/contact).
