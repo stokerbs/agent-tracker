@@ -10,11 +10,16 @@ const h = vi.hoisted(() => {
   // A chainable, awaitable Supabase query-builder mock. Each `from(table)` call
   // shifts the next configured response off that table's queue, so a single
   // action that hits the same table several times can get different results.
-  const makeBuilder = (result: unknown) => {
+  const inserts: { table: string; payload: unknown }[] = [];
+  const makeBuilder = (result: unknown, table: string) => {
     const b: Record<string, unknown> = {};
-    for (const m of ["select", "update", "insert", "delete", "eq", "in", "is", "order"]) {
+    for (const m of ["select", "update", "delete", "eq", "in", "is", "order"]) {
       b[m] = () => b;
     }
+    b.insert = (payload: unknown) => {
+      inserts.push({ table, payload });
+      return b;
+    };
     b.single = () => b;
     b.maybeSingle = () => b;
     (b as { then: unknown }).then = (res: (v: unknown) => unknown) => res(result);
@@ -24,10 +29,11 @@ const h = vi.hoisted(() => {
     from: (t: string) => {
       const q = resp[t];
       const r = Array.isArray(q) && q.length ? (q.length > 1 ? q.shift() : q[0]) : { data: null, error: null };
-      return makeBuilder(r);
+      return makeBuilder(r, t);
     },
   });
   return {
+    inserts,
     svc: {} as Record<string, unknown[]>,
     usr: {} as Record<string, unknown[]>,
     makeClient,
@@ -59,6 +65,7 @@ async function load() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.inserts.length = 0;
   for (const k of Object.keys(h.svc)) delete h.svc[k];
   for (const k of Object.keys(h.usr)) delete h.usr[k];
   h.requireRole.mockResolvedValue({ id: "admin-1", role: "admin" });
@@ -165,6 +172,53 @@ describe("decideClaim", () => {
     const { decideClaim } = await load();
     expect(await decideClaim("x", "approved")).toEqual({ ok: true });
     expect(h.assignAgent).toHaveBeenCalledWith("c1", "ag1");
+  });
+  it("writes an audit_logs row on approval", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+      { count: 0, error: null },
+      { error: null }, // update
+    ];
+    h.svc.cases = [{ data: { board_slots: 2, case_number: "C1" }, error: null }];
+    const { decideClaim } = await load();
+    await decideClaim("x", "approved");
+    const audit = h.inserts.find((i) => i.table === "audit_logs");
+    expect(audit?.payload).toMatchObject({
+      actor_id: "admin-1",
+      action: "approve_claim",
+      entity: "case_claims",
+      entity_id: "x",
+      metadata: { case_id: "c1", agent_id: "ag1", decision: "approved", case_number: "C1" },
+    });
+  });
+  it("rejects a claim, writes an audit_logs row, and notifies the agent", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+      { error: null }, // update
+    ];
+    h.svc.cases = [{ data: { case_number: "C1" }, error: null }];
+    const { decideClaim } = await load();
+    expect(await decideClaim("x", "rejected")).toEqual({ ok: true });
+    expect(h.assignAgent).not.toHaveBeenCalled();
+    const audit = h.inserts.find((i) => i.table === "audit_logs");
+    expect(audit?.payload).toMatchObject({
+      actor_id: "admin-1",
+      action: "reject_claim",
+      entity: "case_claims",
+      entity_id: "x",
+      metadata: { case_id: "c1", agent_id: "ag1", decision: "rejected", case_number: "C1" },
+    });
+    expect(h.notifyUsers).toHaveBeenCalledWith(["p1"], expect.any(Object));
+  });
+  it("does not write an audit_logs row when approval is blocked by the slot quota", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+      { count: 2, error: null }, // approved count
+    ];
+    h.svc.cases = [{ data: { board_slots: 2, case_number: "C1" }, error: null }];
+    const { decideClaim } = await load();
+    expect(await decideClaim("x", "approved")).toHaveProperty("error");
+    expect(h.inserts.some((i) => i.table === "audit_logs")).toBe(false);
   });
 });
 

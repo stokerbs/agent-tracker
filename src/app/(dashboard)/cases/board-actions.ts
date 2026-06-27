@@ -290,6 +290,20 @@ export async function decideClaim(claimId: string, decision: "approved" | "rejec
       .update({ status: "approved", decided_by: profile.id, decided_at: new Date().toISOString() })
       .eq("id", claimId);
 
+    // Audit the access-granting decision (same shape as setCaseAssignments).
+    await svc.from("audit_logs").insert({
+      actor_id: profile.id,
+      action: "approve_claim",
+      entity: "case_claims",
+      entity_id: claimId,
+      metadata: {
+        case_id: claim.case_id,
+        case_number: caseRow?.case_number ?? null,
+        agent_id: claim.agent_id,
+        decision: "approved",
+      },
+    });
+
     // Close the board for this case once the quota is met.
     if ((approvedCount ?? 0) + 1 >= slots) {
       await svc.from("cases").update({ on_board: false }).eq("id", claim.case_id);
@@ -300,13 +314,28 @@ export async function decideClaim(claimId: string, decision: "approved" | "rejec
       .update({ status: "rejected", decided_by: profile.id, decided_at: new Date().toISOString() })
       .eq("id", claimId);
 
+    const { data: c } = await svc
+      .from("cases")
+      .select("case_number")
+      .eq("id", claim.case_id)
+      .single();
+
+    // Audit the rejection (same shape as setCaseAssignments).
+    await svc.from("audit_logs").insert({
+      actor_id: profile.id,
+      action: "reject_claim",
+      entity: "case_claims",
+      entity_id: claimId,
+      metadata: {
+        case_id: claim.case_id,
+        case_number: c?.case_number ?? null,
+        agent_id: claim.agent_id,
+        decision: "rejected",
+      },
+    });
+
     const agentProfileId = (claim.agents as { profile_id?: string } | null)?.profile_id;
     if (agentProfileId) {
-      const { data: c } = await svc
-        .from("cases")
-        .select("case_number")
-        .eq("id", claim.case_id)
-        .single();
       await notifyUsers([agentProfileId], {
         type: "system",
         title: "Case claim not approved",
