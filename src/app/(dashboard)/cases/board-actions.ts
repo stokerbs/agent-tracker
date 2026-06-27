@@ -54,6 +54,9 @@ export async function removeCaseFromBoard(caseId: string) {
     .eq("id", caseId);
   if (error) return { error: handleDbError(error, "cases") };
 
+  // Clear outstanding pending requests so they don't linger off-board.
+  await supabase.from("case_claims").delete().eq("case_id", caseId).eq("status", "pending");
+
   revalidatePath(`/cases/${caseId}`);
   revalidatePath(BOARD_PATH);
   return { ok: true };
@@ -65,7 +68,6 @@ export interface BoardCase {
   id: string;
   case_number: string;
   case_type: string;
-  area: string | null;
   priority: string;
   slots: number;
   approved: number;
@@ -84,7 +86,7 @@ export async function listBoardCases(): Promise<BoardCase[]> {
 
   const { data: cases } = await svc
     .from("cases")
-    .select("id, case_number, case_type, area, priority, board_slots")
+    .select("id, case_number, case_type, priority, board_slots")
     .eq("on_board", true)
     .is("deleted_at", null)
     .order("board_posted_at", { ascending: false });
@@ -113,7 +115,6 @@ export async function listBoardCases(): Promise<BoardCase[]> {
       id: c.id,
       case_number: c.case_number,
       case_type: c.case_type,
-      area: c.area ?? null,
       priority: c.priority,
       slots,
       approved,
@@ -144,6 +145,16 @@ export async function requestCase(caseId: string, note?: string) {
     .eq("id", caseId)
     .maybeSingle();
   if (!caseRow || !caseRow.on_board) {
+    return { error: "This case is no longer open for claims." };
+  }
+
+  // Re-derive remaining slots server-side (don't trust the on_board flag alone).
+  const { count: approved } = await svc
+    .from("case_claims")
+    .select("id", { count: "exact", head: true })
+    .eq("case_id", caseId)
+    .eq("status", "approved");
+  if ((approved ?? 0) >= (caseRow.board_slots ?? 0)) {
     return { error: "This case is no longer open for claims." };
   }
 

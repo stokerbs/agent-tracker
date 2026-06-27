@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { requireProfile } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { listBoardCases } from "@/app/(dashboard)/cases/board-actions";
 import { BoardClaimList } from "@/components/field/board-claim-list";
 
@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Board" };
 export const dynamic = "force-dynamic";
 
 export default async function FieldBoardPage() {
-  await requireProfile();
+  await requireRole(["admin", "supervisor", "agent"]);
   const t = await getTranslations("board");
   const cases = await listBoardCases();
 
