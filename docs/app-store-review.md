@@ -37,6 +37,12 @@ licensed field investigators** — not a consumer app.
 > 4. Push: assignment / SOS / geofence alerts are delivered via APNs.
 > 5. SOS: the red SOS button alerts supervisors — a lone-worker safety feature.
 >
+> **Account deletion (Guideline 5.1.1(v))**
+> In-app at **Settings → Profile → Delete account**. After typing "DELETE" to
+> confirm, it permanently deletes the account and associated personal data and
+> signs the user out. Note: doing this on the demo account permanently removes it —
+> contact us (below) and we will re-provision the demo if you need to re-test.
+>
 > **Why background location ("Always")**
 > The app's primary purpose is real-time field-staff coordination and lone-worker
 > safety. Supervisors must see the live location of on-duty investigators (and
@@ -56,7 +62,7 @@ licensed field investigators** — not a consumer app.
 > The app is not offered to consumers and is not intended for tracking people one
 > is not lawfully authorized to investigate.
 >
-> Contact for review questions: `<CONTACT_EMAIL>`
+> Contact for review questions: thedemonking001@gmail.com
 
 ---
 
@@ -70,7 +76,7 @@ licensed field investigators** — not a consumer app.
       This logs the demo account in without sending a real SMS. **Without this the
       reviewer cannot get past login — App Review will fail.** (The reviewer types
       `0900000001`; the app normalizes it to `+66900000001`.)
-- [ ] Fill `<CONTACT_EMAIL>` in the notes above (e.g. `privacy@detectivepulse.app`).
+- [x] Contact email set: `thedemonking001@gmail.com`.
 - [ ] **Privacy Policy URL**: `https://detectivepulse.app/privacy` (page already
       exists at `src/app/privacy/page.tsx` — confirm its content matches what the
       app collects: location, photos, account/contact).
