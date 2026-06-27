@@ -253,6 +253,15 @@ export async function listPendingClaims(caseId: string): Promise<PendingClaim[]>
   }));
 }
 
+/** Discriminated result of the atomic `approve_case_claim` RPC (migration 0083). */
+interface ApproveClaimResult {
+  outcome: "approved" | "not_found" | "already_decided" | "quota_met";
+  case_id: string;
+  agent_id: string;
+  case_number: string;
+  quota_filled: boolean;
+}
+
 export async function decideClaim(claimId: string, decision: "approved" | "rejected") {
   const profile = await requireRole(["admin", "supervisor"]);
   const svc = createServiceClient();
@@ -266,33 +275,36 @@ export async function decideClaim(claimId: string, decision: "approved" | "rejec
   if (claim.status !== "pending") return { error: "This request was already decided." };
 
   if (decision === "approved") {
-    // Enforce the slot quota.
-    const [{ data: caseRow }, { count: approvedCount }] = await Promise.all([
-      svc.from("cases").select("board_slots, case_number").eq("id", claim.case_id).single(),
-      svc
-        .from("case_claims")
-        .select("id", { count: "exact", head: true })
-        .eq("case_id", claim.case_id)
-        .eq("status", "approved"),
-    ]);
-    const slots = caseRow?.board_slots ?? 0;
-    if ((approvedCount ?? 0) >= slots) {
+    // Atomically reserve a slot. A SECURITY DEFINER RPC takes a row lock on the
+    // case, counts approved claims, and flips THIS claim to 'approved' in one
+    // transaction — closing the TOCTOU window where two concurrent approvals on
+    // the last slot could both pass a separate count-then-check (migration 0083).
+    const { data: rpcRows, error: rpcError } = await svc.rpc("approve_case_claim", {
+      p_claim_id: claimId,
+      p_decided_by: profile.id,
+    });
+    if (rpcError) return { error: handleDbError(rpcError, "case_claims") };
+    const result = (rpcRows as ApproveClaimResult[] | null)?.[0];
+    if (!result || result.outcome !== "approved") {
+      if (result?.outcome === "not_found") return { error: "Claim not found." };
+      if (result?.outcome === "already_decided") return { error: "This request was already decided." };
       return { error: "All slots for this case are already filled." };
     }
 
-    // Reuse the standard assignment (inserts case_agents, advances status,
-    // emails + notifies the agent, grants case read access).
+    // Slot reserved + claim flipped atomically. Now run the standard assignment
+    // (inserts case_agents, advances status, emails + notifies the agent, grants
+    // case read access). If it fails, release the reserved slot so the quota and
+    // board state stay consistent.
     const res = await assignAgent(claim.case_id, claim.agent_id);
-    if (res?.error) return res;
-
-    await svc
-      .from("case_claims")
-      .update({ status: "approved", decided_by: profile.id, decided_at: new Date().toISOString() })
-      .eq("id", claimId);
-
-    // Close the board for this case once the quota is met.
-    if ((approvedCount ?? 0) + 1 >= slots) {
-      await svc.from("cases").update({ on_board: false }).eq("id", claim.case_id);
+    if (res?.error) {
+      await svc
+        .from("case_claims")
+        .update({ status: "pending", decided_by: null, decided_at: null })
+        .eq("id", claimId);
+      if (result.quota_filled) {
+        await svc.from("cases").update({ on_board: true }).eq("id", claim.case_id);
+      }
+      return res;
     }
   } else {
     await svc

@@ -1961,6 +1961,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_case_claim: {
+        Args: { p_claim_id: string; p_decided_by: string }
+        Returns: {
+          outcome: string
+          case_id: string
+          agent_id: string
+          case_number: string
+          quota_filled: boolean
+        }[]
+      }
       can_access_case: { Args: { target_case: string }; Returns: boolean }
       current_role: {
         Args: never
