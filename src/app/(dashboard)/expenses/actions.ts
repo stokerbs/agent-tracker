@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getCurrentProfile, isStaff } from "@/lib/auth";
 import { handleDbError } from "@/lib/errors";
 import { notifyUsers, notificationLinks, relProfileId } from "@/lib/notifications";
@@ -288,7 +288,11 @@ export async function softDeleteExpense(
   if (!profile) return { error: "Not authenticated" };
   if (!isStaff(profile.role)) return { error: "Not authorized" };
 
-  const supabase = await createClient();
+  // Authorization is enforced by the isStaff() check above. Use the service
+  // client for the write: the live expenses RLS has a restrictive UPDATE policy
+  // that forbids setting deleted_at via the user client, which blocked staff
+  // soft-delete (status updates kept deleted_at NULL and so were unaffected).
+  const supabase = createServiceClient();
   const { error } = await supabase
     .from("expenses")
     .update({ deleted_at: new Date().toISOString(), deleted_by: profile.id })
