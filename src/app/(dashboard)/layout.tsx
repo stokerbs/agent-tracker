@@ -1,8 +1,10 @@
 import { requireProfile } from "@/lib/auth";
+import { userHasPin } from "@/lib/security/pin-status";
 import { SidebarNav } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { GpsReporter } from "@/components/layout/gps-reporter";
 import { NativeBootstrap } from "@/components/layout/native-bootstrap";
+import { AppLockProvider } from "@/components/layout/app-lock";
 
 export default async function DashboardLayout({
   children,
@@ -17,7 +19,10 @@ export default async function DashboardLayout({
     redirect("/portal");
   }
 
+  const hasPin = await userHasPin(profile.id);
+
   return (
+    <AppLockProvider hasPin={hasPin}>
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-card lg:flex lg:flex-col">
@@ -33,5 +38,6 @@ export default async function DashboardLayout({
         <NativeBootstrap />
       </div>
     </div>
+    </AppLockProvider>
   );
 }

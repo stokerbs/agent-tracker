@@ -1981,5 +1981,26 @@
     "durationPlaceholder": "เช่น 8 ชม. / 3 วัน",
     "locationPlaceholder": "จุดนัดพบ / เริ่มงาน",
     "payValue": "฿{pay}"
+  },
+  "lock": {
+    "title": "แอปถูกล็อก",
+    "subtitle": "ใส่ PIN เพื่อเข้าใช้งาน",
+    "delete": "ลบ",
+    "useCode": "ออกจากระบบแล้วใช้รหัส SMS",
+    "settings": {
+      "title": "ล็อกแอป (PIN)",
+      "descriptionOn": "แอปถูกล็อกด้วย PIN — ใส่ PIN ทุกครั้งที่เปิดแอป",
+      "descriptionOff": "ตั้ง PIN เพื่อล็อกแอป — ไม่ต้องรอรหัส SMS ทุกครั้ง แค่ใส่ PIN",
+      "pin": "PIN (4–6 หลัก)",
+      "newPin": "PIN ใหม่ (4–6 หลัก)",
+      "confirm": "ยืนยัน PIN",
+      "enable": "เปิดใช้ PIN",
+      "change": "เปลี่ยน PIN",
+      "turnOff": "ปิด",
+      "saved": "บันทึก PIN แล้ว",
+      "disabled": "ปิด PIN แล้ว",
+      "invalid": "PIN ต้อง 4–6 หลัก",
+      "mismatch": "PIN ไม่ตรงกัน"
+    }
   }
 }

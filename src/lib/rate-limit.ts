@@ -20,6 +20,8 @@ export const RATE_LIMITS = {
   otp:        { limit:  3, windowMs:  5 * 60_000 },
   /** 5 OTP verification attempts per 5 minutes per IP — brute-force guard. */
   otp_verify: { limit:  5, windowMs:  5 * 60_000 },
+  /** 5 app-lock PIN attempts per 5 minutes per user — then fall back to OTP. */
+  pin_verify: { limit:  5, windowMs:  5 * 60_000 },
   /** 60 GPS pings per minute per authenticated user (≈ 1 per second). */
   gps:        { limit: 60, windowMs:     60_000 },
   /** 5 AI report generations per hour per authenticated user. */

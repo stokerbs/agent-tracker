@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { requireProfile } from "@/lib/auth";
+import { userHasPin } from "@/lib/security/pin-status";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { SetPinSection } from "@/components/settings/set-pin-section";
 import { DeleteAccountSection } from "@/components/settings/delete-account-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +19,7 @@ export default async function ProfilePage() {
   const t = await getTranslations("profile");
   const tUsers = await getTranslations("users.roles");
   const roleMeta = ROLE_META[profile.role];
+  const hasPin = await userHasPin(profile.id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -45,6 +48,8 @@ export default async function ProfilePage() {
           />
         </CardContent>
       </Card>
+
+      <SetPinSection hasPin={hasPin} />
 
       <DeleteAccountSection />
     </div>
