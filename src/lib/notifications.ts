@@ -103,7 +103,7 @@ export async function notifyRole(
 ): Promise<void> {
   try {
     const client = createServiceClient();
-    const { data, error } = await client
+    const { data } = await client
       .from("profiles")
       .select("id")
       .in("role", roles)
@@ -111,28 +111,6 @@ export async function notifyRole(
     const ids = (data ?? [])
       .map((p: { id: string }) => p.id)
       .filter((id) => id !== excludeId);
-    // TEMP DIAGNOSTIC (DBG-notifyRole) — remove once root cause is confirmed.
-    // Writes to audit_logs (queryable) because runtime log capture is unreliable.
-    // Reveals whether the service-role profiles query actually sees the admins.
-    console.log(
-      `[notifyRole-debug] roles=${JSON.stringify(roles)} profiles_count=${data?.length ?? "null"} query_error=${error?.message ?? "none"} resolved_ids=${ids.length}`,
-    );
-    try {
-      await client.from("audit_logs").insert({
-        action: "DBG_notifyRole",
-        entity: "notifications",
-        metadata: {
-          roles,
-          profiles_count: data?.length ?? null,
-          query_error: error?.message ?? null,
-          resolved_ids: ids.length,
-          notif_type: notification.type,
-          exclude_id: excludeId ?? null,
-        },
-      });
-    } catch (dbgErr) {
-      console.error("[notifyRole-debug] audit insert failed", dbgErr);
-    }
     await notifyUsers(ids, notification);
   } catch (err) {
     console.error("[notification] notifyRole error", err);
