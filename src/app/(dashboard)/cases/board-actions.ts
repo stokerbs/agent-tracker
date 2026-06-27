@@ -88,7 +88,7 @@ export async function listBoardCases(): Promise<BoardCase[]> {
     .from("cases")
     .select("id, case_number, case_type, priority, board_slots")
     .eq("on_board", true)
-    .is("deleted_at", null)
+    .is("archived_at", null)
     .order("board_posted_at", { ascending: false });
   if (!cases || cases.length === 0) return [];
 
