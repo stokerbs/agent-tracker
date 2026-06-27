@@ -371,6 +371,61 @@ export type Database = {
           },
         ]
       }
+      case_claims: {
+        Row: {
+          agent_id: string
+          case_id: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          note: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["claim_status"]
+        }
+        Insert: {
+          agent_id: string
+          case_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+        }
+        Update: {
+          agent_id?: string
+          case_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_claims_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_claims_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_claims_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_message_views: {
         Row: {
           case_id: string
@@ -449,6 +504,9 @@ export type Database = {
       cases: {
         Row: {
           archived_at: string | null
+          board_posted_at: string | null
+          board_posted_by: string | null
+          board_slots: number | null
           case_number: string
           case_type: string | null
           client_id: string | null
@@ -460,6 +518,7 @@ export type Database = {
           id: string
           license_plate_bidx: string | null
           license_plate_enc: string | null
+          on_board: boolean
           priority: Database["public"]["Enums"]["case_priority"]
           start_date: string | null
           status: Database["public"]["Enums"]["case_status"]
@@ -482,6 +541,9 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          board_posted_at?: string | null
+          board_posted_by?: string | null
+          board_slots?: number | null
           case_number: string
           case_type?: string | null
           client_id?: string | null
@@ -493,6 +555,7 @@ export type Database = {
           id?: string
           license_plate_bidx?: string | null
           license_plate_enc?: string | null
+          on_board?: boolean
           priority?: Database["public"]["Enums"]["case_priority"]
           start_date?: string | null
           status?: Database["public"]["Enums"]["case_status"]
@@ -515,6 +578,9 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          board_posted_at?: string | null
+          board_posted_by?: string | null
+          board_slots?: number | null
           case_number?: string
           case_type?: string | null
           client_id?: string | null
@@ -526,6 +592,7 @@ export type Database = {
           id?: string
           license_plate_bidx?: string | null
           license_plate_enc?: string | null
+          on_board?: boolean
           priority?: Database["public"]["Enums"]["case_priority"]
           start_date?: string | null
           status?: Database["public"]["Enums"]["case_status"]
@@ -547,6 +614,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cases_board_posted_by_fkey"
+            columns: ["board_posted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cases_client_id_fkey"
             columns: ["client_id"]
@@ -1904,6 +1978,7 @@ export type Database = {
         | "pending"
         | "closed"
         | "cancelled"
+      claim_status: "pending" | "approved" | "rejected"
       evidence_type: "photo" | "video" | "pdf" | "document" | "audio"
       expense_category:
         | "fuel"
@@ -2062,6 +2137,7 @@ export const Constants = {
         "closed",
         "cancelled",
       ],
+      claim_status: ["pending", "approved", "rejected"],
       evidence_type: ["photo", "video", "pdf", "document", "audio"],
       expense_category: [
         "fuel",
