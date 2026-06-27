@@ -36,7 +36,7 @@ export async function updateSession(request: NextRequest) {
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, persistAuthCookie(name, options) as never),
+            response.cookies.set(name, value, persistAuthCookie(name, value, options) as never),
           );
         },
       },
