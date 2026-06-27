@@ -1682,7 +1682,8 @@
       "field": "ภาคสนาม",
       "cases": "คดี",
       "map": "แผนที่",
-      "alerts": "แจ้งเตือน"
+      "alerts": "แจ้งเตือน",
+      "board": "งานว่าง"
     },
     "classification": {
       "banner": "● ปฏิบัติหน้าที่ · สิทธิ์ ภาคสนาม",
@@ -1948,5 +1949,37 @@
       "description": "ขณะนี้เราไม่สามารถโหลดหน้านี้ได้ กรุณาลองใหม่อีกครั้ง หรือติดต่อเราหากยังพบปัญหาอยู่",
       "reset": "ลองใหม่อีกครั้ง"
     }
+  },
+  "board": {
+    "title": "บอร์ดงาน",
+    "posted": "โพสต์ขึ้นบอร์ดแล้ว",
+    "removed": "เอาออกจากบอร์ดแล้ว",
+    "approved": "อนุมัติคำขอแล้ว",
+    "rejected": "ปฏิเสธคำขอแล้ว",
+    "slotsLabel": "จำนวนที่ต้องการ",
+    "postButton": "โพสต์ขึ้นบอร์ด",
+    "onBoard": "อยู่บนบอร์ด · ต้องการ {slots} คน",
+    "removeButton": "เอาออก",
+    "requests": "คำขอรับงาน",
+    "noRequests": "ยังไม่มีคำขอ",
+    "unknownAgent": "เจ้าหน้าที่",
+    "approve": "อนุมัติ",
+    "reject": "ปฏิเสธ",
+    "availableTitle": "งานว่าง",
+    "slotsLeft": "เหลือ {remaining}/{slots}",
+    "requestSent": "ส่งคำขอแล้ว",
+    "empty": "ตอนนี้ยังไม่มีงานว่าง",
+    "statusPending": "รออนุมัติ",
+    "statusApproved": "ได้รับแล้ว — เปิดเคส",
+    "statusRejected": "ไม่อนุมัติ",
+    "full": "เต็มแล้ว",
+    "claimButton": "ขอรับงาน",
+    "payLabel": "ค่าแรง (บาท)",
+    "startLabel": "เริ่มงาน",
+    "durationLabel": "ระยะเวลา",
+    "locationLabel": "จุดเริ่มงาน",
+    "durationPlaceholder": "เช่น 8 ชม. / 3 วัน",
+    "locationPlaceholder": "จุดนัดพบ / เริ่มงาน",
+    "payValue": "฿{pay}"
   }
 }

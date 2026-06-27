@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radar, Folder, Map as MapIcon, Bell, type LucideIcon } from "lucide-react";
+import { Radar, Folder, ClipboardList, Map as MapIcon, Bell, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/types";
@@ -28,6 +28,7 @@ export function FieldTabBar({ role }: { role: UserRole }) {
   const tabs: Tab[] = [
     { href: "/field", label: t("field"), icon: Radar },
     { href: "/cases", label: t("cases"), icon: Folder },
+    { href: "/field/board", label: t("board"), icon: ClipboardList, roles: ["agent", "supervisor"] },
     { href: "/map", label: t("map"), icon: MapIcon, roles: ["admin", "supervisor"] },
     { href: "/emergency", label: t("alerts"), icon: Bell, roles: ["admin", "supervisor"] },
   ];
