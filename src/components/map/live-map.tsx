@@ -133,12 +133,18 @@ function mapDisplayStatus(agent: Agent, now: number): AgentStatus {
 // Animated position hook
 // ─────────────────────────────────────────────
 
+// Animation bounds (ms). The marker glides over roughly the real gap between
+// position updates so it keeps moving until the next fix arrives — continuous,
+// Life360-style motion instead of a 2.5 s dart followed by a long freeze.
+const ANIM_MIN_MS = 2_000;
+const ANIM_MAX_MS = 11_000;
+
 function useAnimatedPosition(
   targetLat: number | null,
   targetLng: number | null,
-  durationMs = 2500,
 ) {
   const currentRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastUpdateRef = useRef<number | null>(null);
   const [displayed, setDisplayed] = useState<{ lat: number; lng: number } | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
 
@@ -149,6 +155,7 @@ function useAnimatedPosition(
     if (!currentRef.current) {
       currentRef.current = target;
       setDisplayed(target);
+      lastUpdateRef.current = performance.now();
       return;
     }
 
@@ -162,9 +169,19 @@ function useAnimatedPosition(
     const from = { ...currentRef.current };
     const startTime = performance.now();
 
+    // Glide over the observed gap since the previous fix (clamped). This paces
+    // the marker so it travels at roughly real speed and arrives about when the
+    // next update lands, keeping motion continuous rather than stop-start.
+    const sinceLast =
+      lastUpdateRef.current != null ? startTime - lastUpdateRef.current : ANIM_MIN_MS;
+    const durationMs = Math.min(Math.max(sinceLast, ANIM_MIN_MS), ANIM_MAX_MS);
+    lastUpdateRef.current = startTime;
+
     function tick(now: number) {
       const t = Math.min((now - startTime) / durationMs, 1);
-      const eased = 1 - (1 - t) ** 3;
+      // Gentle ease-in-out, near-linear through the middle so velocity stays
+      // roughly constant — reads as smooth travel, not accelerate/decelerate.
+      const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
       const interp = {
         lat: from.lat + (target.lat - from.lat) * eased,
         lng: from.lng + (target.lng - from.lng) * eased,
@@ -178,7 +195,7 @@ function useAnimatedPosition(
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
-  }, [targetLat, targetLng, durationMs]);
+  }, [targetLat, targetLng]);
 
   return displayed;
 }

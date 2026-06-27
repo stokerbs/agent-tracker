@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { handleDbError } from "@/lib/errors";
 import { notifyRole, notificationLinks } from "@/lib/notifications";
+import { BREADCRUMB_MIN_M, distanceM } from "@/lib/geo/cadence";
 
 const schema = z.object({
   lat: z.number().min(-90).max(90),
@@ -160,14 +161,27 @@ export async function POST(request: NextRequest) {
   // geofence notification's push isn't dropped when the GPS response returns.
   after(async () => {
 
-    // 1. Insert location history entry for trail feature
-    await svc.from("agent_location_history").insert({
-      agent_id: agent.id,
-      lat: parsed.lat,
-      lng: parsed.lng,
-      speed_kmh: parsed.speed_kmh ?? null,
-      heading: parsed.heading ?? null,
-    });
+    // 1. Insert location history entry for trail feature.
+    //    Skip near-stationary fixes: the faster moving cadence (~9 s) would
+    //    otherwise flood the trail with GPS jitter and grow the table fast.
+    //    Real movement (> ~5 m) is always recorded; live position on `agents`
+    //    was already updated above regardless of this guard.
+    const prevLat = agent.current_lat;
+    const prevLng = agent.current_lng;
+    const movedEnough =
+      prevLat === null ||
+      prevLng === null ||
+      distanceM({ lat: prevLat, lng: prevLng }, { lat: parsed.lat, lng: parsed.lng }) >
+        BREADCRUMB_MIN_M;
+    if (movedEnough) {
+      await svc.from("agent_location_history").insert({
+        agent_id: agent.id,
+        lat: parsed.lat,
+        lng: parsed.lng,
+        speed_kmh: parsed.speed_kmh ?? null,
+        heading: parsed.heading ?? null,
+      });
+    }
 
     // 2. Clean up history older than 7 days (analytics retention window)
     await svc
@@ -188,8 +202,6 @@ export async function POST(request: NextRequest) {
 
     if (!fences?.length) return;
 
-    const prevLat = agent.current_lat;
-    const prevLng = agent.current_lng;
     const hasPrev = prevLat !== null && prevLng !== null;
 
     for (const fence of fences) {
