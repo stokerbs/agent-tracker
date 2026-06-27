@@ -34,7 +34,7 @@ export function BoardPanel({ caseId, onBoard, slots, pendingClaims }: Props) {
     const n = Number(slotInput);
     start(async () => {
       const res = await postCaseToBoard(caseId, n);
-      if (res?.error) { toast.error(res.error); return; }
+      if (res && "error" in res) { toast.error(res.error); return; }
       toast.success(t("posted"));
       router.refresh();
     });
@@ -43,7 +43,7 @@ export function BoardPanel({ caseId, onBoard, slots, pendingClaims }: Props) {
   function remove() {
     start(async () => {
       const res = await removeCaseFromBoard(caseId);
-      if (res?.error) { toast.error(res.error); return; }
+      if (res && "error" in res) { toast.error(res.error); return; }
       toast.success(t("removed"));
       router.refresh();
     });
@@ -52,7 +52,7 @@ export function BoardPanel({ caseId, onBoard, slots, pendingClaims }: Props) {
   function decide(claimId: string, decision: "approved" | "rejected") {
     start(async () => {
       const res = await decideClaim(claimId, decision);
-      if (res?.error) { toast.error(res.error); return; }
+      if (res && "error" in res) { toast.error(res.error); return; }
       toast.success(decision === "approved" ? t("approved") : t("rejected"));
       router.refresh();
     });

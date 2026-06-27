@@ -20,7 +20,7 @@ export function BoardClaimList({ cases }: { cases: BoardCase[] }) {
   function claim(caseId: string) {
     start(async () => {
       const res = await requestCase(caseId);
-      if (res?.error) { toast.error(res.error); return; }
+      if (res && "error" in res) { toast.error(res.error); return; }
       toast.success(t("requestSent"));
       router.refresh();
     });
