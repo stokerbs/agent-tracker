@@ -379,6 +379,7 @@ export type Database = {
           decided_by: string | null
           id: string
           note: string | null
+          reminded_at: string | null
           requested_at: string
           status: Database["public"]["Enums"]["claim_status"]
         }
@@ -389,6 +390,7 @@ export type Database = {
           decided_by?: string | null
           id?: string
           note?: string | null
+          reminded_at?: string | null
           requested_at?: string
           status?: Database["public"]["Enums"]["claim_status"]
         }
@@ -399,6 +401,7 @@ export type Database = {
           decided_by?: string | null
           id?: string
           note?: string | null
+          reminded_at?: string | null
           requested_at?: string
           status?: Database["public"]["Enums"]["claim_status"]
         }

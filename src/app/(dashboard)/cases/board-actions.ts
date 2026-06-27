@@ -33,7 +33,7 @@ export interface BoardPostInput {
 }
 
 export async function postCaseToBoard(caseId: string, input: BoardPostInput) {
-  await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin", "supervisor"]);
   const { slots, startAt, duration, pay, location } = input;
   if (!Number.isInteger(slots) || slots < 1 || slots > 50) {
     return { error: "Slots must be a whole number between 1 and 50." };
@@ -42,7 +42,7 @@ export async function postCaseToBoard(caseId: string, input: BoardPostInput) {
     return { error: "Pay must be a non-negative number." };
   }
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("cases")
     .update({
       on_board: true,
@@ -53,8 +53,23 @@ export async function postCaseToBoard(caseId: string, input: BoardPostInput) {
       board_location: location?.trim() || null,
       board_posted_at: new Date().toISOString(),
     })
-    .eq("id", caseId);
+    .eq("id", caseId)
+    .select("case_number")
+    .single();
   if (error) return { error: handleDbError(error, "cases") };
+
+  // Alert claimers that a new job is on the board (exclude the poster).
+  await notifyRole(
+    ["agent", "supervisor"],
+    {
+      type: "system",
+      title: "New job on the board",
+      body: `Case ${updated?.case_number ?? ""} is open for claims.`,
+      url: BOARD_PATH,
+      entityId: caseId,
+    },
+    profile.id,
+  );
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath(BOARD_PATH);
