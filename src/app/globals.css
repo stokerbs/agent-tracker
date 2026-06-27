@@ -56,6 +56,71 @@
     --input: 220 22% 12%;
     --ring: 199 95% 55%;
   }
+
+  /* ── Federal Tactical theme — scoped to the field/mobile experience ──
+     Navy near-black surfaces, a federal-gold primary, and tabular mono codes.
+     Applied via the `.theme-tactical` wrapper (field layout) so the existing
+     Card/Button/Badge components adopt it without per-component edits. Always
+     dark, regardless of the host light/dark setting. */
+  .theme-tactical {
+    --background: 222 47% 6%;
+    --foreground: 213 35% 92%;
+    --card: 220 39% 11%;
+    --card-foreground: 213 35% 92%;
+    --popover: 221 42% 9%;
+    --popover-foreground: 213 35% 92%;
+    --primary: 38 78% 56%;
+    --primary-foreground: 222 47% 7%;
+    --secondary: 219 31% 16%;
+    --secondary-foreground: 213 30% 86%;
+    --muted: 220 30% 13%;
+    --muted-foreground: 216 18% 62%;
+    --accent: 219 33% 15%;
+    --accent-foreground: 213 35% 92%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 154 60% 44%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 52%;
+    --warning-foreground: 222 47% 7%;
+    --border: 218 34% 19%;
+    --input: 218 34% 19%;
+    --ring: 38 78% 56%;
+    --radius: 0.625rem;
+  }
+
+  /* Mobile-only Federal Tactical — themes the field agent's view of shared
+     pages (cases, map, alerts) on phones / the native app, while desktop keeps
+     the default theme. Same palette as `.theme-tactical`, but the token
+     overrides apply only below the lg breakpoint. */
+  @media (max-width: 1023px) {
+    .theme-tactical-mobile {
+      --background: 222 47% 6%;
+      --foreground: 213 35% 92%;
+      --card: 220 39% 11%;
+      --card-foreground: 213 35% 92%;
+      --popover: 221 42% 9%;
+      --popover-foreground: 213 35% 92%;
+      --primary: 38 78% 56%;
+      --primary-foreground: 222 47% 7%;
+      --secondary: 219 31% 16%;
+      --secondary-foreground: 213 30% 86%;
+      --muted: 220 30% 13%;
+      --muted-foreground: 216 18% 62%;
+      --accent: 219 33% 15%;
+      --accent-foreground: 213 35% 92%;
+      --destructive: 0 72% 51%;
+      --destructive-foreground: 0 0% 100%;
+      --success: 154 60% 44%;
+      --success-foreground: 0 0% 100%;
+      --warning: 38 92% 52%;
+      --warning-foreground: 222 47% 7%;
+      --border: 218 34% 19%;
+      --input: 218 34% 19%;
+      --ring: 38 78% 56%;
+      --radius: 0.625rem;
+    }
+  }
 }
 
 @layer base {

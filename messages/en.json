@@ -1676,6 +1676,16 @@
       "files": "Files",
       "saving": "Saving…",
       "save": "Save Observation"
+    },
+    "tabs": {
+      "field": "Field",
+      "cases": "Cases",
+      "map": "Map",
+      "alerts": "Alerts"
+    },
+    "classification": {
+      "banner": "● ON DUTY · CLEARANCE FIELD",
+      "secure": "SECURE"
     }
   },
   "intelligence": {

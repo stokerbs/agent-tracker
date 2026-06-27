@@ -121,7 +121,7 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
   return (
     <div className="space-y-4">
       {/* Hero: primary photo + quick-glance profile */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-l-[3px] border-l-primary">
         <div className="flex gap-0">
           {/* Photo */}
           <div
@@ -154,7 +154,7 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
               )}
             </div>
             {profile.phone && (
-              <a href={`tel:${profile.phone}`} className="flex items-center gap-1 text-xs text-primary mt-1">
+              <a href={`tel:${profile.phone}`} className="mt-1 flex items-center gap-1 font-mono text-xs text-primary">
                 <Phone className="h-3 w-3" />
                 {profile.phone}
               </a>
@@ -173,9 +173,10 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
       {photos.length > 1 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               <ImageIcon className="h-3.5 w-3.5" />
-              {tI("photos.title")} ({photos.length})
+              {tI("photos.title")}
+              <span className="ml-auto text-primary">{String(photos.length).padStart(2, "0")}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
@@ -202,8 +203,10 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
       {vehicles.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs font-semibold text-muted-foreground">
-              {tI("vehicles.title")} ({vehicles.length})
+            <CardTitle className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <Car className="h-3.5 w-3.5" />
+              {tI("vehicles.title")}
+              <span className="ml-auto text-primary">{String(vehicles.length).padStart(2, "0")}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-3">
@@ -287,8 +290,10 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
       {locations.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs font-semibold text-muted-foreground">
-              {tI("locations.title")} ({locations.length})
+            <CardTitle className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              {tI("locations.title")}
+              <span className="ml-auto text-primary">{String(locations.length).padStart(2, "0")}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-2">
@@ -301,7 +306,8 @@ export function FieldIntelClient({ profile, photos, vehicles, vehiclePhotoMap = 
       {documents.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
-            <CardTitle className="text-xs font-semibold text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <FileText className="h-3.5 w-3.5" />
               {tI("documents.fieldView", { count: documents.length })}
             </CardTitle>
           </CardHeader>

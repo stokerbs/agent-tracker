@@ -131,7 +131,7 @@ export default async function FieldIntelPage({
         </Button>
         <div>
           <p className="font-mono text-sm font-bold text-primary">{c.case_number}</p>
-          <p className="text-xs text-muted-foreground">{t("title")}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("title")}</p>
         </div>
       </div>
 
