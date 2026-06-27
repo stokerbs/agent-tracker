@@ -37,6 +37,12 @@ licensed field investigators** — not a consumer app.
 > 4. Push: assignment / SOS / geofence alerts are delivered via APNs.
 > 5. SOS: the red SOS button alerts supervisors — a lone-worker safety feature.
 >
+> **Account deletion (Guideline 5.1.1(v))**
+> In-app at **Settings → Profile → Delete account**. After typing "DELETE" to
+> confirm, it permanently deletes the account and associated personal data and
+> signs the user out. Note: doing this on the demo account permanently removes it —
+> contact us (below) and we will re-provision the demo if you need to re-test.
+>
 > **Why background location ("Always")**
 > The app's primary purpose is real-time field-staff coordination and lone-worker
 > safety. Supervisors must see the live location of on-duty investigators (and
