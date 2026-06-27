@@ -26,6 +26,13 @@ const h = vi.hoisted(() => {
       const r = Array.isArray(q) && q.length ? (q.length > 1 ? q.shift() : q[0]) : { data: null, error: null };
       return makeBuilder(r);
     },
+    // RPC responses are queued under `rpc:<fn>` so concurrent callers can each
+    // get a distinct result (e.g. one 'approved', one 'quota_met').
+    rpc: (fn: string) => {
+      const q = resp[`rpc:${fn}`];
+      const r = Array.isArray(q) && q.length ? (q.length > 1 ? q.shift() : q[0]) : { data: null, error: null };
+      return makeBuilder(r);
+    },
   });
   return {
     svc: {} as Record<string, unknown[]>,
@@ -144,27 +151,85 @@ describe("decideClaim", () => {
     const { decideClaim } = await load();
     expect(await decideClaim("x", "approved")).toHaveProperty("error");
   });
-  it("rejects approval when the slot quota is already met", async () => {
+  it("rejects approval when the atomic RPC reports the quota met", async () => {
     h.svc.case_claims = [
       { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
-      { count: 2, error: null }, // approved count
     ];
-    h.svc.cases = [{ data: { board_slots: 2, case_number: "C1" }, error: null }];
+    h.svc["rpc:approve_case_claim"] = [{ data: [{ outcome: "quota_met" }], error: null }];
     const { decideClaim } = await load();
     const res = await decideClaim("x", "approved");
     expect(res).toHaveProperty("error");
     expect(h.assignAgent).not.toHaveBeenCalled();
   });
-  it("approves via assignAgent when a slot is free", async () => {
+  it("approves via assignAgent when the RPC reserves a slot", async () => {
     h.svc.case_claims = [
       { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
-      { count: 0, error: null },
-      { error: null }, // update
     ];
-    h.svc.cases = [{ data: { board_slots: 2, case_number: "C1" }, error: null }];
+    h.svc["rpc:approve_case_claim"] = [
+      { data: [{ outcome: "approved", case_id: "c1", agent_id: "ag1", case_number: "C1", quota_filled: false }], error: null },
+    ];
     const { decideClaim } = await load();
     expect(await decideClaim("x", "approved")).toEqual({ ok: true });
     expect(h.assignAgent).toHaveBeenCalledWith("c1", "ag1");
+  });
+  it("releases the reserved slot when assignAgent fails after the RPC", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+    ];
+    // RPC reserved the LAST slot (quota_filled) and closed the board …
+    h.svc["rpc:approve_case_claim"] = [
+      { data: [{ outcome: "approved", case_id: "c1", agent_id: "ag1", case_number: "C1", quota_filled: true }], error: null },
+    ];
+    h.assignAgent.mockResolvedValueOnce({ error: "assignment failed" });
+    const { decideClaim } = await load();
+    // … so when assignment fails the action surfaces the error (and rolls the
+    // claim back to pending + reopens the board via the service client).
+    const res = await decideClaim("x", "approved");
+    expect(res).toEqual({ error: "assignment failed" });
+  });
+  it("maps the RPC 'already_decided' outcome (claim flipped between read and RPC)", async () => {
+    // The JS pre-check read the claim as pending, but a concurrent approval
+    // flipped it before the RPC ran — the RPC is the source of truth.
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+    ];
+    h.svc["rpc:approve_case_claim"] = [{ data: [{ outcome: "already_decided" }], error: null }];
+    const { decideClaim } = await load();
+    const res = await decideClaim("x", "approved");
+    expect((res as { error: string }).error).toMatch(/already decided/i);
+    expect(h.assignAgent).not.toHaveBeenCalled();
+  });
+  it("maps the RPC 'not_found' outcome (claim deleted between read and RPC)", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+    ];
+    h.svc["rpc:approve_case_claim"] = [{ data: [{ outcome: "not_found" }], error: null }];
+    const { decideClaim } = await load();
+    const res = await decideClaim("x", "approved");
+    expect((res as { error: string }).error).toMatch(/not found/i);
+    expect(h.assignAgent).not.toHaveBeenCalled();
+  });
+  // TOCTOU regression guard: two admins approve the same last slot at once. The
+  // action defers the quota decision entirely to the atomic RPC (migration
+  // 0083), so exactly one approval may win even though both read the claim as
+  // pending. Here the mocked RPC serializes them (approved, then quota_met).
+  it("serializes two concurrent approvals on the last slot — only one wins", async () => {
+    h.svc.case_claims = [
+      { data: { id: "x", case_id: "c1", agent_id: "ag1", status: "pending", agents: { profile_id: "p1" } }, error: null },
+      { data: { id: "x", case_id: "c1", agent_id: "ag2", status: "pending", agents: { profile_id: "p2" } }, error: null },
+    ];
+    h.svc["rpc:approve_case_claim"] = [
+      { data: [{ outcome: "approved", case_id: "c1", agent_id: "ag1", case_number: "C1", quota_filled: true }], error: null },
+      { data: [{ outcome: "quota_met" }], error: null },
+    ];
+    const { decideClaim } = await load();
+    const results = await Promise.all([
+      decideClaim("x", "approved"),
+      decideClaim("x", "approved"),
+    ]);
+    expect(results.filter((r) => (r as { ok?: boolean }).ok)).toHaveLength(1);
+    expect(results.filter((r) => (r as { error?: string }).error)).toHaveLength(1);
+    expect(h.assignAgent).toHaveBeenCalledTimes(1);
   });
 });
 
