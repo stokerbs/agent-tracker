@@ -1980,5 +1980,26 @@
     "durationPlaceholder": "e.g. 8 hrs / 3 days",
     "locationPlaceholder": "Where to meet / start",
     "payValue": "฿{pay}"
+  },
+  "lock": {
+    "title": "App locked",
+    "subtitle": "Enter your PIN to continue",
+    "delete": "Delete",
+    "useCode": "Sign out and use a code",
+    "settings": {
+      "title": "App lock (PIN)",
+      "descriptionOn": "Your app is locked with a PIN. Enter it when you open the app.",
+      "descriptionOff": "Set a PIN to lock the app — no SMS code each time, just your PIN.",
+      "pin": "PIN (4–6 digits)",
+      "newPin": "New PIN (4–6 digits)",
+      "confirm": "Confirm PIN",
+      "enable": "Enable PIN",
+      "change": "Change PIN",
+      "turnOff": "Turn off",
+      "saved": "PIN saved",
+      "disabled": "PIN turned off",
+      "invalid": "PIN must be 4–6 digits",
+      "mismatch": "PINs don't match"
+    }
   }
 }

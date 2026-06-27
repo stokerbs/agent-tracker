@@ -1904,6 +1904,32 @@ export type Database = {
           },
         ]
       }
+      user_pins: {
+        Row: {
+          pin_hash: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          pin_hash: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          pin_hash?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pins_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_photos: {
         Row: {
           case_id: string
