@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "312545298703",
+    "project_id": "detective-pulse",
+    "storage_bucket": "detective-pulse.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:312545298703:android:61c2a6f57f29f4d447567a",
+        "android_client_info": {
+          "package_name": "app.detectivepulse.field"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCPR6bexoLP3px2WXjQq3LlDdzi0zUJGo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
