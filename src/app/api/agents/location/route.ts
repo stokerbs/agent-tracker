@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limit = checkRateLimit("gps", userId);
+  const limit = await checkRateLimit("gps", userId);
   if (!limit.allowed) {
     const retryAfter = Math.ceil(limit.retryAfterMs / 1000);
     return NextResponse.json(

@@ -45,7 +45,7 @@ export async function verifyPin(
   const profile = await getCurrentProfile();
   if (!profile) return { error: "Not authenticated", locked: true };
 
-  const rl = checkRateLimit("pin_verify", profile.id);
+  const rl = await checkRateLimit("pin_verify", profile.id);
   if (!rl.allowed) {
     return { error: "Too many attempts. Please sign in with a code.", locked: true };
   }

@@ -46,6 +46,8 @@
     "@tiptap/pm": "^3.26.1",
     "@tiptap/react": "^3.26.1",
     "@tiptap/starter-kit": "^3.26.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "@vis.gl/react-google-maps": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
