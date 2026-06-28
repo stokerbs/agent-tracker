@@ -21,17 +21,20 @@ export function timeAgo(date: string | Date | null): string {
   return d.toLocaleDateString();
 }
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+/** Currency display. Defaults to the app's business currency (THB, ฿ symbol). */
+export function formatCurrency(amount: number, currency = "THB"): string {
+  return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
   }).format(amount);
 }
 
-export function formatDate(date: string | Date | null): string {
+/** Date display in the app's canonical day-first form, e.g. "23 Jun 2026". */
+export function formatDate(date: string | Date | null, locale = "en-GB"): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -48,11 +51,11 @@ export function initials(name: string | null | undefined): string {
     .join("");
 }
 
-/** Battery color token by percentage. */
+/** Battery color token by percentage — canonical thresholds: ≤20 red, ≤50 amber, >50 green. */
 export function batteryColor(pct: number | null): string {
   if (pct === null) return "text-slate-400";
-  if (pct <= 15) return "text-red-500";
-  if (pct <= 35) return "text-amber-500";
+  if (pct <= 20) return "text-red-500";
+  if (pct <= 50) return "text-amber-500";
   return "text-emerald-500";
 }
 

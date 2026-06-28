@@ -323,8 +323,8 @@ export function FieldClient({ agent: initialAgent, activeCases, intelCounts, noA
             {battery && (
               <div className="flex items-center gap-1.5">
                 {battery.charging ? <BatteryCharging className="h-3.5 w-3.5 text-emerald-500" />
-                  : battery.level > 60 ? <BatteryFull className="h-3.5 w-3.5 text-emerald-500" />
-                  : battery.level > 25 ? <BatteryMedium className="h-3.5 w-3.5 text-amber-500" />
+                  : battery.level > 50 ? <BatteryFull className="h-3.5 w-3.5 text-emerald-500" />
+                  : battery.level > 20 ? <BatteryMedium className="h-3.5 w-3.5 text-amber-500" />
                   : <BatteryLow className="h-3.5 w-3.5 text-red-500" />}
                 <span>{battery.level}%</span>
               </div>

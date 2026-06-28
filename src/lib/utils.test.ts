@@ -6,34 +6,31 @@ import {
   formatDate,
 } from "@/lib/utils";
 
-// TD-3 (Golden Rule 5): pin the CURRENT behavior of the centralized helpers.
-// These tests document existing output; they must NOT drive any change to the
-// helper bodies. Display formatting here is intentionally en-US/USD — call
-// sites that render to users localize separately and are out of scope.
+// TD-3b: pin the CANONICAL display behavior of the centralized helpers —
+// day-first en-GB dates, THB (฿) currency by default, and battery thresholds
+// ≤20 red / ≤50 amber / >50 green. These are the app-wide display standards.
 
 describe("formatDate", () => {
   it("returns the em-dash placeholder for null", () => {
     expect(formatDate(null)).toBe("—");
   });
 
-  it("renders the en-US short form 'MMM D, YYYY'", () => {
+  it("renders the en-GB day-first short form 'D MMM YYYY'", () => {
     // Construct at local noon so the rendered day cannot shift across the
     // CI timezone (formatDate uses no timeZone option → local time).
     const d = new Date(2026, 5, 25, 12, 0, 0);
-    expect(formatDate(d)).toBe("Jun 25, 2026");
-    expect(formatDate(d)).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    expect(formatDate(d)).toBe("25 Jun 2026");
+    expect(formatDate(d)).toMatch(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
   });
 });
 
 describe("formatCurrency", () => {
-  it("formats USD by default with symbol, grouping and 2 decimals", () => {
-    expect(formatCurrency(1234.56)).toBe("$1,234.56");
+  it("formats THB by default with the \u0E3F narrow symbol, grouping and 2 decimals", () => {
+    expect(formatCurrency(1234.56)).toBe("\u0E3F1,234.56");
   });
 
-  it("formats THB using the en-US currency-code form", () => {
-    // Intl separates the currency code from the amount with a non-breaking
-    // space (U+00A0), not an ASCII space.
-    expect(formatCurrency(1234.56, "THB")).toBe("THB\u00A01,234.56");
+  it("honors an explicit currency (USD narrow symbol)", () => {
+    expect(formatCurrency(1234.56, "USD")).toBe("$1,234.56");
   });
 });
 
@@ -42,17 +39,17 @@ describe("batteryColor", () => {
     expect(batteryColor(null)).toBe("text-slate-400");
   });
 
-  it("returns red at and below the 15 boundary", () => {
-    expect(batteryColor(15)).toBe("text-red-500");
+  it("returns red at and below the 20 boundary", () => {
+    expect(batteryColor(20)).toBe("text-red-500");
   });
 
-  it("returns amber across the 16–35 band (inclusive boundaries)", () => {
-    expect(batteryColor(16)).toBe("text-amber-500");
-    expect(batteryColor(35)).toBe("text-amber-500");
+  it("returns amber across the 21–50 band (inclusive boundaries)", () => {
+    expect(batteryColor(21)).toBe("text-amber-500");
+    expect(batteryColor(50)).toBe("text-amber-500");
   });
 
-  it("returns emerald above 35", () => {
-    expect(batteryColor(36)).toBe("text-emerald-500");
+  it("returns emerald above 50", () => {
+    expect(batteryColor(51)).toBe("text-emerald-500");
   });
 });
 
