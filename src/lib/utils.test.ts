@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bangkokDateKey,
   batteryColor,
   formatCurrency,
   formatDate,
+  initials,
+  timeAgo,
 } from "@/lib/utils";
 
 // TD-3b: pin the CANONICAL display behavior of the centralized helpers —
@@ -67,5 +69,48 @@ describe("bangkokDateKey", () => {
   it("formats an explicit date argument as its Bangkok date key", () => {
     const instant = new Date("2026-06-25T10:00:00Z"); // 17:00 Bangkok, same day
     expect(bangkokDateKey(instant)).toBe("2026-06-25");
+  });
+});
+
+describe("initials", () => {
+  it("returns ?? for null / undefined / empty", () => {
+    expect(initials(null)).toBe("??");
+    expect(initials(undefined)).toBe("??");
+    expect(initials("")).toBe("??");
+  });
+
+  it("takes the first letter of a single name, uppercased", () => {
+    expect(initials("john")).toBe("J");
+  });
+
+  it("takes the first two words' initials and caps at two", () => {
+    expect(initials("John Smith")).toBe("JS");
+    expect(initials("john smith doe")).toBe("JS");
+  });
+
+  it("ignores surrounding / repeated whitespace", () => {
+    expect(initials("  alice  ")).toBe("A");
+  });
+});
+
+describe("timeAgo", () => {
+  afterEach(() => vi.useRealTimers());
+
+  function at(deltaMs: number): Date {
+    return new Date(Date.now() - deltaMs);
+  }
+
+  it("returns the em-dash for null", () => {
+    expect(timeAgo(null)).toBe("—");
+  });
+
+  it("buckets recent instants into relative phrases", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-28T12:00:00Z"));
+    expect(timeAgo(at(2_000))).toBe("just now");          // < 5s
+    expect(timeAgo(at(30_000))).toBe("30s ago");          // < 60s
+    expect(timeAgo(at(5 * 60_000))).toBe("5m ago");       // < 60m
+    expect(timeAgo(at(3 * 3_600_000))).toBe("3h ago");    // < 24h
+    expect(timeAgo(at(5 * 86_400_000))).toBe("5d ago");   // < 30d
   });
 });
