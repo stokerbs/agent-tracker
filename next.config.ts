@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -36,7 +37,9 @@ const securityHeaders = [
       "font-src 'self' https://fonts.gstatic.com",
       // `capacitor:` lets native camera previews (photo.webPath) render in <img>.
       "img-src 'self' blob: data: capacitor: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com",
-      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com",
+      // Sentry ingest (error reporting) — adjust the region host to match your
+      // DSN if it isn't on the US/global cluster (e.g. *.ingest.de.sentry.io).
+      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -82,4 +85,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+// Wrap with Sentry. Safe when unconfigured: without SENTRY_AUTH_TOKEN the
+// source-map upload step is skipped (it only warns), and runtime stays inert
+// until NEXT_PUBLIC_SENTRY_DSN is set.
+export default withSentryConfig(withNextIntl(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  tunnelRoute: "/monitoring",
+});
+
