@@ -31,6 +31,10 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Lock page zoom so the app feels fixed (no browser-style pinch-zoom). Map
+  // pinch-zoom is handled by the Maps API on its own container and is unaffected.
+  maximumScale: 1,
+  userScalable: false,
   // Required so iOS safe-area-inset env() values are non-zero in the native shell.
   viewportFit: "cover",
 };
