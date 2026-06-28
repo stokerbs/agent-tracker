@@ -1419,7 +1419,15 @@ export type Database = {
           synced_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gps903_devices_imei_fkey"
+            columns: ["imei"]
+            isOneToOne: false
+            referencedRelation: "gps903_credentials"
+            referencedColumns: ["imei"]
+          },
+        ]
       }
       invoices: {
         Row: {
@@ -1990,10 +1998,10 @@ export type Database = {
       approve_case_claim: {
         Args: { p_claim_id: string; p_decided_by: string }
         Returns: {
-          outcome: string
-          case_id: string
           agent_id: string
+          case_id: string
           case_number: string
+          outcome: string
           quota_filled: boolean
         }[]
       }
