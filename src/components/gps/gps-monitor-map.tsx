@@ -36,36 +36,11 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
+import { MAP_ID, STALE_MS, formatBangkokTime, formatStopMinutes } from "@/lib/maps/shared";
+import { useMapFullscreen } from "@/lib/maps/use-map-fullscreen";
 import type { GpsDeviceForMap, UserRole } from "@/lib/types";
 
-const MAP_ID   = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "detective-pulse-ops-map";
-const STALE_MS = 10 * 60 * 1000;
-
 // ─── Formatting ──────────────────────────────────────────────────────────────
-
-function formatBangkokTime(ts: string | null | undefined): string {
-  if (!ts) return "—";
-  try {
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return "—";
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Bangkok", day: "2-digit", month: "short",
-      year: "numeric", hour: "2-digit", minute: "2-digit",
-      second: "2-digit", hourCycle: "h23",
-    }).formatToParts(d);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return `${get("day")} ${get("month")} ${get("year")} ${get("hour")}:${get("minute")}:${get("second")} GMT+7`;
-  } catch { return "—"; }
-}
-
-function formatStopMinutes(m: number | null | undefined): string {
-  if (m == null || m < 0) return "—";
-  if (m === 0) return "0m";
-  const h = Math.floor(m / 60), r = m % 60;
-  if (h === 0) return `${r}m`;
-  if (r === 0) return `${h}h`;
-  return `${h}h ${r}m`;
-}
 
 function timeAgo(ts: string | null | undefined, justNow: string, never: string): string {
   if (!ts) return never;
@@ -409,7 +384,6 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [selected,     setSelected]     = useState<GpsDeviceForMap | null>(null);
   const [search,       setSearch]       = useState("");
   const [refreshing,   setRefreshing]   = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [panTarget,    setPanTarget]    = useState<google.maps.LatLngLiteral | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -429,17 +403,9 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Full screen ── CSS overlay (not the browser Fullscreen API), so there's
-  // no "swipe down to exit" banner/gesture — exit is via the button only.
-  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), []);
-
-  // Lock page scroll behind the overlay while full screen.
-  useEffect(() => {
-    if (!isFullscreen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [isFullscreen]);
+  // ── Full screen ── CSS overlay (not the browser Fullscreen API) — exit via
+  // the button only, no "swipe down to exit" banner. Shared hook (TD-1).
+  const { isFullscreen, toggle: toggleFullscreen } = useMapFullscreen();
 
   // ── Manual refresh ─────────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {

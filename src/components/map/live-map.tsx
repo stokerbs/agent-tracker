@@ -78,6 +78,8 @@ import {
 } from "@/lib/constants";
 import { batteryColor, initials, timeAgo } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { MAP_ID, STALE_MS, formatBangkokTime, formatStopMinutes } from "@/lib/maps/shared";
+import { useMapFullscreen } from "@/lib/maps/use-map-fullscreen";
 import { createGeofence, deleteGeofence } from "@/app/(dashboard)/map/actions";
 import type {
   Agent,
@@ -94,9 +96,7 @@ import type { GeofenceEventFeed } from "@/lib/queries";
 // Constants
 // ─────────────────────────────────────────────
 
-const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "detective-pulse-ops-map";
 const AGENT_STATUSES = Object.keys(AGENT_STATUS_META) as AgentStatus[];
-const STALE_MS      = 10 * 60 * 1000;
 const VERY_STALE_MS = 30 * 60 * 1000;
 
 const FENCE_COLORS = [
@@ -707,37 +707,6 @@ function LocateModeBadge({
   );
 }
 
-/** Format a UTC timestamp for display in Asia/Bangkok (GMT+7). */
-function formatBangkokTime(ts: string | null | undefined): string {
-  if (!ts) return "—";
-  try {
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return "—";
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Bangkok",
-      day:      "2-digit",
-      month:    "short",
-      year:     "numeric",
-      hour:     "2-digit",
-      minute:   "2-digit",
-      second:   "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(d);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return `${get("day")} ${get("month")} ${get("year")} ${get("hour")}:${get("minute")}:${get("second")} GMT+7`;
-  } catch { return "—"; }
-}
-
-function formatStopMinutes(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined || minutes < 0) return "—";
-  if (minutes === 0) return "0m";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 // ─────────────────────────────────────────────
 // GPS Device popup — Device info · no agent data
 // ─────────────────────────────────────────────
@@ -1024,17 +993,9 @@ export function LiveMap({
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapZoom, setMapZoom]     = useState<number | null>(null);
 
-  // ── Full screen ── CSS-based (not the browser Fullscreen API) so there's no
-  // "swipe down to exit" banner / swipe gesture — exit is via the button only.
-  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
-
-  // Lock page scroll behind the map while full screen.
-  useEffect(() => {
-    if (!isMapFullscreen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [isMapFullscreen]);
+  // ── Full screen ── CSS overlay (not the browser Fullscreen API) — exit via
+  // the button only, no "swipe down to exit" banner. Shared hook (TD-1).
+  const { isFullscreen: isMapFullscreen, toggle: toggleMapFullscreen } = useMapFullscreen();
 
   // ── Clock ──
   useEffect(() => {
@@ -1418,7 +1379,7 @@ export function LiveMap({
               so exit is button-only (no "swipe down to exit"). */}
           <button
             type="button"
-            onClick={() => setIsMapFullscreen((v) => !v)}
+            onClick={toggleMapFullscreen}
             aria-label={isMapFullscreen ? "Exit full screen" : "Full screen"}
             title={isMapFullscreen ? "Exit full screen" : "Full screen"}
             className="absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-card/90 text-muted-foreground shadow-md backdrop-blur-md transition-colors hover:text-foreground"
