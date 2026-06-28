@@ -1,15 +1,18 @@
 /**
- * In-memory sliding-window rate limiter.
+ * Sliding-window rate limiter.
  *
- * The store is a module-level Map, so state persists across requests within
- * one Node.js process. This is correct for single-instance deployments (local,
- * single server, single Vercel region with one replica).
+ * Uses Upstash Redis when configured (UPSTASH_REDIS_REST_URL +
+ * UPSTASH_REDIS_REST_TOKEN) so the window is shared across every serverless
+ * instance/region — correct for Vercel, where each instance otherwise has its
+ * own memory. Without those env vars it falls back to an in-process Map, which
+ * is correct only for a single instance (local / single replica) but keeps the
+ * app working with no external dependency.
  *
- * For multi-instance deployments (horizontally scaled, multiple Vercel
- * replicas, etc.) replace checkRateLimit() with a Redis-backed implementation
- * that shares state across instances — e.g. @upstash/ratelimit — while keeping
- * the same call signature and return type.
+ * checkRateLimit() is async (Redis is async); the return type is unchanged.
  */
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 export const RATE_LIMITS = {
   /** 10 sign-in attempts per minute per IP (legacy password flow). */
@@ -38,10 +41,34 @@ export interface RateLimitResult {
   retryAfterMs: number;
 }
 
+// ── Upstash Redis backend (preferred; gated on env) ─────────────────────────
+const UPSTASH_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const useUpstash    = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
+
+let redis: Redis | null = null;
+const limiters = new Map<Bucket, Ratelimit>();
+
+function getLimiter(bucket: Bucket): Ratelimit {
+  redis ??= new Redis({ url: UPSTASH_URL!, token: UPSTASH_TOKEN! });
+  let rl = limiters.get(bucket);
+  if (!rl) {
+    const { limit, windowMs } = RATE_LIMITS[bucket];
+    rl = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(limit, `${windowMs} ms`),
+      prefix: `rl:${bucket}`,
+      analytics: false,
+    });
+    limiters.set(bucket, rl);
+  }
+  return rl;
+}
+
+// ── In-process fallback (single-instance only) ──────────────────────────────
 // Hit-timestamp store: "bucket:identifier" → sorted array of timestamps (ms).
 const store = new Map<string, number[]>();
 
-// Periodic sweep: evicts inactive keys to prevent unbounded Map growth.
 const SWEEP_INTERVAL_MS = Math.max(
   ...Object.values(RATE_LIMITS).map((r) => r.windowMs),
 );
@@ -59,28 +86,17 @@ function scheduleSweep() {
   }, SWEEP_INTERVAL_MS);
 }
 
-/**
- * Check and record a request against the named rate-limit bucket.
- *
- * @param bucket  - One of the keys in RATE_LIMITS.
- * @param identifier - Opaque string identifying the requester (IP or user ID).
- */
-export function checkRateLimit(
-  bucket: Bucket,
-  identifier: string,
-): RateLimitResult {
+function checkInMemory(bucket: Bucket, identifier: string): RateLimitResult {
   const { limit, windowMs } = RATE_LIMITS[bucket];
   const key = `${bucket}:${identifier}`;
   const now = Date.now();
   const cutoff = now - windowMs;
 
-  // Lazy prune: drop timestamps outside the current window.
   const ts = (store.get(key) ?? []).filter((t) => t > cutoff);
 
   if (ts.length >= limit) {
     store.set(key, ts);
     scheduleSweep();
-    // ts[0] is the oldest hit; when it expires a new slot opens.
     return { allowed: false, remaining: 0, retryAfterMs: ts[0] + windowMs - now };
   }
 
@@ -89,4 +105,29 @@ export function checkRateLimit(
   scheduleSweep();
 
   return { allowed: true, remaining: limit - ts.length, retryAfterMs: 0 };
+}
+
+/**
+ * Check and record a request against the named rate-limit bucket.
+ *
+ * @param bucket     - One of the keys in RATE_LIMITS.
+ * @param identifier - Opaque string identifying the requester (IP or user ID).
+ */
+export async function checkRateLimit(
+  bucket: Bucket,
+  identifier: string,
+): Promise<RateLimitResult> {
+  if (!useUpstash) return checkInMemory(bucket, identifier);
+  try {
+    const r = await getLimiter(bucket).limit(identifier);
+    return {
+      allowed: r.success,
+      remaining: r.remaining,
+      retryAfterMs: r.success ? 0 : Math.max(0, r.reset - Date.now()),
+    };
+  } catch {
+    // Redis unreachable — fail over to in-memory so auth/GPS isn't bricked by a
+    // transient Upstash outage (degrades to per-instance limiting, not open).
+    return checkInMemory(bucket, identifier);
+  }
 }

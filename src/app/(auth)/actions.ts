@@ -51,7 +51,7 @@ export async function requestSmsOtp(
   formData: FormData,
 ): Promise<AuthState> {
   const ip = await requestIp();
-  const rl = checkRateLimit("otp", ip);
+  const rl = await checkRateLimit("otp", ip);
   if (!rl.allowed) {
     const s = Math.ceil(rl.retryAfterMs / 1000);
     return { error: `Too many requests. Try again in ${s} second${s === 1 ? "" : "s"}.` };
@@ -91,7 +91,7 @@ export async function requestPortalOtp(
   formData: FormData,
 ): Promise<AuthState> {
   const ip = await requestIp();
-  const rl = checkRateLimit("otp", ip);
+  const rl = await checkRateLimit("otp", ip);
   if (!rl.allowed) {
     const s = Math.ceil(rl.retryAfterMs / 1000);
     return { error: `Too many requests. Try again in ${s} second${s === 1 ? "" : "s"}.` };
@@ -131,7 +131,7 @@ export async function verifyOtp(
   formData: FormData,
 ): Promise<AuthState> {
   const ip = await requestIp();
-  const rl = checkRateLimit("otp_verify", ip);
+  const rl = await checkRateLimit("otp_verify", ip);
   if (!rl.allowed) {
     const s = Math.ceil(rl.retryAfterMs / 1000);
     return { error: `Too many attempts. Try again in ${s} second${s === 1 ? "" : "s"}.` };
