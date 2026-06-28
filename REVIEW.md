@@ -16,9 +16,10 @@ Supabase Dashboard → **Authentication → Sign In / Providers → Phone → Te
 | `+66800000000` | `000000` | Seed-script default (`Demo Agent` + `CASE-DEMO-0001`) — alternative |
 
 **Currently submitted to Apple:** `+66900000001` / `123456` (profile "Apple Reviewer",
-agent code `DEMO-001`). It is assigned to active cases `CASE-2026-0002` / `CASE-2026-0003`,
-so signing in lands on the Field dashboard with real case content. The `+66800000000`
-Demo Agent below (created by the seed script) remains as a clean single-case alternative.
+agent code `DEMO-001`). It is scoped to the **isolated demo case `CASE-DEMO-0001` only**
+(no real case data) — RLS limits the account to its assigned case, so the reviewer sees
+populated demo content without exposure to live investigations. The `+66800000000` Demo
+Agent below (created by the seed script) is the same demo case under a second account.
 
 The phone **must** be E.164 (`+66…`) — it has to match `normalizeThaiPhone`
 (`src/app/(auth)/actions.ts`), which outputs `+66XXXXXXXXX`. Test numbers bypass the
@@ -61,9 +62,8 @@ Convenience deep link (prefills the number): `https://detectivepulse.app/login?p
 ## Verify before submitting
 1. Supabase test OTP `+66900000001` / `123456` is set (Auth → Phone → Test OTP).
 2. Visit `/login?phone=+66900000001` → Send code → enter `123456` → lands on `/field`
-   with the assigned cases visible (`CASE-2026-0002` / `CASE-2026-0003`, timeline + intel
-   populated). No real SMS sent.
-3. Confirm the account sees **only** its assigned cases (RLS), not the full case list.
+   with the demo case visible (`CASE-DEMO-0001`, timeline + intel populated). No real SMS sent.
+3. Confirm the account sees **only** `CASE-DEMO-0001` (RLS) — no real/active cases.
 4. Support URL in App Store Connect points to `https://detectivepulse.app/support`.
 
 ## After launch
