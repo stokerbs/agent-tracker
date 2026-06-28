@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const UPDATED = "23 June 2026";
-const CONTACT_EMAIL = "privacy@detectivepulse.app";
+const CONTACT_EMAIL = "detectivepluse@gmail.com";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
