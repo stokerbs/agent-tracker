@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isApnsConfigured, sendApnsToTokens } from "./apns";
 import { notificationData, type PushPayload } from "./types";
+import { reportError } from "@/lib/errors";
 
 /**
  * Firebase Cloud Messaging (HTTP v1) sender for native push.
@@ -175,6 +176,6 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
       console.log(`[token] pruned ${stale.length} stale device token(s)`);
     }
   } catch (err) {
-    console.error("[push] sendPushToUsers error", err);
+    reportError(err, "push:sendPushToUsers");
   }
 }
