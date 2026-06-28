@@ -93,6 +93,7 @@ export async function getRecentTimeline(
   const { data } = await supabase
     .from("timeline_entries")
     .select("*, agents(full_name, nickname), cases(case_number)")
+    .is("deleted_at", null) // exclude soft-deleted entries
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data as never) ?? [];
