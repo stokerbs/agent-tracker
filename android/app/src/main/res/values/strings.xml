@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Detective Pulse Field</string>
+    <string name="title_activity_main">Detective Pulse Field</string>
+    <string name="package_name">app.detectivepulse.field</string>
+    <string name="custom_url_scheme">app.detectivepulse.field</string>
+</resources>
