@@ -1,10 +1,18 @@
 import { registerPlugin } from "@capacitor/core";
 import type { BackgroundGeolocationPlugin } from "@capacitor-community/background-geolocation";
+import {
+  IDLE_INTERVAL_MS,
+  MOVING_INTERVAL_MS,
+  MOVING_SPEED_KMH,
+} from "@/lib/geo/cadence";
 
 const BackgroundGeolocation =
   registerPlugin<BackgroundGeolocationPlugin>("BackgroundGeolocation");
 
-const REPORT_INTERVAL_MS = 30_000; // throttle posts; plugin emits more often
+// Adaptive cadence — post often while moving for a smooth (Life360-like) live
+// map, then back off when stationary to save battery and DB writes. The plugin
+// emits more often than this (past its 10 m distanceFilter); we throttle to
+// the shared cadence intervals.
 
 /**
  * Start background GPS reporting via @capacitor-community/background-geolocation.
@@ -26,12 +34,22 @@ export async function startBackgroundGps(token: string): Promise<() => void> {
         stale: false,
         backgroundTitle: "Detective Pulse — On duty",
         backgroundMessage: "Reporting your position to operations.",
-        distanceFilter: 20,
+        distanceFilter: 10,
       },
       (location, error) => {
         if (error || !location) return;
         const now = Date.now();
-        if (now - lastReport < REPORT_INTERVAL_MS) return;
+
+        // Cadence depends on movement: the plugin only emits past distanceFilter
+        // (10 m), so any emission with speed under threshold is treated as a slow
+        // drift and throttled to the idle interval.
+        const speedKmh =
+          location.speed != null && location.speed >= 0
+            ? location.speed * 3.6
+            : 0;
+        const interval =
+          speedKmh > MOVING_SPEED_KMH ? MOVING_INTERVAL_MS : IDLE_INTERVAL_MS;
+        if (now - lastReport < interval) return;
         lastReport = now;
 
         const body: Record<string, unknown> = {
@@ -39,7 +57,7 @@ export async function startBackgroundGps(token: string): Promise<() => void> {
           lng: location.longitude,
         };
         if (location.speed != null && location.speed >= 0) {
-          body.speed_kmh = Math.round(location.speed * 3.6 * 10) / 10;
+          body.speed_kmh = Math.round(speedKmh * 10) / 10;
         }
         if (location.bearing != null && !Number.isNaN(location.bearing)) {
           body.heading = Math.round(location.bearing) % 360;

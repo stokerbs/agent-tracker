@@ -128,6 +128,21 @@
     @apply border-border;
   }
 
+  html {
+    /* Theme the root behind <body> so the notch / home-indicator safe areas and
+       any overscroll show the app background — never a white gap. */
+    @apply bg-background;
+    /* Don't reflow text when the device orientation changes. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Lock the page so it feels fixed, not browser-like: no rubber-band bounce
+     past the content edges (which reveals white) on iOS/touch devices. */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;

@@ -52,7 +52,6 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,12 +132,18 @@ function mapDisplayStatus(agent: Agent, now: number): AgentStatus {
 // Animated position hook
 // ─────────────────────────────────────────────
 
+// Animation bounds (ms). The marker glides over roughly the real gap between
+// position updates so it keeps moving until the next fix arrives — continuous,
+// Life360-style motion instead of a 2.5 s dart followed by a long freeze.
+const ANIM_MIN_MS = 2_000;
+const ANIM_MAX_MS = 11_000;
+
 function useAnimatedPosition(
   targetLat: number | null,
   targetLng: number | null,
-  durationMs = 2500,
 ) {
   const currentRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastUpdateRef = useRef<number | null>(null);
   const [displayed, setDisplayed] = useState<{ lat: number; lng: number } | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
 
@@ -149,6 +154,7 @@ function useAnimatedPosition(
     if (!currentRef.current) {
       currentRef.current = target;
       setDisplayed(target);
+      lastUpdateRef.current = performance.now();
       return;
     }
 
@@ -162,9 +168,19 @@ function useAnimatedPosition(
     const from = { ...currentRef.current };
     const startTime = performance.now();
 
+    // Glide over the observed gap since the previous fix (clamped). This paces
+    // the marker so it travels at roughly real speed and arrives about when the
+    // next update lands, keeping motion continuous rather than stop-start.
+    const sinceLast =
+      lastUpdateRef.current != null ? startTime - lastUpdateRef.current : ANIM_MIN_MS;
+    const durationMs = Math.min(Math.max(sinceLast, ANIM_MIN_MS), ANIM_MAX_MS);
+    lastUpdateRef.current = startTime;
+
     function tick(now: number) {
       const t = Math.min((now - startTime) / durationMs, 1);
-      const eased = 1 - (1 - t) ** 3;
+      // Gentle ease-in-out, near-linear through the middle so velocity stays
+      // roughly constant — reads as smooth travel, not accelerate/decelerate.
+      const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
       const interp = {
         lat: from.lat + (target.lat - from.lat) * eased,
         lng: from.lng + (target.lng - from.lng) * eased,
@@ -178,7 +194,7 @@ function useAnimatedPosition(
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
-  }, [targetLat, targetLng, durationMs]);
+  }, [targetLat, targetLng]);
 
   return displayed;
 }
@@ -469,27 +485,27 @@ function OpsPanel({
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
-            className="mb-1 w-48 overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur"
+            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+            className="mb-1 w-[148px] overflow-hidden rounded-lg border border-border/60 bg-card/85 shadow-lg backdrop-blur-md"
           >
-            <div className="border-b border-border/40 px-3 py-2">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <LayoutDashboard className="h-3 w-3" />
+            <div className="flex items-center gap-1.5 border-b border-border/40 px-2.5 py-1.5">
+              <LayoutDashboard className="h-3 w-3 text-muted-foreground" />
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("ops.title")}
               </p>
             </div>
-            <div className="grid grid-cols-2 divide-x divide-border/40">
-              <StatTile label={t("ops.active")}   value={active}   dot="bg-emerald-500" />
-              <StatTile label={t("ops.moving")}   value={moving}   dot="bg-amber-500" />
-              <StatTile label={t("ops.offline")}  value={offline}  dot="bg-slate-400" />
-              <StatTile label="GPS Live"           value={liveGps}  dot="bg-amber-400" />
+            <div className="grid grid-cols-2 gap-px bg-border/40">
+              <StatTile label={t("ops.active")}  value={active}  dot="bg-emerald-500" />
+              <StatTile label={t("ops.moving")}  value={moving}  dot="bg-amber-500" />
+              <StatTile label={t("ops.offline")} value={offline} dot="bg-slate-400" />
+              <StatTile label="GPS Live"          value={liveGps} dot="bg-amber-400" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
       <Button
         variant="outline" size="sm" onClick={onToggle}
-        className="h-7 gap-1 bg-card/95 px-2 text-xs backdrop-blur shadow-md"
+        className="h-7 gap-1 bg-card/85 px-2 text-xs backdrop-blur-md shadow-md"
       >
         <LayoutDashboard className="h-3 w-3" />
         {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -502,14 +518,14 @@ function StatTile({ label, value, unit, dot }: {
   label: string; value: number | string; unit?: string; dot: string;
 }) {
   return (
-    <div className="px-3 py-2.5">
-      <div className="flex items-center gap-1">
-        <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
-        <span className="text-[10px] text-muted-foreground">{label}</span>
+    <div className="flex items-center justify-between gap-1 bg-card px-2.5 py-1.5">
+      <div className="flex min-w-0 items-center gap-1">
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+        <span className="truncate text-[9px] text-muted-foreground">{label}</span>
       </div>
-      <p className="mt-0.5 font-mono text-lg font-bold leading-none">
+      <p className="shrink-0 font-mono text-sm font-bold leading-none tabular-nums">
         {value}
-        {unit && <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">{unit}</span>}
+        {unit && <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">{unit}</span>}
       </p>
     </div>
   );
@@ -579,58 +595,57 @@ function AgentPopup({
   return (
     <AdvancedMarker position={{ lat: agent.current_lat, lng: agent.current_lng }} zIndex={2000}>
       <div className="pointer-events-none flex flex-col items-center select-none">
-        <div className="pointer-events-auto min-w-[220px] max-w-[260px] overflow-hidden rounded-xl border border-border/60 bg-white/95 shadow-xl backdrop-blur-sm dark:bg-slate-900/95">
-          {/* Header */}
-          <div className="flex items-center gap-2.5 px-3 pb-2 pt-3">
-            <Avatar className="h-9 w-9 shrink-0">
+        <div className="pointer-events-auto w-[178px] overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-md">
+          {/* Header — name + (code · role) + close */}
+          <div className="flex items-center gap-2 px-2.5 pb-2 pt-2.5">
+            <Avatar className="h-7 w-7 shrink-0">
               {agent.photo_url && <AvatarImage src={agent.photo_url} alt={agent.full_name} className="object-cover" />}
-              <AvatarFallback className="text-xs">{initials(agent.full_name)}</AvatarFallback>
+              <AvatarFallback className="text-[10px]">{initials(agent.full_name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">{agent.full_name}</p>
-              <p className="font-mono text-xs text-muted-foreground">{agent.agent_code}</p>
+              <p className="truncate text-[13px] font-semibold leading-tight text-foreground">{agent.full_name}</p>
+              <p className="truncate font-mono text-[10px] leading-tight text-muted-foreground">
+                {agent.agent_code}{roleMeta && ` · ${roleMeta.label}`}
+              </p>
             </div>
             <button
               onClick={onClose} aria-label="Close"
-              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-gray-200"
+              className="-mr-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          {/* Status + Role badges */}
-          <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+          {/* Meta — status + last active on one line */}
+          <div className="flex items-center gap-1.5 px-2.5 pb-2">
             <AgentStatusBadge status={agent.status} />
-            {roleMeta && (
-              <Badge className={cn("border border-transparent text-[9px] font-bold uppercase tracking-widest", roleMeta.badge)}>
-                {roleMeta.label}
-              </Badge>
-            )}
+            <span className={cn("ml-auto flex items-center gap-1 text-[10px] text-muted-foreground", isStale && "text-amber-600")}>
+              <Clock className="h-3 w-3 shrink-0" />
+              {timeAgo(agent.last_active)}{isStale && " (stale)"}
+            </span>
           </div>
 
-          {/* Info rows */}
-          <div className="space-y-1.5 px-3 pb-2 text-xs text-muted-foreground">
-            {/* Last active */}
-            <div className={cn("flex items-center gap-1.5", isStale && "text-amber-600")}>
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span>{timeAgo(agent.last_active)}</span>
-              {isStale && <span className="font-medium">(stale)</span>}
-            </div>
-
-            {/* Phone */}
-            {agent.phone && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-mono">{agent.phone}</span>
-              </div>
-            )}
+          {/* Phone + compact call button */}
+          <div className="flex items-center gap-1.5 border-t border-border/40 px-2.5 py-1.5 text-[11px]">
+            <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
+              {agent.phone ?? "—"}
+            </span>
+            <button
+              onClick={() => {
+                if (!agent.phone) { toast(t("popup.noPhone")); return; }
+                window.location.href = `tel:${agent.phone}`;
+              }}
+              className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-emerald-500 px-2 text-[10px] font-semibold text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700"
+            >
+              <Phone className="h-3 w-3" />
+              {t("popup.call")}
+            </button>
           </div>
 
-          {/* Trail duration */}
-          <div className="flex items-center gap-2 border-t border-border/40 px-3 py-2">
-            <Clock className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-            <span className="text-xs text-muted-foreground">Trail</span>
-            <div className="ml-auto flex gap-1">
+          {/* Trail — compact footer */}
+          <div className="flex items-center gap-1.5 border-t border-border/40 px-2.5 py-1.5">
+            <span className="text-[10px] text-muted-foreground">Trail</span>
+            <div className="ml-auto flex gap-0.5">
               {([15, 30, 60] as const).map((m) => (
                 <button
                   key={m} onClick={() => onTrailMinutesChange(m)}
@@ -646,23 +661,9 @@ function AgentPopup({
               ))}
             </div>
           </div>
-
-          {/* Call button */}
-          <div className="border-t border-border/40 px-3 pb-3 pt-2.5">
-            <button
-              onClick={() => {
-                if (!agent.phone) { toast(t("popup.noPhone")); return; }
-                window.location.href = `tel:${agent.phone}`;
-              }}
-              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700"
-            >
-              <Phone className="h-4 w-4" />
-              {t("popup.call")}
-            </button>
-          </div>
         </div>
-        <div className="h-3 w-px bg-border/60" />
-        <div className="h-14" />
+        <div className="h-2.5 w-px bg-border/60" />
+        <div className="h-12" />
       </div>
     </AdvancedMarker>
   );
@@ -758,24 +759,24 @@ function GpsDevicePopup({
   return (
     <AdvancedMarker position={{ lat: device.last_lat, lng: device.last_lng }} zIndex={2000}>
       <div className="pointer-events-none flex flex-col items-center select-none">
-        <div className="pointer-events-auto min-w-[220px] max-w-[260px] overflow-hidden rounded-xl border border-border/60 bg-white/95 shadow-xl backdrop-blur-sm dark:bg-slate-900/95">
+        <div className="pointer-events-auto w-[196px] overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-md">
           {/* Header */}
-          <div className="flex items-center gap-2.5 px-3 pb-2 pt-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+          <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
               <Satellite className="h-4 w-4 text-amber-500" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
                 {device.cred_name ?? device.notes ?? `GPS903-${device.gps903_device_id ?? "?"}`}
               </p>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="font-mono text-[10px] leading-tight text-muted-foreground">
                 {device.cred_imei ?? device.imei ?? "—"}
               </p>
               {device.cred_phone && (
-                <p className="font-mono text-[10px] text-muted-foreground/70">{device.cred_phone}</p>
+                <p className="font-mono text-[10px] leading-tight text-muted-foreground/70">{device.cred_phone}</p>
               )}
               {(device.cred_provider ?? device.provider) && (
-                <p className="font-mono text-[10px] text-muted-foreground/70">{device.cred_provider ?? device.provider}</p>
+                <p className="font-mono text-[10px] leading-tight text-muted-foreground/70">{device.cred_provider ?? device.provider}</p>
               )}
               {/* Locate mode badge — below IMEI */}
               <div className="mt-1">
@@ -784,55 +785,55 @@ function GpsDevicePopup({
             </div>
             <button
               onClick={onClose} aria-label="Close"
-              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-gray-200"
+              className="-mr-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {/* Telemetry rows */}
-          <div className="px-3 pb-3 text-xs text-muted-foreground">
+          <div className="px-2.5 pb-2.5 text-[11px] text-muted-foreground">
             {/* Battery */}
             <div className={cn("flex items-center gap-1.5", battClass)}>
-              <BatteryMedium className="h-3.5 w-3.5 shrink-0" />
+              <BatteryMedium className="h-3 w-3 shrink-0" />
               <span className="font-mono">{battery !== null ? `${battery}%` : "—"}</span>
             </div>
 
-            <div className="my-1.5 border-t border-border/30" />
+            <div className="my-1 border-t border-border/30" />
 
             {/* Speed */}
             <div className="flex items-center gap-1.5">
-              <Gauge className="h-3.5 w-3.5 shrink-0" style={{ color: speedColor(speed) }} />
+              <Gauge className="h-3 w-3 shrink-0" style={{ color: speedColor(speed) }} />
               <span className="font-mono" style={{ color: speedColor(speed) }}>
                 {speed.toFixed(1)} km/h
               </span>
             </div>
 
             {/* Position time — Bangkok (GMT+7) */}
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+            <div className="mt-1 flex items-center gap-1.5">
+              <CalendarClock className="h-3 w-3 shrink-0 text-sky-500" />
               <span className="font-mono">{formatBangkokTime(device.last_position_time)}</span>
             </div>
 
             {/* Stop time */}
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            <div className="mt-1 flex items-center gap-1.5">
+              <Timer className="h-3 w-3 shrink-0 text-amber-500" />
               <span className="font-mono">{formatStopMinutes(device.last_stop_minutes)}</span>
             </div>
 
             {/* Last seen — Bangkok (GMT+7); amber when stale */}
-            <div className={cn("mt-1.5 flex items-center gap-1.5", isStale && "text-amber-600")}>
-              <Clock className="h-3.5 w-3.5 shrink-0" />
+            <div className={cn("mt-1 flex items-center gap-1.5", isStale && "text-amber-600")}>
+              <Clock className="h-3 w-3 shrink-0" />
               <span className="font-mono">{formatBangkokTime(device.last_seen_at)}</span>
               {isStale && <span className="font-medium">(stale)</span>}
             </div>
 
-            <div className="my-1.5 border-t border-border/30" />
+            <div className="my-1 border-t border-border/30" />
 
             {/* ACC Status (ignition) */}
             <div className="flex items-center gap-1.5">
               <Zap className={cn(
-                "h-3.5 w-3.5 shrink-0",
+                "h-3 w-3 shrink-0",
                 device.last_ignition === true ? "text-emerald-500" : "text-muted-foreground/50",
               )} />
               <span className={cn(
@@ -848,9 +849,9 @@ function GpsDevicePopup({
             {/* Case */}
             {device.case_number && (
               <>
-                <div className="my-1.5 border-t border-border/30" />
+                <div className="my-1 border-t border-border/30" />
                 <div className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5 shrink-0" />
+                  <Shield className="h-3 w-3 shrink-0" />
                   <span className="font-mono font-medium">{device.case_number}</span>
                 </div>
               </>
@@ -858,7 +859,7 @@ function GpsDevicePopup({
           </div>
         </div>
         {/* Connector — aligned above the diamond marker (h-9 rotated = ~12.7px diagonal) */}
-        <div className="h-3 w-px bg-border/60" />
+        <div className="h-2.5 w-px bg-border/60" />
         <div className="h-12" />
       </div>
     </AdvancedMarker>

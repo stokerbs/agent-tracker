@@ -28,7 +28,14 @@ const config: CapacitorConfig = {
     allowNavigation: ["detectivepulse.app", "*.supabase.co"],
   },
   ios: {
-    contentInset: "always",
+    // Fill the WebView edge-to-edge. The status-bar space is reserved natively
+    // (StatusBar.setOverlaysWebView(false) in NativeBootstrap) and the home
+    // indicator is padded in CSS (padding-bottom: env(safe-area-inset-bottom)).
+    // "always" added automatic safe-area insets whose exposed WebView background
+    // showed up as white bars top and bottom — "never" removes them.
+    contentInset: "never",
+    // Dark WebView background so nothing white shows at the edges or on load.
+    backgroundColor: "#0b0f14",
   },
   android: {
     // Allow the WebView to use mixed content only when explicitly on cleartext dev.
