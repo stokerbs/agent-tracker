@@ -429,20 +429,17 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Fullscreen listener ────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+  // ── Full screen ── CSS overlay (not the browser Fullscreen API), so there's
+  // no "swipe down to exit" banner/gesture — exit is via the button only.
+  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), []);
 
-  const toggleFullscreen = useCallback(async () => {
-    if (!document.fullscreenElement) {
-      await containerRef.current?.requestFullscreen();
-    } else {
-      await document.exitFullscreen();
-    }
-  }, []);
+  // Lock page scroll behind the overlay while full screen.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isFullscreen]);
 
   // ── Manual refresh ─────────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
@@ -503,13 +500,12 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
     <div
       ref={containerRef}
       className={[
-        "relative flex overflow-hidden bg-background",
-        /* Desktop: side-by-side panel + map */
-        "md:h-[calc(100vh-10rem)] md:gap-3 md:rounded-lg",
-        /* Mobile: full remaining viewport height, stacked (map + bottom sheet) */
-        "h-[calc(100dvh-3.5rem)] flex-col md:flex-row",
-        /* Fullscreen: ensure bg fills screen */
-        isFullscreen ? "bg-background" : "",
+        "flex flex-col overflow-hidden bg-background md:flex-row",
+        isFullscreen
+          /* Full screen: CSS overlay covering the viewport (button-only exit) */
+          ? "fixed inset-0 z-50 h-[100dvh] w-screen"
+          /* Mobile: remaining viewport height · Desktop: side-by-side panel + map */
+          : "relative h-[calc(100dvh-3.5rem)] md:h-[calc(100vh-10rem)] md:gap-3 md:rounded-lg",
       ].join(" ")}
       style={{
         paddingTop:    isFullscreen ? "env(safe-area-inset-top, 0px)"    : undefined,
@@ -571,6 +567,9 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
             defaultZoom={11}
             gestureHandling="greedy"
             disableDefaultUI={false}
+            // Our own CSS full-screen toggle replaces Google's control, which
+            // calls the browser Fullscreen API (iOS "swipe down to exit").
+            fullscreenControl={false}
             className="h-full w-full"
           >
             <MapPanner target={panTarget} />
