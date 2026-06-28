@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/lib/auth";
 import { getGpsMonitorDevices } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
-import { GpsMonitorMap } from "@/components/gps/gps-monitor-map";
+import { GpsMonitorMap } from "@/components/gps903/gps-monitor-map";
 
 export const metadata: Metadata = { title: "GPS Monitor" };
 export const dynamic = "force-dynamic";

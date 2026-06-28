@@ -1,7 +1,7 @@
 /**
  * Shared Google Maps constants and formatters used by both map surfaces —
  * the live ops map (components/map/live-map.tsx) and the GPS monitor
- * (components/gps/gps-monitor-map.tsx). Consolidated for TD-1.
+ * (components/gps903/gps-monitor-map.tsx). Consolidated for TD-1.
  */
 
 /** Advanced-marker map style id (falls back to the ops map id). */
