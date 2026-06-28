@@ -43,6 +43,33 @@ export interface NotifyInput {
  * empty audience. The DB row stores type/title/body/link; the richer push
  * payload (type, entityId, priority, createdAt) rides along to APNs/FCM only.
  */
+/**
+ * Persistence concern: write one in-app `notifications` row per recipient.
+ * Returns false (and logs) on DB error so the orchestrator can skip transport.
+ * (Transport — native push — is the separate `sendPushToUsers` module.)
+ */
+async function persistNotifications(
+  ids: string[],
+  notification: NotifyInput,
+  url: string | null,
+): Promise<boolean> {
+  const client = createServiceClient();
+  const { error } = await client.from("notifications").insert(
+    ids.map((user_id) => ({
+      user_id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body ?? null,
+      link: url,
+    })),
+  );
+  if (error) {
+    console.error(`[notification] insert failed type=${notification.type}: ${error.message}`);
+    return false;
+  }
+  return true;
+}
+
 export async function notifyUsers(
   userIds: string[],
   notification: NotifyInput,
@@ -55,28 +82,18 @@ export async function notifyUsers(
     const priority = notification.priority ?? "normal";
     const createdAt = new Date().toISOString();
 
-    const client = createServiceClient();
-    const { error } = await client.from("notifications").insert(
-      ids.map((user_id) => ({
-        user_id,
-        type: notification.type,
-        title: notification.title,
-        body: notification.body ?? null,
-        link: url,
-      })),
-    );
-    if (error) {
-      console.error(`[notification] insert failed type=${notification.type}: ${error.message}`);
-      return;
-    }
+    // 1. Persistence — the in-app record. Bail before transport if it fails.
+    const persisted = await persistNotifications(ids, notification, url);
+    if (!persisted) return;
     console.log(
       `[notification] type=${notification.type} recipients=${ids.length} priority=${priority} url=${url ?? "-"}`,
     );
 
-    // Fan out to native devices (no-op when push isn't configured / no tokens).
-    // Awaited so push completes within the caller's request — callers `await`
-    // the notify* chain, so delivery is guaranteed before the action returns
-    // (do NOT use `after()` here: it does not flush for Server Actions on Vercel).
+    // 2. Transport — fan out to native devices (no-op when push isn't configured
+    // / no tokens). Awaited so push completes within the caller's request —
+    // callers `await` the notify* chain, so delivery is guaranteed before the
+    // action returns (do NOT use `after()` here: it does not flush for Server
+    // Actions on Vercel).
     await sendPushToUsers(ids, {
       title: notification.title,
       body: notification.body,
