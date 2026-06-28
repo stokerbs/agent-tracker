@@ -221,7 +221,7 @@ export default async function AgentDetailPage({
               <div className="flex items-center gap-2">
                 {agent.is_charging ? (
                   <BatteryCharging className="h-4 w-4 text-success" />
-                ) : batteryLevel <= 25 ? (
+                ) : batteryLevel <= 20 ? (
                   <BatteryLow className="h-4 w-4 text-destructive" />
                 ) : (
                   <BatteryMedium className={cn("h-4 w-4", batteryColor(agent.battery_pct))} />
