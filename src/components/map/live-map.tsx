@@ -52,7 +52,6 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { AgentRoleBadge, AgentStatusBadge } from "@/components/shared/status-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -596,16 +595,18 @@ function AgentPopup({
   return (
     <AdvancedMarker position={{ lat: agent.current_lat, lng: agent.current_lng }} zIndex={2000}>
       <div className="pointer-events-none flex flex-col items-center select-none">
-        <div className="pointer-events-auto w-[196px] overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-md">
-          {/* Header */}
-          <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5">
-            <Avatar className="h-8 w-8 shrink-0">
+        <div className="pointer-events-auto w-[178px] overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-md">
+          {/* Header — name + (code · role) + close */}
+          <div className="flex items-center gap-2 px-2.5 pb-2 pt-2.5">
+            <Avatar className="h-7 w-7 shrink-0">
               {agent.photo_url && <AvatarImage src={agent.photo_url} alt={agent.full_name} className="object-cover" />}
               <AvatarFallback className="text-[10px]">{initials(agent.full_name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold leading-tight text-foreground">{agent.full_name}</p>
-              <p className="font-mono text-[10px] leading-tight text-muted-foreground">{agent.agent_code}</p>
+              <p className="truncate font-mono text-[10px] leading-tight text-muted-foreground">
+                {agent.agent_code}{roleMeta && ` · ${roleMeta.label}`}
+              </p>
             </div>
             <button
               onClick={onClose} aria-label="Close"
@@ -615,37 +616,34 @@ function AgentPopup({
             </button>
           </div>
 
-          {/* Status + Role badges */}
-          <div className="flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
+          {/* Meta — status + last active on one line */}
+          <div className="flex items-center gap-1.5 px-2.5 pb-2">
             <AgentStatusBadge status={agent.status} />
-            {roleMeta && (
-              <Badge className={cn("border border-transparent text-[8px] font-bold uppercase tracking-wider", roleMeta.badge)}>
-                {roleMeta.label}
-              </Badge>
-            )}
-          </div>
-
-          {/* Info rows */}
-          <div className="space-y-1 px-2.5 pb-2 text-[11px] text-muted-foreground">
-            {/* Last active */}
-            <div className={cn("flex items-center gap-1.5", isStale && "text-amber-600")}>
+            <span className={cn("ml-auto flex items-center gap-1 text-[10px] text-muted-foreground", isStale && "text-amber-600")}>
               <Clock className="h-3 w-3 shrink-0" />
-              <span>{timeAgo(agent.last_active)}</span>
-              {isStale && <span className="font-medium">(stale)</span>}
-            </div>
-
-            {/* Phone */}
-            {agent.phone && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="h-3 w-3 shrink-0" />
-                <span className="font-mono">{agent.phone}</span>
-              </div>
-            )}
+              {timeAgo(agent.last_active)}{isStale && " (stale)"}
+            </span>
           </div>
 
-          {/* Trail duration */}
+          {/* Phone + compact call button */}
+          <div className="flex items-center gap-1.5 border-t border-border/40 px-2.5 py-1.5 text-[11px]">
+            <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
+              {agent.phone ?? "—"}
+            </span>
+            <button
+              onClick={() => {
+                if (!agent.phone) { toast(t("popup.noPhone")); return; }
+                window.location.href = `tel:${agent.phone}`;
+              }}
+              className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-emerald-500 px-2 text-[10px] font-semibold text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700"
+            >
+              <Phone className="h-3 w-3" />
+              {t("popup.call")}
+            </button>
+          </div>
+
+          {/* Trail — compact footer */}
           <div className="flex items-center gap-1.5 border-t border-border/40 px-2.5 py-1.5">
-            <Clock className="h-3 w-3 shrink-0 text-blue-500" />
             <span className="text-[10px] text-muted-foreground">Trail</span>
             <div className="ml-auto flex gap-0.5">
               {([15, 30, 60] as const).map((m) => (
@@ -662,20 +660,6 @@ function AgentPopup({
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Call button */}
-          <div className="border-t border-border/40 p-2">
-            <button
-              onClick={() => {
-                if (!agent.phone) { toast(t("popup.noPhone")); return; }
-                window.location.href = `tel:${agent.phone}`;
-              }}
-              className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 text-xs font-semibold text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700"
-            >
-              <Phone className="h-3.5 w-3.5" />
-              {t("popup.call")}
-            </button>
           </div>
         </div>
         <div className="h-2.5 w-px bg-border/60" />
