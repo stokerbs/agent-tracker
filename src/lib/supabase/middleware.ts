@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { persistAuthCookie } from "./cookie-options";
 
 // /login covers /login/verify (startsWith check), so no extra entry needed.
-const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy"];
+const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy", "/support"];
 
 /**
  * Refreshes the Supabase session on every request and enforces auth on
