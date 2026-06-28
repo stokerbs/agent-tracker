@@ -79,6 +79,7 @@ export default async function AgentDetailPage({
         .from("timeline_entries")
         .select("*, cases(case_number)")
         .eq("agent_id", id)
+        .is("deleted_at", null) // exclude soft-deleted entries
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: false })
         .limit(100),
