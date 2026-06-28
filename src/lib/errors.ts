@@ -94,3 +94,24 @@ export function logBoundaryError(
     extra: { digest: error.digest ?? null },
   });
 }
+
+/**
+ * Report a swallowed (non-fatal, caught-and-continued) error. Use in
+ * best-effort paths — push delivery, notifications, email, background sync —
+ * where the catch must NOT rethrow but the failure should still be visible.
+ * Logs to the server console and forwards to Sentry (no-op without a DSN), so
+ * silent failures stop vanishing into the log stream.
+ *
+ * @param error   - The caught value (any thrown value; coerced to Error).
+ * @param context - Short label, e.g. "notification:notifyUsers" or "push:send".
+ * @param extra   - Optional structured context attached to the Sentry event.
+ */
+export function reportError(
+  error: unknown,
+  context: string,
+  extra?: Record<string, unknown>,
+): void {
+  const err = error instanceof Error ? error : new Error(String(error));
+  console.error(`[${context}]`, err.message, extra ?? "");
+  Sentry.captureException(err, { tags: { context }, extra });
+}

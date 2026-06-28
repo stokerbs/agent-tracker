@@ -3,6 +3,7 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendPushToUsers } from "@/lib/push/send";
 import { notificationLinks, relProfileId } from "@/lib/notification-links";
+import { reportError } from "@/lib/errors";
 import type { NotificationType } from "@/lib/types";
 
 // Re-export the pure helpers so feature code keeps a single import surface
@@ -105,7 +106,7 @@ export async function notifyUsers(
     });
   } catch (err) {
     // Notifications are best-effort — never let them abort the triggering action.
-    console.error("[notification] notifyUsers error", err);
+    reportError(err, "notification:notifyUsers");
   }
 }
 
@@ -130,7 +131,7 @@ export async function notifyRole(
       .filter((id) => id !== excludeId);
     await notifyUsers(ids, notification);
   } catch (err) {
-    console.error("[notification] notifyRole error", err);
+    reportError(err, "notification:notifyRole");
   }
 }
 
@@ -174,7 +175,7 @@ export async function getCaseRecipients(
     return { agents, client: clientId };
   } catch (err) {
     // Best-effort: a resolution failure must never reject into a void caller.
-    console.error("[notification] getCaseRecipients error", err);
+    reportError(err, "notification:getCaseRecipients");
     return { agents: [], client: null };
   }
 }

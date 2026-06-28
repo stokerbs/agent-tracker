@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { BUCKETS, INTAKE_STAGING_PREFIX, INTAKE_MAX_FILES } from "@/lib/constants";
 import {
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
     const extraction = await analyzeIntake(parts);
     return NextResponse.json({ intakeId, files: staged, extraction });
   } catch (err) {
-    console.error("[intake/analyze]", err);
+    reportError(err, "intake:analyze");
     // Best-effort cleanup of staged files on AI failure.
     await supabase.storage.from(BUCKETS.evidence).remove(staged.map((s) => s.path));
     return NextResponse.json({ error: "AI analysis failed — please try again" }, { status: 502 });

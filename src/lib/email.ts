@@ -4,6 +4,8 @@
  * RESEND_API_KEY must be set in production; absent key → silent no-op.
  */
 
+import { reportError } from "@/lib/errors";
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://detectivepulse.app";
 const FROM = process.env.EMAIL_FROM ?? "Detective Pulse <no-reply@detectivepulse.app>";
 
@@ -99,7 +101,7 @@ export async function sendAssignmentEmail(params: AssignmentEmailParams): Promis
       html,
     });
   } catch (err) {
-    console.error("[email] sendAssignmentEmail failed:", err);
+    reportError(err, "email:sendAssignmentEmail");
   }
 }
 
@@ -157,7 +159,7 @@ export async function sendInvoiceEmail(params: InvoiceEmailParams): Promise<void
       html,
     });
   } catch (err) {
-    console.error("[email] sendInvoiceEmail failed:", err);
+    reportError(err, "email:sendInvoiceEmail");
   }
 }
 

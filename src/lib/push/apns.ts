@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import http2 from "node:http2";
 import { apnsPriority, notificationData, type PushPayload, type SendStatus } from "./types";
+import { reportError } from "@/lib/errors";
 
 /**
  * Apple Push Notification service (APNs) sender — used for iOS device tokens,
@@ -119,7 +120,7 @@ function sendOne(
       data += chunk;
     });
     req.on("error", (err) => {
-      console.error("[apns] request error", err);
+      reportError(err, "apns:request");
       // Network/stream failure — retry once with a short backoff.
       resolve({ token: deviceToken, status: "error", retry: "backoff" });
     });
@@ -183,7 +184,7 @@ export async function sendApnsToTokens(
   // per-request promises unsettled — fail the whole batch instead of hanging.
   const sessionError = new Promise<{ token: string; status: SendStatus }[]>((resolve) => {
     client.on("error", (err) => {
-      console.error("[apns] session error", err);
+      reportError(err, "apns:session");
       resolve(tokens.map((token) => ({ token, status: "error" as SendStatus })));
     });
   });
@@ -223,7 +224,7 @@ export async function sendApnsToTokens(
     console.log(`[delivery] apns sent=${ok} stale=${stale} error=${error} total=${results.length}`);
     return results;
   } catch (err) {
-    console.error("[apns] batch error", err);
+    reportError(err, "apns:batch");
     return tokens.map((token) => ({ token, status: "error" as SendStatus }));
   } finally {
     client.close();
