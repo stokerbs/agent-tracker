@@ -1,9 +1,13 @@
 # PROJECT_RULES
 
 ## Branch naming
-feature/*
+Use a Conventional-Commits-style prefix matching the change type:
+feature/* (or feat/*)
 fix/*
 hotfix/*
+refactor/*
+perf/*
+chore/*
 
 ## Pull Request Checklist
 - [ ] Security reviewed
