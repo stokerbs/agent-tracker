@@ -7,6 +7,49 @@ licensed field investigators** — not a consumer app.
 
 ---
 
+## 0. Resubmission — response to the 2026-06-28 rejection
+
+Build 1.0 (6) was rejected on two guidelines (submission `f34b072a-f02c-43e6-978c-0c284fc337b9`):
+
+- **Guideline 1.5 (Support URL)** — the Support URL had no support content. **Fixed:** a
+  public support page is now LIVE at `https://detectivepulse.app/support`
+  (`src/app/support/page.tsx`). Set this as the Support URL in App Store Connect.
+- **Guideline 3.2 (Business)** — the app is org-specific but was submitted for public
+  distribution. **Decision:** move to **Unlisted App Distribution** (request via Apple's
+  unlisted-distribution form; it stays on the App Store via a private link, not search).
+
+**Paste this into App Store Connect → Resolution Center (reply to the review thread):**
+
+> Hello, and thank you for the detailed review.
+>
+> We have addressed both items.
+>
+> Guideline 1.5 — Support URL
+> We have published a dedicated support page with contact information, getting-started
+> guidance, and an FAQ (sign-in help, location/notification permissions, and account
+> deletion). It is publicly accessible without login:
+>
+> https://detectivepulse.app/support
+>
+> We have updated the Support URL in App Store Connect to point to this page, and the
+> support inbox (detectivepluse@gmail.com) is actively monitored.
+>
+> Guideline 3.2 — Business
+> Thank you for the guidance. Detective Pulse is intended for a single
+> private-investigation organization (its staff and that organization's clients), not for
+> a general public audience. We agree the App Store's public distribution is not the right
+> fit, and we are moving to Unlisted App Distribution. We have submitted a request for
+> unlisted distribution for this app and will distribute it via the private link rather
+> than public search.
+>
+> Please let us know if anything further is needed for the unlisted distribution review.
+> We're happy to provide additional details.
+>
+> Thank you,
+> Detective Pulse
+
+---
+
 ## 1. App Review Information → Review Notes (paste this verbatim)
 
 > **What this app is**
@@ -22,9 +65,9 @@ licensed field investigators** — not a consumer app.
 > configured for this number, so no real SMS is needed:
 > Phone: `0900000001`
 > Verification code: `123456`
-> This account ("Apple Reviewer", a supervisor) is pre-seeded with two sample
-> cases (CASE-2026-0003, CASE-2026-0002) containing target photos, vehicles, and
-> locations, so every screen has data.
+> This account ("Apple Reviewer") is scoped to a single isolated demo case
+> (CASE-DEMO-0001) containing a sample timeline, target details, and location, so
+> the core screens have data — without exposing any real investigations.
 >
 > **How to exercise the core native features**
 > 1. Sign in with the demo account above → you land on the Field screen.
@@ -67,9 +110,13 @@ licensed field investigators** — not a consumer app.
 ---
 
 ## 2. Things YOU must fill in before submitting
-- [x] Demo account created: **"Apple Reviewer"** (supervisor) — phone
-      `+66900000001`, agent code `DEMO-001`, assigned to CASE-2026-0003 and
-      CASE-2026-0002 (both have target photos/vehicles/locations).
+- [ ] **Support URL** (Guideline 1.5): set to `https://detectivepulse.app/support`
+      (page is LIVE; source `src/app/support/page.tsx`).
+- [ ] **Distribution** (Guideline 3.2): request **Unlisted App Distribution** via Apple's
+      form — do NOT resubmit as public. See section 0.
+- [x] Demo account created: **"Apple Reviewer"** — phone `+66900000001`, agent code
+      `DEMO-001`, scoped to the isolated demo case **CASE-DEMO-0001** only (re-scoped
+      off real cases per security review; RLS limits it to its assigned case).
 - [ ] **Configure the Test OTP** (the login is phone + SMS code; the reviewer
       cannot receive your SMS). Supabase Dashboard → Authentication →
       Sign In / Providers → Phone → **Test OTP**: add `+66900000001` → `123456`.
@@ -107,7 +154,8 @@ Declare honestly based on what the app stores server-side:
 
 ## 5. Build / upload checklist (Mac)
 - [ ] `git pull` (main has the readiness fixes), then `npm run cap:sync`
-- [ ] Build number is **3** (bumped in this change). Bump again for each future upload.
+- [ ] Bump the build number for each upload (TestFlight is at **build 8** as of
+      2026-06-28; the next App Store submission must be a higher number).
 - [ ] Xcode → "Any iOS Device" → Product → Archive → Distribute → App Store Connect → Upload
 - [ ] In App Store Connect, attach the build, paste the Review Notes (section 1),
       fill section 2, submit.
