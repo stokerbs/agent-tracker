@@ -33,6 +33,8 @@ import {
   LogIn,
   LogOut,
   MapPinOff,
+  Maximize2,
+  Minimize2,
   Pencil,
   Phone,
   RefreshCw,
@@ -467,10 +469,10 @@ function GeofenceLayer({
 // ─────────────────────────────────────────────
 
 function OpsPanel({
-  agents, gpsDevices, open, onToggle, now,
+  agents, gpsDevices, open, onToggle, now, fullscreen,
 }: {
   agents: Agent[]; gpsDevices: GpsDeviceForMap[];
-  open: boolean; onToggle: () => void; now: number;
+  open: boolean; onToggle: () => void; now: number; fullscreen: boolean;
 }) {
   const t      = useTranslations("map");
   const active = agents.filter((a) => mapDisplayStatus(a, now) !== "offline").length;
@@ -481,7 +483,10 @@ function OpsPanel({
   ).length;
 
   return (
-    <div className="absolute left-3 top-3 z-10">
+    <div
+      className="absolute left-3 top-3 z-10"
+      style={fullscreen ? { top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" } : undefined}
+    >
       <AnimatePresence>
         {open && (
           <motion.div
@@ -885,7 +890,7 @@ function GeofenceSidebar({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="absolute right-3 top-3 z-10 w-52 rounded-xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur">
+    <div className="absolute right-14 top-3 z-10 w-52 rounded-xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: fence.color }} />
@@ -1018,6 +1023,18 @@ export function LiveMap({
   // ── Emergency zoom ──
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapZoom, setMapZoom]     = useState<number | null>(null);
+
+  // ── Full screen ── CSS-based (not the browser Fullscreen API) so there's no
+  // "swipe down to exit" banner / swipe gesture — exit is via the button only.
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+
+  // Lock page scroll behind the map while full screen.
+  useEffect(() => {
+    if (!isMapFullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isMapFullscreen]);
 
   // ── Clock ──
   useEffect(() => {
@@ -1387,11 +1404,28 @@ export function LiveMap({
     <div className="space-y-3">
       {controlBar}
 
-      <div className={cn(
-        "relative h-[70vh] min-h-[440px] overflow-hidden rounded-xl border border-border/60",
-        drawMode && "[&_.gm-style]:cursor-crosshair",
-      )}>
+      <div
+        className={cn(
+          "overflow-hidden",
+          isMapFullscreen
+            ? "fixed inset-0 z-50 h-[100dvh] w-screen bg-background"
+            : "relative h-[70vh] min-h-[440px] rounded-xl border border-border/60",
+          drawMode && "[&_.gm-style]:cursor-crosshair",
+        )}
+      >
         <APIProvider apiKey={apiKey}>
+          {/* Full-screen toggle — CSS overlay, not the browser Fullscreen API,
+              so exit is button-only (no "swipe down to exit"). */}
+          <button
+            type="button"
+            onClick={() => setIsMapFullscreen((v) => !v)}
+            aria-label={isMapFullscreen ? "Exit full screen" : "Full screen"}
+            title={isMapFullscreen ? "Exit full screen" : "Full screen"}
+            className="absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-card/90 text-muted-foreground shadow-md backdrop-blur-md transition-colors hover:text-foreground"
+            style={isMapFullscreen ? { top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" } : undefined}
+          >
+            {isMapFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           {emergencyMode && (
             <EmergencyBanner
               alerts={emergencyAlerts.filter((a) => a.status === "active")}
@@ -1403,7 +1437,7 @@ export function LiveMap({
           <OpsPanel
             agents={agents} gpsDevices={gpsDevices}
             open={opsPanelOpen} onToggle={() => setOpsPanelOpen((v) => !v)}
-            now={now}
+            now={now} fullscreen={isMapFullscreen}
           />
 
           {selectedFence && !drawMode && (
@@ -1431,6 +1465,9 @@ export function LiveMap({
             onCameraChanged={() => { setMapCenter(null); setMapZoom(null); }}
             gestureHandling="greedy"
             disableDefaultUI={false}
+            // Use our own CSS full-screen toggle instead of Google's control,
+            // which calls the browser Fullscreen API (iOS "swipe down to exit").
+            fullscreenControl={false}
             className="h-full w-full"
             onClick={drawMode ? handleMapClick : undefined}
           >
