@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 /**
  * Centralised server-side error handling.
  *
@@ -85,5 +87,10 @@ export function logBoundaryError(
     context,
     message: error.message,
     digest: error.digest ?? null,
+  });
+  // Forward to Sentry when configured (no-op without NEXT_PUBLIC_SENTRY_DSN).
+  Sentry.captureException(error, {
+    tags: { boundary: context },
+    extra: { digest: error.digest ?? null },
   });
 }
