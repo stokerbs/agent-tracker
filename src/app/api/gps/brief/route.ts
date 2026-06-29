@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { requireProfile } from "@/lib/auth";
+import { getCurrentProfile, isStaff } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeTrack, buildSurveillanceBrief, type TrackPoint } from "@/lib/gps903/brief";
 
@@ -18,7 +19,20 @@ const schema = z.object({
  * caller may only brief devices they can access.
  */
 export async function POST(request: NextRequest) {
-  await requireProfile();
+  // Staff-only: a surveillance brief is derived investigative intelligence
+  // (matches the AI case-intake endpoint's gate), and it bills a Claude call.
+  const profile = await getCurrentProfile();
+  if (!profile) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!isStaff(profile.role)) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+
+  // Reuse the AI "report" budget (5/hr/user) to bound cost and abuse.
+  const rl = await checkRateLimit("report", profile.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
+  }
 
   let body: z.infer<typeof schema>;
   try {

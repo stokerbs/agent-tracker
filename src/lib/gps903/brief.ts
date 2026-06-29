@@ -160,11 +160,15 @@ export async function buildSurveillanceBrief(
       }),
     });
     clearTimeout(timeout);
-    if (!res.ok) return { brief: fallback, ai: false };
+    if (!res.ok) {
+      console.error("[gps-brief] Anthropic error:", res.status);
+      return { brief: fallback, ai: false };
+    }
     const data = (await res.json()) as { content?: Array<{ text?: string }> };
     const text = data.content?.[0]?.text?.trim();
     return text ? { brief: text, ai: true } : { brief: fallback, ai: false };
-  } catch {
+  } catch (e) {
+    console.error("[gps-brief] AI brief failed, using template:", e instanceof Error ? e.message : e);
     return { brief: fallback, ai: false };
   }
 }

@@ -220,9 +220,10 @@ function bearingFromMe(me: google.maps.LatLngLiteral, lat: number, lng: number):
 
 // ─── GPS popup (InfoWindow — compact + expandable) ───────────────────────────
 
-function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing, onBrief }: {
+function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing, onBrief, canBrief }: {
   device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null;
-  onClose: () => void; onReplay: () => void; onTail: () => void; tailing: boolean; onBrief: () => void;
+  onClose: () => void; onReplay: () => void; onTail: () => void; tailing: boolean;
+  onBrief: () => void; canBrief: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
@@ -367,14 +368,16 @@ function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing, onBrief }
           </button>
         )}
 
-        {/* ── AI surveillance brief ── */}
-        <button
-          onClick={onBrief}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-2 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          สรุปข่าวกรอง AI
-        </button>
+        {/* ── AI surveillance brief (staff only) ── */}
+        {canBrief && (
+          <button
+            onClick={onBrief}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-2 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            สรุปข่าวกรอง AI
+          </button>
+        )}
 
         {/* ── Details toggle ── */}
         <button
@@ -539,7 +542,8 @@ interface Props {
   role:           UserRole;
 }
 
-export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
+export function GpsMonitorMap({ initialDevices, role }: Props) {
+  const canBrief = role === "admin" || role === "supervisor";
   const t       = useTranslations("gpsMonitor");
   const tCommon = useTranslations("common");
 
@@ -763,6 +767,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
                 onTail={() => toggleTail(selected)}
                 tailing={tailId === selected.id}
                 onBrief={() => setBriefDevice(selected)}
+                canBrief={canBrief}
               />
             )}
 
