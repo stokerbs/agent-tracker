@@ -1,5 +1,7 @@
 import { type SvcClient } from "./client";
 import { type TrackingResult, gps903DateToIso } from "./tracking";
+import { isInsideGeofence, buildGeofenceAlert, type LatLng } from "@/lib/geo/geofence";
+import { notifyRole, notificationLinks } from "@/lib/notifications";
 
 /**
  * Write a GPS tracking result to the device position history and update
@@ -12,6 +14,7 @@ export async function applyPositionToDevice(
   svc: SvcClient,
   gpsDeviceId: string,
   pos: TrackingResult,
+  deviceLabel = "อุปกรณ์ GPS",
 ): Promise<void> {
   const heading = Math.round(pos.course) % 360;
   const now     = new Date().toISOString();
@@ -37,7 +40,7 @@ export async function applyPositionToDevice(
   const moving = pos.speed > STOP_SPEED_KMH;
   const { data: cur } = await svc
     .from("gps_devices")
-    .select("stopped_since")
+    .select("stopped_since, last_lat, last_lng")
     .eq("id", gpsDeviceId)
     .maybeSingle();
 
@@ -76,4 +79,41 @@ export async function applyPositionToDevice(
     `[GPS903] Position written — device ${gpsDeviceId} ` +
     `lat:${pos.lat.toFixed(5)} lng:${pos.lng.toFixed(5)} speed:${pos.speed} battery:${pos.battery ?? "?"}`,
   );
+
+  // ── Smart geofence: alert on enter/exit of any active fence ──
+  // Compare the device's previous position to the new one (same approach as the
+  // agent location route). Non-fatal: never let alerting break the sync.
+  try {
+    const prevLat = cur?.last_lat;
+    const prevLng = cur?.last_lng;
+    const { data: fences } = await svc
+      .from("geofences")
+      .select("id, name, coordinates")
+      .eq("active", true)
+      .is("deleted_at", null);
+
+    for (const fence of fences ?? []) {
+      const coords = fence.coordinates as LatLng[];
+      if (!Array.isArray(coords) || coords.length < 3) continue;
+
+      const nowInside = isInsideGeofence(pos.lat, pos.lng, coords);
+      const wasInside =
+        prevLat != null && prevLng != null
+          ? isInsideGeofence(Number(prevLat), Number(prevLng), coords)
+          : false;
+      if (nowInside === wasInside) continue;
+
+      const eventType = nowInside ? "enter" : "exit";
+      const body = await buildGeofenceAlert({ deviceLabel, fenceName: fence.name, eventType });
+      await notifyRole(["admin", "supervisor"], {
+        type: "system",
+        title: "แจ้งเตือน Geofence",
+        body,
+        url: notificationLinks.map(),
+        entityId: fence.id,
+      });
+    }
+  } catch (e) {
+    console.error("[GPS903] geofence alert failed (non-fatal):", e);
+  }
 }
