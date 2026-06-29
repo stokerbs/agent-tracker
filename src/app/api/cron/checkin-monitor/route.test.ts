@@ -106,6 +106,43 @@ describe("checkin-monitor cadence", () => {
     expect(h.updates).toHaveLength(0);
   });
 
+  it("falls back to case.created_at when the case has no timeline entries", async () => {
+    h.cases.push({ id: "case-1", case_number: "C-1", created_at: minsAgo(40), checkin_interval_minutes: 30, checkin_stage: "ok" });
+    // no latestByCase entry → maybeSingle returns null → uses created_at (40m ago)
+
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+
+    expect(body).toMatchObject({ scanned: 1, reminded: 1 });
+    expect(h.notifyUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("honours the CHECKIN_GRACE_MIN env override", async () => {
+    process.env.CHECKIN_GRACE_MIN = "2"; // tiny grace → 35m overdue jumps to escalate
+    h.cases.push({ id: "case-1", case_number: "C-1", created_at: minsAgo(999), checkin_interval_minutes: 30, checkin_stage: "ok" });
+    h.latestByCase["case-1"] = { created_at: minsAgo(35) };
+
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+
+    expect(body).toMatchObject({ reminded: 0, escalated: 1 });
+  });
+
+  it("processes multiple cases independently in one run", async () => {
+    h.cases.push(
+      { id: "ok-case", case_number: "OK", created_at: minsAgo(999), checkin_interval_minutes: 30, checkin_stage: "ok" },
+      { id: "late-case", case_number: "LATE", created_at: minsAgo(999), checkin_interval_minutes: 30, checkin_stage: "ok" },
+    );
+    h.latestByCase["ok-case"] = { created_at: minsAgo(5) };
+    h.latestByCase["late-case"] = { created_at: minsAgo(35) };
+
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+
+    expect(body).toMatchObject({ scanned: 2, reminded: 1, escalated: 0 });
+    expect(h.notifyUsers).toHaveBeenCalledTimes(1);
+  });
+
   it("resets stage to ok after a fresh report without notifying", async () => {
     h.cases.push({ id: "case-1", case_number: "C-1", created_at: minsAgo(999), checkin_interval_minutes: 30, checkin_stage: "escalated" });
     h.latestByCase["case-1"] = { created_at: minsAgo(3) }; // reported again
