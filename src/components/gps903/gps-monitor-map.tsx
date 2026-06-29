@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Crosshair,
   Gauge,
+  Hexagon,
   History,
   Maximize2,
   LocateFixed,
@@ -44,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { MAP_ID, STALE_MS, formatBangkokTime, formatStopMinutes } from "@/lib/maps/shared";
 import { useMapFullscreen } from "@/lib/maps/use-map-fullscreen";
+import Link from "next/link";
 import { RouteReplay } from "@/components/gps903/route-replay";
 import { AiBrief } from "@/components/gps903/ai-brief";
 import type { GpsDeviceForMap, UserRole } from "@/lib/types";
@@ -544,6 +546,7 @@ interface Props {
 
 export function GpsMonitorMap({ initialDevices, role }: Props) {
   const canBrief = role === "admin" || role === "supervisor";
+  const isAdmin = role === "admin"; // geofence drawing lives on /map, admin-only
   const t       = useTranslations("gpsMonitor");
   const tCommon = useTranslations("common");
 
@@ -815,6 +818,16 @@ export function GpsMonitorMap({ initialDevices, role }: Props) {
           className="absolute right-3 top-3 z-10 flex flex-col gap-2"
           style={{ top: isFullscreen ? "calc(env(safe-area-inset-top, 0px) + 0.75rem)" : undefined }}
         >
+          {isAdmin && (
+            <Link
+              href="/map"
+              title="จัดการ Geofence (หน้าแผนที่)"
+              aria-label="จัดการ Geofence"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card shadow-md transition-colors hover:bg-muted"
+            >
+              <Hexagon className="h-4 w-4 text-amber-500" />
+            </Link>
+          )}
           <button
             onClick={goToGps}
             disabled={onMap.length === 0}
