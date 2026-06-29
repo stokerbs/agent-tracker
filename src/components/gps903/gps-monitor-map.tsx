@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Gauge,
   Maximize2,
+  LocateFixed,
   Minimize2,
   MapPinOff,
   Navigation,
@@ -96,6 +97,26 @@ function MapPanner({ target }: { target: google.maps.LatLngLiteral | null }) {
   useEffect(() => {
     if (map && target) map.panTo(target);
   }, [map, target]);
+  return null;
+}
+
+// Fits the map to the given points when `nonce` changes (button-triggered), so
+// the viewer + GPS device(s) are all visible. One point → pan + zoom in.
+function FitToDevices({ nonce, points }: { nonce: number; points: google.maps.LatLngLiteral[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || nonce === 0 || points.length === 0) return;
+    if (points.length === 1) {
+      map.panTo(points[0]);
+      map.setZoom(15);
+      return;
+    }
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend(p));
+    map.fitBounds(bounds, 64);
+    // Only re-fit on an explicit button press (nonce), not on every position tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nonce]);
   return null;
 }
 
@@ -447,6 +468,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [refreshing,   setRefreshing]   = useState(false);
   const [panTarget,    setPanTarget]    = useState<google.maps.LatLngLiteral | null>(null);
   const [myPos,        setMyPos]        = useState<google.maps.LatLngLiteral | null>(null);
+  const [fitNonce,     setFitNonce]     = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const apiKey       = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -505,6 +527,14 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
       setPanTarget({ lat: Number(d.last_lat), lng: Number(d.last_lng) });
     }
   }, []);
+
+  // Recenter on the viewer's own position.
+  const locateMe = useCallback(() => {
+    if (myPos) setPanTarget({ lat: myPos.lat, lng: myPos.lng });
+  }, [myPos]);
+
+  // Jump the map to the GPS device(s) — fits the viewer + all devices in view.
+  const goToGps = useCallback(() => setFitNonce((n) => n + 1), []);
 
   // ── Filter ─────────────────────────────────────────────────────────────────
   const filtered = devices.filter((d) => {
@@ -613,6 +643,13 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
             className="h-full w-full"
           >
             <MapPanner target={panTarget} />
+            <FitToDevices
+              nonce={fitNonce}
+              points={[
+                ...onMap.map((d) => ({ lat: Number(d.last_lat), lng: Number(d.last_lng) })),
+                ...(myPos ? [myPos] : []),
+              ]}
+            />
 
             {myPos && <MyLocationMarker position={myPos} />}
 
@@ -636,6 +673,22 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
           className="absolute right-3 top-3 z-10 flex flex-col gap-2"
           style={{ top: isFullscreen ? "calc(env(safe-area-inset-top, 0px) + 0.75rem)" : undefined }}
         >
+          <button
+            onClick={goToGps}
+            disabled={onMap.length === 0}
+            title="ไปที่ตำแหน่ง GPS"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card shadow-md transition-opacity hover:bg-muted disabled:opacity-40"
+          >
+            <Satellite className="h-4 w-4 text-emerald-500" />
+          </button>
+          <button
+            onClick={locateMe}
+            disabled={!myPos}
+            title="ไปที่ตำแหน่งของฉัน"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card shadow-md transition-opacity hover:bg-muted disabled:opacity-40"
+          >
+            <LocateFixed className="h-4 w-4 text-sky-500" />
+          </button>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
