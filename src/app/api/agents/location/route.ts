@@ -16,6 +16,9 @@ const schema = z.object({
   status: z
     .enum(["online", "moving", "idle", "offline", "emergency"])
     .optional(),
+  // Set by the native layer when flushing fixes captured offline: record this
+  // fix in history at its true time, without touching the agent's live position.
+  recorded_at: z.string().datetime().optional(),
 });
 
 /** Ray-casting point-in-polygon test (works for simple polygons). */
@@ -111,6 +114,24 @@ export async function POST(request: NextRequest) {
       { error: "No agent profile linked to this user" },
       { status: 404 },
     );
+  }
+
+  // Backfill: a fix captured while offline, flushed later. Record it in history
+  // at its real timestamp; do NOT overwrite the agent's current position/status
+  // (a newer live fix may already have superseded it). No geofence eval — the
+  // agent has long since moved on from this point.
+  if (parsed.recorded_at) {
+    after(async () => {
+      await svc.from("agent_location_history").insert({
+        agent_id: agent.id,
+        lat: parsed.lat,
+        lng: parsed.lng,
+        speed_kmh: parsed.speed_kmh ?? null,
+        heading: parsed.heading ?? null,
+        recorded_at: parsed.recorded_at,
+      });
+    });
+    return NextResponse.json({ ok: true, backfilled: true });
   }
 
   const update: Record<string, unknown> = {
