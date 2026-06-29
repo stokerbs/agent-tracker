@@ -7,17 +7,17 @@ export const maxDuration = 60;
 
 /**
  * GET /api/cron/anomaly-watch
- * Vercel Cron (every 6h) — AI Anomaly Watch.
+ * Vercel Cron (daily) — AI Anomaly Watch.
  *
  * For each active tracked device, compares the last 24h of GPS behaviour to its
- * preceding 2-week baseline and flags surveillance-relevant anomalies (new
+ * preceding 1-week baseline and flags surveillance-relevant anomalies (new
  * location, unusual night movement, going dark). When a *new* anomaly is found
  * (signature changed since last alert), Claude phrases it and staff (admin /
  * supervisor) are notified + pushed. A per-device signature dedupes re-alerts.
  *
  * Auth: fail-closed CRON_SECRET bearer, same as the other crons.
  */
-const BASELINE_DAYS = 14;
+const BASELINE_DAYS = 7;
 const RECENT_HOURS = 24;
 const MAX_FIXES = 6000; // safety cap per device
 
@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
       recent,
       lastSeenAt: d.last_seen_at,
       now,
+      baselineDays: BASELINE_DAYS,
     });
 
     // Nothing fired (or cleared) — sync the stored signature, never notify.

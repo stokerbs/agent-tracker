@@ -53,6 +53,14 @@ describe("detectAnomalies — new-location", () => {
     }
   });
 
+  it("reflects the baseline window (default 7d, overridable) in the wording", () => {
+    const recent = [{ lat: 18.7883, lng: 98.9853, speed: 0, t: ago(2) }];
+    const def = detectAnomalies({ baseline: homeBaseline(60), recent, lastSeenAt: ago(0.1), now: NOW });
+    expect(def.signals.find((s) => s.kind === "new-location")!.detail).toContain("7 วัน");
+    const wk2 = detectAnomalies({ baseline: homeBaseline(60), recent, lastSeenAt: ago(0.1), now: NOW, baselineDays: 14 });
+    expect(wk2.signals.find((s) => s.kind === "new-location")!.detail).toContain("14 วัน");
+  });
+
   it("does NOT flag a recent dwell at the usual place", () => {
     const r = detectAnomalies({
       baseline: homeBaseline(60),
