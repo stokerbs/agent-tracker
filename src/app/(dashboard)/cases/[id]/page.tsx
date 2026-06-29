@@ -26,6 +26,7 @@ import {
 } from "@/components/shared/status-badges";
 import { CaseTimelineClient } from "@/components/cases/case-timeline-client";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
+import { CaseChat } from "@/components/cases/case-chat";
 import { EvidenceUploader } from "@/components/evidence/evidence-uploader";
 import { EvidenceGallery } from "@/components/evidence/evidence-gallery";
 import { CaseExpenseSheet } from "@/components/expenses/case-expense-sheet";
@@ -291,6 +292,7 @@ export default async function CaseDetailPage({
         >
           <CasePriorityBadge priority={c.priority} />
           <CaseStatusBadge status={c.status} />
+          {staff && <CaseChat caseId={id} />}
           {staff && <AssignCaseButton caseId={id} />}
           {staff && <EditCaseDialog caseRecord={c} clients={allClients} />}
           {staff && c.status !== "closed" && (

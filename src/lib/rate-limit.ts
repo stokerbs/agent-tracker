@@ -29,6 +29,8 @@ export const RATE_LIMITS = {
   gps:        { limit: 60, windowMs:     60_000 },
   /** 5 AI report generations per hour per authenticated user. */
   report:     { limit:  5, windowMs: 3_600_000 },
+  /** 40 AI case-chat messages per hour per authenticated user. */
+  ai_chat:    { limit: 40, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
