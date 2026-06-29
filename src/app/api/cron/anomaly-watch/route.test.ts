@@ -131,6 +131,25 @@ describe("anomaly-watch detection + dedup", () => {
     expect(h.updates[0]).toMatchObject({ anomaly_signature: "", anomaly_notified_at: null });
   });
 
+  it("does not raise new-location from a fuzzy LBS fix", async () => {
+    h.devices.push({
+      id: "dev-1", notes: "รถเป้าหมาย", gps903_device_id: 7, case_id: "case-1",
+      last_seen_at: new Date(Date.now() - 0.2 * 3_600_000).toISOString(), // reporting → no went-dark
+      anomaly_signature: null,
+    });
+    // Baseline at home + a far recent dwell that is LBS-sourced → must be ignored.
+    h.positions.push(
+      ...homeBaseline(),
+      { lat: 18.7883, lng: 98.9853, speed_kmh: 0, recorded_at: new Date(Date.now() - 2 * 3_600_000).toISOString(), locate_mode: "lbs" },
+    );
+
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+
+    expect(body).toMatchObject({ ok: true, scanned: 1, alerted: 0 });
+    expect(h.notifyRole).not.toHaveBeenCalled();
+  });
+
   it("returns scanned:0 gracefully when there are no devices", async () => {
     const { GET } = await load();
     const body = await (await GET(req("Bearer test-secret"))).json();

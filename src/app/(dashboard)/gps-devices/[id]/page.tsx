@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/table";
 import { PollNowButton }           from "@/components/gps903/poll-now-button";
 import { RelinkAgentDialog }        from "@/components/gps903/relink-agent-dialog";
+import { AnomalyWatchToggle }       from "@/components/gps903/anomaly-watch-toggle";
 import { DevicePermissionsPanel }   from "@/components/gps903/device-permissions-panel";
 import { cn } from "@/lib/utils";
 
@@ -166,7 +167,7 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
     supabase
       .from("gps_devices")
       .select(`
-        id, imei, phone_number, gps903_device_id, provider, notes, case_id, credential_id,
+        id, imei, phone_number, gps903_device_id, provider, notes, case_id, credential_id, anomaly_watch_enabled,
         last_polled_at, last_poll_ok, last_battery_pct, last_speed_kmh, last_heading,
         last_lat, last_lng, last_seen_at, last_locate_mode, last_position_time, last_stop_minutes, last_ignition,
         agent_id, created_at,
@@ -288,6 +289,12 @@ export default async function GpsDeviceDetailPage({ params, searchParams }: Prop
             currentAgentId={device.agent_id}
             agents={allAgents}
           />
+          {isAdmin && (
+            <AnomalyWatchToggle
+              deviceId={device.id}
+              enabled={device.anomaly_watch_enabled ?? true}
+            />
+          )}
         </div>
       </div>
 

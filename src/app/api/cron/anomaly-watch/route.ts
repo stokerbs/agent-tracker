@@ -35,6 +35,7 @@ interface PosRow {
   lng: number;
   speed_kmh: number;
   recorded_at: string;
+  locate_mode: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
     .from("gps_devices")
     .select("id, notes, gps903_device_id, case_id, last_seen_at, anomaly_signature")
     .is("deleted_at", null)
+    .eq("anomaly_watch_enabled", true) // per-device opt-out
     .not("last_lat", "is", null);
 
   if (devErr) {
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const { data: pos, error: posErr } = await svc
       .from("gps_device_positions")
-      .select("lat, lng, speed_kmh, recorded_at")
+      .select("lat, lng, speed_kmh, recorded_at, locate_mode")
       .eq("gps_device_id", d.id)
       .gte("recorded_at", baselineStart)
       .order("recorded_at", { ascending: true })
@@ -85,6 +87,7 @@ export async function GET(request: NextRequest) {
       lng: p.lng,
       speed: p.speed_kmh ?? 0,
       t: p.recorded_at,
+      mode: p.locate_mode,
     }));
     const baseline = fixes.filter((f) => Date.parse(f.t) < recentCutoff);
     const recent = fixes.filter((f) => Date.parse(f.t) >= recentCutoff);

@@ -125,4 +125,14 @@ describe("applyPositionToDevice — geofence hysteresis", () => {
     expect(geofenceEvents(inserts)).toHaveLength(1);
     expect(vi.mocked(notifyRole)).toHaveBeenCalledTimes(1);
   });
+
+  it("records locate_mode on the inserted position row (for LBS filtering)", async () => {
+    const { svc, inserts } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: null, last_lat: null, last_lng: null },
+      fences: [],
+    });
+    await applyPositionToDevice(svc, DEV, pos(13.75, 100.5), "Tracker-1");
+    const posInsert = inserts.find((i) => i.table === "gps_device_positions");
+    expect(posInsert?.row).toMatchObject({ gps_device_id: DEV, locate_mode: "gps" });
+  });
 });
