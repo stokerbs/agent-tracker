@@ -98,6 +98,14 @@ describe("client cannot access staff routes", () => {
     expect(hrefsFor("supervisor")).not.toContain("/clients");
     expect(hrefsFor("agent")).not.toContain("/clients");
   });
+
+  it("navForRole: /reports is staff-only — hidden from agents (it redirects them)", () => {
+    const hrefsFor = (r: "admin" | "supervisor" | "agent") =>
+      navForRole(r).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefsFor("admin")).toContain("/reports");
+    expect(hrefsFor("supervisor")).toContain("/reports");
+    expect(hrefsFor("agent")).not.toContain("/reports");
+  });
 });
 
 // ---------------------------------------------------------------------------
