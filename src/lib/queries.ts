@@ -221,7 +221,7 @@ export async function getActiveEmergencyAlerts(): Promise<EmergencyAlert[]> {
 
 export interface GeofenceEventFeed {
   id: string;
-  agent_id: string;
+  agent_id: string | null;
   geofence_id: string;
   event_type: "enter" | "exit";
   occurred_at: string;
