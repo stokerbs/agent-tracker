@@ -58,16 +58,23 @@ function timeAgo(ts: string | null | undefined, justNow: string, never: string):
 const LOCATE_CFG = {
   gps:     { label: "GPS",     cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", color: "#10b981" },
   lbs:     { label: "LBS",     cls: "bg-amber-500/10   text-amber-400   border-amber-500/20",   color: "#f59e0b" },
+  online:  { label: "ONLINE",  cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", color: "#10b981" },
   offline: { label: "OFFLINE", cls: "bg-red-500/10     text-red-400     border-red-500/20",     color: "#ef4444" },
   unknown: { label: "?",       cls: "bg-muted text-muted-foreground border-border",             color: "#64748b" },
 } as const;
 
 type LocateKey = keyof typeof LOCATE_CFG;
 
+// Connectivity (online/offline) is decided by recency of the last successful
+// poll; only THEN do we report the fix type (GPS vs LBS). A device that is
+// reporting but whose fix type we couldn't classify is still ONLINE — not the
+// grey "unknown"/offline it used to fall through to.
 function getLocateKey(d: GpsDeviceForMap): LocateKey {
   const stale = !d.last_seen_at || Date.now() - new Date(d.last_seen_at).getTime() >= STALE_MS;
   if (stale) return "offline";
-  return (d.last_locate_mode as LocateKey | null) ?? "unknown";
+  const mode = d.last_locate_mode as string | null;
+  if (mode === "gps" || mode === "lbs") return mode;
+  return "online";
 }
 
 const PROVIDER_CFG: Record<string, string> = {
