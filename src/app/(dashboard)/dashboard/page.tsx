@@ -24,6 +24,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { LiveMap } from "@/components/map/live-map";
 import { AgentAvailabilityBoard } from "@/components/dashboard/availability-board";
+import { OpsDigest } from "@/components/dashboard/ops-digest";
 import {
   CasesTrendChart,
   CaseStatusChart,
@@ -110,6 +111,13 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
+      )}
+
+      {/* AI Ops Digest — staff only */}
+      {staff && (
+        <FadeUp delay={0.08}>
+          <OpsDigest />
+        </FadeUp>
       )}
 
       {/* Analytics charts — staff only */}
