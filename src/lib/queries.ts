@@ -233,7 +233,7 @@ export async function getRecentGeofenceEvents(limit = 20): Promise<GeofenceEvent
   const supabase = await createClient();
   const { data } = await supabase
     .from("geofence_events")
-    .select("id, agent_id, geofence_id, event_type, occurred_at, agents(full_name), geofences(name)")
+    .select("id, agent_id, gps_device_id, geofence_id, event_type, occurred_at, agents(full_name), gps_devices(notes, gps903_device_id), geofences(name)")
     .order("occurred_at", { ascending: false })
     .limit(limit);
 
@@ -243,7 +243,12 @@ export async function getRecentGeofenceEvents(limit = 20): Promise<GeofenceEvent
     geofence_id: row.geofence_id,
     event_type: row.event_type as "enter" | "exit",
     occurred_at: row.occurred_at,
-    agentName: row.agents?.full_name ?? "Unknown agent",
+    // Agent crossings show the agent; device crossings show the device label.
+    agentName:
+      row.agents?.full_name ??
+      (row.gps_devices
+        ? (row.gps_devices.notes ?? `GPS903-${row.gps_devices.gps903_device_id ?? "?"}`)
+        : "Unknown agent"),
     fenceName: row.geofences?.name ?? "Unknown zone",
   }));
 }

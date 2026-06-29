@@ -978,27 +978,30 @@ export type Database = {
       }
       geofence_events: {
         Row: {
-          agent_id: string
+          agent_id: string | null
           event_type: string
           geofence_id: string
+          gps_device_id: string | null
           id: string
           lat: number
           lng: number
           occurred_at: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string | null
           event_type: string
           geofence_id: string
+          gps_device_id?: string | null
           id?: string
           lat: number
           lng: number
           occurred_at?: string
         }
         Update: {
-          agent_id?: string
+          agent_id?: string | null
           event_type?: string
           geofence_id?: string
+          gps_device_id?: string | null
           id?: string
           lat?: number
           lng?: number
@@ -1157,6 +1160,8 @@ export type Database = {
       }
       gps_devices: {
         Row: {
+          geofence_id: string | null
+          geofence_alerted_at: string | null
           agent_id: string | null
           case_id: string
           created_at: string
@@ -1185,6 +1190,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          geofence_id?: string | null
+          geofence_alerted_at?: string | null
           agent_id?: string | null
           case_id: string
           created_at?: string
@@ -1213,6 +1220,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          geofence_id?: string | null
+          geofence_alerted_at?: string | null
           agent_id?: string | null
           case_id?: string
           created_at?: string
