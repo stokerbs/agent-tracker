@@ -130,9 +130,19 @@ export async function buildSurveillanceBrief(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || summary.fixes === 0) return { brief: fallback, ai: false };
 
+  // Attach a ready-made Google Maps link to each stop so the model emits exact,
+  // correct URLs (it just copies the `maps` field) rather than fabricating them.
+  const payload = {
+    ...summary,
+    stops: summary.stops.map((s) => ({
+      ...s,
+      maps: `https://www.google.com/maps?q=${s.lat.toFixed(5)},${s.lng.toFixed(5)}`,
+    })),
+  };
+
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 25000);
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -143,18 +153,20 @@ export async function buildSurveillanceBrief(
       signal: controller.signal,
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 700,
+        max_tokens: 1600,
         messages: [
           {
             role: "user",
             content:
               `คุณเป็นนักวิเคราะห์ข่าวกรองของหน่วยสืบสวน เขียน "บทสรุปข่าวกรอง" ภาษาไทยอย่างมืออาชีพ กระชับ ` +
               `จากข้อมูลการเคลื่อนที่ของอุปกรณ์ติดตาม "${deviceLabel}" ในช่วง ${hours} ชั่วโมงล่าสุดต่อไปนี้ (JSON):\n\n` +
-              JSON.stringify(summary) +
+              JSON.stringify(payload) +
               `\n\nรูปแบบผลลัพธ์:\n` +
               `1) ย่อหน้าสรุปภาพรวม 2-4 ประโยค (พฤติกรรมการเดินทาง/จุดที่ใช้เวลานาน)\n` +
               `2) หัวข้อ "ข้อสังเกตสำคัญ" ตามด้วย bullet 3-5 ข้อ\n` +
-              `ใช้เวลาเป็นโซนไทย (ค่าใน JSON เป็น UTC ให้ +7). ห้ามแต่งข้อมูลที่ไม่มีใน JSON. ตอบเฉพาะรายงาน.`,
+              `กฎสำคัญ: ทุกจุดจอด/พิกัดที่อ้างถึงในรายงาน ต้องแนบลิงก์ Google Maps ของจุดนั้นด้วย ` +
+              `(ใช้ค่าในฟิลด์ "maps" ของแต่ละ stop ตามจริง ห้ามแต่ง URL เอง).\n` +
+              `ใช้เวลาเป็นโซนไทย (ค่าใน JSON เป็น UTC ให้ +7). ห้ามแต่งข้อมูลที่ไม่มีใน JSON. เขียนให้จบสมบูรณ์ ตอบเฉพาะรายงาน.`,
           },
         ],
       }),

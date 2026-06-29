@@ -23,6 +23,19 @@ function mins(n: number) {
   return h > 0 ? `${h}ชม ${m}น` : `${m}น`;
 }
 
+// Render plain text with any http(s) URL turned into a clickable link.
+function linkify(text: string): React.ReactNode[] {
+  return text.split(/(https?:\/\/[^\s)]+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-sky-400 underline underline-offset-2 break-all">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-muted/30 p-2.5">
@@ -123,7 +136,7 @@ export function AiBrief({ device, onClose }: { device: GpsDeviceForMap; onClose:
                     <Sparkles className="h-3.5 w-3.5" />
                     {data?.ai ? "วิเคราะห์โดย AI" : "สรุปอัตโนมัติ"}
                   </div>
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{data?.brief}</p>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{data?.brief ? linkify(data.brief) : null}</p>
                 </div>
               </>
             )}
