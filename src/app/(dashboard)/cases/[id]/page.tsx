@@ -35,6 +35,7 @@ import { CreateInvoiceDialog } from "@/components/invoices/create-invoice-dialog
 import { CloseCaseDialog } from "@/components/cases/close-case-dialog";
 import { GpsDeviceCard } from "@/components/cases/gps-device-card";
 import { AssignCaseButton } from "@/components/cases/assign-case-button";
+import { CheckinIntervalControl } from "@/components/cases/checkin-interval-control";
 import { AssignedTeamCard, type TeamMember } from "@/components/cases/assigned-team-card";
 import { BoardPanel } from "@/components/cases/board-panel";
 import { listPendingClaims } from "@/app/(dashboard)/cases/board-actions";
@@ -294,6 +295,9 @@ export default async function CaseDetailPage({
           <CaseStatusBadge status={c.status} />
           {staff && <CaseChat caseId={id} />}
           {staff && <AssignCaseButton caseId={id} />}
+          {staff && c.status !== "closed" && (
+            <CheckinIntervalControl caseId={id} current={(c as { checkin_interval_minutes?: number | null }).checkin_interval_minutes ?? null} />
+          )}
           {staff && <EditCaseDialog caseRecord={c} clients={allClients} />}
           {staff && c.status !== "closed" && (
             <CloseCaseDialog
