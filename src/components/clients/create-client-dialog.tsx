@@ -63,6 +63,11 @@ export function CreateClientDialog() {
             <Input id="company" name="company" placeholder="Vance Enterprises" />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="address">{t("createDialog.address")}</Label>
+            <Textarea id="address" name="address" rows={2} placeholder="164 Bukit Merah Central, Singapore 150164" />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">{t("createDialog.email")}</Label>

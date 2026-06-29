@@ -1258,7 +1258,9 @@
           "phone": "Phone",
           "phonePlaceholder": "+66 81 234 5678",
           "notes": "Notes",
-          "notesPlaceholder": "Internal notes about this client…"
+          "notesPlaceholder": "Internal notes about this client…",
+          "address": "Address",
+          "addressPlaceholder": "164 Bukit Merah Central, Singapore 150164"
         },
         "success": "Client updated."
       }
@@ -1273,7 +1275,8 @@
       "phone": "Phone",
       "notes": "Notes",
       "submit": "Create client",
-      "createdToast": "Client created"
+      "createdToast": "Client created",
+      "address": "Address"
     }
   },
   "users": {
