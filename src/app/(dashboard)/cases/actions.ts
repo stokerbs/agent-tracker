@@ -100,6 +100,33 @@ export async function updateCaseStatus(caseId: string, status: CaseStatus) {
   return { ok: true };
 }
 
+/**
+ * Set (or clear) the per-case agent check-in interval in minutes. `null` turns
+ * the cadence off. Validated server-side; the checkin-monitor cron enforces it.
+ */
+export async function setCheckinInterval(caseId: string, minutes: number | null) {
+  await requireRole(["admin", "supervisor"]);
+
+  let interval: number | null = null;
+  if (minutes !== null) {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) {
+      return { error: "ช่วงเวลาต้องเป็น 1–1440 นาที" };
+    }
+    interval = minutes;
+  }
+
+  const supabase = await createClient();
+  // Reset the dedup stage so the new cadence starts clean.
+  const { error } = await supabase
+    .from("cases")
+    .update({ checkin_interval_minutes: interval, checkin_stage: "ok" })
+    .eq("id", caseId);
+  if (error) return { error: handleDbError(error, "cases") };
+
+  revalidatePath(`/cases/${caseId}`);
+  return { ok: true };
+}
+
 export async function closeCase(caseId: string, endDate: string) {
   const profile = await requireRole(["admin", "supervisor"]);
   const supabase = await createClient();

@@ -516,6 +516,8 @@ export type Database = {
           board_start_at: string | null
           case_number: string
           case_type: string | null
+          checkin_interval_minutes: number | null
+          checkin_stage: string
           client_id: string | null
           client_name: string | null
           created_at: string
@@ -557,6 +559,8 @@ export type Database = {
           board_start_at?: string | null
           case_number: string
           case_type?: string | null
+          checkin_interval_minutes?: number | null
+          checkin_stage?: string
           client_id?: string | null
           client_name?: string | null
           created_at?: string
@@ -598,6 +602,8 @@ export type Database = {
           board_start_at?: string | null
           case_number?: string
           case_type?: string | null
+          checkin_interval_minutes?: number | null
+          checkin_stage?: string
           client_id?: string | null
           client_name?: string | null
           created_at?: string
