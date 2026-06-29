@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   Gauge,
+  History,
   Maximize2,
   LocateFixed,
   Minimize2,
@@ -40,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { MAP_ID, STALE_MS, formatBangkokTime, formatStopMinutes } from "@/lib/maps/shared";
 import { useMapFullscreen } from "@/lib/maps/use-map-fullscreen";
+import { RouteReplay } from "@/components/gps903/route-replay";
 import type { GpsDeviceForMap, UserRole } from "@/lib/types";
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
@@ -186,8 +188,8 @@ function distanceFromMe(
 
 // ─── GPS popup (InfoWindow — compact + expandable) ───────────────────────────
 
-function GpsPopup({ device, myPos, onClose }: {
-  device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null; onClose: () => void;
+function GpsPopup({ device, myPos, onClose, onReplay }: {
+  device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null; onClose: () => void; onReplay: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
@@ -295,17 +297,26 @@ function GpsPopup({ device, myPos, onClose }: {
           </div>
         )}
 
-        {/* ── Navigate — opens Google Maps directions to the device ── */}
+        {/* ── Actions: navigate (Google Maps) + route replay ── */}
         {device.last_lat != null && device.last_lng != null && (
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${Number(device.last_lat)},${Number(device.last_lng)}&travelmode=driving`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            <Navigation className="h-3.5 w-3.5" />
-            นำทางด้วย Google Maps
-          </a>
+          <div className="flex gap-1.5">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${Number(device.last_lat)},${Number(device.last_lng)}&travelmode=driving`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              นำทาง
+            </a>
+            <button
+              onClick={onReplay}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border/60 px-2 py-1.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              <History className="h-3.5 w-3.5" />
+              ย้อนเส้นทาง
+            </button>
+          </div>
         )}
 
         {/* ── Details toggle ── */}
@@ -482,6 +493,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [panTarget,    setPanTarget]    = useState<google.maps.LatLngLiteral | null>(null);
   const [myPos,        setMyPos]        = useState<google.maps.LatLngLiteral | null>(null);
   const [fitNonce,     setFitNonce]     = useState(0);
+  const [replayDevice, setReplayDevice] = useState<GpsDeviceForMap | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const apiKey       = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -676,7 +688,12 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
             ))}
 
             {selected && selected.last_lat != null && selected.last_lng != null && (
-              <GpsPopup device={selected} myPos={myPos} onClose={() => setSelected(null)} />
+              <GpsPopup
+                device={selected}
+                myPos={myPos}
+                onClose={() => setSelected(null)}
+                onReplay={() => setReplayDevice(selected)}
+              />
             )}
           </Map>
         </APIProvider>
@@ -733,6 +750,10 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
           />
         </div>
       </div>
+
+      {replayDevice && (
+        <RouteReplay device={replayDevice} onClose={() => setReplayDevice(null)} />
+      )}
     </div>
   );
 }
