@@ -44,6 +44,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
   const [loading, startSearch] = useTransition();
 
   const isStaff = role === "admin" || role === "supervisor" || role === "agent";
+  const isAdmin = role === "admin"; // clients are admin-only (RLS) — see migration 0088
 
   // ⌘K / Ctrl+K shortcut
   useEffect(() => {
@@ -74,7 +75,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
             .select("id, case_number, client_name, case_type, status")
             .or(`case_number.ilike.${like},client_name.ilike.${like}`)
             .limit(5),
-          isStaff
+          isAdmin
             ? supabase
                 .from("clients")
                 .select("id, name, company, email")
@@ -130,7 +131,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
         setResults([...caseResults, ...clientResults, ...agentResults, ...reportResults]);
       });
     },
-    [isStaff],
+    [isStaff, isAdmin],
   );
 
   useEffect(() => {

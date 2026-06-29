@@ -67,11 +67,15 @@ export async function buildGeofenceAlert(opts: {
       }),
     });
     clearTimeout(timeout);
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      console.error("[geofence-alert] Anthropic error:", res.status);
+      return fallback;
+    }
     const data = (await res.json()) as { content?: Array<{ text?: string }> };
     const text = data.content?.[0]?.text?.trim();
     return text && text.length > 0 ? text : fallback;
-  } catch {
+  } catch (e) {
+    console.error("[geofence-alert] AI wording failed, using template:", e instanceof Error ? e.message : e);
     return fallback;
   }
 }
