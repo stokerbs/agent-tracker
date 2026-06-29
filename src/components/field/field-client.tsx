@@ -58,7 +58,7 @@ import { AGENT_STATUS_META } from "@/lib/constants";
 import { bangkokDateKey, cn, initials, timeAgo } from "@/lib/utils";
 import { isNative } from "@/lib/native";
 import type { Agent, AgentStatus, Case } from "@/lib/types";
-import type { IntelCounts } from "@/app/(dashboard)/field/page";
+import type { IntelCounts } from "@/app/(dashboard)/field/duty/page";
 
 const GPS_INTERVAL_MS = 55_000;
 const SIGNIFICANT_MOVE_M = 10;
