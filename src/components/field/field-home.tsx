@@ -4,6 +4,7 @@ import {
   Radio, Search, Bell, LayoutDashboard, Navigation, Briefcase, Clock,
   FolderLock, FileText, Receipt, Wallet, type LucideIcon,
 } from "lucide-react";
+import type { UserRole } from "@/lib/types";
 
 export interface MenuCard {
   icon: string;
@@ -12,6 +13,9 @@ export interface MenuCard {
   accent: string; // a full color, e.g. "hsl(var(--primary))"
   href: string;
   active?: boolean;
+  // Roles allowed to see this card. Undefined = all field roles. Used to hide
+  // cards whose destination redirects the role (e.g. /reports is staff-only).
+  roles?: UserRole[];
 }
 
 export interface FieldHomeProps {

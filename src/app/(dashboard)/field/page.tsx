@@ -78,10 +78,14 @@ export default async function FieldPage() {
   ];
   const field: MenuCard[] = [
     { icon: "folder-lock", label: "หลักฐาน", sub: `${evidenceCount} ไฟล์`, accent: "hsl(var(--prio-medium))", href: "/evidence" },
-    { icon: "file-text", label: "รายงาน", sub: "รายงานคดี", accent: "hsl(var(--primary))", href: "/reports" },
+    // /reports redirects non-staff to "/" — only show it to admin/supervisor.
+    { icon: "file-text", label: "รายงาน", sub: "รายงานคดี", accent: "hsl(var(--primary))", href: "/reports", roles: ["admin", "supervisor"] },
     { icon: "receipt", label: "ค่าใช้จ่าย", sub: "บันทึกค่าใช้จ่าย", accent: "hsl(var(--success))", href: "/expenses" },
     { icon: "wallet", label: "เงินเดือน", sub: "รอบเดือนนี้", accent: "hsl(var(--status-online))", href: "/payroll" },
   ];
+
+  const visibleFor = (cards: MenuCard[]) =>
+    cards.filter((c) => !c.roles || c.roles.includes(profile.role));
 
   return (
     <FadeUp className="pb-4">
@@ -90,8 +94,8 @@ export default async function FieldPage() {
         greeting={`สวัสดี, ${firstName}`}
         meta={meta}
         statusLabel="ปฏิบัติงาน"
-        ops={ops}
-        field={field}
+        ops={visibleFor(ops)}
+        field={visibleFor(field)}
       />
     </FadeUp>
   );
