@@ -30,7 +30,8 @@ function linkify(text: string) {
 
 const SUGGESTIONS = [
   "สรุปคดีนี้ให้หน่อย",
-  "ช่วงไหนเป้าหมายอยู่สถานที่เดิมนานสุด?",
+  "ในรูปหลักฐานเห็นอะไรบ้าง?",
+  "ยานพาหนะ/ป้ายทะเบียนของเป้าหมายคืออะไร?",
   "มีเหตุการณ์สำคัญอะไรบ้าง?",
 ];
 
@@ -78,7 +79,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
           <DialogTitle className="flex items-center gap-1.5 text-sm">
             <Sparkles className="h-4 w-4 text-primary" /> ถาม AI เกี่ยวกับคดีนี้
           </DialogTitle>
-          <DialogDescription className="text-xs">ตอบจากข้อมูลในคดี (ไทม์ไลน์ + เมตา) เท่านั้น</DialogDescription>
+          <DialogDescription className="text-xs">ตอบจากข้อมูลในคดี (ไทม์ไลน์ + ข่าวกรองเป้าหมาย + รูปหลักฐาน) เท่านั้น</DialogDescription>
         </DialogHeader>
 
         <div ref={scrollRef} className="min-h-[200px] flex-1 space-y-3 overflow-y-auto px-4 py-3">
