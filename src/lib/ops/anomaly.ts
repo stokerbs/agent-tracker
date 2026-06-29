@@ -12,6 +12,8 @@ export interface Fix {
   lng: number;
   speed: number; // km/h
   t: string; // recorded_at ISO (UTC)
+  /** Positioning source: "gps" | "lbs" | "unknown". LBS fixes are excluded from new-location. */
+  mode?: string | null;
 }
 
 export type AnomalyKind = "new-location" | "night-activity" | "went-dark";
@@ -31,15 +33,26 @@ export interface AnomalyResult {
   signature: string;
 }
 
-const DARK_MIN = 120; // device silent ≥ 2h → "went dark"
 const BASELINE_MIN_FIXES = 50; // only trust baseline-relative signals above this
-const NEW_LOC_KM = 1.0; // dwell ≥ 1km from every known place = new location
 const STOP_SPEED = 3; // ≤ this km/h counts as a dwell fix
 const MOVE_SPEED = 8; // > this km/h counts as real movement (ignore jitter)
 const NIGHT_START = 0;
 const NIGHT_END = 5; // [00:00, 05:00) Thai local
-const NIGHT_MIN_FIXES = 3;
 const GRID = 0.01; // ~1.1km baseline grid cell
+
+// Tunable thresholds — overridable via env without a redeploy of logic.
+const envNum = (v: string | undefined, fallback: number): number => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+/** Read tunables at call time so env changes / tests take effect immediately. */
+function thresholds() {
+  return {
+    darkMin: envNum(process.env.ANOMALY_DARK_MIN, 120), // silent ≥ this many min → "went dark"
+    newLocKm: envNum(process.env.ANOMALY_NEW_LOC_KM, 1.0), // dwell ≥ this far from every known place = new
+    nightMinFixes: Math.round(envNum(process.env.ANOMALY_NIGHT_MIN_FIXES, 3)),
+  };
+}
 
 function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -78,6 +91,7 @@ export function detectAnomalies(opts: {
   now?: Date;
 }): AnomalyResult {
   const now = opts.now ?? new Date();
+  const { darkMin, newLocKm, nightMinFixes } = thresholds();
   const signals: AnomalySignal[] = [];
   const trustBaseline = opts.baseline.length >= BASELINE_MIN_FIXES;
 
@@ -85,7 +99,7 @@ export function detectAnomalies(opts: {
   // Only meaningful if the device normally reports (baseline present).
   if (trustBaseline && opts.lastSeenAt) {
     const silentMin = (now.getTime() - Date.parse(opts.lastSeenAt)) / 60000;
-    if (silentMin >= DARK_MIN) {
+    if (silentMin >= darkMin) {
       signals.push({
         kind: "went-dark",
         detail: `อุปกรณ์ขาดการส่งสัญญาณ ~${Math.round(silentMin / 60)} ชม. (ปกติส่งต่อเนื่อง) — อาจถูกถอด/ปิด/อยู่นอกพื้นที่`,
@@ -97,12 +111,14 @@ export function detectAnomalies(opts: {
   // ── new-location ─────────────────────────────────────────────────────────
   if (trustBaseline) {
     const places = baselinePlaces(opts.baseline);
-    const dwell = opts.recent.filter((f) => f.speed <= STOP_SPEED);
+    // Only real GPS dwells are candidates — fuzzy LBS fixes (off by 1–2km) must
+    // not masquerade as the subject visiting a brand-new place.
+    const dwell = opts.recent.filter((f) => f.speed <= STOP_SPEED && f.mode !== "lbs");
     let farthest: { fix: Fix; km: number } | null = null;
     for (const f of dwell) {
       let min = Infinity;
       for (const p of places) min = Math.min(min, haversineKm(f.lat, f.lng, p.lat, p.lng));
-      if (min > NEW_LOC_KM && (!farthest || min > farthest.km)) farthest = { fix: f, km: min };
+      if (min > newLocKm && (!farthest || min > farthest.km)) farthest = { fix: f, km: min };
     }
     if (farthest) {
       const { fix, km } = farthest;
@@ -120,7 +136,7 @@ export function detectAnomalies(opts: {
   // ── night-activity ─────────────────────────────────────────────────────────
   const recentNight = opts.recent.filter((f) => f.speed > MOVE_SPEED && isNight(thaiHour(f.t)));
   const baselineNight = opts.baseline.filter((f) => f.speed > MOVE_SPEED && isNight(thaiHour(f.t)));
-  if (recentNight.length >= NIGHT_MIN_FIXES && baselineNight.length === 0) {
+  if (recentNight.length >= nightMinFixes && baselineNight.length === 0) {
     const rep = recentNight[recentNight.length - 1];
     signals.push({
       kind: "night-activity",

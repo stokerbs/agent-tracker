@@ -26,6 +26,7 @@ export async function applyPositionToDevice(
     speed_kmh:     pos.speed,
     heading,
     recorded_at:   now,
+    locate_mode:   pos.locateMode,
   };
   if (pos.battery !== null) posRow.battery_pct = pos.battery;
 

@@ -1132,6 +1132,7 @@ export type Database = {
           id: string
           lat: number
           lng: number
+          locate_mode: string | null
           recorded_at: string
           speed_kmh: number
         }
@@ -1142,6 +1143,7 @@ export type Database = {
           id?: string
           lat: number
           lng: number
+          locate_mode?: string | null
           recorded_at?: string
           speed_kmh?: number
         }
@@ -1152,6 +1154,7 @@ export type Database = {
           id?: string
           lat?: number
           lng?: number
+          locate_mode?: string | null
           recorded_at?: string
           speed_kmh?: number
         }
@@ -1170,6 +1173,7 @@ export type Database = {
           agent_id: string | null
           anomaly_notified_at: string | null
           anomaly_signature: string | null
+          anomaly_watch_enabled: boolean
           case_id: string
           created_at: string
           created_by: string | null
@@ -1202,6 +1206,7 @@ export type Database = {
           agent_id?: string | null
           anomaly_notified_at?: string | null
           anomaly_signature?: string | null
+          anomaly_watch_enabled?: boolean
           case_id: string
           created_at?: string
           created_by?: string | null
@@ -1234,6 +1239,7 @@ export type Database = {
           agent_id?: string | null
           anomaly_notified_at?: string | null
           anomaly_signature?: string | null
+          anomaly_watch_enabled?: boolean
           case_id?: string
           created_at?: string
           created_by?: string | null

@@ -113,6 +113,31 @@ export async function revokeDeviceAccess(deviceId: string, profileId: string) {
   return { ok: true };
 }
 
+/** Enable or disable proactive AI anomaly alerts for a single device. */
+export async function setAnomalyWatch(deviceId: string, enabled: boolean) {
+  const actor = await requireRole(["admin", "supervisor"]);
+  const svc = createServiceClient();
+
+  const { error } = await svc
+    .from("gps_devices")
+    .update({ anomaly_watch_enabled: enabled })
+    .eq("id", deviceId)
+    .is("deleted_at", null);
+
+  if (error) return { error: handleDbError(error, "gps_devices") };
+
+  await logAudit({
+    actorId: actor.id,
+    action: "DEVICE_ANOMALY_WATCH_SET",
+    entity: "gps_devices",
+    entityId: deviceId,
+    metadata: { enabled },
+  });
+  revalidatePath("/gps-devices");
+  revalidatePath(`/gps-devices/${deviceId}`);
+  return { ok: true };
+}
+
 /** Link or unlink an agent from a GPS device. */
 export async function relinkAgent(deviceId: string, agentId: string | null) {
   const actor = await requireRole(["admin", "supervisor"]);

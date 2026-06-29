@@ -33,6 +33,26 @@ describe("detectAnomalies — new-location", () => {
     expect(r.signature).toContain("nl:");
   });
 
+  it("ignores a fuzzy LBS dwell so it can't fake a new location", () => {
+    const farAway = { lat: 18.7883, lng: 98.9853, speed: 0, t: ago(2) };
+    // Same far point: GPS → flagged, LBS → ignored.
+    const gps = detectAnomalies({ baseline: homeBaseline(60), recent: [{ ...farAway, mode: "gps" }], lastSeenAt: ago(0.1), now: NOW });
+    const lbs = detectAnomalies({ baseline: homeBaseline(60), recent: [{ ...farAway, mode: "lbs" }], lastSeenAt: ago(0.1), now: NOW });
+    expect(gps.signals.find((s) => s.kind === "new-location")).toBeTruthy();
+    expect(lbs.signals.find((s) => s.kind === "new-location")).toBeUndefined();
+  });
+
+  it("honours the ANOMALY_NEW_LOC_KM env override", () => {
+    const recent = [{ lat: 18.7883, lng: 98.9853, speed: 0, t: ago(2) }]; // ~580km away
+    vi.stubEnv("ANOMALY_NEW_LOC_KM", "9999"); // raise threshold above the real distance
+    try {
+      const r = detectAnomalies({ baseline: homeBaseline(60), recent, lastSeenAt: ago(0.1), now: NOW });
+      expect(r.signals.find((s) => s.kind === "new-location")).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("does NOT flag a recent dwell at the usual place", () => {
     const r = detectAnomalies({
       baseline: homeBaseline(60),
