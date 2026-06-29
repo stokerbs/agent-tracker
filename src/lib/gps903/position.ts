@@ -40,7 +40,7 @@ export async function applyPositionToDevice(
   const moving = pos.speed > STOP_SPEED_KMH;
   const { data: cur } = await svc
     .from("gps_devices")
-    .select("stopped_since, last_lat, last_lng")
+    .select("stopped_since, last_lat, last_lng, geofence_id, geofence_alerted_at")
     .eq("id", gpsDeviceId)
     .maybeSingle();
 
@@ -80,38 +80,72 @@ export async function applyPositionToDevice(
     `lat:${pos.lat.toFixed(5)} lng:${pos.lng.toFixed(5)} speed:${pos.speed} battery:${pos.battery ?? "?"}`,
   );
 
-  // ── Smart geofence: alert on enter/exit of any active fence ──
-  // Compare the device's previous position to the new one (same approach as the
-  // agent location route). Non-fatal: never let alerting break the sync.
+  // ── Smart geofence (state-based + hysteresis) ──
+  // Track the device's current fence membership (gps_devices.geofence_id) and
+  // only act on a CONFIRMED change. A cooldown absorbs boundary jitter so a
+  // device hovering on an edge can't spam enter/exit alerts. Each confirmed
+  // crossing is logged to geofence_events and pushed to admins/supervisors.
+  // Non-fatal: never let alerting break the sync.
+  const GEOFENCE_COOLDOWN_MS = 3 * 60 * 1000;
   try {
-    const prevLat = cur?.last_lat;
-    const prevLng = cur?.last_lng;
     const { data: fences } = await svc
       .from("geofences")
       .select("id, name, coordinates")
       .eq("active", true)
       .is("deleted_at", null);
 
+    // Which active fence is the device inside right now (first match wins)?
+    let currentFenceId: string | null = null;
+    let currentFenceName = "";
     for (const fence of fences ?? []) {
       const coords = fence.coordinates as LatLng[];
-      if (!Array.isArray(coords) || coords.length < 3) continue;
+      if (Array.isArray(coords) && coords.length >= 3 && isInsideGeofence(pos.lat, pos.lng, coords)) {
+        currentFenceId = fence.id;
+        currentFenceName = fence.name;
+        break;
+      }
+    }
 
-      const nowInside = isInsideGeofence(pos.lat, pos.lng, coords);
-      const wasInside =
-        prevLat != null && prevLng != null
-          ? isInsideGeofence(Number(prevLat), Number(prevLng), coords)
-          : false;
-      if (nowInside === wasInside) continue;
+    const storedFenceId = cur?.geofence_id ?? null;
+    if (currentFenceId !== storedFenceId) {
+      const lastAlert = cur?.geofence_alerted_at ? Date.parse(cur.geofence_alerted_at) : 0;
+      const withinCooldown = Date.now() - lastAlert < GEOFENCE_COOLDOWN_MS;
 
-      const eventType = nowInside ? "enter" : "exit";
-      const body = await buildGeofenceAlert({ deviceLabel, fenceName: fence.name, eventType });
-      await notifyRole(["admin", "supervisor"], {
-        type: "system",
-        title: "แจ้งเตือน Geofence",
-        body,
-        url: notificationLinks.map(),
-        entityId: fence.id,
-      });
+      if (!withinCooldown) {
+        const crossings: Array<{ fenceId: string; name: string; type: "enter" | "exit" }> = [];
+        if (storedFenceId) {
+          const exited = (fences ?? []).find((f) => f.id === storedFenceId);
+          crossings.push({ fenceId: storedFenceId, name: exited?.name ?? "พื้นที่เฝ้าระวัง", type: "exit" });
+        }
+        if (currentFenceId) {
+          crossings.push({ fenceId: currentFenceId, name: currentFenceName, type: "enter" });
+        }
+
+        for (const c of crossings) {
+          await svc.from("geofence_events").insert({
+            geofence_id: c.fenceId,
+            gps_device_id: gpsDeviceId,
+            event_type: c.type,
+            lat: pos.lat,
+            lng: pos.lng,
+          });
+          const body = await buildGeofenceAlert({ deviceLabel, fenceName: c.name, eventType: c.type });
+          await notifyRole(["admin", "supervisor"], {
+            type: "system",
+            title: "แจ้งเตือน Geofence",
+            body,
+            url: notificationLinks.map(),
+            entityId: c.fenceId,
+          });
+        }
+
+        await svc
+          .from("gps_devices")
+          .update({ geofence_id: currentFenceId, geofence_alerted_at: new Date().toISOString() })
+          .eq("id", gpsDeviceId);
+      }
+      // within cooldown → absorb the flap; stored state is unchanged and the
+      // genuine change (if it persists) is confirmed on the next poll past cooldown.
     }
   } catch (e) {
     console.error("[GPS903] geofence alert failed (non-fatal):", e);
