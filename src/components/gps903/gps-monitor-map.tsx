@@ -110,15 +110,15 @@ function GpsMarker({ device, isSelected, onClick }: {
       >
         {moving && (
           <span
-            className="absolute inset-0 animate-ping rounded-full opacity-20"
+            className="absolute inset-0 animate-ping rounded-full opacity-40"
             style={{ backgroundColor: color }}
           />
         )}
         <div
-          className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 shadow-lg"
-          style={{ borderColor: color, backgroundColor: `${color}22` }}
+          className="relative flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-2 ring-white"
+          style={{ backgroundColor: color, boxShadow: `0 2px 8px ${color}99, 0 0 0 1px ${color}` }}
         >
-          <Satellite className="h-4 w-4" style={{ color }} />
+          <Satellite className="h-5 w-5 text-white drop-shadow" strokeWidth={2.5} />
         </div>
       </div>
     </AdvancedMarker>
