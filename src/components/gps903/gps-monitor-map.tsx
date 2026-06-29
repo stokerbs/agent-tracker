@@ -32,6 +32,7 @@ import {
   Satellite,
   Search,
   Signal,
+  Sparkles,
   Timer,
   X,
   Zap,
@@ -44,6 +45,7 @@ import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { MAP_ID, STALE_MS, formatBangkokTime, formatStopMinutes } from "@/lib/maps/shared";
 import { useMapFullscreen } from "@/lib/maps/use-map-fullscreen";
 import { RouteReplay } from "@/components/gps903/route-replay";
+import { AiBrief } from "@/components/gps903/ai-brief";
 import type { GpsDeviceForMap, UserRole } from "@/lib/types";
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
@@ -218,9 +220,10 @@ function bearingFromMe(me: google.maps.LatLngLiteral, lat: number, lng: number):
 
 // ─── GPS popup (InfoWindow — compact + expandable) ───────────────────────────
 
-function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing }: {
+function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing, onBrief, canBrief }: {
   device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null;
   onClose: () => void; onReplay: () => void; onTail: () => void; tailing: boolean;
+  onBrief: () => void; canBrief: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
@@ -362,6 +365,17 @@ function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing }: {
           >
             <Crosshair className="h-3.5 w-3.5" />
             {tailing ? "หยุดตาม" : "โหมดตาม (Tail)"}
+          </button>
+        )}
+
+        {/* ── AI surveillance brief (staff only) ── */}
+        {canBrief && (
+          <button
+            onClick={onBrief}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-2 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            สรุปข่าวกรอง AI
           </button>
         )}
 
@@ -528,7 +542,8 @@ interface Props {
   role:           UserRole;
 }
 
-export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
+export function GpsMonitorMap({ initialDevices, role }: Props) {
+  const canBrief = role === "admin" || role === "supervisor";
   const t       = useTranslations("gpsMonitor");
   const tCommon = useTranslations("common");
 
@@ -540,6 +555,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [myPos,        setMyPos]        = useState<google.maps.LatLngLiteral | null>(null);
   const [fitNonce,     setFitNonce]     = useState(0);
   const [replayDevice, setReplayDevice] = useState<GpsDeviceForMap | null>(null);
+  const [briefDevice,  setBriefDevice]  = useState<GpsDeviceForMap | null>(null);
   const [tailId,       setTailId]       = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -750,6 +766,8 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
                 onReplay={() => setReplayDevice(selected)}
                 onTail={() => toggleTail(selected)}
                 tailing={tailId === selected.id}
+                onBrief={() => setBriefDevice(selected)}
+                canBrief={canBrief}
               />
             )}
 
@@ -847,6 +865,9 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
 
       {replayDevice && (
         <RouteReplay device={replayDevice} onClose={() => setReplayDevice(null)} />
+      )}
+      {briefDevice && (
+        <AiBrief device={briefDevice} onClose={() => setBriefDevice(null)} />
       )}
     </div>
   );
