@@ -309,3 +309,28 @@ html.capacitor-native :not(input):not(textarea):not([contenteditable="true"]) {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* ── Google Maps InfoWindow → dark tactical popup ──
+   The GPS Monitor map uses Google's InfoWindow, which defaults to a white
+   surface; the app's theme text is light, so it was invisible on white. Style
+   the InfoWindow as a dark card so the existing themed content reads clearly. */
+.gm-style .gm-style-iw-c {
+  background: hsl(220 39% 11%) !important;
+  border: 1px solid hsl(218 34% 19%) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 28px hsl(224 40% 2% / 0.6) !important;
+  padding: 10px !important;
+  color: hsl(213 35% 92%);
+}
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  background: transparent !important;
+}
+/* the little pointer/tail under the bubble */
+.gm-style .gm-style-iw-tc::after {
+  background: hsl(220 39% 11%) !important;
+}
+/* close (X) button — make the icon light so it's visible on dark */
+.gm-style .gm-style-iw button.gm-ui-hover-effect > span {
+  background-color: hsl(213 35% 80%) !important;
+}
