@@ -138,8 +138,9 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
   const tCommon  = useTranslations("common");
-  const lk       = getLocateKey(device);
-  const cfg      = LOCATE_CFG[lk];
+  const stale    = !device.last_seen_at || Date.now() - new Date(device.last_seen_at).getTime() >= STALE_MS;
+  const online   = !stale;
+  const sigMode  = device.last_locate_mode as string | null;
   const name     = deviceName(device);
   const battery  = device.last_battery_pct;
   const dispImei = device.cred_imei   ?? device.imei;
@@ -154,12 +155,24 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
     >
       <div className="min-w-[200px] max-w-[240px] space-y-2 p-1 text-sm">
 
-        {/* ── Header: name + locate badge ── */}
+        {/* ── Header: name + connectivity + signal-type badges ── */}
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold leading-tight text-foreground">{name}</p>
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold ${cfg.cls}`}>
-            <Signal className="h-2.5 w-2.5" />{cfg.label}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {/* connectivity */}
+            <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+              online ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                     : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-400" : "bg-red-400"}`} />
+              {online ? "ONLINE" : "OFFLINE"}
+            </span>
+            {/* signal type (GPS vs LBS) — shown whenever known */}
+            {(sigMode === "gps" || sigMode === "lbs") && (
+              <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold ${LOCATE_CFG[sigMode].cls}`}>
+                <Signal className="h-2.5 w-2.5" />{LOCATE_CFG[sigMode].label}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Compact telemetry row ── */}
