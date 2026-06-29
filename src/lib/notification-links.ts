@@ -18,6 +18,7 @@ export const notificationLinks = {
   expenses: () => `/expenses`,
   payroll: () => `/payroll`,
   map: () => `/map`,
+  gpsMonitor: () => `/gps-monitor`,
 } as const;
 
 /**

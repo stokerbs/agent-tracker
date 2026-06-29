@@ -1022,6 +1022,13 @@ export type Database = {
             referencedRelation: "geofences"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "geofence_events_gps_device_id_fkey"
+            columns: ["gps_device_id"]
+            isOneToOne: false
+            referencedRelation: "gps_devices"
+            referencedColumns: ["id"]
+          },
         ]
       }
       geofences: {
@@ -1160,14 +1167,16 @@ export type Database = {
       }
       gps_devices: {
         Row: {
-          geofence_id: string | null
-          geofence_alerted_at: string | null
           agent_id: string | null
+          anomaly_notified_at: string | null
+          anomaly_signature: string | null
           case_id: string
           created_at: string
           created_by: string | null
           credential_id: string | null
           deleted_at: string | null
+          geofence_alerted_at: string | null
+          geofence_id: string | null
           gps903_device_id: number | null
           id: string
           imei: string | null
@@ -1183,21 +1192,23 @@ export type Database = {
           last_seen_at: string | null
           last_speed_kmh: number | null
           last_stop_minutes: number | null
-          stopped_since: string | null
           notes: string | null
           phone_number: string | null
           provider: Database["public"]["Enums"]["gps_provider"] | null
+          stopped_since: string | null
           updated_at: string
         }
         Insert: {
-          geofence_id?: string | null
-          geofence_alerted_at?: string | null
           agent_id?: string | null
+          anomaly_notified_at?: string | null
+          anomaly_signature?: string | null
           case_id: string
           created_at?: string
           created_by?: string | null
           credential_id?: string | null
           deleted_at?: string | null
+          geofence_alerted_at?: string | null
+          geofence_id?: string | null
           gps903_device_id?: number | null
           id?: string
           imei?: string | null
@@ -1213,21 +1224,23 @@ export type Database = {
           last_seen_at?: string | null
           last_speed_kmh?: number | null
           last_stop_minutes?: number | null
-          stopped_since?: string | null
           notes?: string | null
           phone_number?: string | null
           provider?: Database["public"]["Enums"]["gps_provider"] | null
+          stopped_since?: string | null
           updated_at?: string
         }
         Update: {
-          geofence_id?: string | null
-          geofence_alerted_at?: string | null
           agent_id?: string | null
+          anomaly_notified_at?: string | null
+          anomaly_signature?: string | null
           case_id?: string
           created_at?: string
           created_by?: string | null
           credential_id?: string | null
           deleted_at?: string | null
+          geofence_alerted_at?: string | null
+          geofence_id?: string | null
           gps903_device_id?: number | null
           id?: string
           imei?: string | null
@@ -1243,10 +1256,10 @@ export type Database = {
           last_seen_at?: string | null
           last_speed_kmh?: number | null
           last_stop_minutes?: number | null
-          stopped_since?: string | null
           notes?: string | null
           phone_number?: string | null
           provider?: Database["public"]["Enums"]["gps_provider"] | null
+          stopped_since?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1276,6 +1289,13 @@ export type Database = {
             columns: ["credential_id"]
             isOneToOne: false
             referencedRelation: "gps903_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gps_devices_geofence_id_fkey"
+            columns: ["geofence_id"]
+            isOneToOne: false
+            referencedRelation: "geofences"
             referencedColumns: ["id"]
           },
         ]
