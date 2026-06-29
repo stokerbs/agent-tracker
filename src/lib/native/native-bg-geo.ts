@@ -52,8 +52,8 @@ async function postFix(token: string, body: Record<string, unknown>): Promise<bo
 }
 
 /** Replay queued offline fixes oldest-first; stop at the first failure and keep
- *  the remainder for the next attempt. */
-async function flushQueue(token: string) {
+ *  the remainder for the next attempt. Exported for unit testing. */
+export async function flushQueue(token: string) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   const q = readQueue();
   if (q.length === 0) return;

@@ -1097,26 +1097,35 @@ export function LiveMap({
       .channel("geofence-events-feed")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "geofence_events" }, (payload) => {
         const raw = payload.new as {
-          id: string; agent_id: string; geofence_id: string;
+          id: string; agent_id: string | null; gps_device_id: string | null; geofence_id: string;
           event_type: "enter" | "exit"; occurred_at: string;
         };
         setAgents((currentAgents) => {
-          setGeofences((currentFences) => {
-            const agentName = currentAgents.find((a) => a.id === raw.agent_id)?.full_name ?? "Agent";
-            const fenceName = currentFences.find((f) => f.id === raw.geofence_id)?.name ?? "zone";
-            const event: GeofenceEventFeed = {
-              id: raw.id, agent_id: raw.agent_id, geofence_id: raw.geofence_id,
-              event_type: raw.event_type, occurred_at: raw.occurred_at,
-              agentName, fenceName,
-            };
-            setGeofenceEvents((prev) => [event, ...prev].slice(0, 50));
-            toast(
-              raw.event_type === "enter"
-                ? t("fence.events.entered", { agent: agentName, fence: fenceName })
-                : t("fence.events.exited", { agent: agentName, fence: fenceName }),
-              { icon: raw.event_type === "enter" ? "🟢" : "🔴" },
-            );
-            return currentFences;
+          setGpsDevices((currentDevices) => {
+            setGeofences((currentFences) => {
+              // Resolve the subject: agent crossing → agent name; device crossing → device label.
+              const agentName = raw.agent_id
+                ? currentAgents.find((a) => a.id === raw.agent_id)?.full_name ?? "Agent"
+                : (() => {
+                    const d = currentDevices.find((x) => x.id === raw.gps_device_id);
+                    return d ? (d.cred_name ?? d.notes ?? `GPS903-${d.gps903_device_id ?? "?"}`) : "อุปกรณ์ GPS";
+                  })();
+              const fenceName = currentFences.find((f) => f.id === raw.geofence_id)?.name ?? "zone";
+              const event: GeofenceEventFeed = {
+                id: raw.id, agent_id: raw.agent_id, geofence_id: raw.geofence_id,
+                event_type: raw.event_type, occurred_at: raw.occurred_at,
+                agentName, fenceName,
+              };
+              setGeofenceEvents((prev) => [event, ...prev].slice(0, 50));
+              toast(
+                raw.event_type === "enter"
+                  ? t("fence.events.entered", { agent: agentName, fence: fenceName })
+                  : t("fence.events.exited", { agent: agentName, fence: fenceName }),
+                { icon: raw.event_type === "enter" ? "🟢" : "🔴" },
+              );
+              return currentFences;
+            });
+            return currentDevices;
           });
           return currentAgents;
         });
