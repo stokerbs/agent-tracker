@@ -115,6 +115,21 @@ describe("detectAnomalies — signature dedup", () => {
     expect(detectAnomalies(input).signature).toBe(detectAnomalies(input).signature);
   });
 
+  it("orders multi-signal signatures deterministically", () => {
+    // went-dark + new-location fire together; signature must be order-independent.
+    const r = detectAnomalies({
+      baseline: homeBaseline(60),
+      recent: [{ lat: 18.7883, lng: 98.9853, speed: 0, t: ago(2) }],
+      lastSeenAt: ago(5),
+      now: NOW,
+    });
+    expect(r.signals.length).toBeGreaterThanOrEqual(2);
+    expect(r.signature).toContain("dark");
+    expect(r.signature).toContain("nl:");
+    // sorted join → "dark" sorts before "nl:" regardless of detection order
+    expect(r.signature).toBe([...r.signature.split("|")].sort().join("|"));
+  });
+
   it("returns an empty signature when nothing is wrong", () => {
     const r = detectAnomalies({
       baseline: homeBaseline(60),

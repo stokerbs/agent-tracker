@@ -113,4 +113,28 @@ describe("anomaly-watch detection + dedup", () => {
     expect(h.notifyRole).not.toHaveBeenCalled();
     expect(h.updates).toHaveLength(0);
   });
+
+  it("clears a recovered anomaly: resets signature without notifying", async () => {
+    h.devices.push({
+      id: "dev-1", notes: "รถเป้าหมาย", gps903_device_id: 7, case_id: "case-1",
+      last_seen_at: new Date(Date.now() - 0.2 * 3_600_000).toISOString(), // reporting again
+      anomaly_signature: "dark", // was dark, now recovered
+    });
+    // baseline + a fresh home fix → no anomaly now
+    h.positions.push(...homeBaseline(), { lat: 13.7563, lng: 100.5018, speed_kmh: 0, recorded_at: new Date(Date.now() - 0.2 * 3_600_000).toISOString() });
+
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+
+    expect(body).toMatchObject({ ok: true, scanned: 1, alerted: 0 });
+    expect(h.notifyRole).not.toHaveBeenCalled();
+    expect(h.updates[0]).toMatchObject({ anomaly_signature: "", anomaly_notified_at: null });
+  });
+
+  it("returns scanned:0 gracefully when there are no devices", async () => {
+    const { GET } = await load();
+    const body = await (await GET(req("Bearer test-secret"))).json();
+    expect(body).toMatchObject({ ok: true, scanned: 0, alerted: 0 });
+    expect(h.notifyRole).not.toHaveBeenCalled();
+  });
 });

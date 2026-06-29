@@ -49,11 +49,16 @@ export async function GET(request: NextRequest) {
   const baselineStart = new Date(now.getTime() - BASELINE_DAYS * 24 * 3_600_000).toISOString();
   const recentCutoff = now.getTime() - RECENT_HOURS * 3_600_000;
 
-  const { data: devices } = await svc
+  const { data: devices, error: devErr } = await svc
     .from("gps_devices")
     .select("id, notes, gps903_device_id, case_id, last_seen_at, anomaly_signature")
     .is("deleted_at", null)
     .not("last_lat", "is", null);
+
+  if (devErr) {
+    console.error("[cron] anomaly-watch device query failed:", devErr.message);
+    return NextResponse.json({ error: "device query failed" }, { status: 500 });
+  }
 
   let scanned = 0;
   let alerted = 0;
@@ -62,13 +67,18 @@ export async function GET(request: NextRequest) {
     scanned++;
     const label = d.notes ?? `GPS903-${d.gps903_device_id ?? "?"}`;
 
-    const { data: pos } = await svc
+    const { data: pos, error: posErr } = await svc
       .from("gps_device_positions")
       .select("lat, lng, speed_kmh, recorded_at")
       .eq("gps_device_id", d.id)
       .gte("recorded_at", baselineStart)
       .order("recorded_at", { ascending: true })
       .limit(MAX_FIXES);
+
+    if (posErr) {
+      console.error(`[cron] anomaly-watch positions query failed dev=${d.id}:`, posErr.message);
+      continue; // skip this device; next run retries
+    }
 
     const fixes: Fix[] = ((pos ?? []) as PosRow[]).map((p) => ({
       lat: p.lat,
