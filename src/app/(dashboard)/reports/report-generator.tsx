@@ -35,6 +35,19 @@ interface Props {
 
 type Mode = "single" | "range";
 
+// Turn http(s) URLs in plain report text into clickable links.
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s)]+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-sky-500 underline underline-offset-2 break-all">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 function todayBangkok() {
   return bangkokDateKey();
 }
@@ -60,7 +73,10 @@ function printReport(text: string, title: string) {
   pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
   @media print { body { padding: 20px; } }
 </style>
-</head><body><pre>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+</head><body><pre>${text
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1">$1</a>')}</pre></body></html>`);
   win.document.close();
   win.print();
 }
@@ -286,7 +302,7 @@ export function ReportGenerator({ cases }: Props) {
             <DialogDescription className="sr-only">Generated surveillance report</DialogDescription>
           </DialogHeader>
           <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
-            {reportText}
+            {linkify(reportText)}
           </pre>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button

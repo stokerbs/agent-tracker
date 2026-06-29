@@ -8,6 +8,18 @@ import { notifyCaseParticipants } from "@/lib/notifications";
 import { BUCKETS } from "@/lib/constants";
 import type { LinkedEvidence, TimelineEntry } from "@/lib/types";
 
+// Google Maps search link for a free-text place (timeline locations have no
+// lat/lng). Pre-built and fed to the model so it copies the exact URL.
+const mapsSearchLink = (q: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+// Appended to every report system prompt: keep the provided map link after each location.
+const MAP_LINK_RULE =
+  `\n\nLOCATION MAP LINKS: every timeline entry that has a location is given with a Google Maps ` +
+  `link in the form "[location] (Maps: <url>)". You MUST preserve that exact <url> immediately ` +
+  `after the location wherever it appears in the report (keep the "(Maps: <url>)" suffix). ` +
+  `Never modify, shorten, or invent a URL; if a location has no provided link, do not add one.`;
+
 // ── Shared types (consumed by page.tsx and timeline-client.tsx) ───────────────
 export type EntryFull = TimelineEntry & {
   agents: { full_name: string; agent_code: string } | null;
@@ -553,7 +565,7 @@ export async function generateReport(
         .map((e) => {
           const evCount = evidenceCountByEntryId[e.id] ?? 0;
           const evNote = evCount > 0 ? ` [${evCount} photo${evCount > 1 ? "s" : ""} attached]` : "";
-          return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}${evNote}`;
+          return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}] (Maps: ${mapsSearchLink(e.location)})` : ""}${evNote}`;
         })
         .join("\n")
     : "(ไม่มีรายการบันทึก / No entries recorded)";
@@ -636,7 +648,7 @@ Return only the report text, no extra explanation.`,
   const RETRY_TOKENS   = 8000;
 
   try {
-    const system = prompts[reportType];
+    const system = prompts[reportType] + MAP_LINK_RULE;
     const user = `Case: ${caseNumber}\nDate: ${date}\n\nTimeline:\n${timelineText}`;
 
     let result = await callAnthropicRaw(system, user, INITIAL_TOKENS);
@@ -804,7 +816,7 @@ export async function generateRangeReport(
             const id = (e as RangeEntry & { id: string }).id;
             const evCount = evidenceCountByEntryId[id] ?? 0;
             const evNote = evCount > 0 ? ` [${evCount} photo${evCount > 1 ? "s" : ""} attached]` : "";
-            return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}]` : ""}${evNote}`;
+            return `${e.entry_time.slice(0, 5)} — ${e.entry}${e.location ? ` [${e.location}] (Maps: ${mapsSearchLink(e.location)})` : ""}${evNote}`;
           });
           return `${header}\n${lines.join("\n")}`;
         })
@@ -897,7 +909,7 @@ Return only the report text, no extra explanation.`,
   const RETRY_TOKENS = 16000;
 
   try {
-    const system = prompts[reportType];
+    const system = prompts[reportType] + MAP_LINK_RULE;
     const user = `Case: ${caseNumber}\nPeriod: ${startDate} to ${endDate}\n\nTimeline:\n${timelineText}`;
 
     let result = await callAnthropicRaw(system, user, INITIAL_TOKENS);
