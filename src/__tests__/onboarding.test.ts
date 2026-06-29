@@ -77,7 +77,7 @@ describe("client cannot access staff routes", () => {
     const guards: Array<[string, string[]]> = [
       ["/map", ["admin", "supervisor"]],
       ["/agents", ["admin", "supervisor"]],
-      ["/clients", ["admin", "supervisor"]],
+      ["/clients", ["admin"]],
       ["/invoices", ["admin", "supervisor"]],
       ["/emergency", ["admin", "supervisor"]],
       ["/users", ["admin"]],
@@ -89,6 +89,14 @@ describe("client cannot access staff routes", () => {
         `client must be blocked from ${route}`,
       ).toBe(false);
     }
+  });
+
+  it("navForRole: /clients is admin-only (hidden from supervisor + agent)", () => {
+    const hrefsFor = (r: "admin" | "supervisor" | "agent") =>
+      navForRole(r).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefsFor("admin")).toContain("/clients");
+    expect(hrefsFor("supervisor")).not.toContain("/clients");
+    expect(hrefsFor("agent")).not.toContain("/clients");
   });
 });
 
