@@ -19,6 +19,7 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronUp,
+  Crosshair,
   Gauge,
   History,
   Maximize2,
@@ -32,6 +33,7 @@ import {
   Search,
   Signal,
   Timer,
+  X,
   Zap,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -122,6 +124,21 @@ function FitToDevices({ nonce, points }: { nonce: number; points: google.maps.La
   return null;
 }
 
+// Tail mode: keep the viewer + target both in view as either one moves.
+function TailController({ me, target }: { me: google.maps.LatLngLiteral; target: google.maps.LatLngLiteral }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const b = new google.maps.LatLngBounds();
+    b.extend(me);
+    b.extend(target);
+    map.fitBounds(b, 110);
+    // Re-fit on coordinate changes (primitives) — the object identities churn each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, me.lat, me.lng, target.lat, target.lng]);
+  return null;
+}
+
 // ─── GPS marker ──────────────────────────────────────────────────────────────
 
 function GpsMarker({ device, isSelected, onClick }: {
@@ -186,10 +203,24 @@ function distanceFromMe(
   return m < 1000 ? `~${Math.round(m)} ม.` : `~${(m / 1000).toFixed(1)} กม.`;
 }
 
+// Compass bearing (degrees) from me → target, plus an 8-point Thai label.
+function bearingFromMe(me: google.maps.LatLngLiteral, lat: number, lng: number): { deg: number; label: string } {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(lng - me.lng)) * Math.cos(toRad(lat));
+  const x =
+    Math.cos(toRad(me.lat)) * Math.sin(toRad(lat)) -
+    Math.sin(toRad(me.lat)) * Math.cos(toRad(lat)) * Math.cos(toRad(lng - me.lng));
+  const deg = (Math.atan2(y, x) * 180) / Math.PI;
+  const norm = (deg + 360) % 360;
+  const dirs = ["เหนือ", "ตอน.", "ตะวันออก", "ตอ.ต.", "ใต้", "ตต.", "ตะวันตก", "ตต.น."];
+  return { deg: norm, label: dirs[Math.round(norm / 45) % 8] };
+}
+
 // ─── GPS popup (InfoWindow — compact + expandable) ───────────────────────────
 
-function GpsPopup({ device, myPos, onClose, onReplay }: {
-  device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null; onClose: () => void; onReplay: () => void;
+function GpsPopup({ device, myPos, onClose, onReplay, onTail, tailing }: {
+  device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null;
+  onClose: () => void; onReplay: () => void; onTail: () => void; tailing: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
@@ -317,6 +348,21 @@ function GpsPopup({ device, myPos, onClose, onReplay }: {
               ย้อนเส้นทาง
             </button>
           </div>
+        )}
+
+        {/* ── Tail (follow) toggle — needs the viewer's location ── */}
+        {device.last_lat != null && device.last_lng != null && myPos && (
+          <button
+            onClick={onTail}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors ${
+              tailing
+                ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                : "border border-sky-500/40 text-sky-400 hover:bg-sky-500/10"
+            }`}
+          >
+            <Crosshair className="h-3.5 w-3.5" />
+            {tailing ? "หยุดตาม" : "โหมดตาม (Tail)"}
+          </button>
         )}
 
         {/* ── Details toggle ── */}
@@ -494,6 +540,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [myPos,        setMyPos]        = useState<google.maps.LatLngLiteral | null>(null);
   const [fitNonce,     setFitNonce]     = useState(0);
   const [replayDevice, setReplayDevice] = useState<GpsDeviceForMap | null>(null);
+  const [tailId,       setTailId]       = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const apiKey       = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -575,6 +622,14 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   });
 
   const onMap = filtered.filter((d) => d.last_lat != null && d.last_lng != null);
+
+  // Live target for tail mode — derived from `devices` so it tracks realtime updates.
+  const tailTarget = tailId ? devices.find((d) => d.id === tailId) ?? null : null;
+  const tailPos =
+    tailTarget && tailTarget.last_lat != null && tailTarget.last_lng != null
+      ? { lat: Number(tailTarget.last_lat), lng: Number(tailTarget.last_lng) }
+      : null;
+  const toggleTail = (d: GpsDeviceForMap) => setTailId((cur) => (cur === d.id ? null : d.id));
 
   if (!apiKey) {
     return (
@@ -693,10 +748,49 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
                 myPos={myPos}
                 onClose={() => setSelected(null)}
                 onReplay={() => setReplayDevice(selected)}
+                onTail={() => toggleTail(selected)}
+                tailing={tailId === selected.id}
               />
             )}
+
+            {myPos && tailPos && <TailController me={myPos} target={tailPos} />}
           </Map>
         </APIProvider>
+
+        {/* ── Tail-mode HUD (top-left) ─────────────────────────────────── */}
+        {tailId && myPos && tailPos && tailTarget && (() => {
+          const b = bearingFromMe(myPos, tailPos.lat, tailPos.lng);
+          return (
+            <div className="absolute left-3 top-3 z-10 w-[200px] rounded-xl border border-sky-500/50 bg-card/95 p-3 shadow-xl backdrop-blur">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                  <Crosshair className="h-3 w-3" />โหมดตาม
+                </span>
+                <button onClick={() => setTailId(null)} aria-label="หยุดตาม" className="text-muted-foreground hover:text-red-400">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="truncate text-xs font-semibold">{deviceName(tailTarget)}</p>
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">ระยะห่าง</span>
+                  <span className="font-mono font-semibold text-sky-400">{distanceFromMe(myPos, tailPos.lat, tailPos.lng)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">ทิศทาง</span>
+                  <span className="flex items-center gap-1 font-mono">
+                    <Navigation className="h-3 w-3" style={{ transform: `rotate(${b.deg}deg)`, color: "#38bdf8" }} />
+                    {b.label}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">ความเร็วเป้า</span>
+                  <span className="font-mono">{tailTarget.last_speed_kmh != null ? `${Math.round(Number(tailTarget.last_speed_kmh))} km/h` : "—"}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Floating action buttons (top-right) ──────────────────────── */}
         <div
