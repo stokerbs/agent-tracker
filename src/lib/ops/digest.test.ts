@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { summarizeOps, templateDigest, type OpsRaw } from "./digest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildOpsDigest, summarizeOps, templateDigest, type OpsRaw } from "./digest";
 
 const NOW = new Date("2026-06-30T12:00:00Z");
 const ago = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
@@ -114,5 +114,50 @@ describe("templateDigest", () => {
     const out = templateDigest(summarizeOps(raw, "day", NOW));
     expect(out).toContain("สรุปปฏิบัติการ");
     expect(out).toContain("https://www.google.com/maps");
+  });
+});
+
+describe("buildOpsDigest — AI failure fallbacks", () => {
+  const summary = summarizeOps(empty, "day", NOW);
+
+  beforeEach(() => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to the template (ai:false) and logs when no API key is set", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const r = await buildOpsDigest(summary);
+    expect(r.ai).toBe(false);
+    expect(r.digest).toBe(templateDigest(summary));
+  });
+
+  it("falls back and logs when Anthropic returns a non-OK response", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500 }) as Response));
+    const r = await buildOpsDigest(summary);
+    expect(r.ai).toBe(false);
+    expect(r.digest).toBe(templateDigest(summary));
+    expect(err).toHaveBeenCalled();
+  });
+
+  it("falls back and logs when the fetch throws", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }));
+    const r = await buildOpsDigest(summary);
+    expect(r.ai).toBe(false);
+    expect(r.digest).toBe(templateDigest(summary));
+    expect(err).toHaveBeenCalled();
+  });
+
+  it("returns the AI digest (ai:true) on success", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ content: [{ text: "สรุป AI" }] }) }) as Response));
+    const r = await buildOpsDigest(summary);
+    expect(r.ai).toBe(true);
+    expect(r.digest).toBe("สรุป AI");
   });
 });
