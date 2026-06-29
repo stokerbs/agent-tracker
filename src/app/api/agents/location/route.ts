@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { handleDbError } from "@/lib/errors";
 import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { BREADCRUMB_MIN_M, distanceM } from "@/lib/geo/cadence";
+import { isInsideGeofence } from "@/lib/geo/geofence";
 
 const schema = z.object({
   lat: z.number().min(-90).max(90),
@@ -20,26 +21,6 @@ const schema = z.object({
   // fix in history at its true time, without touching the agent's live position.
   recorded_at: z.string().datetime().optional(),
 });
-
-/** Ray-casting point-in-polygon test (works for simple polygons). */
-function isInsideGeofence(
-  lat: number,
-  lng: number,
-  polygon: Array<{ lat: number; lng: number }>,
-): boolean {
-  let inside = false;
-  const n = polygon.length;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const a = polygon[i], b = polygon[j];
-    if (
-      a.lng > lng !== b.lng > lng &&
-      lat < ((b.lat - a.lat) * (lng - a.lng)) / (b.lng - a.lng) + a.lat
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
 
 /**
  * POST /api/agents/location

@@ -68,7 +68,9 @@ export async function GET(request: NextRequest) {
 
       if (pos) {
         if (linkedDevices?.length) {
-          await Promise.all(linkedDevices.map((d) => applyPositionToDevice(svc, d.id, pos)));
+          await Promise.all(linkedDevices.map((d) =>
+            applyPositionToDevice(svc, d.id, pos, cred.device_name ?? `GPS903-${cred.gps903_device_id}`),
+          ));
         }
 
         // Keep gps903_devices catalog fresh (last_seen)
