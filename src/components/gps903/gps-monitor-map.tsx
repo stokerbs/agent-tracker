@@ -23,6 +23,7 @@ import {
   Maximize2,
   Minimize2,
   MapPinOff,
+  Navigation,
   Phone,
   RefreshCw,
   Satellite,
@@ -132,9 +133,41 @@ function GpsMarker({ device, isSelected, onClick }: {
   );
 }
 
+// ─── Viewer's own live position ("you are here") ────────────────────────────
+
+function MyLocationMarker({ position }: { position: google.maps.LatLngLiteral }) {
+  return (
+    <AdvancedMarker position={position} zIndex={1000} title="ตำแหน่งของคุณ">
+      <div className="relative flex items-center justify-center">
+        <span className="absolute h-8 w-8 animate-ping rounded-full bg-sky-400/30" />
+        <span className="relative h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
+      </div>
+    </AdvancedMarker>
+  );
+}
+
+// Haversine distance, formatted "ห่างจากคุณ ~120 ม." / "~3.4 กม.".
+function distanceFromMe(
+  me: google.maps.LatLngLiteral,
+  lat: number,
+  lng: number,
+): string {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat - me.lat);
+  const dLng = toRad(lng - me.lng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(me.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
+  const m = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return m < 1000 ? `~${Math.round(m)} ม.` : `~${(m / 1000).toFixed(1)} กม.`;
+}
+
 // ─── GPS popup (InfoWindow — compact + expandable) ───────────────────────────
 
-function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () => void }) {
+function GpsPopup({ device, myPos, onClose }: {
+  device: GpsDeviceForMap; myPos: google.maps.LatLngLiteral | null; onClose: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const t        = useTranslations("gpsMonitor");
   const tCommon  = useTranslations("common");
@@ -194,6 +227,14 @@ function GpsPopup({ device, onClose }: { device: GpsDeviceForMap; onClose: () =>
             {formatStopMinutes(device.last_stop_minutes)}
           </span>
         </div>
+
+        {/* ── Distance from the viewer ── */}
+        {myPos && device.last_lat != null && device.last_lng != null && (
+          <div className="flex items-center gap-1 text-xs font-medium text-sky-400">
+            <Navigation className="h-3.5 w-3.5" />
+            <span>ห่างจากคุณ {distanceFromMe(myPos, Number(device.last_lat), Number(device.last_lng))}</span>
+          </div>
+        )}
 
         {/* ── Expanded details ── */}
         {expanded && (
@@ -405,6 +446,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
   const [search,       setSearch]       = useState("");
   const [refreshing,   setRefreshing]   = useState(false);
   const [panTarget,    setPanTarget]    = useState<google.maps.LatLngLiteral | null>(null);
+  const [myPos,        setMyPos]        = useState<google.maps.LatLngLiteral | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const apiKey       = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -421,6 +463,18 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // ── Viewer's own live position (browser geolocation) ──────────────────────
+  // So the user can see where they are relative to the tracked GPS devices.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => setMyPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => { /* permission denied / unavailable — just don't show the marker */ },
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
   }, []);
 
   // ── Full screen ── CSS overlay (not the browser Fullscreen API) — exit via
@@ -560,6 +614,8 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
           >
             <MapPanner target={panTarget} />
 
+            {myPos && <MyLocationMarker position={myPos} />}
+
             {onMap.map((d) => (
               <GpsMarker
                 key={d.id}
@@ -570,7 +626,7 @@ export function GpsMonitorMap({ initialDevices, role: _role }: Props) {
             ))}
 
             {selected && selected.last_lat != null && selected.last_lng != null && (
-              <GpsPopup device={selected} onClose={() => setSelected(null)} />
+              <GpsPopup device={selected} myPos={myPos} onClose={() => setSelected(null)} />
             )}
           </Map>
         </APIProvider>
