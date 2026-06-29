@@ -36,6 +36,16 @@ export interface TargetIntel {
 const mapsLink = (lat: number, lng: number) =>
   `https://www.google.com/maps?q=${lat.toFixed(5)},${lng.toFixed(5)}`;
 
+/** Pick an Anthropic-friendly media type from a storage path + optional mime. */
+export function mediaTypeFor(path: string, fallback: string | null): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return fallback && fallback.startsWith("image/") ? fallback : "image/jpeg";
+}
+
 /** Render the target-intelligence section, or "" if there is nothing to show. */
 export function buildIntelText(intel: TargetIntel): string {
   const lines: string[] = [];

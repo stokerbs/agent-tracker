@@ -5,7 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { decryptField } from "@/lib/security/encryption";
 import { BUCKETS } from "@/lib/constants";
-import { buildIntelText, type TargetIntel } from "@/lib/cases/chat-context";
+import { buildIntelText, mediaTypeFor, type TargetIntel } from "@/lib/cases/chat-context";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // vision requests + image fetches take longer
@@ -30,15 +30,6 @@ const schema = z.object({
 const dec = (v: string | null | undefined): string | null => (v ? decryptField(v) : null);
 
 type ImageBlock = { type: "image"; source: { type: "base64"; media_type: string; data: string } };
-
-function mediaTypeFor(path: string, fallback: string | null): string {
-  const ext = path.split(".").pop()?.toLowerCase();
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  return fallback && fallback.startsWith("image/") ? fallback : "image/jpeg";
-}
 
 /**
  * POST /api/cases/chat — ask AI about a case. Answers from the case's own data:

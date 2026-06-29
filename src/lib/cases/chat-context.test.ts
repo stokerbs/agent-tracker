@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIntelText, type TargetIntel } from "./chat-context";
+import { buildIntelText, mediaTypeFor, type TargetIntel } from "./chat-context";
 
 const empty: TargetIntel = {
   name: null, alias: null, phone: null, email: null, dob: null, notes: null,
@@ -48,5 +48,22 @@ describe("buildIntelText", () => {
     expect(out).toContain("ทะเบียน 1กก 1234");
     expect(out).toContain("สมหญิง");
     expect(out).toContain("(ภรรยา)");
+  });
+});
+
+describe("mediaTypeFor", () => {
+  it("maps known extensions", () => {
+    expect(mediaTypeFor("a/b.png", null)).toBe("image/png");
+    expect(mediaTypeFor("a/b.webp", null)).toBe("image/webp");
+    expect(mediaTypeFor("a/b.gif", null)).toBe("image/gif");
+    expect(mediaTypeFor("a/b.jpg", null)).toBe("image/jpeg");
+    expect(mediaTypeFor("a/b.JPEG", null)).toBe("image/jpeg");
+  });
+  it("falls back to the mime when the extension is unknown", () => {
+    expect(mediaTypeFor("a/b.heic", "image/heic")).toBe("image/heic");
+  });
+  it("defaults to image/jpeg when neither extension nor mime is usable", () => {
+    expect(mediaTypeFor("a/b", null)).toBe("image/jpeg");
+    expect(mediaTypeFor("a/b.bin", "application/pdf")).toBe("image/jpeg");
   });
 });

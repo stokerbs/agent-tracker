@@ -144,4 +144,29 @@ describe("POST /api/cases/chat — evidence vision", () => {
     const res = await call(okBody);
     expect((await res.json()).images).toBe(0);
   });
+
+  it("skips an image whose fetch fails (!ok)", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      supa({ caseRow, photos: [{ storage_path: "target/p.jpg" }], signed: "https://signed/p.jpg" }) as never,
+    );
+    vi.stubGlobal("fetch", vi.fn(async (url: string) =>
+      String(url).includes("anthropic.com")
+        ? ({ ok: true, json: async () => ({ content: [{ text: "ok" }] }) } as Response)
+        : ({ ok: false, status: 404 } as Response),
+    ));
+    expect((await (await call(okBody)).json()).images).toBe(0);
+  });
+
+  it("skips an image larger than the size cap", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      supa({ caseRow, photos: [{ storage_path: "target/p.jpg" }], signed: "https://signed/p.jpg" }) as never,
+    );
+    const tooBig = new Uint8Array(5 * 1024 * 1024).buffer; // 5MB > 4MB cap
+    vi.stubGlobal("fetch", vi.fn(async (url: string) =>
+      String(url).includes("anthropic.com")
+        ? ({ ok: true, json: async () => ({ content: [{ text: "ok" }] }) } as Response)
+        : ({ ok: true, arrayBuffer: async () => tooBig } as unknown as Response),
+    ));
+    expect((await (await call(okBody)).json()).images).toBe(0);
+  });
 });
