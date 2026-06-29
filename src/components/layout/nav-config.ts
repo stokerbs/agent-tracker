@@ -45,7 +45,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     sectionKey: "administration",
     items: [
-      { labelKey: "clients", href: "/clients", icon: "Building2", roles: STAFF },
+      { labelKey: "clients", href: "/clients", icon: "Building2", roles: ["admin"] },
       { labelKey: "invoices", href: "/invoices", icon: "Banknote", roles: STAFF },
       { labelKey: "users", href: "/users", icon: "ShieldCheck", roles: ["admin"] },
       { labelKey: "audit", href: "/audit", icon: "ScrollText", roles: ["admin"] },
