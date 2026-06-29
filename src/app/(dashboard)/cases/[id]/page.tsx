@@ -148,7 +148,7 @@ export default async function CaseDetailPage({
       .eq("case_id", id)
       .order("expense_date", { ascending: false }),
     c.client_id && staff
-      ? supabase.from("clients").select("*").eq("id", c.client_id).single()
+      ? supabase.from("clients").select("*").eq("id", c.client_id).maybeSingle()
       : Promise.resolve({ data: null }),
     staff
       ? supabase.from("invoices").select("id", { count: "exact", head: true }).eq("case_id", id)

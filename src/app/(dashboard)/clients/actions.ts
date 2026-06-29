@@ -10,7 +10,7 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
 }
 
 export async function updateClient(id: string, formData: FormData) {
-  await requireRole(["admin", "supervisor"]);
+  await requireRole(["admin"]);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -34,7 +34,7 @@ export async function updateClient(id: string, formData: FormData) {
 // NEXT_REDIRECT which is swallowed by the dialog's try/catch and navigation
 // never happens. The caller (CreateClientDialog) does router.push() on success.
 export async function createClientRecord(formData: FormData) {
-  const profile = await requireRole(["admin", "supervisor"]);
+  const profile = await requireRole(["admin"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase

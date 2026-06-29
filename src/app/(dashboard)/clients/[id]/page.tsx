@@ -50,7 +50,7 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const currentProfile = await requireRole(["admin", "supervisor"]);
+  const currentProfile = await requireRole(["admin"]);
   const isAdmin = currentProfile.role === "admin";
   const t = await getTranslations("clients.detail");
   const tCase = await getTranslations("cases");

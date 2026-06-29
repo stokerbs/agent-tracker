@@ -28,7 +28,7 @@ interface Props {
 }
 
 export default async function ClientsPage({ searchParams }: Props) {
-  await requireRole(["admin", "supervisor"]);
+  await requireRole(["admin"]);
   const t = await getTranslations("clients");
   const { q } = await searchParams;
   const supabase = await createClient();
