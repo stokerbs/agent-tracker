@@ -9,6 +9,62 @@ import {
 const BackgroundGeolocation =
   registerPlugin<BackgroundGeolocationPlugin>("BackgroundGeolocation");
 
+// ── Offline queue ──────────────────────────────────────────────────────────
+// Field agents work in dead-signal areas. A fix that fails to POST is stored
+// locally and replayed (as historical backfill, with its true timestamp) once
+// connectivity returns, so the GPS track isn't lost while offline.
+const QUEUE_KEY = "dp_gps_queue";
+const QUEUE_MAX = 500;
+
+function readQueue(): Array<Record<string, unknown>> {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function writeQueue(q: Array<Record<string, unknown>>) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-QUEUE_MAX)));
+  } catch {
+    /* storage full — best effort */
+  }
+}
+function enqueueFix(fix: Record<string, unknown>) {
+  const q = readQueue();
+  q.push(fix);
+  writeQueue(q);
+}
+
+async function postFix(token: string, body: Record<string, unknown>): Promise<boolean> {
+  try {
+    const res = await fetch("/api/agents/location", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Replay queued offline fixes oldest-first; stop at the first failure and keep
+ *  the remainder for the next attempt. */
+async function flushQueue(token: string) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  const q = readQueue();
+  if (q.length === 0) return;
+  let sent = 0;
+  for (; sent < q.length; sent++) {
+    const ok = await postFix(token, q[sent]);
+    if (!ok) break;
+  }
+  if (sent > 0) writeQueue(q.slice(sent));
+}
+
 // Adaptive cadence — post often while moving for a smooth (Life360-like) live
 // map, then back off when stationary to save battery and DB writes. The plugin
 // emits more often than this (past its 10 m distanceFilter); we throttle to
@@ -63,20 +119,24 @@ export async function startBackgroundGps(token: string): Promise<() => void> {
           body.heading = Math.round(location.bearing) % 360;
         }
 
-        void fetch("/api/agents/location", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body),
-        }).catch(() => {
-          // Non-fatal — network may be briefly unavailable in the field.
+        // Live send (no recorded_at → updates the agent's current position).
+        // On success, flush any backlog; on failure (offline), queue this fix
+        // with its capture time so it's backfilled later instead of lost.
+        const recordedAt = new Date().toISOString();
+        void postFix(token, body).then((ok) => {
+          if (ok) void flushQueue(token);
+          else enqueueFix({ ...body, recorded_at: recordedAt });
         });
       },
     );
 
+    // Flush the backlog as soon as connectivity returns.
+    const onOnline = () => void flushQueue(token);
+    if (typeof window !== "undefined") window.addEventListener("online", onOnline);
+    void flushQueue(token); // also try once on start
+
     return () => {
+      if (typeof window !== "undefined") window.removeEventListener("online", onOnline);
       void BackgroundGeolocation.removeWatcher({ id: watcherId }).catch(() => {});
     };
   } catch {
