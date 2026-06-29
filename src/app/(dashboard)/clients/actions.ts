@@ -18,6 +18,7 @@ export async function updateClient(id: string, formData: FormData) {
     .update({
       name:    String(formData.get("name") ?? "").trim(),
       company: emptyToNull(formData.get("company")),
+      address: emptyToNull(formData.get("address")),
       email:   emptyToNull(formData.get("email")),
       phone:   emptyToNull(formData.get("phone")),
       notes:   emptyToNull(formData.get("notes")),
@@ -42,6 +43,7 @@ export async function createClientRecord(formData: FormData) {
     .insert({
       name:    String(formData.get("name") ?? "").trim(),
       company: emptyToNull(formData.get("company")),
+      address: emptyToNull(formData.get("address")),
       email:   emptyToNull(formData.get("email")),
       phone:   emptyToNull(formData.get("phone")),
       notes:   emptyToNull(formData.get("notes")),

@@ -74,6 +74,17 @@ export function EditClientDialog({ client }: { client: Client }) {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="address">{t("fields.address")}</Label>
+            <Textarea
+              id="address"
+              name="address"
+              defaultValue={client.address ?? ""}
+              placeholder={t("fields.addressPlaceholder")}
+              rows={2}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">{t("fields.email")}</Label>

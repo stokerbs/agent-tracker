@@ -1259,7 +1259,9 @@
           "phone": "โทรศัพท์",
           "phonePlaceholder": "+66 81 234 5678",
           "notes": "หมายเหตุ",
-          "notesPlaceholder": "หมายเหตุภายในเกี่ยวกับลูกค้านี้…"
+          "notesPlaceholder": "หมายเหตุภายในเกี่ยวกับลูกค้านี้…",
+          "address": "ที่อยู่",
+          "addressPlaceholder": "164 Bukit Merah Central, Singapore 150164"
         },
         "success": "อัปเดตข้อมูลลูกค้าแล้ว"
       }
@@ -1274,7 +1276,8 @@
       "phone": "โทรศัพท์",
       "notes": "หมายเหตุ",
       "submit": "สร้างลูกค้า",
-      "createdToast": "สร้างลูกค้าเรียบร้อยแล้ว"
+      "createdToast": "สร้างลูกค้าเรียบร้อยแล้ว",
+      "address": "ที่อยู่"
     }
   },
   "users": {
