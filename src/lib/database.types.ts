@@ -1178,6 +1178,7 @@ export type Database = {
           last_seen_at: string | null
           last_speed_kmh: number | null
           last_stop_minutes: number | null
+          stopped_since: string | null
           notes: string | null
           phone_number: string | null
           provider: Database["public"]["Enums"]["gps_provider"] | null
@@ -1205,6 +1206,7 @@ export type Database = {
           last_seen_at?: string | null
           last_speed_kmh?: number | null
           last_stop_minutes?: number | null
+          stopped_since?: string | null
           notes?: string | null
           phone_number?: string | null
           provider?: Database["public"]["Enums"]["gps_provider"] | null
@@ -1232,6 +1234,7 @@ export type Database = {
           last_seen_at?: string | null
           last_speed_kmh?: number | null
           last_stop_minutes?: number | null
+          stopped_since?: string | null
           notes?: string | null
           phone_number?: string | null
           provider?: Database["public"]["Enums"]["gps_provider"] | null

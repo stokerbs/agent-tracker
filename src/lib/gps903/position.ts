@@ -26,21 +26,45 @@ export async function applyPositionToDevice(
   };
   if (pos.battery !== null) posRow.battery_pct = pos.battery;
 
+  const positionTime = gps903DateToIso(pos.fixTime);
+
+  // Derive stop duration. GetTracking returns only an isStop boolean (no
+  // duration), so we track it ourselves: stopped_since is set on the first
+  // stationary fix (seeded from the fix time, so an already-parked device reads
+  // a sensible duration) and cleared on movement; last_stop_minutes is computed
+  // from it each poll.
+  const STOP_SPEED_KMH = 3;
+  const moving = pos.speed > STOP_SPEED_KMH;
+  const { data: cur } = await svc
+    .from("gps_devices")
+    .select("stopped_since")
+    .eq("id", gpsDeviceId)
+    .maybeSingle();
+
+  let stoppedSince: string | null;
+  let stopMinutes: number;
+  if (moving) {
+    stoppedSince = null;
+    stopMinutes  = 0;
+  } else {
+    stoppedSince = cur?.stopped_since ?? positionTime ?? now;
+    stopMinutes  = Math.max(0, Math.round((Date.parse(now) - Date.parse(stoppedSince ?? now)) / 60000));
+  }
+
   const deviceUpdate: Record<string, unknown> = {
-    last_lat:         pos.lat,
-    last_lng:         pos.lng,
-    last_speed_kmh:   pos.speed,
-    last_heading:     heading,
-    last_seen_at:     now,
-    last_polled_at:   now,
-    last_poll_ok:     true,
-    last_locate_mode: pos.locateMode,
+    last_lat:          pos.lat,
+    last_lng:          pos.lng,
+    last_speed_kmh:    pos.speed,
+    last_heading:      heading,
+    last_seen_at:      now,
+    last_polled_at:    now,
+    last_poll_ok:      true,
+    last_locate_mode:  pos.locateMode,
+    stopped_since:     stoppedSince,
+    last_stop_minutes: stopMinutes,
   };
   if (pos.battery !== null) deviceUpdate.last_battery_pct = pos.battery;
-
-  const positionTime = gps903DateToIso(pos.fixTime);
   if (positionTime) deviceUpdate.last_position_time = positionTime;
-  if (pos.stopMinutes !== null) deviceUpdate.last_stop_minutes = pos.stopMinutes;
   deviceUpdate.last_ignition = pos.ignition;
 
   await Promise.all([
