@@ -132,13 +132,23 @@ export async function gps903GetTracking(
   let locateMode: "gps" | "lbs" | "unknown" = "unknown";
   let locateModeSource = "none";
 
+  // dataType — confirmed in the real payload for this firmware: 1=GPS, 2=LBS
+  // (3309704 returned dataType=2 on an LBS/parked fix). Highest priority.
+  if ("dataType" in data && data.dataType !== null && data.dataType !== "") {
+    const dt = Number(data.dataType);
+    if (dt === 1) { locateMode = "gps"; locateModeSource = `dataType=${data.dataType}`; }
+    else if (dt === 2) { locateMode = "lbs"; locateModeSource = `dataType=${data.dataType}`; }
+  }
+
   // Numeric: isLBS / locType (0=GPS, 1=LBS)
-  const lbsFlagFields = ["isLBS", "IsLBS", "isLbs", "locType", "loctype", "posType"];
-  for (const f of lbsFlagFields) {
-    if (f in data && data[f] !== null && data[f] !== undefined && data[f] !== "") {
-      locateMode       = Number(data[f]) === 1 ? "lbs" : "gps";
-      locateModeSource = `${f}=${data[f]}`;
-      break;
+  if (locateMode === "unknown") {
+    const lbsFlagFields = ["isLBS", "IsLBS", "isLbs", "locType", "loctype", "posType"];
+    for (const f of lbsFlagFields) {
+      if (f in data && data[f] !== null && data[f] !== undefined && data[f] !== "") {
+        locateMode       = Number(data[f]) === 1 ? "lbs" : "gps";
+        locateModeSource = `${f}=${data[f]}`;
+        break;
+      }
     }
   }
 
