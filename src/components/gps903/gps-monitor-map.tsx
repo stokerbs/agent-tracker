@@ -295,6 +295,19 @@ function GpsPopup({ device, myPos, onClose }: {
           </div>
         )}
 
+        {/* ── Navigate — opens Google Maps directions to the device ── */}
+        {device.last_lat != null && device.last_lng != null && (
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${Number(device.last_lat)},${Number(device.last_lng)}&travelmode=driving`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Navigation className="h-3.5 w-3.5" />
+            นำทางด้วย Google Maps
+          </a>
+        )}
+
         {/* ── Details toggle ── */}
         <button
           onClick={() => setExpanded((v) => !v)}
