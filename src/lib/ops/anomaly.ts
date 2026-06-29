@@ -1,5 +1,5 @@
 // AI Anomaly Watch — proactively scan a tracked device's recent GPS behaviour
-// against its own 2-week baseline and flag surveillance-relevant anomalies:
+// against its own multi-day baseline and flag surveillance-relevant anomalies:
 //   • new-location   — dwelled somewhere it has never been before
 //   • night-activity — moving at 00:00–05:00 when it normally doesn't
 //   • went-dark      — a normally-reporting device stopped sending fixes
@@ -89,8 +89,11 @@ export function detectAnomalies(opts: {
   recent: Fix[];
   lastSeenAt: string | null;
   now?: Date;
+  /** Length of the baseline window in days — used only for human-readable wording. */
+  baselineDays?: number;
 }): AnomalyResult {
   const now = opts.now ?? new Date();
+  const baselineDays = opts.baselineDays ?? 7;
   const { darkMin, newLocKm, nightMinFixes } = thresholds();
   const signals: AnomalySignal[] = [];
   const trustBaseline = opts.baseline.length >= BASELINE_MIN_FIXES;
@@ -124,7 +127,7 @@ export function detectAnomalies(opts: {
       const { fix, km } = farthest;
       signals.push({
         kind: "new-location",
-        detail: `พบการหยุดอยู่ในสถานที่ใหม่ที่ไม่เคยปรากฏใน 14 วันก่อนหน้า (ห่างจุดเดิม ~${km.toFixed(1)} กม.)`,
+        detail: `พบการหยุดอยู่ในสถานที่ใหม่ที่ไม่เคยปรากฏใน ${baselineDays} วันก่อนหน้า (ห่างจุดเดิม ~${km.toFixed(1)} กม.)`,
         lat: fix.lat,
         lng: fix.lng,
         maps: mapsLink(fix.lat, fix.lng),
