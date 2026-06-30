@@ -37,8 +37,7 @@ const ARTICLES = [
   { slug: "ติดต่อนักสืบ", img: "/marketing/art-contact.png" },
 ];
 
-// Verified customer reviews from the firm's Fastwork profile.
-const FASTWORK_URL = "https://fastwork.co/user/conandoyle";
+// Verified customer reviews (from the firm's Fastwork profile).
 const REVIEW_RATING = "4.8";
 const REVIEW_COUNT = 63;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
@@ -206,12 +205,6 @@ export function MarketingHome() {
                 </figcaption>
               </figure>
             ))}
-          </div>
-
-          <div className="mt-8 text-center">
-            <a href={FASTWORK_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-primary hover:underline">
-              ดูรีวิวทั้งหมด {REVIEW_COUNT} รายการบน Fastwork <ArrowRight className="h-3.5 w-3.5" />
-            </a>
           </div>
         </div>
       </section>
