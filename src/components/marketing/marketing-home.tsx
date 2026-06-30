@@ -139,10 +139,10 @@ export function MarketingHome() {
       <section id="reviews" className="border-t border-border/60 bg-card/30">
         <div className="mx-auto max-w-5xl px-4 py-14">
           <h2 className="text-center text-xl font-bold sm:text-2xl">รีวิวจากลูกค้า</h2>
-          <p className="mt-2 text-center text-sm text-muted-foreground">ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ</p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="mt-2 text-center text-sm text-muted-foreground">ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ · เลื่อนดู →</p>
+          <div className="mt-6 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {REVIEWS.map((src) => (
-              <img key={src} src={src} alt="รีวิวลูกค้า" loading="lazy" className="w-full rounded-lg border border-border/60" />
+              <img key={src} src={src} alt="รีวิวลูกค้า" loading="lazy" className="h-40 w-auto shrink-0 snap-start rounded-lg border border-border/60" />
             ))}
           </div>
         </div>
@@ -152,13 +152,13 @@ export function MarketingHome() {
       {articles.length > 0 && (
         <section id="articles" className="mx-auto max-w-5xl px-4 py-14">
           <h2 className="text-center text-xl font-bold sm:text-2xl">บทความที่น่าสนใจ</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="mt-2 text-center text-sm text-muted-foreground">เลื่อนดู →</p>
+          <div className="mt-6 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {articles.map((a) => (
-              <Link key={a.slug} href={a.page!.path} className="group overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/40">
+              <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/40">
                 <img src={a.img} alt={a.page!.title} loading="lazy" className="aspect-video w-full object-cover" />
-                <div className="p-4">
-                  <h3 className="line-clamp-2 font-medium group-hover:text-primary">{a.page!.title}</h3>
-                  <span className="mt-2 flex items-center gap-1 text-sm text-primary">อ่านบทความ <ArrowRight className="h-3.5 w-3.5" /></span>
+                <div className="p-3">
+                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-primary">{a.page!.title}</h3>
                 </div>
               </Link>
             ))}
