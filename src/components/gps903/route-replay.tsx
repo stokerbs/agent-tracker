@@ -9,7 +9,6 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { X, Play, Pause, Gauge, Flag, MapPin, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { MAP_ID, formatBangkokTime } from "@/lib/maps/shared";
 import type { GpsDeviceForMap } from "@/lib/types";
 
@@ -49,29 +48,26 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
+  const [error, setError] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load the most recent track (up to 500 fixes), oldest-first for replay.
+  // Load the track LIVE from the GPS903 server (last 24h), oldest-first for
+  // replay — the authoritative history, not our stored fixes.
   useEffect(() => {
     let cancelled = false;
+    setPts(null);
+    setError(false);
     (async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("gps_device_positions")
-        .select("lat,lng,speed_kmh,recorded_at")
-        .eq("gps_device_id", device.id)
-        .order("recorded_at", { ascending: false })
-        .limit(500);
-      if (cancelled) return;
-      const rows: Pt[] = (data ?? []).map((r) => ({
-        lat: Number(r.lat),
-        lng: Number(r.lng),
-        speed: Number(r.speed_kmh ?? 0),
-        t: r.recorded_at as string,
-      }));
-      rows.reverse();
-      setPts(rows);
-      setIdx(0);
+      try {
+        const res = await fetch(`/api/gps/history?deviceId=${device.id}&hours=24`);
+        if (!res.ok) throw new Error(String(res.status));
+        const { points } = (await res.json()) as { points: Pt[] };
+        if (cancelled) return;
+        setPts(points ?? []);
+        setIdx(0);
+      } catch {
+        if (!cancelled) setError(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [device.id]);
@@ -124,9 +120,21 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
 
       {/* Map */}
       <div className="relative flex-1 overflow-hidden">
-        {!pts && (
+        {!pts && !error && (
           <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดเส้นทาง…
+            <Loader2 className="h-4 w-4 animate-spin" /> กำลังดึงเส้นทางจาก GPS903…
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-7 w-7 text-destructive/40" />
+            <span>ดึงประวัติเส้นทางจาก GPS903 ไม่สำเร็จ</span>
+            <button
+              onClick={() => { setError(false); setPts(null); setIdx(0); fetch(`/api/gps/history?deviceId=${device.id}&hours=24`).then(async (r) => { if (!r.ok) throw new Error(); const { points } = await r.json(); setPts(points ?? []); }).catch(() => setError(true)); }}
+              className="rounded-md border border-border/60 px-3 py-1 text-xs hover:bg-muted"
+            >
+              ลองใหม่
+            </button>
           </div>
         )}
         {pts && pts.length === 0 && (
