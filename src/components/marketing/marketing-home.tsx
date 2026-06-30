@@ -42,8 +42,12 @@ const FASTWORK_URL = "https://fastwork.co/user/conandoyle";
 const REVIEW_RATING = "4.8";
 const REVIEW_COUNT = 63;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
+  { name: "pingpong27", date: "07/02/2026", stars: 5, text: "รวดเร็วและข้อมูลแม่นยำแบบ 100% ทำงานเร็วกว่ากำหนดไว้มาก แจ้งว่าได้ข้อมูล 1-2 วัน แต่เวลาจริงไม่ถึงครึ่งวันได้ข้อมูลมาแล้วและครบถ้วนถูกต้อง" },
+  { name: "Nattavara", date: "13/01/2026", stars: 5, text: "ตกใจกับข้อมูลที่ได้เพราะรู้ลึกพอสมควรสำหรับคนที่ให้สืบ แนะนำค่ะ" },
   { name: "ลูกค้า Fastwork", date: "10/06/2026", stars: 5, text: "ดีมากค่ะ ประทับใจทีมงาน อัพเดทตลอดเวลา ใครต้องการจ้างแนะนำเลยจริงๆค่ะ" },
-  { name: "jir7uww1", date: "29/05/2026", stars: 5, text: "มันว้าวมาก" },
+  { name: "ลูกค้า Fastwork", date: "25/12/2025", stars: 4, text: "ทำงานดี ให้คำปรึกษาดี ผลงานออกมาดีเกินคาดเลย เชื่อมั่นได้ว่าไม่โกงแน่นอน" },
+  { name: "plmrenpz", date: "16/10/2025", stars: 5, text: "ทำงานรอไว้ล่วงหน้าเลย ดีมากค่ะ แนะนำ" },
+  { name: "ลูกค้า Fastwork", date: "15/08/2025", stars: 5, text: "มืออาชีพมากค่ะ" },
 ];
 
 export function MarketingHome() {
@@ -184,7 +188,7 @@ export function MarketingHome() {
           </div>
 
           {/* Testimonials */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {TESTIMONIALS.map((r, i) => (
               <figure key={i} className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
                 <CornerTicks />
@@ -196,7 +200,7 @@ export function MarketingHome() {
                   </span>
                   <FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag>
                 </div>
-                <blockquote className="mt-4 font-serif text-lg leading-relaxed text-foreground/95">“{r.text}”</blockquote>
+                <blockquote className="mt-4 font-serif text-base leading-relaxed text-foreground/95">“{r.text}”</blockquote>
                 <figcaption className="mt-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                   <span className="h-px w-4 bg-primary/50" /> {r.name} · {r.date}
                 </figcaption>

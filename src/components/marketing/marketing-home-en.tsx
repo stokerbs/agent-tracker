@@ -32,8 +32,12 @@ const FASTWORK_URL = "https://fastwork.co/user/conandoyle";
 const REVIEW_RATING = "4.8";
 const REVIEW_COUNT = 63;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
+  { name: "pingpong27", date: "07/02/2026", stars: 5, text: "Fast and 100% accurate. Far quicker than promised — they said 1–2 days, but I had the complete, correct information in under half a day." },
+  { name: "Nattavara", date: "13/01/2026", stars: 5, text: "I was stunned by how much they uncovered — genuinely deep detail on the person. Highly recommend." },
   { name: "Fastwork client", date: "10/06/2026", stars: 5, text: "Excellent service — really impressed with the team, constant updates throughout. I honestly recommend them to anyone looking to hire." },
-  { name: "jir7uww1", date: "29/05/2026", stars: 5, text: "Absolutely wow." },
+  { name: "Fastwork client", date: "25/12/2025", stars: 4, text: "Great work and great advice. The results exceeded expectations — you can trust them completely." },
+  { name: "Ada", date: "04/02/2026", stars: 5, text: "Good finding." },
+  { name: "Fastwork client", date: "15/08/2025", stars: 5, text: "Truly professional." },
 ];
 
 export function MarketingHomeEN() {
@@ -158,7 +162,7 @@ export function MarketingHomeEN() {
         </div>
 
         {/* Testimonials */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TESTIMONIALS.map((r, i) => (
             <figure key={i} className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
               <CornerTicks />
@@ -170,7 +174,7 @@ export function MarketingHomeEN() {
                 </span>
                 <FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag>
               </div>
-              <blockquote className="mt-4 font-serif text-lg leading-relaxed text-foreground/95">“{r.text}”</blockquote>
+              <blockquote className="mt-4 font-serif text-base leading-relaxed text-foreground/95">“{r.text}”</blockquote>
               <figcaption className="mt-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                 <span className="h-px w-4 bg-primary/50" /> {r.name} · {r.date}
               </figcaption>
