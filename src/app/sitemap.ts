@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getMarketingPages } from "@/lib/marketing/content";
+import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content";
 
 const BASE = "https://detectivepulse.com";
 
@@ -19,5 +19,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly",
     priority: 0.7,
   }));
-  return [...staticPages, ...marketing];
+  const english: MetadataRoute.Sitemap = [
+    { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    ...getMarketingPagesEN().map((p) => ({
+      url: `${BASE}${p.path.replace(/\/+$/, "")}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+  return [...staticPages, ...marketing, ...english];
 }
