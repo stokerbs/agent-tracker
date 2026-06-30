@@ -29,9 +29,13 @@ export function LangSwitch() {
   return (
     <span className="inline-flex items-center gap-1 text-sm">
       <Globe className="h-4 w-4 text-muted-foreground" />
-      <Link href={thHref} className={onEN ? "text-muted-foreground hover:text-foreground" : "font-semibold text-foreground"}>TH</Link>
+      <Link href={thHref} className={onEN ? "text-muted-foreground hover:text-foreground" : "font-semibold text-foreground"}>
+        <span aria-hidden>🇹🇭</span> TH
+      </Link>
       <span className="text-muted-foreground">/</span>
-      <Link href={enHref} className={onEN ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}>EN</Link>
+      <Link href={enHref} className={onEN ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}>
+        <span aria-hidden>🇬🇧</span> EN
+      </Link>
     </span>
   );
 }
