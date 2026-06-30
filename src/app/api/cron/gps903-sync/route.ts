@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getOrRefreshCredentialSession, gps903GetTracking, applyPositionToDevice } from "@/lib/gps903";
 
-export const maxDuration = 30;
+// Headroom for the slower (20s) per-poll timeout; devices are polled in parallel.
+export const maxDuration = 60;
 
 /**
  * GET /api/cron/gps903-sync
