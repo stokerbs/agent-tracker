@@ -28,7 +28,6 @@ const WHY = [
 ];
 
 // Verified customer reviews from the firm's Fastwork profile.
-const FASTWORK_URL = "https://fastwork.co/user/conandoyle";
 const REVIEW_RATING = "4.8";
 const REVIEW_COUNT = 63;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
@@ -180,12 +179,6 @@ export function MarketingHomeEN() {
               </figcaption>
             </figure>
           ))}
-        </div>
-
-        <div className="mt-8 text-center">
-          <a href={FASTWORK_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-primary hover:underline">
-            See all {REVIEW_COUNT} reviews on Fastwork <ArrowRight className="h-3.5 w-3.5" />
-          </a>
         </div>
       </section>
 
