@@ -16,13 +16,17 @@ export async function generateMetadata(
   const { slug } = await params;
   const page = getMarketingPage(slug);
   if (!page) return {};
+  // Next strips trailing slashes (308) → the page serves at the non-trailing
+  // path; keep canonical/OG on that exact served URL so they don't point at a
+  // redirect. The old WP trailing-slash URLs 308 here (Google honors it).
+  const canonicalPath = page.path.replace(/\/+$/, "") || "/";
   return {
     title: page.seoTitle,
     description: page.description,
-    alternates: { canonical: page.path },
+    alternates: { canonical: canonicalPath },
     openGraph: {
       type: "article",
-      url: `https://detectivepulse.com${page.path}`,
+      url: `https://detectivepulse.com${canonicalPath}`,
       title: page.seoTitle,
       description: page.description,
       siteName: "Detective Pulse",

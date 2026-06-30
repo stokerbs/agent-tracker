@@ -13,7 +13,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/support`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
   const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
-    url: `${BASE}${p.path}`,
+    // Non-trailing-slash to match the served URL (Next 308s the trailing form).
+    url: `${BASE}${p.path.replace(/\/+$/, "") || "/"}`,
     lastModified: now,
     changeFrequency: "monthly",
     priority: 0.7,
