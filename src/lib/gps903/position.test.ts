@@ -136,3 +136,67 @@ describe("applyPositionToDevice — geofence hysteresis", () => {
     expect(posInsert?.row).toMatchObject({ gps_device_id: DEV, locate_mode: "gps" });
   });
 });
+
+describe("applyPositionToDevice — stop detection (speed OR GPS displacement)", () => {
+  const deviceUpdate = (updates: Array<{ table: string; obj: any }>) =>
+    updates.find((u) => u.table === "gps_devices")!.obj;
+  const STALE = "2026-06-29T15:54:11Z"; // a stored stop start in the past
+  const posMode = (lat: number, lng: number, mode: "gps" | "lbs"): TrackingResult => ({
+    ...pos(lat, lng),
+    locateMode: mode,
+  });
+
+  it("clears stop when the GPS position jumped >100m even though speed reports 0", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: STALE, last_lat: 13.0, last_lng: 100.0 },
+      fences: [],
+    });
+    // ~90km jump, speed 0, GPS → must be treated as moving.
+    await applyPositionToDevice(svc, DEV, posMode(13.75, 100.5, "gps"), "Tracker-1");
+    expect(deviceUpdate(updates)).toMatchObject({ stopped_since: null, last_stop_minutes: 0 });
+  });
+
+  it("keeps stop running when only GPS jitter (<100m) at speed 0", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: STALE, last_lat: 13.75000, last_lng: 100.50000 },
+      fences: [],
+    });
+    // ~25m jitter → still parked; existing stopped_since preserved.
+    await applyPositionToDevice(svc, DEV, posMode(13.75015, 100.50015, "gps"), "Tracker-1");
+    const obj = deviceUpdate(updates);
+    expect(obj.stopped_since).toBe(STALE);
+    expect(obj.last_stop_minutes).toBeGreaterThan(0);
+  });
+
+  it("does NOT treat a large LBS position change as movement (LBS jitter)", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: STALE, last_lat: 13.0, last_lng: 100.0 },
+      fences: [],
+    });
+    // Huge displacement but LBS → ignored; device stays "stopped".
+    await applyPositionToDevice(svc, DEV, posMode(13.75, 100.5, "lbs"), "Tracker-1");
+    expect(deviceUpdate(updates).stopped_since).toBe(STALE);
+  });
+
+  it("treats reported speed > 3 as moving even with no displacement", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: STALE, last_lat: 13.75, last_lng: 100.5 },
+      fences: [],
+    });
+    // same position (0m moved) but driving per reported speed → moving.
+    await applyPositionToDevice(svc, DEV, { ...posMode(13.75, 100.5, "gps"), speed: 42 }, "Tracker-1");
+    expect(deviceUpdate(updates)).toMatchObject({ stopped_since: null, last_stop_minutes: 0 });
+  });
+
+  it("seeds a fresh stop from now (not the GPS fix time) on first stationary fix", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: null, last_lat: 13.75, last_lng: 100.5 },
+      fences: [],
+    });
+    await applyPositionToDevice(svc, DEV, posMode(13.75, 100.5, "gps"), "Tracker-1");
+    const obj = deviceUpdate(updates);
+    // seeded ~now → small elapsed, and NOT the 2026-06-30 00:00 fixTime in pos()
+    expect(obj.last_stop_minutes).toBeLessThan(5);
+    expect(Date.parse(obj.stopped_since)).toBeGreaterThan(Date.parse("2026-06-30T00:00:00Z"));
+  });
+});
