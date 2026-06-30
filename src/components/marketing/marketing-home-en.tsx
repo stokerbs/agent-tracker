@@ -4,7 +4,6 @@ import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
   PhoneCall, ArrowRight, PlayCircle, MessageCircle,
 } from "lucide-react";
-import { SiteChrome } from "@/components/marketing/site-chrome";
 import { getMarketingPageEN } from "@/lib/marketing/content";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
@@ -33,7 +32,7 @@ export function MarketingHomeEN() {
   const contact = getMarketingPageEN("contact");
 
   return (
-    <SiteChrome>
+    <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
@@ -137,6 +136,6 @@ export function MarketingHomeEN() {
           </div>
         </div>
       </section>
-    </SiteChrome>
+    </>
   );
 }
