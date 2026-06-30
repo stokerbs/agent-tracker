@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
+import { ArticleCover } from "@/components/marketing/article-cover";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { getMarketingPage } from "@/lib/marketing/content";
 
@@ -29,12 +30,12 @@ const WHY = [
 ];
 
 const ARTICLES = [
-  { slug: "จ้างนักสืบออนไลน์", img: "/marketing/art-online.png" },
-  { slug: "private-investigator", img: "/marketing/art-pi.png" },
-  { slug: "สืบตามหาคน", img: "/marketing/art-find.png" },
-  { slug: "บริการนักสืบ", img: "/marketing/art-services.png" },
-  { slug: "สืบทรัพย์สิน", img: "/marketing/art-assets.png" },
-  { slug: "ติดต่อนักสืบ", img: "/marketing/art-contact.png" },
+  { slug: "จ้างนักสืบออนไลน์" },
+  { slug: "private-investigator" },
+  { slug: "สืบตามหาคน" },
+  { slug: "บริการนักสืบ" },
+  { slug: "สืบทรัพย์สิน" },
+  { slug: "ติดต่อนักสืบ" },
 ];
 
 // Verified customer reviews (from the firm's Fastwork profile).
@@ -214,9 +215,9 @@ export function MarketingHome() {
         <section id="articles" className="mx-auto max-w-5xl px-4 py-16">
           <SectionHeading eyebrow="Field Notes · บันทึก" title="บทความที่น่าสนใจ" sub="เลื่อนดู →" />
           <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
-            {articles.map((a) => (
+            {articles.map((a, i) => (
               <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
-                <img src={a.img} alt={a.page!.title} loading="lazy" className="aspect-video w-full object-cover" />
+                <ArticleCover slug={a.slug} title={a.page!.title} index={i} />
                 <div className="p-3.5">
                   <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{a.page!.title}</h3>
                 </div>

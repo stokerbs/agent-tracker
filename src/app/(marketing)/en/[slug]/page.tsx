@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { getMarketingPageEN, getMarketingPagesEN } from "@/lib/marketing/content";
 import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
+import { ArticleCover } from "@/components/marketing/article-cover";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only translated pages; everything else 404s
@@ -54,7 +55,12 @@ export default async function MarketingArticleEN(
         <ArrowLeft className="h-3.5 w-3.5" /> Back to home
       </Link>
       <article className="mt-6">
-        <Eyebrow className="!gap-2">Case File</Eyebrow>
+        <div className="overflow-hidden rounded-xl border border-border">
+          <ArticleCover slug={page.slug} title={page.title} lang="en" />
+        </div>
+        <div className="mt-6">
+          <Eyebrow className="!gap-2">Case File</Eyebrow>
+        </div>
         <h1 className="mt-4 font-serif text-3xl font-bold leading-snug tracking-tight sm:text-4xl">{page.title}</h1>
         {page.description && <p className="mt-4 leading-relaxed text-muted-foreground">{page.description}</p>}
         <div className="dp-hairline mt-7" />
