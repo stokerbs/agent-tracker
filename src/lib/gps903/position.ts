@@ -50,21 +50,23 @@ export async function applyPositionToDevice(
     .eq("id", gpsDeviceId)
     .maybeSingle();
 
-  // Derive stop duration ourselves (GetTracking returns only an isStop boolean).
-  // Movement = reported speed OR a real GPS displacement: some GPS903 firmwares
-  // report speed 0 even while driving (observed live: a 2.9 km jump at speed
-  // 0.00), so speed alone misses movement and stop time inflates to many hours.
-  // Distance is trusted only for GPS fixes — LBS positions jitter by kilometres
-  // and would false-trigger "moving". stopped_since is seeded from the server
-  // poll clock (now), never the GPS fix time, so a stale fix (offline/LBS device
-  // that hasn't fixed in days) can't seed a stop start days in the past.
+  // GetTracking sends no stop *duration*, only the 903's own move/stop flag
+  // (isStop / status). We track the duration ourselves but decide moving-vs-
+  // stopped primarily from the device's own flag (what the 903 console shows),
+  // with speed and a real GPS displacement as backups: some firmwares report
+  // speed 0 even while driving (observed live: a 2.9 km jump at speed 0.00), so
+  // speed alone inflates stop time to many hours. Distance is trusted only for
+  // GPS fixes — LBS positions jitter by kilometres and would false-trigger.
+  // stopped_since is seeded from the server poll clock (now), never the GPS fix
+  // time, so a stale fix can't seed a stop start days in the past.
   const STOP_SPEED_KMH = 3;
   const MOVE_DISTANCE_M = 100;
   const movedM =
     pos.locateMode === "gps" && cur?.last_lat != null && cur?.last_lng != null
       ? haversineMeters(cur.last_lat, cur.last_lng, pos.lat, pos.lng)
       : 0;
-  const moving = pos.speed > STOP_SPEED_KMH || movedM > MOVE_DISTANCE_M;
+  const moving =
+    pos.isStop === false || pos.speed > STOP_SPEED_KMH || movedM > MOVE_DISTANCE_M;
 
   let stoppedSince: string | null;
   let stopMinutes: number;

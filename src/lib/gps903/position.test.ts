@@ -30,7 +30,7 @@ function fenceAround(id: string, name: string, lat: number, lng: number) {
 }
 
 function pos(lat: number, lng: number): TrackingResult {
-  return { lat, lng, speed: 0, course: 0, battery: 80, ignition: false, fixTime: "2026-06-30 00:00:00", locateMode: "gps", stopMinutes: null };
+  return { lat, lng, speed: 0, course: 0, battery: 80, ignition: false, fixTime: "2026-06-30 00:00:00", locateMode: "gps", stopMinutes: null, isStop: true };
 }
 
 // Chainable mock SvcClient. `single` = row returned by .maybeSingle() per table;
@@ -176,6 +176,16 @@ describe("applyPositionToDevice — stop detection (speed OR GPS displacement)",
     // Huge displacement but LBS → ignored; device stays "stopped".
     await applyPositionToDevice(svc, DEV, posMode(13.75, 100.5, "lbs"), "Tracker-1");
     expect(deviceUpdate(updates).stopped_since).toBe(STALE);
+  });
+
+  it("clears stop when the 903 flag says moving (isStop=false) at speed 0, no displacement", async () => {
+    const { svc, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: STALE, last_lat: 13.75, last_lng: 100.5 },
+      fences: [],
+    });
+    // device's own flag = moving, even though speed 0 and position unchanged.
+    await applyPositionToDevice(svc, DEV, { ...posMode(13.75, 100.5, "gps"), isStop: false }, "Tracker-1");
+    expect(deviceUpdate(updates)).toMatchObject({ stopped_since: null, last_stop_minutes: 0 });
   });
 
   it("treats reported speed > 3 as moving even with no displacement", async () => {

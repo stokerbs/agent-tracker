@@ -16,6 +16,7 @@ export interface TrackingResult {
   fixTime:     string;               // deviceUtcDate as-is
   locateMode:  "gps" | "lbs" | "unknown"; // gps = satellite fix; lbs = cell tower; unknown = field absent
   stopMinutes: number | null;        // minutes stopped (stopTimeMinute or parsed stopTime string)
+  isStop:      boolean | null;       // 903's own stopped flag (isStop=1 / status "Stop"); null = field absent
 }
 
 /**
@@ -193,6 +194,18 @@ export async function gps903GetTracking(
     }
   }
 
+  // 903's own move/stop determination — more reliable than the speed field,
+  // which some firmwares report as 0 even while driving. Prefer the numeric
+  // isStop flag, fall back to the status string ("Stop"/"Move").
+  let isStop: boolean | null = null;
+  if ("isStop" in data && data.isStop !== null && data.isStop !== "") {
+    isStop = Number(data.isStop) === 1;
+  } else if (data.status) {
+    const s = String(data.status).toLowerCase();
+    if (s.includes("stop")) isStop = true;
+    else if (s.includes("move") || s.includes("run") || s.includes("driv")) isStop = false;
+  }
+
   const result: TrackingResult = {
     lat,
     lng,
@@ -203,6 +216,7 @@ export async function gps903GetTracking(
     fixTime:     String(data.deviceUtcDate ?? new Date().toISOString()),
     locateMode,
     stopMinutes,
+    isStop,
   };
 
   console.log(
