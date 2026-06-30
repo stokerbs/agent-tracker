@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, X, Phone, Mail, Facebook } from "lucide-react";
+import { MessageCircle, X, Phone, Mail } from "lucide-react";
+import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 
 // The firm's real contact channels (same as the old WordPress site).
 const CHANNELS: { label: string; href: string; bg: string; icon: React.ReactNode }[] = [
-  { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#06C755", icon: <MessageCircle className="h-5 w-5" /> },
-  { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66809188324", bg: "#25D366", icon: <Phone className="h-5 w-5" /> },
+  { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#06C755", icon: <LineIcon className="h-5 w-5" /> },
+  { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66809188324", bg: "#25D366", icon: <WhatsAppIcon className="h-5 w-5" /> },
   { label: "โทร 096 846 1406", href: "tel:+66968461406", bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
-  { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1877F2", icon: <Facebook className="h-5 w-5" /> },
+  { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1877F2", icon: <FacebookIcon className="h-5 w-5" /> },
   { label: "อีเมล", href: "mailto:detectivepluse@gmail.com", bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
 ];
 

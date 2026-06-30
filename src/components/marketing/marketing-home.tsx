@@ -2,10 +2,11 @@
 import Link from "next/link";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
-  PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Facebook, Crosshair, Fingerprint,
+  PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Crosshair, Fingerprint,
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
+import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { getMarketingPage } from "@/lib/marketing/content";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
@@ -38,11 +39,6 @@ const ARTICLES = [
 
 const REVIEWS = ["/marketing/review1.png", "/marketing/review2.png", "/marketing/review3.png", "/marketing/review4.png", "/marketing/review5.png"];
 
-const CONTACT_BTNS = [
-  { href: "https://lin.ee/SSqk98x", img: "/marketing/btn-line.jpg", alt: "เพิ่มเพื่อน LINE" },
-  { href: "https://api.whatsapp.com/send?phone=+66809188324", img: "/marketing/btn-whatsapp.jpg", alt: "WhatsApp" },
-];
-
 export function MarketingHome() {
   const services = SERVICES.map((s) => ({ ...s, page: getMarketingPage(s.slug) })).filter((s) => s.page);
   const articles = ARTICLES.map((a) => ({ ...a, page: getMarketingPage(a.slug) })).filter((a) => a.page);
@@ -67,7 +63,7 @@ export function MarketingHome() {
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
-              <MessageCircle className="h-4 w-4" /> ปรึกษาฟรีทาง LINE
+              <LineIcon className="h-5 w-5" /> ปรึกษาฟรีทาง LINE
             </a>
             <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-opacity hover:opacity-90">
               <PhoneCall className="h-4 w-4" /> โทรเลย
@@ -201,13 +197,14 @@ export function MarketingHome() {
           <Stamp className="mb-6">Confidential</Stamp>
           <SectionHeading eyebrow="Open a Case · เปิดคดี" title="เรา คือนักสืบเอกชน มืออาชีพ" sub="ปรึกษาเบื้องต้นได้ทุกเคส เป็นความลับ — ติดต่อทีมนักสืบของเราได้เลย" />
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            {CONTACT_BTNS.map((b) => (
-              <a key={b.href} href={b.href} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
-                <img src={b.img} alt={b.alt} className="h-12 w-auto rounded-md" />
-              </a>
-            ))}
-            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 hover:bg-muted">
-              <Facebook className="h-5 w-5 text-primary" /> Facebook
+            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+              <LineIcon className="h-5 w-5" /> LINE
+            </a>
+            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+              <WhatsAppIcon className="h-5 w-5" /> WhatsApp
+            </a>
+            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1877F2] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+              <FacebookIcon className="h-5 w-5" /> Facebook
             </a>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
@@ -218,9 +215,10 @@ export function MarketingHome() {
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}
           </div>
-          <div className="mt-8 flex flex-col items-center gap-2">
-            <img src="/marketing/btn-wechat.jpg" alt="WeChat QR" className="h-24 w-24 rounded-md border border-border" />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">WeChat QR</span>
+          <div className="mt-8 inline-flex flex-col items-center gap-2 rounded-xl border border-border bg-card/50 p-4">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-[#07C160]"><WeChatIcon className="h-4 w-4" /> WeChat</span>
+            <img src="/marketing/btn-wechat.jpg" alt="WeChat QR code" className="h-28 w-28 rounded-md border border-border" />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">สแกนเพื่อเพิ่มเพื่อน</span>
           </div>
         </div>
       </section>
