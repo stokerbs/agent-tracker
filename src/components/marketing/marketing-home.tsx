@@ -2,9 +2,10 @@
 import Link from "next/link";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
-  PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Facebook,
+  PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Facebook, Crosshair, Fingerprint,
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
+import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { getMarketingPage } from "@/lib/marketing/content";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
@@ -51,114 +52,141 @@ export function MarketingHome() {
     <SiteChrome>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/60">
-        <div className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-        <div className="relative mx-auto max-w-5xl px-4 py-16 text-center">
-          <img src="/marketing/logo.png" alt="Detective Pulse" className="mx-auto mb-6 h-12 w-auto" />
-          <h1 className="mx-auto max-w-3xl text-balance text-3xl font-bold tracking-tight sm:text-5xl">
-            นักสืบเอกชน <span className="text-primary">มืออาชีพ</span> รับงานสืบทั่วราชอาณาจักร
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
+        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <img src="/marketing/logo.png" alt="Detective Pulse" className="h-11 w-auto" />
+          </div>
+          <Eyebrow>Case File · เปิดสำนวนสืบสวน</Eyebrow>
+          <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+            นักสืบเอกชน <span className="text-primary">มืออาชีพ</span><br className="hidden sm:block" /> รับงานสืบทั่วราชอาณาจักร
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
             ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <MessageCircle className="h-4 w-4" /> ปรึกษาฟรีทาง LINE
             </a>
-            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90">
+            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-opacity hover:opacity-90">
               <PhoneCall className="h-4 w-4" /> โทรเลย
             </a>
-            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-5 py-2.5 font-medium hover:bg-muted">ช่องทางติดต่อ <ArrowRight className="h-4 w-4" /></a>
+            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-muted">
+              ช่องทางติดต่อ <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="text-primary/80">{"// กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก"}</span>
           </div>
         </div>
       </section>
 
       {/* Video */}
-      <section className="mx-auto max-w-3xl px-4 py-14">
-        <h2 className="mb-6 text-center text-xl font-bold sm:text-2xl">แนะนำ Detective Pulse</h2>
-        <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative block overflow-hidden rounded-xl border border-border/60">
+      <section className="mx-auto max-w-3xl px-4 py-16">
+        <SectionHeading eyebrow="Evidence Reel · วิดีโอแนะนำ" title="แนะนำ Detective Pulse" />
+        <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative mt-8 block overflow-hidden rounded-xl border border-border bg-card">
+          <CornerTicks />
           <img src="/marketing/video-cover.png" alt="วิดีโอแนะนำ Detective Pulse" className="w-full" />
-          <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
-            <PlayCircle className="h-16 w-16 text-white drop-shadow-lg" />
+          <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
+            <PlayCircle className="h-16 w-16 text-white drop-shadow-lg transition-transform group-hover:scale-110" />
           </span>
+          <span className="absolute left-3 top-3"><FileTag>REC ●</FileTag></span>
         </a>
       </section>
 
       {/* About */}
-      <section id="about" className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-3xl px-4 py-14 text-center">
-          <h2 className="text-xl font-bold sm:text-2xl">เกี่ยวกับเรา</h2>
-          <p className="mt-4 leading-relaxed text-muted-foreground">
+      <section id="about" className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+          <SectionHeading eyebrow="Dossier · เกี่ยวกับเรา" title="เกี่ยวกับเรา" />
+          <p className="mt-6 leading-relaxed text-muted-foreground">
             นักสืบเอกชน Detective Pulse ให้บริการสืบข้อมูลด้านบุคคล เช่น การสืบชู้สาว สืบจับบุคคลตามหมายจับ หมายศาล สืบหาคนหาย หาที่อยู่บุคคล ตามหาคนโกง โดนโกงออนไลน์ สืบพฤติกรรมบุตรหลาน สืบประวัติการก่ออาชญากรรม สืบประวัติบุคคลก่อนเข้าทำงาน สืบประวัติการเดินทางเข้าออกประเทศ ติดตามรถยนต์ เช็คการใช้งานโทรศัพท์ และอื่น ๆ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
           </p>
         </div>
       </section>
 
-      {/* Services */}
-      <section id="services" className="mx-auto max-w-5xl px-4 py-14">
-        <h2 className="text-center text-xl font-bold sm:text-2xl">บริการของเรา</h2>
-        <p className="mt-2 text-center text-sm font-medium text-primary">กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก</p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => (
-            <Link key={s.slug} href={s.page!.path} className="group rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/40">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><s.Icon className="h-5 w-5" /></div>
-              <h3 className="font-semibold group-hover:text-primary">{s.label}</h3>
+      {/* Services — case files */}
+      <section id="services" className="mx-auto max-w-5xl px-4 py-16">
+        <SectionHeading eyebrow="Active Cases · แฟ้มคดี" title="บริการของเรา" sub="กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก" />
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {services.map((s, i) => (
+            <Link key={s.slug} href={s.page!.path} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+              <CornerTicks />
+              <div className="flex items-center justify-between">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
+                  <s.Icon className="h-5 w-5" />
+                </span>
+                <FileTag>{`CASE ${String(i + 1).padStart(2, "0")}`}</FileTag>
+              </div>
+              <h3 className="mt-4 font-serif text-lg font-bold group-hover:text-primary">{s.label}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.blurb}</p>
+              <span className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary/80">
+                เปิดสำนวน <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Why us */}
-      <section className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto grid max-w-5xl gap-6 px-4 py-14 sm:grid-cols-3">
-          {WHY.map((w) => (
-            <div key={w.title} className="text-center">
-              <div className="mx-auto mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary"><w.Icon className="h-5 w-5" /></div>
-              <h3 className="font-semibold">{w.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{w.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Process */}
-      <section id="process" className="mx-auto max-w-3xl px-4 py-14">
-        <h2 className="text-center text-xl font-bold sm:text-2xl">ขั้นตอนการทำงาน</h2>
-        <ol className="mt-8 space-y-4">
-          {PROCESS.map((step, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{i + 1}</span>
-              <span className="pt-0.5 leading-relaxed">{step}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-6 text-center text-sm text-muted-foreground">* หากยกเลิกโดยผู้ว่าจ้าง จะไม่คืนเงินมัดจำ</p>
-      </section>
-
-      {/* Reviews */}
-      <section id="reviews" className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-5xl px-4 py-14">
-          <h2 className="text-center text-xl font-bold sm:text-2xl">รีวิวจากลูกค้า</h2>
-          <p className="mt-2 text-center text-sm text-muted-foreground">ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ · เลื่อนดู →</p>
-          <div className="mt-6 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
-            {REVIEWS.map((src) => (
-              <img key={src} src={src} alt="รีวิวลูกค้า" loading="lazy" className="h-40 w-auto shrink-0 snap-start rounded-lg border border-border/60" />
+      {/* Why us — seals */}
+      <section className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-5xl px-4 py-16">
+          <SectionHeading eyebrow="Credentials · จุดเด่น" title="ทำไมต้องเรา" />
+          <div className="mt-10 grid gap-8 sm:grid-cols-3">
+            {WHY.map((w) => (
+              <div key={w.title} className="text-center">
+                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-primary/40 bg-primary/5 text-primary shadow-[inset_0_0_0_4px_hsl(var(--primary)/0.08)]">
+                  <w.Icon className="h-6 w-6" />
+                </span>
+                <h3 className="mt-4 font-serif text-lg font-bold">{w.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{w.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Articles */}
+      {/* Process — evidence chain */}
+      <section id="process" className="mx-auto max-w-3xl px-4 py-16">
+        <SectionHeading eyebrow="Protocol · ขั้นตอน" title="ขั้นตอนการทำงาน" />
+        <ol className="relative mt-10 space-y-6 before:absolute before:left-[15px] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border">
+          {PROCESS.map((step, i) => (
+            <li key={i} className="relative flex items-start gap-4">
+              <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-background font-mono text-sm font-semibold text-primary">
+                {i + 1}
+              </span>
+              <span className="pt-1 leading-relaxed">{step}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-8 text-center font-mono text-[11px] uppercase tracking-wider text-muted-foreground">* หากยกเลิกโดยผู้ว่าจ้าง จะไม่คืนเงินมัดจำ</p>
+      </section>
+
+      {/* Reviews — exhibits */}
+      <section id="reviews" className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-5xl px-4 py-16">
+          <SectionHeading eyebrow="Exhibits · หลักฐานยืนยัน" title="รีวิวจากลูกค้า" sub="ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ · เลื่อนดู →" />
+          <div className="mt-8 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+            {REVIEWS.map((src, i) => (
+              <figure key={src} className="relative shrink-0 snap-start">
+                <img src={src} alt="รีวิวลูกค้า" loading="lazy" className="h-44 w-auto rounded-lg border border-border" />
+                <figcaption className="absolute left-2 top-2"><FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag></figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Articles — field notes */}
       {articles.length > 0 && (
-        <section id="articles" className="mx-auto max-w-5xl px-4 py-14">
-          <h2 className="text-center text-xl font-bold sm:text-2xl">บทความที่น่าสนใจ</h2>
-          <p className="mt-2 text-center text-sm text-muted-foreground">เลื่อนดู →</p>
-          <div className="mt-6 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+        <section id="articles" className="mx-auto max-w-5xl px-4 py-16">
+          <SectionHeading eyebrow="Field Notes · บันทึก" title="บทความที่น่าสนใจ" sub="เลื่อนดู →" />
+          <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {articles.map((a) => (
-              <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/40">
+              <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
                 <img src={a.img} alt={a.page!.title} loading="lazy" className="aspect-video w-full object-cover" />
-                <div className="p-3">
-                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-primary">{a.page!.title}</h3>
+                <div className="p-3.5">
+                  <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{a.page!.title}</h3>
                 </div>
               </Link>
             ))}
@@ -167,30 +195,32 @@ export function MarketingHome() {
       )}
 
       {/* Contact */}
-      <section id="contact" className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <h2 className="text-xl font-bold sm:text-2xl">เรา คือนักสืบเอกชน มืออาชีพ</h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">ปรึกษาเบื้องต้นได้ทุกเคส เป็นความลับ — ติดต่อทีมนักสืบของเราได้เลย</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+      <section id="contact" className="relative overflow-hidden border-t border-border/60 bg-card/30">
+        <Crosshair aria-hidden className="pointer-events-none absolute -left-8 bottom-0 h-64 w-64 text-primary/[0.04]" />
+        <div className="relative mx-auto max-w-3xl px-4 py-20 text-center">
+          <Stamp className="mb-6">Confidential</Stamp>
+          <SectionHeading eyebrow="Open a Case · เปิดคดี" title="เรา คือนักสืบเอกชน มืออาชีพ" sub="ปรึกษาเบื้องต้นได้ทุกเคส เป็นความลับ — ติดต่อทีมนักสืบของเราได้เลย" />
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {CONTACT_BTNS.map((b) => (
               <a key={b.href} href={b.href} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
                 <img src={b.img} alt={b.alt} className="h-12 w-auto rounded-md" />
               </a>
             ))}
-            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2.5 hover:bg-muted">
+            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 hover:bg-muted">
               <Facebook className="h-5 w-5 text-primary" /> Facebook
             </a>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2 hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</a>
-            <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2 hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
-            <a href="mailto:detectivepluse@gmail.com" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2 hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</a>
+            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</a>
+            <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
+            <a href="mailto:detectivepluse@gmail.com" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</a>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}
           </div>
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <img src="/marketing/btn-wechat.jpg" alt="WeChat QR" className="h-24 w-24 rounded-md border border-border/60" />
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <img src="/marketing/btn-wechat.jpg" alt="WeChat QR" className="h-24 w-24 rounded-md border border-border" />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">WeChat QR</span>
           </div>
         </div>
       </section>

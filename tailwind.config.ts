@@ -18,6 +18,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         mono: ["var(--font-mono)", "JetBrains Mono", "Fira Code", "ui-monospace", "monospace"],
+        serif: ["var(--font-serif)", "Playfair Display", "Georgia", "Cambria", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
