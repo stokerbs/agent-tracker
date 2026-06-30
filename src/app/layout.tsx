@@ -16,6 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://detectivepulse.com"),
   title: {
     default: "Detective Pulse — Operations Command Center",
     template: "%s · Detective Pulse",
@@ -23,6 +24,21 @@ export const metadata: Metadata = {
   description:
     "Operations management platform for private investigators, surveillance teams and field agents.",
   applicationName: "Detective Pulse",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Detective Pulse",
+    url: "https://detectivepulse.com",
+    title: "Detective Pulse — Operations Command Center",
+    description:
+      "Operations management platform for private investigators, surveillance teams and field agents.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Detective Pulse — Operations Command Center",
+    description:
+      "Operations management platform for private investigators, surveillance teams and field agents.",
+  },
 };
 
 export const viewport: Viewport = {
