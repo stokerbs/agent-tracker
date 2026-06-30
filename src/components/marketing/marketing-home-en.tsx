@@ -2,7 +2,7 @@
 import Link from "next/link";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
-  PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint,
+  PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
@@ -27,7 +27,14 @@ const WHY = [
   { Icon: MapPin, title: "Nationwide", desc: "We take on cases across the whole of Thailand." },
 ];
 
-const REVIEWS = ["/marketing/review1.png", "/marketing/review2.png", "/marketing/review3.png", "/marketing/review4.png", "/marketing/review5.png"];
+// Verified customer reviews from the firm's Fastwork profile.
+const FASTWORK_URL = "https://fastwork.co/user/conandoyle";
+const REVIEW_RATING = "4.8";
+const REVIEW_COUNT = 63;
+const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
+  { name: "Fastwork client", date: "10/06/2026", stars: 5, text: "Excellent service — really impressed with the team, constant updates throughout. I honestly recommend them to anyone looking to hire." },
+  { name: "jir7uww1", date: "29/05/2026", stars: 5, text: "Absolutely wow." },
+];
 
 export function MarketingHomeEN() {
   const services = SERVICES.map((s) => ({ ...s, page: getMarketingPageEN(s.slug) })).filter((s) => s.page);
@@ -133,16 +140,48 @@ export function MarketingHomeEN() {
         </div>
       </section>
 
-      {/* Reviews — exhibits */}
+      {/* Reviews — verified on Fastwork */}
       <section className="mx-auto max-w-5xl px-4 py-16">
-        <SectionHeading eyebrow="Exhibits · Testimonials" title="Client Reviews" sub="Thank you to all our clients · scroll →" />
-        <div className="mt-8 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
-          {REVIEWS.map((src, i) => (
-            <figure key={src} className="relative shrink-0 snap-start">
-              <img src={src} alt="Client review" loading="lazy" className="h-44 w-auto rounded-lg border border-border" />
-              <figcaption className="absolute left-2 top-2"><FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag></figcaption>
+        <SectionHeading eyebrow="Exhibits · Verified on Fastwork" title="Client Reviews" sub="Thank you to all our clients" />
+
+        {/* Aggregate rating */}
+        <div className="mx-auto mt-8 flex w-fit items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-6 py-4">
+          <span className="font-serif text-4xl font-bold text-primary">{REVIEW_RATING}</span>
+          <div className="flex flex-col">
+            <span className="flex gap-0.5 text-primary">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+              ))}
+            </span>
+            <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} reviews · Fastwork</span>
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {TESTIMONIALS.map((r, i) => (
+            <figure key={i} className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
+              <CornerTicks />
+              <div className="flex items-center justify-between">
+                <span className="flex gap-0.5 text-primary">
+                  {Array.from({ length: r.stars }).map((_, s) => (
+                    <Star key={s} className="h-3.5 w-3.5 fill-primary text-primary" />
+                  ))}
+                </span>
+                <FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag>
+              </div>
+              <blockquote className="mt-4 font-serif text-lg leading-relaxed text-foreground/95">“{r.text}”</blockquote>
+              <figcaption className="mt-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                <span className="h-px w-4 bg-primary/50" /> {r.name} · {r.date}
+              </figcaption>
             </figure>
           ))}
+        </div>
+
+        <div className="mt-8 text-center">
+          <a href={FASTWORK_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-primary hover:underline">
+            See all {REVIEW_COUNT} reviews on Fastwork <ArrowRight className="h-3.5 w-3.5" />
+          </a>
         </div>
       </section>
 
