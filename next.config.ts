@@ -52,7 +52,27 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // Index ONLY the marketing host (detectivepulse.com). Every other host —
+      // the private app on .app, vercel previews, localhost — gets noindex so
+      // the "unlisted" tool stays out of search. (Reliable config-level header;
+      // the middleware equivalent didn't propagate on Vercel.)
+      {
+        source: "/(.*)",
+        missing: [{ type: "host", value: "(www\\.)?detectivepulse\\.com" }],
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
+  // 301 the old WordPress cruft paths (no longer migrated) to the homepage.
+  async redirects() {
+    return [
+      { source: "/sample-page", destination: "/", permanent: true },
+      { source: "/home", destination: "/", permanent: true },
+      { source: "/author/:path*", destination: "/", permanent: true },
+      { source: "/category/:path*", destination: "/", permanent: true },
+    ];
   },
   images: {
     remotePatterns: [
