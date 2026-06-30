@@ -32,21 +32,26 @@ export async function gps903GetHistory(
       }),
       signal: withTimeout(FETCH_TIMEOUT),
     });
-  } catch {
+  } catch (e) {
+    console.error(`[GPS903] GetHistory device ${deviceId} fetch error:`, String(e));
     return [];
   }
 
+  console.log(`[GPS903] GetHistory device ${deviceId} ${start}..${end} — HTTP ${res.status}`);
   if (!res.ok) return [];
 
   let envelope: { d?: string };
   try { envelope = await res.json() as { d?: string }; } catch { return []; }
-  if (!envelope.d) return [];
+  if (!envelope.d) {
+    console.log(`[GPS903] GetHistory device ${deviceId} — empty d field`);
+    return [];
+  }
 
   const data = parseGps903Value(envelope.d);
   const points = (Array.isArray(data) ? data : (data as Record<string, unknown> | null)?.devices) as unknown[];
   if (!Array.isArray(points)) return [];
 
-  return (points as Record<string, unknown>[])
+  const mapped = (points as Record<string, unknown>[])
     .filter((p) => p.latitude != null && p.longitude != null)
     .map((p) => ({
       lat:         parseFloat(String(p.latitude)),
@@ -57,4 +62,12 @@ export async function gps903GetHistory(
       stopMinutes: Number(p.stopTimeMinute)             || 0,
     }))
     .filter((p) => !isNaN(p.lat) && !isNaN(p.lng));
+
+  // Force chronological (oldest-first) — replay walks the array forwards and the
+  // upstream return order is not guaranteed. fixTime is a fixed
+  // "YYYY-MM-DD HH:MM:SS" string, so a lexicographic sort is chronological.
+  mapped.sort((a, b) => a.fixTime.localeCompare(b.fixTime));
+
+  console.log(`[GPS903] GetHistory device ${deviceId} — ${mapped.length} points`);
+  return mapped;
 }

@@ -76,10 +76,16 @@ export async function GET(request: NextRequest) {
     .eq("gps903_device_id", dev.gps903_device_id)
     .eq("is_active", true)
     .maybeSingle();
-  if (!credential) return NextResponse.json({ points: [], error: "no_credential" });
+  if (!credential) {
+    console.warn(`[gps-history] no active GPS903 credential for device ${dev.gps903_device_id}`);
+    return NextResponse.json({ points: [], error: "no_credential" });
+  }
 
   const session = await getOrRefreshCredentialSession(svc, credential);
-  if (!session) return NextResponse.json({ error: "GPS903 login failed" }, { status: 502 });
+  if (!session) {
+    console.error(`[gps-history] GPS903 login failed for device ${dev.gps903_device_id}`);
+    return NextResponse.json({ error: "GPS903 login failed" }, { status: 502 });
+  }
 
   const hours = q.hours ?? 24;
   const now = new Date();

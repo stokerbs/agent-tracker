@@ -89,6 +89,16 @@ describe("GET /api/gps/history — track from the live 903 history API", () => {
     expect((await GET(req(`deviceId=${UUID}&hours=999`))).status).toBe(400);
   });
 
+  it("returns empty (no_credential) when the device has no active credential", async () => {
+    vi.mocked(createServiceClient).mockReturnValue(svcClient(null) as never);
+    const res = await GET(req(`deviceId=${UUID}`));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.points).toEqual([]);
+    expect(body.error).toBe("no_credential");
+    expect(gps903GetHistory).not.toHaveBeenCalled();
+  });
+
   it("returns empty when the device has no gps903_device_id", async () => {
     vi.mocked(createClient).mockResolvedValue(userClient({ gps903_device_id: null }) as never);
     const res = await GET(req(`deviceId=${UUID}`));
