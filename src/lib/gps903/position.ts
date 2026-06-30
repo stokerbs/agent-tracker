@@ -10,6 +10,18 @@ import { notifyRole, notificationLinks } from "@/lib/notifications";
  * GPS devices are independent entities — this does NOT update the agents table.
  * Agent locations come from the agent's own mobile GPS reporter.
  */
+/** Great-circle distance in metres between two lat/lng points. */
+function haversineMeters(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
 export async function applyPositionToDevice(
   svc: SvcClient,
   gpsDeviceId: string,
@@ -32,18 +44,27 @@ export async function applyPositionToDevice(
 
   const positionTime = gps903DateToIso(pos.fixTime);
 
-  // Derive stop duration. GetTracking returns only an isStop boolean (no
-  // duration), so we track it ourselves: stopped_since is set on the first
-  // stationary fix (seeded from the fix time, so an already-parked device reads
-  // a sensible duration) and cleared on movement; last_stop_minutes is computed
-  // from it each poll.
-  const STOP_SPEED_KMH = 3;
-  const moving = pos.speed > STOP_SPEED_KMH;
   const { data: cur } = await svc
     .from("gps_devices")
     .select("stopped_since, last_lat, last_lng, geofence_id, geofence_alerted_at")
     .eq("id", gpsDeviceId)
     .maybeSingle();
+
+  // Derive stop duration ourselves (GetTracking returns only an isStop boolean).
+  // Movement = reported speed OR a real GPS displacement: some GPS903 firmwares
+  // report speed 0 even while driving (observed live: a 2.9 km jump at speed
+  // 0.00), so speed alone misses movement and stop time inflates to many hours.
+  // Distance is trusted only for GPS fixes — LBS positions jitter by kilometres
+  // and would false-trigger "moving". stopped_since is seeded from the server
+  // poll clock (now), never the GPS fix time, so a stale fix (offline/LBS device
+  // that hasn't fixed in days) can't seed a stop start days in the past.
+  const STOP_SPEED_KMH = 3;
+  const MOVE_DISTANCE_M = 100;
+  const movedM =
+    pos.locateMode === "gps" && cur?.last_lat != null && cur?.last_lng != null
+      ? haversineMeters(cur.last_lat, cur.last_lng, pos.lat, pos.lng)
+      : 0;
+  const moving = pos.speed > STOP_SPEED_KMH || movedM > MOVE_DISTANCE_M;
 
   let stoppedSince: string | null;
   let stopMinutes: number;
@@ -51,8 +72,9 @@ export async function applyPositionToDevice(
     stoppedSince = null;
     stopMinutes  = 0;
   } else {
-    stoppedSince = cur?.stopped_since ?? positionTime ?? now;
-    stopMinutes  = Math.max(0, Math.round((Date.parse(now) - Date.parse(stoppedSince ?? now)) / 60000));
+    const since = cur?.stopped_since ?? now;
+    stoppedSince = since;
+    stopMinutes  = Math.max(0, Math.round((Date.parse(now) - Date.parse(since)) / 60000));
   }
 
   const deviceUpdate: Record<string, unknown> = {
