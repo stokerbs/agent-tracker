@@ -1,14 +1,11 @@
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { isMarketingHost } from "@/lib/seo/host";
 
 // The public marketing site lives on detectivepulse.com; the app on .app (and
 // vercel preview / localhost) is the private, "unlisted" tool. Search engines
 // must index ONLY the marketing host — every other host gets X-Robots-Tag
 // noindex regardless of robots.txt (which is shared across both domains).
-function isMarketingHost(host: string | null): boolean {
-  return !!host && host.replace(/^www\./, "").startsWith("detectivepulse.com");
-}
-
 export async function middleware(request: NextRequest) {
   const response = await updateSession(request);
   if (!isMarketingHost(request.headers.get("host"))) {
