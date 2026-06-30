@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ContactFab } from "@/components/marketing/contact-fab";
+import { LangSwitch } from "@/components/marketing/lang-switch";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com —
@@ -14,10 +15,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <Link href="/" className="text-lg font-semibold tracking-tight">
             Detective<span className="text-primary">Pulse</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground">หน้าแรก</Link>
-            <Link href="/บริการนักสืบ/" className="hover:text-foreground">บริการ</Link>
+          <nav className="flex items-center gap-3 text-sm text-muted-foreground sm:gap-4">
+            <Link href="/" className="hidden hover:text-foreground sm:inline">หน้าแรก</Link>
             <Link href="/ติดต่อนักสืบ/" className="hover:text-foreground">ติดต่อ</Link>
+            <LangSwitch />
           </nav>
         </div>
       </header>

@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: "/" },
+    alternates: { canonical: "/", languages: { th: "/", en: "/en" } },
     openGraph: { type: "website", url: "https://detectivepulse.com/", title, description, siteName: "Detective Pulse" },
   };
 }
