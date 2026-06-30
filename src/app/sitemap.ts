@@ -1,14 +1,22 @@
 import type { MetadataRoute } from "next";
+import { getMarketingPages } from "@/lib/marketing/content";
 
 const BASE = "https://detectivepulse.com";
 
-// Public marketing pages only. Extend as the migrated WordPress content lands
-// (about, services, contact, blog posts, …).
+// Public marketing pages: the static landing/legal pages + every page migrated
+// from WordPress (preserved at its original slug).
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  return [
+  const staticPages: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/support`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
+  const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
+    url: `${BASE}${p.path}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+  return [...staticPages, ...marketing];
 }
