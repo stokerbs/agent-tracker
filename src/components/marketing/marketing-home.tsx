@@ -60,14 +60,15 @@ export function MarketingHome() {
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
             ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
           </p>
-          {contact && (
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90">
-                <PhoneCall className="h-4 w-4" /> ปรึกษา / ติดต่อนักสืบ
-              </Link>
-              <a href="#services" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-5 py-2.5 font-medium hover:bg-muted">ดูบริการ <ArrowRight className="h-4 w-4" /></a>
-            </div>
-          )}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+              <MessageCircle className="h-4 w-4" /> ปรึกษาฟรีทาง LINE
+            </a>
+            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90">
+              <PhoneCall className="h-4 w-4" /> โทรเลย
+            </a>
+            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-5 py-2.5 font-medium hover:bg-muted">ช่องทางติดต่อ <ArrowRight className="h-4 w-4" /></a>
+          </div>
         </div>
       </section>
 

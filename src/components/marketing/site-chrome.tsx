@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContactFab } from "@/components/marketing/contact-fab";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com —
@@ -26,6 +27,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           © {new Date().getFullYear()} Detective Pulse · นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร
         </div>
       </footer>
+      <ContactFab />
     </div>
   );
 }
