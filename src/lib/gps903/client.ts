@@ -17,7 +17,11 @@ import { createServiceClient } from "@/lib/supabase/server";
 export const GPS903_BASE     = "http://www.gps903.net";
 export const GPS903_TIMEZONE = "Asia/Bangkok";
 export const SESSION_TTL_MS  = 25 * 60 * 1000;
-export const FETCH_TIMEOUT   = 10_000;
+// gps903.net responds in <1s from a normal connection, but from the Vercel
+// (sin1) region it is frequently slow — at 10s nearly every poll timed out, so
+// positions/stop-time froze and looked "wrong". 20s recovers slow-but-alive
+// responses; the cron polls devices in parallel so this still fits maxDuration.
+export const FETCH_TIMEOUT   = 20_000;
 
 export type SvcClient = ReturnType<typeof createServiceClient>;
 
