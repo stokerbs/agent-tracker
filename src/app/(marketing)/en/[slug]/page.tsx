@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getMarketingPageEN, getMarketingPagesEN } from "@/lib/marketing/content";
 import { mdComponents } from "@/components/marketing/markdown";
+import { Eyebrow } from "@/components/marketing/ui";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only translated pages; everything else 404s
@@ -46,11 +49,16 @@ export default async function MarketingArticleEN(
   if (!page) notFound();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <article>
-        <h1 className="text-2xl font-bold leading-snug sm:text-3xl">{page.title}</h1>
-        {page.description && <p className="mt-3 text-muted-foreground">{page.description}</p>}
-        <div className="mt-6 border-t border-border/60 pt-6">
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <Link href="/en" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-primary">
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+      </Link>
+      <article className="mt-6">
+        <Eyebrow className="!gap-2">Case File</Eyebrow>
+        <h1 className="mt-4 font-serif text-3xl font-bold leading-snug tracking-tight sm:text-4xl">{page.title}</h1>
+        {page.description && <p className="mt-4 leading-relaxed text-muted-foreground">{page.description}</p>}
+        <div className="dp-hairline mt-7" />
+        <div className="mt-2">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
             {page.body}
           </ReactMarkdown>

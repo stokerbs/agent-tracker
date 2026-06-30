@@ -2,8 +2,9 @@
 import Link from "next/link";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
-  PhoneCall, ArrowRight, PlayCircle, MessageCircle,
+  PhoneCall, ArrowRight, PlayCircle, MessageCircle, Crosshair, Fingerprint,
 } from "lucide-react";
+import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { getMarketingPageEN } from "@/lib/marketing/content";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
@@ -35,101 +36,125 @@ export function MarketingHomeEN() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/60">
-        <div className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-        <div className="relative mx-auto max-w-5xl px-4 py-16 text-center">
-          <img src="/marketing/logo.png" alt="Detective Pulse" className="mx-auto mb-6 h-12 w-auto" />
-          <h1 className="mx-auto max-w-3xl text-balance text-3xl font-bold tracking-tight sm:text-5xl">
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
+        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
+          <img src="/marketing/logo.png" alt="Detective Pulse" className="mx-auto mb-6 h-11 w-auto" />
+          <Eyebrow>Case File · Investigation Opened</Eyebrow>
+          <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             Professional <span className="text-primary">Private Investigators</span> in Thailand
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
             Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white hover:opacity-90">
               <MessageCircle className="h-4 w-4" /> Free consult on LINE
             </a>
-            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground hover:opacity-90">
+            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:opacity-90">
               <PhoneCall className="h-4 w-4" /> WhatsApp us
             </a>
-            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-5 py-2.5 font-medium hover:bg-muted">Contact <ArrowRight className="h-4 w-4" /></a>
+            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-muted">Contact <ArrowRight className="h-4 w-4" /></a>
           </div>
+          <div className="mt-8 font-mono text-[11px] uppercase tracking-[0.18em] text-primary/80">{"// Relentless · discreet · nationwide"}</div>
         </div>
       </section>
 
       {/* Video */}
-      <section className="mx-auto max-w-3xl px-4 py-14">
-        <h2 className="mb-6 text-center text-xl font-bold sm:text-2xl">About Detective Pulse</h2>
-        <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative block overflow-hidden rounded-xl border border-border/60">
+      <section className="mx-auto max-w-3xl px-4 py-16">
+        <SectionHeading eyebrow="Evidence Reel · Intro" title="About Detective Pulse" />
+        <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative mt-8 block overflow-hidden rounded-xl border border-border bg-card">
+          <CornerTicks />
           <img src="/marketing/video-cover.png" alt="Detective Pulse intro video" className="w-full" />
-          <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
-            <PlayCircle className="h-16 w-16 text-white drop-shadow-lg" />
+          <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
+            <PlayCircle className="h-16 w-16 text-white drop-shadow-lg transition-transform group-hover:scale-110" />
           </span>
+          <span className="absolute left-3 top-3"><FileTag>REC ●</FileTag></span>
         </a>
       </section>
 
-      {/* Services */}
-      <section id="services" className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-5xl px-4 py-14">
-          <h2 className="text-center text-xl font-bold sm:text-2xl">Our Services</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <Link key={s.slug} href={s.page!.path} className="group rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/40">
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><s.Icon className="h-5 w-5" /></div>
-                <h3 className="font-semibold group-hover:text-primary">{s.label}</h3>
+      {/* Services — case files */}
+      <section id="services" className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-5xl px-4 py-16">
+          <SectionHeading eyebrow="Active Cases · Services" title="Our Services" />
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((s, i) => (
+              <Link key={s.slug} href={s.page!.path} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+                <CornerTicks />
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
+                    <s.Icon className="h-5 w-5" />
+                  </span>
+                  <FileTag>{`CASE ${String(i + 1).padStart(2, "0")}`}</FileTag>
+                </div>
+                <h3 className="mt-4 font-serif text-lg font-bold group-hover:text-primary">{s.label}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.blurb}</p>
+                <span className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary/80">
+                  Open file <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </span>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Why us */}
-      <section className="mx-auto grid max-w-5xl gap-6 px-4 py-14 sm:grid-cols-3">
-        {WHY.map((w) => (
-          <div key={w.title} className="text-center">
-            <div className="mx-auto mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary"><w.Icon className="h-5 w-5" /></div>
-            <h3 className="font-semibold">{w.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{w.desc}</p>
-          </div>
-        ))}
-      </section>
-
-      {/* Process */}
-      <section className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-3xl px-4 py-14">
-          <h2 className="text-center text-xl font-bold sm:text-2xl">How It Works</h2>
-          <ol className="mt-8 space-y-4">
-            {PROCESS.map((step, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{i + 1}</span>
-                <span className="pt-0.5 leading-relaxed">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-6 text-center text-sm text-muted-foreground">* If the client cancels, the deposit is non-refundable.</p>
+      {/* Why us — seals */}
+      <section className="mx-auto max-w-5xl px-4 py-16">
+        <SectionHeading eyebrow="Credentials · Why us" title="Why Detective Pulse" />
+        <div className="mt-10 grid gap-8 sm:grid-cols-3">
+          {WHY.map((w) => (
+            <div key={w.title} className="text-center">
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-primary/40 bg-primary/5 text-primary shadow-[inset_0_0_0_4px_hsl(var(--primary)/0.08)]">
+                <w.Icon className="h-6 w-6" />
+              </span>
+              <h3 className="mt-4 font-serif text-lg font-bold">{w.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{w.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Reviews */}
-      <section className="mx-auto max-w-5xl px-4 py-14">
-        <h2 className="text-center text-xl font-bold sm:text-2xl">Client Reviews</h2>
-        <p className="mt-2 text-center text-sm text-muted-foreground">Thank you to all our clients · scroll →</p>
-        <div className="mt-6 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
-          {REVIEWS.map((src) => (
-            <img key={src} src={src} alt="Client review" loading="lazy" className="h-40 w-auto shrink-0 snap-start rounded-lg border border-border/60" />
+      {/* Process — evidence chain */}
+      <section className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-3xl px-4 py-16">
+          <SectionHeading eyebrow="Protocol · How it works" title="How It Works" />
+          <ol className="relative mt-10 space-y-6 before:absolute before:left-[15px] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border">
+            {PROCESS.map((step, i) => (
+              <li key={i} className="relative flex items-start gap-4">
+                <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-background font-mono text-sm font-semibold text-primary">
+                  {i + 1}
+                </span>
+                <span className="pt-1 leading-relaxed">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 text-center font-mono text-[11px] uppercase tracking-wider text-muted-foreground">* If the client cancels, the deposit is non-refundable.</p>
+        </div>
+      </section>
+
+      {/* Reviews — exhibits */}
+      <section className="mx-auto max-w-5xl px-4 py-16">
+        <SectionHeading eyebrow="Exhibits · Testimonials" title="Client Reviews" sub="Thank you to all our clients · scroll →" />
+        <div className="mt-8 flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+          {REVIEWS.map((src, i) => (
+            <figure key={src} className="relative shrink-0 snap-start">
+              <img src={src} alt="Client review" loading="lazy" className="h-44 w-auto rounded-lg border border-border" />
+              <figcaption className="absolute left-2 top-2"><FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag></figcaption>
+            </figure>
           ))}
         </div>
       </section>
 
       {/* Contact */}
-      <section id="contact" className="border-t border-border/60 bg-card/30">
-        <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <h2 className="text-xl font-bold sm:text-2xl">Need the truth? We can help.</h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Free initial consultation, every case confidential — reach our investigators directly.</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+      <section id="contact" className="relative overflow-hidden border-t border-border/60 bg-card/30">
+        <Crosshair aria-hidden className="pointer-events-none absolute -left-8 bottom-0 h-64 w-64 text-primary/[0.04]" />
+        <div className="relative mx-auto max-w-3xl px-4 py-20 text-center">
+          <Stamp className="mb-6">Confidential</Stamp>
+          <SectionHeading eyebrow="Open a Case · Contact" title="Need the truth? We can help." sub="Free initial consultation, every case confidential — reach our investigators directly." />
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-4 py-2 font-medium text-white hover:opacity-90"><MessageCircle className="h-4 w-4" /> LINE</a>
             <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-4 py-2 font-medium text-white hover:opacity-90"><PhoneCall className="h-4 w-4" /> WhatsApp</a>
-            <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2 hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
+            <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">All contact options</Link>
             )}
