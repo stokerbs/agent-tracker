@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import {
   Activity,
   MapPin,
@@ -11,8 +13,29 @@ import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { isMarketingHost } from "@/lib/marketing/host";
+import { MarketingHome } from "@/components/marketing/marketing-home";
+
+// On detectivepulse.com "/" is the public PI marketing home; on the app host
+// (.app, previews, localhost) it's the app's product landing.
+export async function generateMetadata(): Promise<Metadata> {
+  const host = (await headers()).get("host");
+  if (!isMarketingHost(host)) return {};
+  const title = "นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร | Detective Pulse";
+  const description =
+    "นักสืบเอกชน รับสืบชู้สาว สืบทรัพย์สิน ตามหาคน เช็คประวัติบุคคล งานสืบทุกประเภท เป็นความลับ มืออาชีพ ทั่วประเทศไทย";
+  return {
+    title,
+    description,
+    alternates: { canonical: "/" },
+    openGraph: { type: "website", url: "https://detectivepulse.com/", title, description, siteName: "Detective Pulse" },
+  };
+}
 
 export default async function Home() {
+  const host = (await headers()).get("host");
+  if (isMarketingHost(host)) return <MarketingHome />;
+
   const t = await getTranslations("home");
   const tMeta = await getTranslations("meta");
 
