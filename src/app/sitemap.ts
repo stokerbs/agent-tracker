@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/support`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
   ];
   const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
     // Non-trailing-slash to match the served URL (Next 308s the trailing form).
