@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Crosshair } from "lucide-react";
 import { ContactFab } from "@/components/marketing/contact-fab";
+import { AssistantWidget } from "@/components/marketing/assistant-widget";
 import { LangSwitch } from "@/components/marketing/lang-switch";
 
 /**
@@ -89,6 +90,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       <ContactFab />
+      <AssistantWidget />
     </div>
   );
 }
