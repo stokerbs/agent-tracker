@@ -37,6 +37,8 @@ export const RATE_LIMITS = {
   lead:       { limit:  5, windowMs: 3_600_000 },
   /** 5 public recruitment applications per hour per IP — anti-spam. */
   careers:    { limit:  5, windowMs: 3_600_000 },
+  /** 30 public AI-assistant messages per hour per IP — cost + abuse guard. */
+  assistant:  { limit: 30, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
