@@ -65,6 +65,29 @@ describe("POST /api/marketing/lead", () => {
     expect(vi.mocked(notifyRole)).toHaveBeenCalled();
   });
 
+  it("stores a valid email when provided", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req({ ...valid, email: "lead@example.com" }));
+    expect(res.status).toBe(200);
+    expect(s.insert).toHaveBeenCalledWith(expect.objectContaining({ email: "lead@example.com" }));
+  });
+
+  it("stores email as null when omitted", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await POST(req(valid));
+    expect(s.insert).toHaveBeenCalledWith(expect.objectContaining({ email: null }));
+  });
+
+  it("400 on a malformed email (and does not insert)", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req({ ...valid, email: "not-an-email" }));
+    expect(res.status).toBe(400);
+    expect(s.insert).not.toHaveBeenCalled();
+  });
+
   it("429 when rate-limited (and does not insert)", async () => {
     const s = svc();
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);

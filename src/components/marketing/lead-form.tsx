@@ -10,6 +10,8 @@ const COPY = {
   th: {
     name: "ชื่อของคุณ",
     phone: "เบอร์โทร หรือ LINE ID",
+    email: "อีเมล (ไม่บังคับ)",
+    emailInvalid: "รูปแบบอีเมลไม่ถูกต้อง",
     caseType: "ประเภทเรื่องที่ต้องการสืบ",
     caseOptions: ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "อื่น ๆ"],
     choose: "— เลือกประเภท —",
@@ -26,6 +28,8 @@ const COPY = {
   en: {
     name: "Your name",
     phone: "Phone or LINE ID",
+    email: "Email (optional)",
+    emailInvalid: "That email doesn't look right",
     caseType: "What do you need investigated?",
     caseOptions: ["Cheating spouse", "Asset search", "Background check", "Find a person", "Cyber / online", "Other"],
     choose: "— Select —",
@@ -54,9 +58,15 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
     const fd = new FormData(form);
     const name = String(fd.get("name") ?? "").trim();
     const phone = String(fd.get("phone") ?? "").trim();
+    const email = String(fd.get("email") ?? "").trim();
     if (!name || !phone) {
       setState("error");
       setError(t.required);
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setState("error");
+      setError(t.emailInvalid);
       return;
     }
     setState("sending");
@@ -68,6 +78,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         body: JSON.stringify({
           name,
           phone,
+          email: email || undefined,
           caseType: String(fd.get("caseType") ?? "") || undefined,
           message: String(fd.get("message") ?? "") || undefined,
           locale: lang,
@@ -126,6 +137,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         <input name="name" required maxLength={80} placeholder={t.name} className={inputCls} />
         <input name="phone" required maxLength={30} placeholder={t.phone} className={inputCls} />
       </div>
+      <input name="email" type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder={t.email} className={inputCls} />
       <select name="caseType" defaultValue="" className={inputCls} aria-label={t.caseType}>
         <option value="" disabled>{t.choose}</option>
         {t.caseOptions.map((o) => (

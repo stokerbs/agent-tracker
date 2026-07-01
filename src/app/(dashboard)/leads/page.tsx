@@ -22,6 +22,7 @@ interface Lead {
   id: string;
   name: string;
   phone: string;
+  email: string | null;
   case_type: string | null;
   message: string | null;
   locale: string;
@@ -75,6 +76,11 @@ export default async function LeadsPage() {
                       <a href={`tel:${l.phone}`} className="text-primary hover:underline">
                         {l.phone}
                       </a>
+                      {l.email && (
+                        <a href={`mailto:${l.email}`} className="mt-0.5 block text-xs text-muted-foreground hover:text-primary hover:underline">
+                          {l.email}
+                        </a>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">{l.case_type ?? "—"}</TableCell>
                     <TableCell className="max-w-xs text-sm text-muted-foreground">
