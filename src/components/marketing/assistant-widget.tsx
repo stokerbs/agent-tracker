@@ -7,9 +7,9 @@ import { LineIcon } from "@/components/marketing/brand-icons";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "สวัสดีครับ 🕵️ ผมคือผู้ช่วย AI ของ Detective Pulse — ถามเรื่องบริการสืบ ราคาโดยประมาณ หรือขั้นตอนการทำงานได้เลยครับ";
+  "สวัสดีครับ 🕵️ เจ้าหน้าที่รับเคส Detective Pulse ครับ แจ้งประเภทงานที่ต้องการได้เลย เดี๋ยวผมช่วยเก็บรายละเอียดเบื้องต้นให้ ข้อมูลทุกอย่างเป็นความลับครับ";
 
-const SUGGESTIONS = ["ค่าบริการคิดยังไง?", "สืบชู้สาวทำอย่างไร?", "รับงานจังหวัดไหนบ้าง?"];
+const SUGGESTIONS = ["อยากสืบชู้สาว", "อยากตามหาคน", "ค่าบริการเท่าไหร่"];
 
 const LINE_URL = "https://lin.ee/SSqk98x";
 const TEL_URL = "tel:+66968461406";
@@ -69,7 +69,7 @@ export function AssistantWidget() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/60 bg-primary px-4 py-3 text-primary-foreground">
             <span className="flex items-center gap-2 text-sm font-semibold">
-              <Bot className="h-4 w-4" /> ผู้ช่วยนักสืบ AI
+              <Bot className="h-4 w-4" /> เจ้าหน้าที่รับเคส (AI)
             </span>
             <button onClick={() => setOpen(false)} aria-label="ปิด"><X className="h-4 w-4" /></button>
           </div>
@@ -151,7 +151,7 @@ export function AssistantWidget() {
       {/* Launcher */}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="ผู้ช่วยนักสืบ AI"
+        aria-label="เจ้าหน้าที่รับเคส (AI)"
         className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-card text-primary shadow-xl transition-transform hover:scale-105"
       >
         {open ? <X className="h-6 w-6" /> : <Bot className="h-7 w-7" />}
