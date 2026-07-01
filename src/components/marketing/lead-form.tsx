@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
+import { sendGTMEvent } from "@next/third-parties/google";
 
 type Lang = "th" | "en";
 
@@ -74,6 +75,9 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         }),
       });
       if (res.ok) {
+        // Fires the GTM dataLayer event so a GA4 / Google Ads conversion tag
+        // can be wired to it in GTM's UI, with no further code changes.
+        sendGTMEvent({ event: "lead_submitted", case_type: fd.get("caseType") ?? undefined, locale: lang });
         setState("done");
         form.reset();
         return;
