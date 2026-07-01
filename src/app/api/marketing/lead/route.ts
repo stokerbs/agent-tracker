@@ -12,8 +12,10 @@ const schema = z.object({
   caseType: z.string().trim().max(60).optional(),
   message: z.string().trim().max(1000).optional(),
   locale: z.enum(["th", "en"]).default("th"),
-  // Honeypot: real users never fill this hidden field; bots do.
-  website: z.string().max(0).optional().or(z.literal("")),
+  // Honeypot: real users never fill this hidden field; bots do. Accept any value
+  // (bounded) so a filled one passes validation and hits the silent-success path
+  // below (we don't want to signal to bots that they were detected).
+  website: z.string().max(200).optional(),
 });
 
 function clientIp(req: NextRequest): string {
