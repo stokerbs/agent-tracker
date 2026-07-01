@@ -54,20 +54,24 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
-  ],
-  width: "device-width",
-  initialScale: 1,
-  // Lock page zoom so the app feels fixed (no browser-style pinch-zoom). Map
-  // pinch-zoom is handled by the Maps API on its own container and is unaffected.
-  maximumScale: 1,
-  userScalable: false,
-  // Required so iOS safe-area-inset env() values are non-zero in the native shell.
-  viewportFit: "cover",
-};
+export async function generateViewport(): Promise<Viewport> {
+  const host = (await headers()).get("host");
+  const marketing = isMarketingHost(host);
+  return {
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+      { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+    ],
+    width: "device-width",
+    initialScale: 1,
+    // The public marketing site (detectivepulse.com) MUST allow pinch-zoom for
+    // accessibility (WCAG 1.4.4) and mobile UX. Only the app host locks zoom so
+    // it feels like a native app (map pinch-zoom is handled by the Maps API).
+    ...(marketing ? {} : { maximumScale: 1, userScalable: false }),
+    // Required so iOS safe-area-inset env() values are non-zero in the native shell.
+    viewportFit: "cover",
+  };
+}
 
 export default async function RootLayout({
   children,

@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element -- static marketing assets in /public */
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
   PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
@@ -56,7 +56,7 @@ export function MarketingHomeEN() {
         <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
         <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
-          <img src="/marketing/logo.png" alt="Detective Pulse" className="mx-auto mb-6 h-11 w-auto" />
+          <Image src="/marketing/logo.png" alt="Detective Pulse" width={402} height={111} priority className="mx-auto mb-6 h-11 w-auto" />
           <Eyebrow>Case File · Investigation Opened</Eyebrow>
           <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             Professional <span className="text-primary">Private Investigators</span> in Thailand
@@ -82,7 +82,7 @@ export function MarketingHomeEN() {
         <SectionHeading eyebrow="Evidence Reel · Intro" title="About Detective Pulse" />
         <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative mt-8 block overflow-hidden rounded-xl border border-border bg-card">
           <CornerTicks />
-          <img src="/marketing/video-cover.png" alt="Detective Pulse intro video" className="w-full" />
+          <Image src="/marketing/video-cover.png" alt="Detective Pulse intro video" width={600} height={369} sizes="(max-width: 768px) 100vw, 768px" className="h-auto w-full" />
           <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
             <PlayCircle className="h-16 w-16 text-white drop-shadow-lg transition-transform group-hover:scale-110" />
           </span>

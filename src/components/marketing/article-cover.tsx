@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element -- static marketing covers in /public */
+import Image from "next/image";
 import { FileTag, CornerTicks } from "@/components/marketing/ui";
 import { classifyArticle, getArticleCover } from "@/lib/marketing/article-category";
 
@@ -30,12 +30,13 @@ export function ArticleCover({
 
   return (
     <div className={`relative aspect-video w-full overflow-hidden bg-[#0a0e16] ${className}`}>
-      <img
+      <Image
         src={src}
         alt={alt}
-        className="absolute inset-0 h-full w-full object-cover"
-        loading={index > 2 ? "lazy" : "eager"}
-        decoding="async"
+        fill
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
+        className="object-cover"
+        priority={index <= 1}
       />
       {/* Dossier overlay — keeps FBI × Sherlock theme on top of stock photos */}
       <div className="dp-grid absolute inset-0 opacity-50" />
