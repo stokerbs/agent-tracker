@@ -32,14 +32,14 @@ const securityHeaders = [
       "default-src 'self'",
       // next-intl, Next.js runtime, Radix UI — inline scripts required
       // `capacitor:` allows the Capacitor native bridge when loaded in the app shell.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' capacitor: https://maps.googleapis.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' capacitor: https://maps.googleapis.com https://www.googletagmanager.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       // `capacitor:` lets native camera previews (photo.webPath) render in <img>.
-      "img-src 'self' blob: data: capacitor: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com",
+      "img-src 'self' blob: data: capacitor: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com",
       // Sentry ingest (error reporting) — adjust the region host to match your
       // DSN if it isn't on the US/global cluster (e.g. *.ingest.de.sentry.io).
-      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",

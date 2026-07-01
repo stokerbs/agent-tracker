@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Crosshair } from "lucide-react";
 import { ContactFab } from "@/components/marketing/contact-fab";
 import { LangSwitch } from "@/components/marketing/lang-switch";
+import { FooterDirectory } from "@/components/marketing/footer-directory";
+import { MarketingAnalytics } from "@/components/marketing/analytics";
+import { ConversionTracker } from "@/components/marketing/conversion-tracker";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com.
@@ -50,6 +53,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link href="/" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
                 หน้าแรก
               </Link>
+              <Link href="/#services" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
+                บริการ
+              </Link>
               <Link href="/ติดต่อนักสืบ/" className="font-mono text-xs uppercase tracking-wider hover:text-foreground">
                 ติดต่อ
               </Link>
@@ -63,6 +69,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         {/* Footer */}
         <footer className="border-t border-border/60 bg-background/60">
           <div className="mx-auto max-w-5xl px-4 py-8">
+            <div className="dp-hairline mb-6" />
+            <FooterDirectory />
             <div className="dp-hairline mb-6" />
             <div className="flex flex-col items-center gap-2 text-center">
               <span className="flex items-center gap-2 font-serif text-base font-bold">
@@ -81,6 +89,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       <ContactFab />
+      <ConversionTracker />
+      <MarketingAnalytics />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { getMarketingPageEN, getMarketingPagesEN } from "@/lib/marketing/content
 import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
+import { ArticleJsonLd } from "@/components/marketing/article-jsonld";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only translated pages; everything else 404s
@@ -51,6 +52,13 @@ export default async function MarketingArticleEN(
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
+      <ArticleJsonLd
+        title={page.title}
+        description={page.description}
+        path={page.path}
+        lang="en"
+        homeLabel="Home"
+      />
       <Link href="/en" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-primary">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to home
       </Link>

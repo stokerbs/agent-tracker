@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import {
@@ -15,6 +15,17 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { isMarketingHost } from "@/lib/marketing/host";
 import { MarketingHome } from "@/components/marketing/marketing-home";
+
+// The root layout locks page zoom for the native-shell feel; the "/" landing
+// (marketing home on .com, product landing on the app host) is a public content
+// page, so allow pinch-zoom for accessibility/SEO.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+};
 
 // On detectivepulse.com "/" is the public PI marketing home; on the app host
 // (.app, previews, localhost) it's the app's product landing.

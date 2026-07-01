@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
+import { track } from "@/lib/marketing/analytics";
 
 // The firm's real contact channels (same as the old WordPress site).
 const CHANNELS: { label: string; href: string; bg: string; icon: React.ReactNode }[] = [
@@ -23,18 +24,27 @@ export function ContactFab() {
   const [nudged, setNudged] = useState(false);
 
   useEffect(() => {
-    // Pop the panel open once on first visit, then leave it to the user.
-    if (sessionStorage.getItem("dp_contact_nudged")) { setNudged(true); return; }
+    // Pop the panel open once per visitor (localStorage, not sessionStorage, so
+    // it isn't re-triggered on every new tab/visit — less intrusive, and we can
+    // measure whether the auto-nudge actually drives contact clicks).
+    let done = false;
+    try {
+      done = localStorage.getItem("dp_contact_nudged") === "1";
+    } catch {
+      // Private mode / storage disabled — treat as not-yet-nudged.
+    }
+    if (done) { setNudged(true); return; }
     const t = setTimeout(() => {
       setOpen(true);
       setNudged(true);
-      sessionStorage.setItem("dp_contact_nudged", "1");
+      try { localStorage.setItem("dp_contact_nudged", "1"); } catch { /* ignore */ }
+      track("contact_fab_open", { trigger: "auto" });
     }, 1800);
     return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div data-dp-fab className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       {/* Channel panel */}
       {open && (
         <div className="w-60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
@@ -61,7 +71,7 @@ export function ContactFab() {
 
       {/* Toggle button */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => { if (!v) track("contact_fab_open", { trigger: "manual" }); return !v; })}
         aria-label="ช่องทางติดต่อ"
         className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
       >
