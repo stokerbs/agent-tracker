@@ -143,7 +143,7 @@ export function AssistantWidget() {
             <a href={TEL_URL} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted">
               <Phone className="h-3.5 w-3.5 text-primary" /> โทร
             </a>
-            <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-muted-foreground">AI · ไม่เก็บแชท</span>
+            <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-muted-foreground">AI · ข้อมูลเป็นความลับ</span>
           </div>
         </div>
       )}

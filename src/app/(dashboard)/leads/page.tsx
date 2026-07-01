@@ -26,6 +26,7 @@ interface Lead {
   case_type: string | null;
   message: string | null;
   locale: string;
+  source: string;
   status: string;
   created_at: string;
 }
@@ -71,7 +72,14 @@ export default async function LeadsPage() {
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {formatDate(l.created_at)}
                     </TableCell>
-                    <TableCell className="font-medium">{l.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {l.name}
+                      {l.source === "assistant" && (
+                        <span className="ml-2 rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-[10px] font-normal text-primary">
+                          แชท AI
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <a href={`tel:${l.phone}`} className="text-primary hover:underline">
                         {l.phone}
