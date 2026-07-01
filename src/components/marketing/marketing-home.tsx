@@ -1,5 +1,6 @@
-/* eslint-disable @next/next/no-img-element -- static marketing assets in /public; next/image adds no value here */
+/* eslint-disable @next/next/no-img-element -- the WeChat QR stays a plain <img> to preserve scannability; other images use next/image */
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
   PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
@@ -68,7 +69,7 @@ export function MarketingHome() {
         <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
         <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
           <div className="mb-6 flex items-center justify-center gap-3">
-            <img src="/marketing/logo.png" alt="Detective Pulse" className="h-11 w-auto" />
+            <Image src="/marketing/logo.png" alt="Detective Pulse" width={402} height={111} priority className="h-11 w-auto" />
           </div>
           <Eyebrow>Case File · เปิดสำนวนสืบสวน</Eyebrow>
           <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
@@ -99,7 +100,7 @@ export function MarketingHome() {
         <SectionHeading eyebrow="Evidence Reel · วิดีโอแนะนำ" title="แนะนำ Detective Pulse" />
         <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="group relative mt-8 block overflow-hidden rounded-xl border border-border bg-card">
           <CornerTicks />
-          <img src="/marketing/video-cover.png" alt="วิดีโอแนะนำ Detective Pulse" className="w-full" />
+          <Image src="/marketing/video-cover.png" alt="วิดีโอแนะนำ Detective Pulse" width={600} height={369} sizes="(max-width: 768px) 100vw, 768px" className="h-auto w-full" />
           <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
             <PlayCircle className="h-16 w-16 text-white drop-shadow-lg transition-transform group-hover:scale-110" />
           </span>
