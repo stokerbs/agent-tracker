@@ -91,7 +91,7 @@ export function MarketingHome() {
         eyebrow="Track Record · สถิติการทำงาน"
         stats={[
           { value: new Date().getFullYear() - 2016, suffix: "+", label: "ปีประสบการณ์" },
-          { value: REVIEW_COUNT, suffix: "+", label: "รีวิวจากลูกค้า" },
+          { value: 1900, suffix: "+", label: "เคสที่ปิดไปแล้ว" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "คะแนนเฉลี่ย (จาก 5)" },
           { value: 77, label: "จังหวัดทั่วไทย" },
         ]}
