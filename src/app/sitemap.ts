@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
   const english: MetadataRoute.Sitemap = [
     { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/en/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     ...getMarketingPagesEN().map((p) => ({
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
       lastModified: now,

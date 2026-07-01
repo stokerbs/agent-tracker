@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน | Detective Pulse",
   description:
     "รวมบทความและความรู้เรื่องงานสืบ — สืบชู้สาว สืบทรัพย์สิน เช็คประวัติบุคคล ตามหาคน นักสืบไอที การจ้างนักสืบ และอื่น ๆ จากนักสืบเอกชนมืออาชีพ",
-  alternates: { canonical: "/articles" },
+  alternates: { canonical: "/articles", languages: { th: "/articles", en: "/en/articles" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/articles",
