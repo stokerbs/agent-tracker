@@ -40,6 +40,10 @@ export const FAQ_TH: QA[] = [
     a: "เรารับงานทั่วราชอาณาจักร ไม่ว่าจะเป็นกรุงเทพมหานครหรือจังหวัดอื่น ๆ",
   },
   {
+    q: "สำนักงานตั้งอยู่ที่ไหน?",
+    a: "Detective Pulse เป็นฟรีแลนซ์นักสืบเอกชน ไม่มีที่ตั้งสำนักงาน แต่สามารถนัดพูดคุยรายละเอียดของงานได้",
+  },
+  {
     q: "ฉันจะได้รับรายงานผลการสืบสวนอย่างไร?",
     a: "เราจะส่งรายงานและหลักฐานที่ได้จากการสืบสวนให้คุณผ่านช่องทางที่ตกลงกันไว้ เช่น อีเมล หรือวิธีการอื่น ๆ ที่คุณสะดวก",
   },
@@ -81,6 +85,10 @@ export const FAQ_EN: QA[] = [
   {
     q: "Which areas do you cover?",
     a: "We take on work across the whole kingdom — Bangkok and every other province.",
+  },
+  {
+    q: "Where is your office located?",
+    a: "Detective Pulse is a freelance private investigator with no fixed office, but we can arrange a meeting to discuss the details of your case.",
   },
   {
     q: "How will I receive the investigation report?",
