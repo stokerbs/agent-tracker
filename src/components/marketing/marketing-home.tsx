@@ -7,8 +7,11 @@ import {
 import { SiteChrome } from "@/components/marketing/site-chrome";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
+import { Faq } from "@/components/marketing/faq";
+import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { getMarketingPage } from "@/lib/marketing/content";
+import { FAQ_TH } from "@/lib/marketing/faq";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
 
@@ -57,6 +60,7 @@ export function MarketingHome() {
 
   return (
     <SiteChrome>
+      <MarketingJsonLd faq={FAQ_TH} />
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
@@ -226,6 +230,11 @@ export function MarketingHome() {
           </div>
         </section>
       )}
+
+      {/* FAQ */}
+      <div className="border-t border-border/60 bg-card/30">
+        <Faq items={FAQ_TH} eyebrow="Briefing · คำถามที่พบบ่อย" title="คำถามที่พบบ่อย" />
+      </div>
 
       {/* Contact */}
       <section id="contact" className="relative overflow-hidden border-t border-border/60 bg-card/30">
