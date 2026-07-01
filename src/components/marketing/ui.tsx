@@ -37,7 +37,7 @@ export function SectionHeading({
   sub?: ReactNode;
 }) {
   return (
-    <div className="text-center">
+    <div className="dp-reveal text-center">
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
       <h2 className="mt-4 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         {title}

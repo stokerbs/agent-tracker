@@ -5,6 +5,7 @@ import {
   PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
+import { DetectiveHero } from "@/components/marketing/detective-hero";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
@@ -64,30 +65,23 @@ export function MarketingHomeEN() {
     <>
       <MarketingJsonLd faq={FAQ_EN} />
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border/60">
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-        <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
-        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
-          <Image src="/marketing/logo.png" alt="Detective Pulse" width={402} height={111} priority className="mx-auto mb-6 h-11 w-auto" />
-          <Eyebrow>Case File · Investigation Opened</Eyebrow>
-          <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-            Professional <span className="text-primary">Private Investigators</span> in Thailand
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90">
-              <LineIcon className="h-5 w-5" /> Free consult on LINE
-            </a>
-            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-semibold text-white hover:opacity-90">
-              <WhatsAppIcon className="h-5 w-5" /> WhatsApp us
-            </a>
-            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-muted">Contact <ArrowRight className="h-4 w-4" /></a>
-          </div>
-          <div className="mt-8 font-mono text-[11px] uppercase tracking-[0.18em] text-primary/80">{"// Relentless · discreet · nationwide"}</div>
-        </div>
-      </section>
+      <DetectiveHero
+        caseNo="CASE FILE №DP-∞"
+        statusLabel="File Open"
+        recLabel="REC"
+        eyebrow="Case File · Investigation Opened"
+        titleLead="Professional"
+        titleAccent="Private Investigators"
+        titleRest="in Thailand"
+        subtitle="Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence."
+        ctas={[
+          { href: "https://lin.ee/SSqk98x", label: "Free consult on LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
+          { href: "https://api.whatsapp.com/send?phone=+66809188324", label: "WhatsApp us", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
+          { href: "#contact", label: "Contact", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
+        ]}
+        tagline="// Relentless · discreet · nationwide"
+        scrollLabel="Scroll to investigate"
+      />
 
       {/* Video */}
       <section className="mx-auto max-w-3xl px-4 py-16">
