@@ -22,7 +22,7 @@ export default function ArticlesIndex() {
   const pages = getMarketingPages();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-16">
+    <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
         eyebrow="Case Files · คลังบทความ"
         title="บทความทั้งหมด"
@@ -49,6 +49,6 @@ export default function ArticlesIndex() {
           </Link>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

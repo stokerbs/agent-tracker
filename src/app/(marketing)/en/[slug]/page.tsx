@@ -53,7 +53,7 @@ export default async function MarketingArticleEN(
   if (!page) notFound();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <div className="mx-auto max-w-3xl px-4 py-12">
       <Breadcrumb items={[{ name: "Home", href: "/en" }, { name: "Articles", href: "/en/articles" }, { name: page.title }]} />
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
@@ -77,6 +77,6 @@ export default async function MarketingArticleEN(
           </ReactMarkdown>
         </div>
       </article>
-    </main>
+    </div>
   );
 }
