@@ -299,8 +299,9 @@
   background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
   box-shadow: 0 0 18px hsl(var(--primary) / 0.4);
 }
-/* Rotating radar sweep tucked into the corner. */
-.dp-radar { position: relative; }
+/* Rotating radar sweep tucked into the corner. (The element carries Tailwind's
+   `absolute`, which already establishes the positioning context for ::before —
+   don't set position here or it overrides `absolute` and mis-places the radar.) */
 .dp-radar::before {
   content: ""; position: absolute; inset: 0; border-radius: 9999px;
   background: conic-gradient(from 0deg, hsl(var(--primary) / 0.45), transparent 28%);
