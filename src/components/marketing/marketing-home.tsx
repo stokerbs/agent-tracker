@@ -229,6 +229,11 @@ export function MarketingHome() {
               </Link>
             ))}
           </div>
+          <div className="mt-6 text-center">
+            <Link href="/articles" className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10">
+              ดูบทความทั้งหมด <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </section>
       )}
 
