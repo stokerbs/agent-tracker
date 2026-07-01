@@ -6,6 +6,7 @@ import {
   PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
+import { DetectiveHero } from "@/components/marketing/detective-hero";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Faq } from "@/components/marketing/faq";
@@ -66,36 +67,23 @@ export function MarketingHome() {
     <SiteChrome>
       <MarketingJsonLd faq={FAQ_TH} />
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border/60">
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-        <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.04]" />
-        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center">
-          <div className="mb-6 flex items-center justify-center gap-3">
-            <Image src="/marketing/logo.png" alt="Detective Pulse" width={402} height={111} priority className="h-11 w-auto" />
-          </div>
-          <Eyebrow>Case File · เปิดสำนวนสืบสวน</Eyebrow>
-          <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-            นักสืบเอกชน <span className="text-primary">มืออาชีพ</span><br className="hidden sm:block" /> รับงานสืบทั่วราชอาณาจักร
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
-          </p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
-              <LineIcon className="h-5 w-5" /> ปรึกษาฟรีทาง LINE
-            </a>
-            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-opacity hover:opacity-90">
-              <PhoneCall className="h-4 w-4" /> โทรเลย
-            </a>
-            <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-muted">
-              ช่องทางติดต่อ <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            <span className="text-primary/80">{"// กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก"}</span>
-          </div>
-        </div>
-      </section>
+      <DetectiveHero
+        caseNo="CASE FILE №DP-∞"
+        statusLabel="แฟ้มเปิดอยู่"
+        recLabel="REC"
+        eyebrow="Case File · เปิดสำนวนสืบสวน"
+        titleLead="นักสืบเอกชน"
+        titleAccent="มืออาชีพ"
+        titleRest="รับงานสืบทั่วราชอาณาจักร"
+        subtitle="ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
+        ctas={[
+          { href: "https://lin.ee/SSqk98x", label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
+          { href: "tel:+66968461406", label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: "#contact", label: "ช่องทางติดต่อ", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
+        ]}
+        tagline="// กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก"
+        scrollLabel="เลื่อนลงเพื่อดูสำนวน"
+      />
 
       {/* Video */}
       <section className="mx-auto max-w-3xl px-4 py-16">

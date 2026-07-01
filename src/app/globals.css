@@ -230,6 +230,82 @@
 }
 @keyframes dp-fade-up { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Cinematic marketing hero — "surveillance dossier" (FBI / Sherlock feel).
+   Everything here is CSS-only (no JS → no TBT cost) and animates only
+   opacity/transform (compositor → no layout shift / CLS). All motion is
+   gated behind prefers-reduced-motion. The scroll-reveal uses CSS
+   scroll-driven animations and progressively enhances: on browsers without
+   animation-timeline the content is simply shown (never hidden), so crawlers
+   and reduced-motion users always see everything.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Scroll-reveal: sections fade/slide up as they scroll into view. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .dp-reveal {
+      animation: dp-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 2% cover 20%;
+    }
+  }
+}
+@keyframes dp-reveal-up { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: none; } }
+
+/* On-load entrance for the hero content (staggered by inline animation-delay). */
+@media (prefers-reduced-motion: no-preference) {
+  .dp-hero-in { opacity: 0; animation: dp-hero-in .7s cubic-bezier(0.16,0.8,0.3,1) both; }
+  /* The redaction bar over the accent word wipes away to "declassify" it. */
+  .dp-redact::after {
+    content: "";
+    position: absolute; inset: 0.06em -0.12em 0.12em;
+    background: hsl(var(--primary)); border-radius: 2px;
+    transform-origin: right center;
+    animation: dp-declassify .7s .55s cubic-bezier(0.7,0,0.3,1) both;
+  }
+  .dp-scanline::before { animation: dp-scan 7s linear infinite; }
+  .dp-radar::before { animation: dp-radar 6s linear infinite; }
+  .dp-blink { animation: dp-blink 1.4s steps(1) infinite; }
+}
+@keyframes dp-hero-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes dp-declassify { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes dp-scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(2200%); } }
+@keyframes dp-radar { to { transform: rotate(360deg); } }
+@keyframes dp-blink { 0%,55% { opacity: 1; } 56%,100% { opacity: 0.15; } }
+
+.dp-hero { position: relative; isolation: isolate; overflow: hidden; }
+/* Layered atmosphere: gold spotlight + fine grid + vignette + film grain. */
+.dp-hero::before {
+  content: ""; position: absolute; inset: 0; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% -10%, hsl(var(--primary) / 0.16), transparent 55%),
+    radial-gradient(100% 100% at 50% 120%, hsl(var(--primary) / 0.06), transparent 60%),
+    linear-gradient(to right, hsl(var(--border) / 0.35) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(to bottom, hsl(var(--border) / 0.35) 1px, transparent 1px) 0 0 / 44px 44px;
+}
+/* Vignette + subtle film grain (self-contained SVG noise, no extra request). */
+.dp-hero::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(120% 100% at 50% 40%, transparent 55%, hsl(var(--background)) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: cover, 160px 160px;
+  opacity: 0.5; mix-blend-mode: overlay;
+}
+/* A single surveillance scanline sweeping down the hero. */
+.dp-scanline::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+  box-shadow: 0 0 18px hsl(var(--primary) / 0.4);
+}
+/* Rotating radar sweep tucked into the corner. */
+.dp-radar { position: relative; }
+.dp-radar::before {
+  content: ""; position: absolute; inset: 0; border-radius: 9999px;
+  background: conic-gradient(from 0deg, hsl(var(--primary) / 0.45), transparent 28%);
+}
+
 @layer base {
   * {
     @apply border-border;
