@@ -31,6 +31,15 @@ const baseSecurityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Force *blocking* (non-streamed) metadata for every request. Next 15.2+
+  // streams <title>/<meta> into the body for non-bot user agents and hoists
+  // them to <head> client-side — but crawlers/auditors that read the raw HTML
+  // (Lighthouse's Chrome UA, some social scrapers, and even Googlebot in our
+  // testing) then see the description in <body> and miss it. Matching every UA
+  // makes Next render metadata inline in <head> on the server for everyone.
+  // Our generateMetadata is cheap (host check + static content), so the TTFB
+  // cost of blocking is negligible.
+  htmlLimitedBots: /.*/,
   async headers() {
     return [
       { source: "/(.*)", headers: baseSecurityHeaders },
