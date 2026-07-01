@@ -16,6 +16,9 @@ export interface MarketingPage {
   title: string;
   seoTitle: string;
   description: string;
+  /** Optional per-page cover override (defaults to category stock image). */
+  coverImage?: string;
+  coverAlt?: string;
   /** Markdown body. */
   body: string;
 }
@@ -64,6 +67,8 @@ export function getMarketingPages(): MarketingPage[] {
       title: String(data.title ?? slug),
       seoTitle: String(data.seoTitle || data.title || slug),
       description: String(data.description ?? ""),
+      coverImage: data.coverImage ? String(data.coverImage) : undefined,
+      coverAlt: data.coverAlt ? String(data.coverAlt) : undefined,
       body,
     });
   }
@@ -99,6 +104,8 @@ export function getMarketingPagesEN(): MarketingPage[] {
       title: String(data.title ?? slug),
       seoTitle: String(data.seoTitle || data.title || slug),
       description: String(data.description ?? ""),
+      coverImage: data.coverImage ? String(data.coverImage) : undefined,
+      coverAlt: data.coverAlt ? String(data.coverAlt) : undefined,
       body,
     });
   }
