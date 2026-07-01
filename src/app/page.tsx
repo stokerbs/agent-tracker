@@ -24,11 +24,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = "นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร | Detective Pulse";
   const description =
     "นักสืบเอกชน รับสืบชู้สาว สืบทรัพย์สิน ตามหาคน เช็คประวัติบุคคล งานสืบทุกประเภท เป็นความลับ มืออาชีพ ทั่วประเทศไทย";
+  const ogImage = { url: "https://detectivepulse.com/api/og", width: 1200, height: 630 };
   return {
     title,
     description,
     alternates: { canonical: "/", languages: { th: "/", en: "/en" } },
-    openGraph: { type: "website", url: "https://detectivepulse.com/", title, description, siteName: "Detective Pulse" },
+    openGraph: { type: "website", url: "https://detectivepulse.com/", title, description, siteName: "Detective Pulse", images: [ogImage] },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
   };
 }
 

@@ -40,8 +40,9 @@ export async function generateMetadata(
       title: page.seoTitle,
       description: page.description,
       siteName: "Detective Pulse",
+      images: [{ url: "https://detectivepulse.com/api/og", width: 1200, height: 630 }],
     },
-    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.description },
+    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.description, images: ["https://detectivepulse.com/api/og"] },
   };
 }
 
