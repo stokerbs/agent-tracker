@@ -34,10 +34,12 @@ export function ContactFab() {
   }, []);
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-      {/* Channel panel */}
+    <div className="fixed bottom-5 right-5 z-50" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      {/* Channel panel — absolutely positioned above the toggle so opening it
+          never resizes this fixed container (that resize was the site's entire
+          Cumulative Layout Shift when the panel auto-opens). */}
       {open && (
-        <div className="w-60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+        <div className="absolute bottom-[4.25rem] right-0 w-60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
           <div className="flex items-center justify-between border-b border-border/60 bg-primary px-4 py-3 text-primary-foreground">
             <span className="text-sm font-semibold">ติดต่อนักสืบ — ปรึกษาฟรี</span>
             <button onClick={() => setOpen(false)} aria-label="ปิด"><X className="h-4 w-4" /></button>
