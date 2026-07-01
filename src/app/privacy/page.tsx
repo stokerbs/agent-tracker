@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "How the Detective Pulse Field Agent app collects, uses, and protects your data.",
 };
 
-const UPDATED = "23 June 2026";
+const UPDATED = "1 July 2026";
 const CONTACT_EMAIL = "detectivepluse@gmail.com";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -61,6 +61,19 @@ export default function PrivacyPolicyPage() {
           <p>To operate the service: authenticate you, assign and manage cases, show agent locations to
             supervisors, store case evidence, deliver notifications, and keep the platform secure. We do
             not sell your personal information or use it for advertising.</p>
+        </Section>
+
+        <Section title="Website enquiries (contact form)">
+          <p>When you submit the contact form on our public website (detectivepulse.com), we collect
+            your <strong>name, phone number or LINE ID, email (optional), the type of matter, and any
+            message</strong> you write. We use this information solely to respond to your enquiry and
+            provide the consultation or service you request. We do not sell it or use it for advertising.</p>
+          <p>Under Thailand&rsquo;s Personal Data Protection Act (PDPA), the legal basis for this
+            processing is <strong>your consent</strong>, given by ticking the consent box on the form.
+            You may <strong>withdraw consent, or request access to or deletion of</strong> your submitted
+            data at any time by emailing us. We keep contact-form submissions only as long as needed to
+            handle your enquiry — normally deleted within 12 months of resolution unless you go on to
+            engage our services.</p>
         </Section>
 
         <Section title="Sensitive personal data">

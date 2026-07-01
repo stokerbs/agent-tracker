@@ -16,6 +16,9 @@ const COPY = {
     caseOptions: ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "อื่น ๆ"],
     choose: "— เลือกประเภท —",
     message: "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
+    consent: "ฉันยินยอมให้เก็บและใช้ข้อมูลนี้เพื่อติดต่อกลับ ตาม",
+    consentLink: "นโยบายความเป็นส่วนตัว",
+    consentRequired: "กรุณายอมรับนโยบายความเป็นส่วนตัวก่อนส่ง",
     submit: "ส่งข้อมูล ให้เราติดต่อกลับ",
     sending: "กำลังส่ง...",
     successTitle: "ได้รับข้อมูลแล้ว",
@@ -34,6 +37,9 @@ const COPY = {
     caseOptions: ["Cheating spouse", "Asset search", "Background check", "Find a person", "Cyber / online", "Other"],
     choose: "— Select —",
     message: "More details (optional)",
+    consent: "I consent to my information being stored and used to contact me, per the",
+    consentLink: "Privacy Policy",
+    consentRequired: "Please accept the Privacy Policy before sending",
     submit: "Send — we'll contact you",
     sending: "Sending...",
     successTitle: "Message received",
@@ -69,6 +75,11 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
       setError(t.emailInvalid);
       return;
     }
+    if (!fd.get("consent")) {
+      setState("error");
+      setError(t.consentRequired);
+      return;
+    }
     setState("sending");
     setError("");
     try {
@@ -82,6 +93,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
           caseType: String(fd.get("caseType") ?? "") || undefined,
           message: String(fd.get("message") ?? "") || undefined,
           locale: lang,
+          consent: true,
           website: String(fd.get("website") ?? ""),
         }),
       });
@@ -145,6 +157,16 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         ))}
       </select>
       <textarea name="message" rows={3} maxLength={1000} placeholder={t.message} className={inputCls} />
+
+      <label className="flex items-start gap-2 text-left text-xs leading-relaxed text-muted-foreground">
+        <input type="checkbox" name="consent" required className="mt-0.5 h-4 w-4 shrink-0 accent-primary" />
+        <span>
+          {t.consent}{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">
+            {t.consentLink}
+          </a>
+        </span>
+      </label>
 
       {state === "error" && (
         <p role="alert" className="text-sm text-destructive">{error}</p>
