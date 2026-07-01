@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
+
+type Lang = "th" | "en";
+
+const COPY = {
+  th: {
+    name: "ชื่อของคุณ",
+    phone: "เบอร์โทร หรือ LINE ID",
+    caseType: "ประเภทเรื่องที่ต้องการสืบ",
+    caseOptions: ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "อื่น ๆ"],
+    choose: "— เลือกประเภท —",
+    message: "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
+    submit: "ส่งข้อมูล ให้เราติดต่อกลับ",
+    sending: "กำลังส่ง...",
+    successTitle: "ได้รับข้อมูลแล้ว",
+    successBody: "ทีมนักสืบจะติดต่อกลับโดยเร็ว — หรือทักแชทเลยเพื่อความรวดเร็ว",
+    chat: "ทักแชท LINE ทันที",
+    errRate: "ส่งบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ หรือทักไลน์เราได้เลย",
+    errGeneric: "ส่งไม่สำเร็จ ลองใหม่อีกครั้ง หรือทักไลน์เราได้เลย",
+    required: "กรุณากรอกชื่อและเบอร์ติดต่อ",
+  },
+  en: {
+    name: "Your name",
+    phone: "Phone or LINE ID",
+    caseType: "What do you need investigated?",
+    caseOptions: ["Cheating spouse", "Asset search", "Background check", "Find a person", "Cyber / online", "Other"],
+    choose: "— Select —",
+    message: "More details (optional)",
+    submit: "Send — we'll contact you",
+    sending: "Sending...",
+    successTitle: "Message received",
+    successBody: "Our investigators will get back to you shortly — or chat now for a faster reply.",
+    chat: "Chat on LINE now",
+    errRate: "Too many submissions. Please wait a moment and try again, or message us on LINE.",
+    errGeneric: "Couldn't send. Please try again, or message us on LINE.",
+    required: "Please enter your name and a contact.",
+  },
+} as const;
+
+const LINE_URL = "https://lin.ee/SSqk98x";
+
+export function LeadForm({ lang = "th" }: { lang?: Lang }) {
+  const t = COPY[lang];
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [error, setError] = useState<string>("");
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const name = String(fd.get("name") ?? "").trim();
+    const phone = String(fd.get("phone") ?? "").trim();
+    if (!name || !phone) {
+      setState("error");
+      setError(t.required);
+      return;
+    }
+    setState("sending");
+    setError("");
+    try {
+      const res = await fetch("/api/marketing/lead", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          phone,
+          caseType: String(fd.get("caseType") ?? "") || undefined,
+          message: String(fd.get("message") ?? "") || undefined,
+          locale: lang,
+          website: String(fd.get("website") ?? ""),
+        }),
+      });
+      if (res.ok) {
+        setState("done");
+        form.reset();
+        return;
+      }
+      setState("error");
+      setError(res.status === 429 ? t.errRate : t.errGeneric);
+    } catch {
+      setState("error");
+      setError(t.errGeneric);
+    }
+  }
+
+  if (state === "done") {
+    return (
+      <div className="rounded-xl border border-primary/40 bg-primary/5 p-6 text-center">
+        <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
+        <h3 className="mt-3 font-serif text-lg font-bold">{t.successTitle}</h3>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">{t.successBody}</p>
+        <a
+          href={LINE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white hover:opacity-90"
+        >
+          <MessageCircle className="h-4 w-4" /> {t.chat}
+        </a>
+      </div>
+    );
+  }
+
+  const inputCls =
+    "w-full rounded-lg border border-border bg-background/60 px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60";
+
+  return (
+    <form onSubmit={onSubmit} className="mx-auto max-w-md space-y-3 text-left">
+      {/* Honeypot — visually hidden, off-screen; bots fill it, humans don't. */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <input name="name" required maxLength={80} placeholder={t.name} className={inputCls} />
+        <input name="phone" required maxLength={30} placeholder={t.phone} className={inputCls} />
+      </div>
+      <select name="caseType" defaultValue="" className={inputCls} aria-label={t.caseType}>
+        <option value="" disabled>{t.choose}</option>
+        {t.caseOptions.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+      <textarea name="message" rows={3} maxLength={1000} placeholder={t.message} className={inputCls} />
+
+      {state === "error" && (
+        <p role="alert" className="text-sm text-destructive">{error}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={state === "sending"}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+      >
+        {state === "sending" ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /> {t.sending}</>
+        ) : (
+          <><Send className="h-4 w-4" /> {t.submit}</>
+        )}
+      </button>
+    </form>
+  );
+}

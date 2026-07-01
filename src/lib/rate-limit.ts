@@ -33,6 +33,8 @@ export const RATE_LIMITS = {
   ai_chat:    { limit: 40, windowMs: 3_600_000 },
   /** 30 GPS route-replay history fetches per hour per user — bounds live GPS903 calls. */
   gps_history:{ limit: 30, windowMs: 3_600_000 },
+  /** 5 public marketing lead submissions per hour per IP — anti-spam. */
+  lead:       { limit:  5, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

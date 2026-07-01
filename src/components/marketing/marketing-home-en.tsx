@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { Faq } from "@/components/marketing/faq";
+import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 import { getMarketingPageEN } from "@/lib/marketing/content";
@@ -196,8 +197,14 @@ export function MarketingHomeEN() {
         <Crosshair aria-hidden className="pointer-events-none absolute -left-8 bottom-0 h-64 w-64 text-primary/[0.04]" />
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center">
           <Stamp className="mb-6">Confidential</Stamp>
-          <SectionHeading eyebrow="Open a Case · Contact" title="Need the truth? We can help." sub="Free initial consultation, every case confidential — reach our investigators directly." />
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
+          <SectionHeading eyebrow="Open a Case · Contact" title="Need the truth? We can help." sub="Free initial consultation, every case confidential — leave your details or chat with us directly." />
+          <div className="mt-8">
+            <LeadForm lang="en" />
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="h-px w-8 bg-border" /> or chat directly <span className="h-px w-8 bg-border" />
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</a>
             <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</a>
             <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1877F2] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</a>

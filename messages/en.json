@@ -137,7 +137,8 @@
       "gpsDevices": "GPS Devices",
       "gps903Discovery": "Device Discovery",
       "gps903Credentials": "GPS Credentials",
-      "gpsMonitor": "GPS Monitor"
+      "gpsMonitor": "GPS Monitor",
+      "leads": "Leads"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
