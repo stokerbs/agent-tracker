@@ -29,6 +29,12 @@ export const EN_TO_TH: Record<string, string> = {
   "phone-usage-investigation": "บริการตรวจสอบการใช้โทร",
   "trace-people-and-debtors": "จ้างนักสืบตามหาคน",
   "investigate-partner-before-marriage": "จ้างนักสืบตามแฟน",
+  // Batch 4 — remaining articles (all 27 Thai pages now have an EN version)
+  "affordable-private-detective": "จ้างนักสืบ-ราคาถูก",
+  "what-is-a-detective-agency": "บริษัทนักสืบ",
+  "online-fraud-investigation": "การฉ้อโกงออนไลน์และบทบ",
+  "qualities-of-a-good-detective": "นักสืบ",
+  "detective-services-overview": "บริการนักสืบ",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(
