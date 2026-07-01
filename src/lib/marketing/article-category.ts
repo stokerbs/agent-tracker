@@ -88,21 +88,21 @@ export function classifyArticle(text: string): ArticleCategory {
   const t = text.toLowerCase();
   const has = (...k: string[]) => k.some((x) => t.includes(x));
 
-  if (has("ชู้", "แฟน", "เมียน้อย", "กิ๊ก", "cheating", "spouse", "infidelit"))
+  if (has("ชู้", "แฟน", "เมียน้อย", "กิ๊ก", "cheating", "spouse", "infidelit", "adultery", "affair", "partner", "marriage"))
     return { key: "infidelity", Icon: HeartCrack, th: "สืบชู้สาว", en: "Infidelity" };
-  if (has("ทรัพย์", "asset", "debtor"))
+  if (has("ทรัพย์", "asset", "debtor", "assets"))
     return { key: "asset", Icon: Wallet, th: "สืบทรัพย์สิน", en: "Asset Search" };
-  if (has("ประวัติบุคคล", "ตรวจสอบประวัติ", "เช็คประวัติ", "background"))
+  if (has("ประวัติบุคคล", "ตรวจสอบประวัติ", "เช็คประวัติ", "background", "verification", "verify"))
     return { key: "background", Icon: UserSearch, th: "เช็คประวัติ", en: "Background Check" };
-  if (has("ตามหา", "หาคน", "หาย", "หาญาติ", "ลูกหนี้", "missing", "find-person", "find "))
+  if (has("ตามหา", "หาคน", "หาย", "หาญาติ", "ลูกหนี้", "missing", "find-person", "find ", "trace", "locate", "whereabouts"))
     return { key: "find-person", Icon: MapPin, th: "ตามหาคน", en: "Find a Person" };
-  if (has("ไอที", "ออนไลน์", "โทร", "facebook", "line", "instagram", "cyber", "ฉ้อโกง", "โซเชียล"))
+  if (has("ไอที", "ออนไลน์", "โทร", "facebook", "line", "instagram", "cyber", "ฉ้อโกง", "โซเชียล", "online", "social", "phone", "fraud", "scam", "digital"))
     return { key: "cyber", Icon: Smartphone, th: "นักสืบไอที", en: "Cyber" };
-  if (has("คิดราคา", "pricing"))
+  if (has("คิดราคา", "pricing", "price", "cost", "affordable", "cheap", "fee", "budget"))
     return { key: "pricing", Icon: Calculator, th: "ราคาจ้างนักสืบ", en: "Pricing" };
   if (has("ติดต่อ", "contact"))
     return { key: "contact", Icon: PhoneCall, th: "ติดต่อนักสืบ", en: "Contact" };
-  if (has("จ้าง", "hire", "private-investigator", "นักสืบ", "detective"))
+  if (has("จ้าง", "hire", "private-investigator", "นักสืบ", "detective", "agency", "investigator"))
     return { key: "hire", Icon: Search, th: "จ้างนักสืบ", en: "Hire a Detective" };
   return { key: "investigation", Icon: ShieldCheck, th: "งานสืบ", en: "Investigation" };
 }

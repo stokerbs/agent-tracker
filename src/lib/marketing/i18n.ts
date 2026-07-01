@@ -11,6 +11,12 @@ export const EN_TO_TH: Record<string, string> = {
   "cyber-investigation": "นักสืบไอที",
   "hire-a-private-detective": "จ้างนักสืบ",
   "contact": "ติดต่อนักสืบ",
+  // Batch 1 — translated Thai articles
+  "private-investigator": "private-investigator",
+  "hire-a-detective-online": "จ้างนักสืบออนไลน์",
+  "trace-assets-before-lawsuit": "วิธีสืบทรัพย์ก่อนฟ้อง-เ",
+  "catch-a-cheating-partner": "นักสืบคดีชู้สาว-รับสืบค",
+  "personal-background-check-service": "บริการตรวจสอบประวัติบุ",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(
