@@ -14,6 +14,9 @@ const schema = z.object({
   caseType: z.string().trim().max(60).optional(),
   message: z.string().trim().max(1000).optional(),
   locale: z.enum(["th", "en"]).default("th"),
+  // PDPA: explicit consent is required — must be exactly true, or the request
+  // is rejected (400) before anything is stored.
+  consent: z.literal(true),
   // Honeypot: real users never fill this hidden field; bots do. Accept any value
   // (bounded) so a filled one passes validation and hits the silent-success path
   // below (we don't want to signal to bots that they were detected).
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
     locale: data.locale,
     source: "website",
     user_agent: request.headers.get("user-agent")?.slice(0, 300) ?? null,
+    consent_at: new Date().toISOString(),
   });
 
   if (error) {

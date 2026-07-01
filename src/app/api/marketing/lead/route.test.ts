@@ -43,7 +43,7 @@ function req(
   } as unknown as NextRequest;
 }
 
-const valid = { name: "สมชาย", phone: "0812345678", caseType: "สืบชู้สาว", message: "hi", locale: "th" };
+const valid = { name: "สมชาย", phone: "0812345678", caseType: "สืบชู้สาว", message: "hi", locale: "th", consent: true };
 
 beforeEach(() => {
   vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 4, retryAfterMs: 0 } as never);
@@ -78,6 +78,23 @@ describe("POST /api/marketing/lead", () => {
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await POST(req(valid));
     expect(s.insert).toHaveBeenCalledWith(expect.objectContaining({ email: null }));
+  });
+
+  it("400 without PDPA consent (and does not insert)", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const { consent, ...noConsent } = valid;
+    void consent;
+    const res = await POST(req(noConsent));
+    expect(res.status).toBe(400);
+    expect(s.insert).not.toHaveBeenCalled();
+  });
+
+  it("records consent_at when consent is given", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await POST(req(valid));
+    expect(s.insert).toHaveBeenCalledWith(expect.objectContaining({ consent_at: expect.any(String) }));
   });
 
   it("400 on a malformed email (and does not insert)", async () => {
