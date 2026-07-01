@@ -58,7 +58,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {children}
+        <main>{children}</main>
 
         {/* Footer */}
         <footer className="border-t border-border/60 bg-background/60">
@@ -72,7 +72,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 © {new Date().getFullYear()} · Since 2016 · นักสืบเอกชนมืออาชีพ
               </p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/55">
+              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/80">
                 {"// End of file — all case data confidential"}
               </p>
             </div>

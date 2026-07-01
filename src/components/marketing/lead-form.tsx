@@ -123,7 +123,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
           href={LINE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white hover:opacity-90"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"
         >
           <MessageCircle className="h-4 w-4" /> {t.chat}
         </a>
