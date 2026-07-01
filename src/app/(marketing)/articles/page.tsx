@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getMarketingPages } from "@/lib/marketing/content";
+import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
@@ -18,31 +19,37 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ArticlesIndex() {
+export default async function ArticlesIndex() {
   const pages = getMarketingPages();
+  const aiArticles = await getPublishedArticles();
+  // Newest AI-published articles first, then the migrated library.
+  const cards = [
+    ...aiArticles.map((a) => ({ key: a.id, href: `/articles/${a.th_slug}`, slug: a.th_slug, title: a.th_title, description: a.th_description })),
+    ...pages.map((p) => ({ key: p.slug, href: p.path, slug: p.slug, title: p.title, description: p.description })),
+  ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
         eyebrow="Case Files · คลังบทความ"
         title="บทความทั้งหมด"
-        sub={`${pages.length} บทความความรู้เกี่ยวกับงานนักสืบเอกชน`}
+        sub={`${cards.length} บทความความรู้เกี่ยวกับงานนักสืบเอกชน`}
       />
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {pages.map((p, i) => (
+        {cards.map((c, i) => (
           <Link
-            key={p.slug}
-            href={p.path}
+            key={c.key}
+            href={c.href}
             className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50"
           >
-            <ArticleCover slug={p.slug} title={p.title} index={i} />
+            <ArticleCover slug={c.slug} title={c.title} index={i} />
             <div className="p-4">
               <h2 className="line-clamp-2 font-serif text-base font-bold leading-snug group-hover:text-primary">
-                {p.title}
+                {c.title}
               </h2>
-              {p.description && (
+              {c.description && (
                 <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                  {p.description}
+                  {c.description}
                 </p>
               )}
             </div>

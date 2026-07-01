@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { persistAuthCookie } from "./cookie-options";
 
 // /login covers /login/verify (startsWith check), so no extra entry needed.
-const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy", "/support"];
+// /review/<token> is the token-gated AI-article approval page opened from LINE
+// (no login) — the random one-time token is the capability, so it's public.
+const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy", "/support", "/review"];
 
 /**
  * Refreshes the Supabase session on every request and enforces auth on
