@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
 import { DetectiveHero } from "@/components/marketing/detective-hero";
+import { StatBand } from "@/components/marketing/stat-band";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Faq } from "@/components/marketing/faq";
@@ -85,6 +86,17 @@ export function MarketingHome() {
         scrollLabel="เลื่อนลงเพื่อดูสำนวน"
       />
 
+      {/* Credibility stats */}
+      <StatBand
+        eyebrow="Track Record · สถิติการทำงาน"
+        stats={[
+          { value: new Date().getFullYear() - 2016, suffix: "+", label: "ปีประสบการณ์" },
+          { value: REVIEW_COUNT, suffix: "+", label: "รีวิวจากลูกค้า" },
+          { value: Number(REVIEW_RATING), decimals: 1, label: "คะแนนเฉลี่ย (จาก 5)" },
+          { value: 77, label: "จังหวัดทั่วไทย" },
+        ]}
+      />
+
       {/* Video */}
       <section className="mx-auto max-w-3xl px-4 py-16">
         <SectionHeading eyebrow="Evidence Reel · วิดีโอแนะนำ" title="แนะนำ Detective Pulse" />
@@ -137,7 +149,7 @@ export function MarketingHome() {
           <SectionHeading eyebrow="Credentials · จุดเด่น" title="ทำไมต้องเรา" />
           <div className="mt-10 grid gap-8 sm:grid-cols-3">
             {WHY.map((w) => (
-              <div key={w.title} className="text-center">
+              <div key={w.title} className="dp-reveal text-center">
                 <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-primary/40 bg-primary/5 text-primary shadow-[inset_0_0_0_4px_hsl(var(--primary)/0.08)]">
                   <w.Icon className="h-6 w-6" />
                 </span>
@@ -154,7 +166,7 @@ export function MarketingHome() {
         <SectionHeading eyebrow="Protocol · ขั้นตอน" title="ขั้นตอนการทำงาน" />
         <ol className="relative mt-10 space-y-6 before:absolute before:left-[15px] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border">
           {PROCESS.map((step, i) => (
-            <li key={i} className="relative flex items-start gap-4">
+            <li key={i} className="dp-reveal relative flex items-start gap-4">
               <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-background font-mono text-sm font-semibold text-primary">
                 {i + 1}
               </span>
