@@ -44,8 +44,20 @@ const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[
   { name: "Fastwork client", date: "15/08/2025", stars: 5, text: "Truly professional." },
 ];
 
+// Informational articles for the homepage row — distinct from the six service
+// cards so the section adds new content rather than duplicating them.
+const ARTICLE_SLUGS = [
+  "hire-a-detective-online",
+  "online-fraud-investigation",
+  "qualities-of-a-good-detective",
+  "private-detective-pricing",
+  "investigate-partner-before-marriage",
+  "what-is-a-detective-agency",
+];
+
 export function MarketingHomeEN() {
   const services = SERVICES.map((s) => ({ ...s, page: getMarketingPageEN(s.slug) })).filter((s) => s.page);
+  const articles = ARTICLE_SLUGS.map((slug) => getMarketingPageEN(slug)).filter((p) => p != null);
   const contact = getMarketingPageEN("contact");
 
   return (
@@ -193,11 +205,11 @@ export function MarketingHomeEN() {
         <div className="mx-auto max-w-5xl px-4 py-16">
           <SectionHeading eyebrow="Field Notes · Guides" title="Articles &amp; Guides" sub="scroll →" />
           <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
-            {services.map((s, i) => (
-              <Link key={s.slug} href={s.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
-                <ArticleCover slug={s.slug} title={s.page!.title} index={i} lang="en" />
+            {articles.map((p, i) => (
+              <Link key={p!.slug} href={p!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+                <ArticleCover slug={p!.slug} title={p!.title} index={i} lang="en" />
                 <div className="p-3.5">
-                  <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{s.page!.title}</h3>
+                  <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{p!.title}</h3>
                 </div>
               </Link>
             ))}

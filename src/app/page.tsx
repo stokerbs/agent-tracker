@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: "/", languages: { th: "/", en: "/en" } },
-    openGraph: { type: "website", url: "https://detectivepulse.com/", title, description, siteName: "Detective Pulse", images: [ogImage] },
+    openGraph: { type: "website", url: "https://detectivepulse.com", title, description, siteName: "Detective Pulse", images: [ogImage] },
     twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
     // Google Search Console ownership verification (HTML-tag method) for the
     // detectivepulse.com property. Public token, not a secret.
