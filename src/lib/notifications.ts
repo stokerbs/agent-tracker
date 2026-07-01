@@ -2,9 +2,14 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendPushToUsers } from "@/lib/push/send";
+import { pushLineNotify } from "@/lib/line/notify";
 import { notificationLinks, relProfileId } from "@/lib/notification-links";
 import { reportError } from "@/lib/errors";
 import type { NotificationType } from "@/lib/types";
+
+// Absolute base for links sent OUTSIDE the app (e.g. LINE), where relative
+// paths don't resolve. The admin surfaces (/leads, …) live on the app host.
+const APP_URL = "https://detectivepulse.app";
 
 // Re-export the pure helpers so feature code keeps a single import surface
 // (`@/lib/notifications`) for the whole notification system.
@@ -36,6 +41,13 @@ export interface NotifyInput {
   entityId?: string;
   /** Delivery urgency. Defaults to "normal"; emergencies use "high". */
   priority?: NotificationPriority;
+  /**
+   * Also push this to the owner's LINE (via the Official Account). Opt-in per
+   * notification so only outward-facing events (new lead / AI-chat case / job
+   * application) reach LINE, not every internal app ping. No-op unless the LINE
+   * env is configured (see @/lib/line/notify).
+   */
+  line?: boolean;
 }
 
 /**
@@ -104,6 +116,17 @@ export async function notifyUsers(
       priority,
       createdAt,
     });
+
+    // 3. Optional LINE ping to the owner (outward-facing events only). Best-effort
+    // + env-gated; independent of the in-app audience above.
+    if (notification.line) {
+      const link = url ? `${APP_URL}${url}` : "";
+      await pushLineNotify(
+        `🔔 ${notification.title}` +
+          (notification.body ? `\n${notification.body}` : "") +
+          (link ? `\n${link}` : ""),
+      );
+    }
   } catch (err) {
     // Notifications are best-effort — never let them abort the triggering action.
     reportError(err, "notification:notifyUsers");

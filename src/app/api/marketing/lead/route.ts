@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       body: `${data.name} · ${data.phone}${data.caseType ? ` · ${data.caseType}` : ""}`,
       url: notificationLinks.leads(),
       priority: "high",
+      line: true,
     });
   });
 

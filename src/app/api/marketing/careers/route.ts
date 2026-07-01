@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       body: `${data.name} · ${data.phone}${data.position ? ` · ${data.position}` : ""}`,
       url: notificationLinks.recruitment(),
       priority: "high",
+      line: true,
     });
   });
 
