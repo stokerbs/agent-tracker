@@ -161,7 +161,37 @@ Forward-looking only. Each is clearly implied by an existing source finding and 
 
 ---
 
+## 7. Marketing Site (detectivepulse.com)
+
+**Provenance note.** This section is **session-derived, NOT Register-derived** — it tracks the public marketing site (`detectivepulse.com`) consolidated onto the app, which the 23-item Technical Debt Register never covered. It is kept **separate from the 33-item Register-derived counts** in the Summary below (those tallies are unchanged). Provenance is the `feat(marketing): …` PR series **#122–#141** on `main` and the architecture decision recorded here.
+
+**Architecture decision (2026-07-01): keep the marketing site in-app — do NOT split into a second Next.js project.** The `.com` marketing site and the private ops app share one Next.js codebase, separated at runtime by **host-split**: `isMarketingHost()` (`src/lib/marketing/host.ts`) branches `/` in `src/app/page.tsx` (marketing home on `detectivepulse.com`, product landing on the app host), articles live in the `(marketing)` route group, and `next.config.ts` `headers()` sets `X-Robots-Tag: noindex` on every non-`detectivepulse.com` host. The monolith is correct for the current stage (one team, shared branding/i18n/UI). Revisit a split only on a concrete trigger: independent deploy cadence, public-bundle perf pressure from the app's heavy deps, a hard security boundary need, or separate teams. See MKT-2 for the cheaper intermediate (decouple the chrome within the monolith).
+
+| ID | Priority | Title | Owner Agent | Dependencies | Current Status |
+|---|---|---|---|---|---|
+| MKT-1 | P2 | SEO/social + content-discovery + analytics/conversion improvements for the `.com` site | frontend-builder | none | MERGED via PR #141 (`f8a8453`) — see breakdown below |
+| MKT-2 | P2 | [Forward-looking] Decouple the marketing chrome from app baggage — the root `app/layout.tsx` loads `SplashGate` + `PwaRegister` (PWA/service-worker) and the heavy app CSP onto the public marketing pages; scope those (and the strict CSP) to the app host only, so the public site ships lighter and with a smaller attack surface | frontend-builder | none | BACKLOG |
+| MKT-3 | P3 | [Forward-looking] Convert marketing raster assets (`public/marketing/art-*.png`, ~200 KB each) to webp + adopt `next/image` optimization on the marketing surfaces | frontend-builder / performance-engineer | none | BACKLOG |
+| MKT-4 | P3 | [Forward-looking] English content Phase B — translate the remaining articles (EN 7 pages vs TH 27) and extend the `EN_TO_TH`/`TH_TO_EN` slug map | ai-engineer / frontend-builder | none | BACKLOG |
+
+**MKT-1 breakdown** (MERGED via PR #141 (`f8a8453`); verified locally — typecheck + lint clean, `npm test` 385 pass incl. new `src/lib/marketing/analytics.test.ts`, `npm run build` green with OG/Twitter images prerendered static + marketing articles still SSG). Three areas, chosen with the maintainer:
+
+| # | Area | Change |
+|---|---|---|
+| 1 | SEO / social | Branded Open Graph + Twitter share image via `next/og` (`src/app/opengraph-image.tsx` + `twitter-image.tsx`; Latin-only text → no dynamic font fetch, builds anywhere). Previously links had no share image. |
+| 2 | SEO | `Article` + `BreadcrumbList` JSON-LD on every TH/EN article page (`src/components/marketing/article-jsonld.tsx`, wired into both `[slug]/page.tsx`); was only on the homepages. |
+| 3 | SEO / a11y | Re-enabled pinch-zoom on the public pages (viewport override on `src/app/page.tsx` + `(marketing)/layout.tsx`); the root layout's native-shell `maximumScale:1, userScalable:false` lock is kept for the app host only. |
+| 4 | Content discovery | Footer "Case Index" (`src/components/marketing/footer-directory.tsx`) linking all 27 migrated pages from every page (were reachable only from the homepage) + a "บริการ" header-nav link. |
+| 5 | Analytics | GA4 tag (`src/components/marketing/analytics.tsx`) mounted only in the marketing chrome, **env-gated on `NEXT_PUBLIC_GA_ID`** (inert until set, like Sentry); never loads on the app host. CSP extended in `next.config.ts` for the GA endpoints. |
+| 6 | Conversion | Site-wide delegated contact-click tracking (`conversion-tracker.tsx`) — LINE/WhatsApp/Facebook/phone/email classified by a pure, unit-tested helper `channelFromHref` (`src/lib/marketing/analytics.ts`); contact-widget open events tracked; auto-open softened to once-per-visitor (`localStorage`). |
+
+> **Deploy caveat (MKT-1):** analytics stays OFF until `NEXT_PUBLIC_GA_ID` (e.g. `G-XXXXXXX`) is set in the environment (Vercel Production) and redeployed. Documented in `.env.example`. No app-host analytics regardless of the value.
+
+---
+
 ## Summary
+
+> **Scope of these counts:** the tallies below cover only the **33 Register-derived items** in sections 1–6. **Section 7 (Marketing Site)** is session-derived and tracked separately — it is intentionally excluded from every count in this Summary.
 
 **Per section:** Active Features 1 · Technical Debt 15 · Security Improvements 6 · Performance Improvements 2 · Architecture Improvements 4 · Future Enhancements 5 — **33 items total** (23 Register items + AF-1 from project memory + FUT-1..FUT-4 forward-looking, of which FUT-1/FUT-2/FUT-3 are directional counterparts to existing debt and FUT-4 is grounded in the documentation-gap findings + SEC-5/SEC-6, two follow-ups grounded in the completed SEC-1 audit — FLAG-1 and Note D respectively, traceable to Register #2's audit deliverable + TD-14, a P4 cleanup follow-up grounded in the completed SEC-2 migration — doc/codegen hygiene residue of the `gps903_session` DROP + FUT-3b, a forward-looking follow-up grounded in the completed FUT-3 readiness artifact — the deferred behavior-CHANGING central adoption of `can_access_case()` + TD-3b, a P2 follow-up grounded in the TD-3 finding — the deferred behavior-CHANGING en-GB/THB/battery display adoption of the centralized formatters, the bulk of Register #11).
 
