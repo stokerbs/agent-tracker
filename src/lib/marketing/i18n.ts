@@ -23,6 +23,12 @@ export const EN_TO_TH: Record<string, string> = {
   "trusted-detective-agency": "บริษัทนักสืบมืออาชีพที",
   "leading-detective-services": "บริการนักสืบชั้นนำเพื่",
   "evidence-for-adultery-lawsuit": "สิ่งที่ควรรู้ก่อนการจ้",
+  // Batch 3
+  "private-detective-pricing": "วิธีการคิดราคาจ้างนักส",
+  "social-media-investigation": "บริการสืบค้นข้อมูลไอที",
+  "phone-usage-investigation": "บริการตรวจสอบการใช้โทร",
+  "trace-people-and-debtors": "จ้างนักสืบตามหาคน",
+  "investigate-partner-before-marriage": "จ้างนักสืบตามแฟน",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(
