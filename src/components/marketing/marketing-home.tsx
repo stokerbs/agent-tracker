@@ -8,6 +8,7 @@ import { SiteChrome } from "@/components/marketing/site-chrome";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Faq } from "@/components/marketing/faq";
+import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { getMarketingPage } from "@/lib/marketing/content";
@@ -241,8 +242,14 @@ export function MarketingHome() {
         <Crosshair aria-hidden className="pointer-events-none absolute -left-8 bottom-0 h-64 w-64 text-primary/[0.04]" />
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center">
           <Stamp className="mb-6">Confidential</Stamp>
-          <SectionHeading eyebrow="Open a Case · เปิดคดี" title="เรา คือนักสืบเอกชน มืออาชีพ" sub="ปรึกษาเบื้องต้นได้ทุกเคส เป็นความลับ — ติดต่อทีมนักสืบของเราได้เลย" />
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <SectionHeading eyebrow="Open a Case · เปิดคดี" title="เรา คือนักสืบเอกชน มืออาชีพ" sub="ปรึกษาเบื้องต้นได้ทุกเคส เป็นความลับ — กรอกข้อมูลให้เราติดต่อกลับ หรือทักแชทได้เลย" />
+          <div className="mt-8">
+            <LeadForm lang="th" />
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="h-px w-8 bg-border" /> หรือทักแชทโดยตรง <span className="h-px w-8 bg-border" />
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#06C755] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <LineIcon className="h-5 w-5" /> LINE
             </a>
