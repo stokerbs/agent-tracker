@@ -89,7 +89,7 @@ export function MarketingHomeEN() {
         eyebrow="Track Record · By the numbers"
         stats={[
           { value: new Date().getFullYear() - 2016, suffix: "+", label: "Years of experience" },
-          { value: 1900, suffix: "+", label: "Cases closed" },
+          { value: 1953, suffix: "+", label: "Cases closed" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "Average rating (of 5)" },
           { value: 77, label: "Provinces covered" },
         ]}
