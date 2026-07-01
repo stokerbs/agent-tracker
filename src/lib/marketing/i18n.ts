@@ -17,6 +17,12 @@ export const EN_TO_TH: Record<string, string> = {
   "trace-assets-before-lawsuit": "วิธีสืบทรัพย์ก่อนฟ้อง-เ",
   "catch-a-cheating-partner": "นักสืบคดีชู้สาว-รับสืบค",
   "personal-background-check-service": "บริการตรวจสอบประวัติบุ",
+  // Batch 2
+  "asset-background-check": "บริการสืบประวัติบุคคลด",
+  "how-to-find-a-good-detective": "การหานักสืบเชี่ยวชาญ-คำ",
+  "trusted-detective-agency": "บริษัทนักสืบมืออาชีพที",
+  "leading-detective-services": "บริการนักสืบชั้นนำเพื่",
+  "evidence-for-adultery-lawsuit": "สิ่งที่ควรรู้ก่อนการจ้",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(
