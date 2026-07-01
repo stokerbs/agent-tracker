@@ -1,70 +1,55 @@
-import {
-  HeartCrack, Wallet, UserSearch, MapPin, Smartphone, Search,
-  PhoneCall, ShieldCheck, type LucideIcon,
-} from "lucide-react";
+/* eslint-disable @next/next/no-img-element -- static marketing covers in /public */
 import { FileTag, CornerTicks } from "@/components/marketing/ui";
+import { classifyArticle, getArticleCover } from "@/lib/marketing/article-category";
 
 /**
- * Generated dossier-style cover for a marketing article. Picks an icon +
- * category label that match the article's topic (by keyword on slug + title),
- * rendered in the FBI × Sherlock theme — so every article gets a content-aware
- * cover without managing a separate image file per page.
+ * Article cover — stock photo per topic category with dossier overlay.
+ * Optional per-page override via coverImage / coverAlt (frontmatter).
  */
-type Category = { Icon: LucideIcon; th: string; en: string };
-
-function classify(text: string): Category {
-  const has = (...k: string[]) => k.some((x) => text.includes(x));
-  // Order matters: more specific topics first.
-  if (has("ชู้", "แฟน", "เมียน้อย", "กิ๊ก", "cheating", "spouse", "infidelit"))
-    return { Icon: HeartCrack, th: "สืบชู้สาว", en: "Infidelity" };
-  if (has("ทรัพย์", "asset", "debtor"))
-    return { Icon: Wallet, th: "สืบทรัพย์สิน", en: "Asset Search" };
-  if (has("ประวัติบุคคล", "ตรวจสอบประวัติ", "เช็คประวัติ", "background"))
-    return { Icon: UserSearch, th: "เช็คประวัติ", en: "Background Check" };
-  if (has("ตามหา", "หาคน", "หาย", "หาญาติ", "ลูกหนี้", "missing", "find"))
-    return { Icon: MapPin, th: "ตามหาคน", en: "Find a Person" };
-  if (has("ไอที", "ออนไลน์", "โทร", "facebook", "line", "instagram", "cyber", "ฉ้อโกง", "โซเชียล"))
-    return { Icon: Smartphone, th: "นักสืบไอที", en: "Cyber" };
-  if (has("ติดต่อ", "contact"))
-    return { Icon: PhoneCall, th: "ติดต่อนักสืบ", en: "Contact" };
-  if (has("ราคา", "คิดราคา", "จ้าง", "hire", "pricing"))
-    return { Icon: Search, th: "จ้างนักสืบ", en: "Hire a Detective" };
-  return { Icon: ShieldCheck, th: "งานสืบ", en: "Investigation" };
-}
-
 export function ArticleCover({
   slug,
   title = "",
   index = 0,
   lang = "th",
   className = "",
+  coverImage,
+  coverAlt,
 }: {
   slug: string;
   title?: string;
   index?: number;
   lang?: "th" | "en";
   className?: string;
+  coverImage?: string;
+  coverAlt?: string;
 }) {
-  const c = classify(`${slug} ${title}`.toLowerCase() + ` ${slug} ${title}`);
-  const Icon = c.Icon;
+  const { category, src, alt } = getArticleCover(slug, title, lang, { coverImage, coverAlt });
+  const c = classifyArticle(`${slug} ${title}`);
   const label = lang === "en" ? c.en : c.th;
+  const Icon = category.Icon;
 
   return (
     <div className={`relative aspect-video w-full overflow-hidden bg-[#0a0e16] ${className}`}>
-      <div className="dp-grid absolute inset-0 opacity-70" />
-      <div className="pointer-events-none absolute -right-8 -top-10 h-44 w-44 rounded-full bg-primary/15 blur-2xl" />
-      {/* Oversized watermark icon */}
-      <Icon aria-hidden className="pointer-events-none absolute -bottom-8 -right-5 h-48 w-48 text-primary/[0.06]" strokeWidth={1.25} />
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-cover"
+        loading={index > 2 ? "lazy" : "eager"}
+        decoding="async"
+      />
+      {/* Dossier overlay — keeps FBI × Sherlock theme on top of stock photos */}
+      <div className="dp-grid absolute inset-0 opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e16]/90 via-[#0a0e16]/35 to-[#0a0e16]/20" />
+      <div className="pointer-events-none absolute -right-8 -top-10 h-44 w-44 rounded-full bg-primary/20 blur-2xl" />
+      <Icon aria-hidden className="pointer-events-none absolute -bottom-8 -right-5 h-48 w-48 text-primary/[0.08]" strokeWidth={1.25} />
       <CornerTicks />
       <div className="absolute left-3 top-3">
         <FileTag>{`CASE ${String(index + 1).padStart(2, "0")}`}</FileTag>
       </div>
-      {/* Focal icon + category */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary">
-          <Icon className="h-8 w-8" strokeWidth={1.5} />
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+        <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-primary/90 drop-shadow-sm">
+          {label}
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-primary/85">{label}</span>
       </div>
     </div>
   );

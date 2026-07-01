@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getMarketingPage, getMarketingPages } from "@/lib/marketing/content";
+import { getArticleCover } from "@/lib/marketing/article-category";
 import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
@@ -27,6 +28,8 @@ export async function generateMetadata(
   // redirect. The old WP trailing-slash URLs 308 here (Google honors it).
   const canonicalPath = page.path.replace(/\/+$/, "") || "/";
   const en = TH_TO_EN[page.slug];
+  const cover = getArticleCover(page.slug, page.title, "th", page);
+  const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
     title: page.seoTitle,
     description: page.description,
@@ -40,9 +43,9 @@ export async function generateMetadata(
       title: page.seoTitle,
       description: page.description,
       siteName: "Detective Pulse",
-      images: [{ url: "https://detectivepulse.com/api/og", width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 675, alt: cover.alt }],
     },
-    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.description, images: ["https://detectivepulse.com/api/og"] },
+    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.description, images: [ogImage] },
   };
 }
 
@@ -60,7 +63,13 @@ export default async function MarketingArticle(
       </Link>
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
-          <ArticleCover slug={page.slug} title={page.title} lang="th" />
+          <ArticleCover
+            slug={page.slug}
+            title={page.title}
+            lang="th"
+            coverImage={page.coverImage}
+            coverAlt={page.coverAlt}
+          />
         </div>
         <div className="mt-6">
           <Eyebrow className="!gap-2">Case File</Eyebrow>
