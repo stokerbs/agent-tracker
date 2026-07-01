@@ -222,6 +222,7 @@ export async function POST(request: NextRequest) {
               body: `${c.service_type} · ${c.customer_contact}`,
               url: notificationLinks.leads(),
               priority: "high",
+              line: true,
             });
           });
         }
