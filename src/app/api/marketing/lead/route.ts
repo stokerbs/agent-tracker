@@ -9,6 +9,8 @@ import { reportError } from "@/lib/errors";
 const schema = z.object({
   name: z.string().trim().min(1).max(80),
   phone: z.string().trim().min(6).max(30),
+  // Optional — validated as an email when provided; empty string is allowed.
+  email: z.string().trim().max(120).email().optional().or(z.literal("")),
   caseType: z.string().trim().max(60).optional(),
   message: z.string().trim().max(1000).optional(),
   locale: z.enum(["th", "en"]).default("th"),
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
   const { error } = await svc.from("marketing_leads").insert({
     name: data.name,
     phone: data.phone,
+    email: data.email ? data.email : null,
     case_type: data.caseType ?? null,
     message: data.message ?? null,
     locale: data.locale,
