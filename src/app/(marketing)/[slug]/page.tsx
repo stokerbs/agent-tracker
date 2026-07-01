@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getMarketingPage, getMarketingPages } from "@/lib/marketing/content";
@@ -9,6 +7,7 @@ import { getArticleCover } from "@/lib/marketing/article-category";
 import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
+import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only the migrated pages; everything else 404s
@@ -58,9 +57,7 @@ export default async function MarketingArticle(
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <Link href="/" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-primary">
-        <ArrowLeft className="h-3.5 w-3.5" /> กลับหน้าแรก
-      </Link>
+      <Breadcrumb items={[{ name: "หน้าแรก", href: "/" }, { name: "บทความ", href: "/articles" }, { name: page.title }]} />
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
           <ArticleCover

@@ -34,13 +34,15 @@ const WHY = [
   { Icon: MapPin, title: "ทั่วราชอาณาจักร", desc: "รับงานสืบทุกจังหวัดทั่วประเทศไทย เฝ้าไม่พลาดแม้วินาทีเดียว" },
 ];
 
+// Informational articles for the homepage row — deliberately distinct from the
+// six service cards above so the section adds new content, not duplicates.
 const ARTICLES = [
   { slug: "จ้างนักสืบออนไลน์" },
-  { slug: "private-investigator" },
-  { slug: "สืบตามหาคน" },
-  { slug: "บริการนักสืบ" },
-  { slug: "สืบทรัพย์สิน" },
-  { slug: "ติดต่อนักสืบ" },
+  { slug: "การฉ้อโกงออนไลน์และบทบ" },
+  { slug: "นักสืบ" },
+  { slug: "วิธีการคิดราคาจ้างนักส" },
+  { slug: "จ้างนักสืบตามแฟน" },
+  { slug: "บริษัทนักสืบ" },
 ];
 
 // Verified customer reviews (from the firm's Fastwork profile).
