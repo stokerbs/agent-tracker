@@ -81,8 +81,8 @@ export function AssistantWidget() {
                 key={i}
                 className={
                   m.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground"
-                    : "mr-auto max-w-[88%] rounded-2xl rounded-bl-sm border border-border bg-background/60 px-3.5 py-2 text-sm leading-relaxed"
+                    ? "ml-auto max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground"
+                    : "mr-auto max-w-[88%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-border bg-background/60 px-3.5 py-2 text-sm leading-relaxed"
                 }
               >
                 {m.content}
