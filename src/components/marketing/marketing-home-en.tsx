@@ -5,6 +5,7 @@ import {
   PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
+import { ArticleCover } from "@/components/marketing/article-cover";
 import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
@@ -111,11 +112,6 @@ export function MarketingHomeEN() {
               </Link>
             ))}
           </div>
-          <div className="mt-8 text-center">
-            <Link href="/en/articles" className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10">
-              View all articles <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -192,8 +188,30 @@ export function MarketingHomeEN() {
         </div>
       </section>
 
+      {/* Articles — field notes */}
+      <section id="articles" className="border-t border-border/60 bg-card/30">
+        <div className="mx-auto max-w-5xl px-4 py-16">
+          <SectionHeading eyebrow="Field Notes · Guides" title="Articles &amp; Guides" sub="scroll →" />
+          <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+            {services.map((s, i) => (
+              <Link key={s.slug} href={s.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+                <ArticleCover slug={s.slug} title={s.page!.title} index={i} lang="en" />
+                <div className="p-3.5">
+                  <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{s.page!.title}</h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-6 text-center">
+            <Link href="/en/articles" className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10">
+              View all articles <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
-      <div className="border-t border-border/60 bg-card/30">
+      <div className="border-t border-border/60">
         <Faq items={FAQ_EN} eyebrow="Briefing · FAQ" title="Frequently Asked Questions" />
       </div>
 
