@@ -43,18 +43,20 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary transition-colors group-hover:border-primary/70">
                 <Crosshair className="h-5 w-5" />
               </span>
-              <span className="font-serif text-lg font-bold tracking-tight">
+              {/* Brand text hides on mobile so the nav links fit; the icon
+                  still links home. */}
+              <span className="hidden font-serif text-lg font-bold tracking-tight sm:inline">
                 Detective<span className="text-primary">Pulse</span>
               </span>
             </Link>
-            <nav className="flex items-center gap-3 text-sm text-muted-foreground sm:gap-5">
-              <Link href="/" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
+            <nav className="flex items-center gap-3 font-mono text-xs uppercase tracking-wider text-muted-foreground sm:gap-5">
+              <Link href="/" className="hover:text-foreground">
                 หน้าแรก
               </Link>
-              <Link href="/careers" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
+              <Link href="/careers" className="hover:text-foreground">
                 ร่วมงาน
               </Link>
-              <Link href="/ติดต่อนักสืบ/" className="font-mono text-xs uppercase tracking-wider hover:text-foreground">
+              <Link href="/ติดต่อนักสืบ/" className="hover:text-foreground">
                 ติดต่อ
               </Link>
               <LangSwitch />
