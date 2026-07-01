@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import createNextIntlPlugin from "next-intl/plugin";
+import { MARKETING_HOST, CSP_MARKETING_EXTRA, buildCsp } from "./src/lib/csp";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -16,7 +17,7 @@ const supabaseHostname = (() => {
   }
 })();
 
-const securityHeaders = [
+const baseSecurityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
@@ -26,41 +27,33 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // next-intl, Next.js runtime, Radix UI — inline scripts required
-      // `capacitor:` allows the Capacitor native bridge when loaded in the app shell.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' capacitor: https://maps.googleapis.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      // `capacitor:` lets native camera previews (photo.webPath) render in <img>.
-      "img-src 'self' blob: data: capacitor: https://*.supabase.co https://lh3.googleusercontent.com https://maps.gstatic.com https://maps.googleapis.com",
-      // Sentry ingest (error reporting) — adjust the region host to match your
-      // DSN if it isn't on the US/global cluster (e.g. *.ingest.de.sentry.io).
-      "connect-src 'self' capacitor: https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://maps.googleapis.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
-      "frame-src 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
 ];
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   async headers() {
     return [
-      { source: "/(.*)", headers: securityHeaders },
+      { source: "/(.*)", headers: baseSecurityHeaders },
+      // Two CSP variants by host — marketing gets the GTM/GA4/Ads/Pixel
+      // allowances (see CSP_MARKETING_EXTRA above); the app/dashboard/portal
+      // host keeps the tighter default. Never both on the same response.
+      {
+        source: "/(.*)",
+        missing: [{ type: "host", value: MARKETING_HOST }],
+        headers: [{ key: "Content-Security-Policy", value: buildCsp() }],
+      },
+      {
+        source: "/(.*)",
+        has: [{ type: "host", value: MARKETING_HOST }],
+        headers: [{ key: "Content-Security-Policy", value: buildCsp(CSP_MARKETING_EXTRA) }],
+      },
       // Index ONLY the marketing host (detectivepulse.com). Every other host —
       // the private app on .app, vercel previews, localhost — gets noindex so
       // the "unlisted" tool stays out of search. (Reliable config-level header;
       // the middleware equivalent didn't propagate on Vercel.)
       {
         source: "/(.*)",
-        missing: [{ type: "host", value: "(www\\.)?detectivepulse\\.com" }],
+        missing: [{ type: "host", value: MARKETING_HOST }],
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];

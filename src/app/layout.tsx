@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { GoogleTagManager } from "@next/third-parties/google";
 import { Toaster } from "sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SplashGate } from "@/components/layout/splash-gate";
 import { PwaRegister } from "@/components/pwa-register";
+import { isMarketingHost } from "@/lib/marketing/host";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -71,10 +74,26 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  // Google Tag Manager — marketing site only (ad conversion tracking for
+  // detectivepulse.com), inert unless NEXT_PUBLIC_GTM_ID is configured.
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+  const host = (await headers()).get("host");
+  const showGtm = Boolean(gtmId) && isMarketingHost(host);
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      {showGtm && <GoogleTagManager gtmId={gtmId!} />}
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans antialiased`}>
+        {showGtm && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"
