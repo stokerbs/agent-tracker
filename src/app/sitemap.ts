@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/support`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/careers`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
   ];
   const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
     // Non-trailing-slash to match the served URL (Next 308s the trailing form).
@@ -23,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const english: MetadataRoute.Sitemap = [
     { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/en/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/en/careers`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     ...getMarketingPagesEN().map((p) => ({
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
       lastModified: now,

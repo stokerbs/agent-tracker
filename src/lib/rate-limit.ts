@@ -35,6 +35,8 @@ export const RATE_LIMITS = {
   gps_history:{ limit: 30, windowMs: 3_600_000 },
   /** 5 public marketing lead submissions per hour per IP — anti-spam. */
   lead:       { limit:  5, windowMs: 3_600_000 },
+  /** 5 public recruitment applications per hour per IP — anti-spam. */
+  careers:    { limit:  5, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

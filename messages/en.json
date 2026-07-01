@@ -138,7 +138,8 @@
       "gps903Discovery": "Device Discovery",
       "gps903Credentials": "GPS Credentials",
       "gpsMonitor": "GPS Monitor",
-      "leads": "Leads"
+      "leads": "Leads",
+      "recruitment": "Recruitment"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"

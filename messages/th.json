@@ -138,7 +138,8 @@
       "gps903Discovery": "ค้นหาอุปกรณ์",
       "gps903Credentials": "ข้อมูลรับรอง GPS",
       "gpsMonitor": "ติดตาม GPS",
-      "leads": "ลูกค้าติดต่อเข้า"
+      "leads": "ลูกค้าติดต่อเข้า",
+      "recruitment": "ผู้สมัครร่วมงาน"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
