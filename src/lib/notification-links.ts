@@ -20,6 +20,7 @@ export const notificationLinks = {
   map: () => `/map`,
   gpsMonitor: () => `/gps-monitor`,
   leads: () => `/leads`,
+  recruitment: () => `/recruitment`,
 } as const;
 
 /**

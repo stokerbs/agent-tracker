@@ -50,6 +50,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link href="/" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
                 หน้าแรก
               </Link>
+              <Link href="/careers" className="hidden font-mono text-xs uppercase tracking-wider hover:text-foreground sm:inline">
+                ร่วมงาน
+              </Link>
               <Link href="/ติดต่อนักสืบ/" className="font-mono text-xs uppercase tracking-wider hover:text-foreground">
                 ติดต่อ
               </Link>
@@ -72,6 +75,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 © {new Date().getFullYear()} · Since 2016 · นักสืบเอกชนมืออาชีพ
               </p>
+              <nav className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                <Link href="/careers" className="hover:text-primary">ร่วมงานกับเรา · Careers</Link>
+                <span aria-hidden className="text-border">·</span>
+                <Link href="/privacy" className="hover:text-primary">นโยบายความเป็นส่วนตัว</Link>
+              </nav>
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/80">
                 {"// End of file — all case data confidential"}
               </p>
