@@ -12,6 +12,13 @@ export const metadata: Metadata = {
     title: "Private Investigator in Thailand | Detective Pulse",
     description: "Professional, confidential private investigation services across Thailand.",
     siteName: "Detective Pulse",
+    images: [{ url: "https://detectivepulse.com/api/og", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Private Investigator in Thailand | Detective Pulse",
+    description: "Professional, confidential private investigation services across Thailand.",
+    images: ["https://detectivepulse.com/api/og"],
   },
 };
 
