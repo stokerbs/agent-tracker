@@ -177,7 +177,7 @@ export function MarketingHome() {
       {/* Reviews — verified on Fastwork */}
       <section id="reviews" className="border-y border-border/60 bg-card/30">
         <div className="mx-auto max-w-5xl px-4 py-16">
-          <SectionHeading eyebrow="Exhibits · ยืนยันบน Fastwork" title="รีวิวจากลูกค้า" sub="ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ" />
+          <SectionHeading eyebrow="Exhibits · ยืนยันบน Fastwork" title="รีวิวจากลูกค้า" sub="ขอขอบคุณลูกค้าทุกท่านที่ไว้วางใจ · เลื่อนดู →" />
 
           {/* Aggregate rating */}
           <div className="mx-auto mt-8 flex w-fit items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-6 py-4">
@@ -193,9 +193,9 @@ export function MarketingHome() {
           </div>
 
           {/* Testimonials */}
-          <div className="mt-8 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 flex items-stretch gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {TESTIMONIALS.map((r, i) => (
-              <figure key={i} className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
+              <figure key={i} className="relative flex w-72 shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border bg-card p-6">
                 <CornerTicks />
                 <div className="flex items-center justify-between">
                   <span className="flex gap-0.5 text-primary">
@@ -206,7 +206,7 @@ export function MarketingHome() {
                   <FileTag>{`EXHIBIT ${String.fromCharCode(65 + i)}`}</FileTag>
                 </div>
                 <blockquote className="mt-4 font-serif text-base leading-relaxed text-foreground/95">“{r.text}”</blockquote>
-                <figcaption className="mt-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                <figcaption className="mt-auto flex items-center gap-2 pt-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                   <span className="h-px w-4 bg-primary/50" /> {r.name} · {r.date}
                 </figcaption>
               </figure>
