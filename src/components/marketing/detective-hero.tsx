@@ -69,10 +69,10 @@ export function DetectiveHero(p: DetectiveHeroProps) {
           {p.eyebrow}
         </p>
 
-        <h1
-          className="dp-hero-in mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl"
-          style={{ animationDelay: ".24s" }}
-        >
+        {/* No entrance fade on the headline: it's the LCP element, so it must
+            paint at full opacity immediately (opacity:0 → animation delays LCP).
+            The decorative "declassify" bar on the accent word still animates. */}
+        <h1 className="mx-auto mt-5 max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
           {p.titleLead}{" "}
           <span className="dp-redact relative inline-block text-primary">{p.titleAccent}</span>
           <br className="hidden sm:block" /> {p.titleRest}
