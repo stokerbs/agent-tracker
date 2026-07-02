@@ -140,7 +140,8 @@
       "gpsMonitor": "ติดตาม GPS",
       "leads": "ลูกค้าติดต่อเข้า",
       "recruitment": "ผู้สมัครร่วมงาน",
-      "aiArticles": "บทความ AI"
+      "aiArticles": "บทความ AI",
+      "marketingInsights": "สรุปการตลาด"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
