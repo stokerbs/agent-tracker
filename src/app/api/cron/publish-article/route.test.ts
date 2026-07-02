@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 
 vi.mock("@/lib/marketing/article-gen", () => ({
-  TOPIC_POOL: ["topic-a", "topic-b"],
+  KEYWORD_TOPICS: [
+    { th: "topic-a", en: "en-a", angle: "x" },
+    { th: "topic-b", en: "en-b", angle: "y" },
+  ],
   generateArticle: vi.fn(),
 }));
 vi.mock("@/lib/marketing/articles-db", () => ({

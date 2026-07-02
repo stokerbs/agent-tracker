@@ -22,9 +22,11 @@ describe("generateArticle", () => {
     return new Response(JSON.stringify({ content: [{ type: "tool_use", name: "save_article", input }] }), { status: 200 });
   }
 
+  const seed = { th: "นักสืบชู้สาว", en: "infidelity investigator", angle: "จับผิดคู่รัก" };
+
   it("throws without an API key", async () => {
     delete process.env.ANTHROPIC_API_KEY;
-    await expect(generateArticle("t")).rejects.toThrow();
+    await expect(generateArticle(seed)).rejects.toThrow();
   });
 
   it("returns a normalised bilingual article from the tool call", async () => {
@@ -40,21 +42,21 @@ describe("generateArticle", () => {
         en_slug: "Infidelity 101!",
       }),
     );
-    const a = await generateArticle("การสืบชู้สาว");
+    const a = await generateArticle(seed);
     expect(a.thTitle).toBe("สืบชู้สาว 101");
     expect(a.enSlug).toBe("infidelity-101");
     expect(a.thSlug).toBe("สืบชู้สาว-101");
     expect(a.coverCategory).toBeTruthy();
-    expect(a.topic).toBe("การสืบชู้สาว");
+    expect(a.topic).toBe("นักสืบชู้สาว");
   });
 
   it("throws when the model returns an incomplete article", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(toolResponse({ th_title: "x" }));
-    await expect(generateArticle("t")).rejects.toThrow();
+    await expect(generateArticle(seed)).rejects.toThrow();
   });
 
   it("throws on an Anthropic error", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 500 }));
-    await expect(generateArticle("t")).rejects.toThrow();
+    await expect(generateArticle(seed)).rejects.toThrow();
   });
 });
