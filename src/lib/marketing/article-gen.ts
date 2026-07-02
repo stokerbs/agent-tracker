@@ -4,23 +4,40 @@ import { classifyArticle } from "@/lib/marketing/article-category";
 
 const MODEL = process.env.MARKETING_AI_MODEL ?? "claude-haiku-4-5-20251001";
 
-// Curated pool of Thai private-investigation SEO topics. The cron picks one not
-// recently used (see the route) so articles stay varied.
-export const TOPIC_POOL: string[] = [
-  "สัญญาณเตือนว่าคู่รักอาจนอกใจ และควรทำอย่างไร",
-  "วิธีเลือกนักสืบเอกชนที่ไว้ใจได้ ไม่โดนหลอก",
-  "หลักฐานแบบไหนใช้ได้ในชั้นศาลคดีชู้สาว",
-  "ขั้นตอนการสืบทรัพย์สินก่อนฟ้องหรือบังคับคดี",
-  "โดนโกงออนไลน์ต้องทำอย่างไร ตามเงินคืนได้ไหม",
-  "วิธีตรวจสอบประวัติบุคคลก่อนร่วมธุรกิจหรือรับเข้าทำงาน",
-  "ตามหาคนหาย ญาติพลัดพราก เริ่มต้นอย่างไร",
-  "นักสืบไอที: สืบข้อมูลบนโซเชียลและโลกออนไลน์ทำได้แค่ไหน",
-  "ค่าจ้างนักสืบคิดอย่างไร ปัจจัยที่มีผลต่อราคา",
-  "ความลับของลูกค้ากับจรรยาบรรณของนักสืบเอกชน",
-  "สืบพฤติกรรมพนักงานทุจริตในองค์กรอย่างถูกต้อง",
-  "ติดตามลูกหนี้ที่หลบหนี ทำอย่างไรให้ได้ผล",
-  "เช็คก่อนแต่ง: ตรวจสอบว่าที่คู่ครองก่อนตัดสินใจ",
-  "รวมคำถามที่พบบ่อยก่อนจ้างนักสืบเอกชน",
+// Keyword pool seeded from Detective Pulse's real Google Ads search-keyword
+// report — the terms that actually drove clicks/conversions. Each entry pairs a
+// Thai + English target keyword with an article angle; the generator weaves the
+// keyword naturally into each language version for SEO alignment with the ads.
+// Ordered roughly by proven intent (highest-converting keywords first). The cron
+// picks one not yet used (dedup by `th` keyword) so articles stay varied.
+export interface KeywordTopic {
+  /** Thai target keyword (also the stored `topic`, used for dedupe). */
+  th: string;
+  /** English target keyword for the EN version. */
+  en: string;
+  /** Short angle to steer the article. */
+  angle: string;
+}
+
+export const KEYWORD_TOPICS: KeywordTopic[] = [
+  { th: "นักสืบไอที", en: "cyber private investigator", angle: "สืบข้อมูลบนโซเชียล/ออนไลน์/ดิจิทัล ทำได้แค่ไหนอย่างถูกกฎหมาย" },
+  { th: "จ้างนักสืบตามหาคน", en: "find a missing person investigator", angle: "ตามหาคนหาย ญาติพลัดพราก ลูกหนี้หลบหนี ตามหาคนโกง" },
+  { th: "รับสืบประวัติ", en: "background check investigator", angle: "ตรวจสอบประวัติบุคคลก่อนร่วมงาน คบหา หรือทำธุรกิจ" },
+  { th: "นักสืบชู้สาว", en: "infidelity private investigator", angle: "จับผิดคู่รัก เก็บหลักฐานเพื่อใช้ในชั้นศาล" },
+  { th: "จ้างนักสืบตามแฟน", en: "track a cheating partner", angle: "ติดตามพฤติกรรมแฟนหรือคู่สมรสที่สงสัย" },
+  { th: "นักสืบกรุงเทพ", en: "private detective bangkok", angle: "บริการนักสืบเอกชนในกรุงเทพฯ" },
+  { th: "นักสืบพัทยา", en: "private detective pattaya", angle: "บริการนักสืบเอกชนในพัทยา" },
+  { th: "นักสืบเชียงใหม่", en: "private investigator chiang mai", angle: "บริการนักสืบเอกชนในเชียงใหม่" },
+  { th: "สืบทรัพย์สิน", en: "asset search investigator", angle: "ตรวจสอบทรัพย์สินลูกหนี้ก่อนฟ้องหรือบังคับคดี" },
+  { th: "บริการนักสืบ", en: "private investigation services", angle: "งานสืบเอกชนครบวงจร มีบริการอะไรบ้าง" },
+  { th: "บริษัทนักสืบ", en: "private detective agency", angle: "วิธีเลือกบริษัทนักสืบที่น่าเชื่อถือ" },
+  { th: "นักสืบติดตามบุคคล", en: "personal surveillance investigator", angle: "การติดตามและเฝ้าสังเกตบุคคลเป้าหมาย" },
+  { th: "ค่าจ้างนักสืบ", en: "private investigator cost", angle: "ปัจจัยที่มีผลต่อราคางานสืบ และการชำระเงิน" },
+  { th: "หานักสืบมืออาชีพ", en: "how to hire a private investigator", angle: "วิธีเลือกนักสืบที่ไว้ใจได้ ไม่โดนหลอก" },
+  { th: "ตามหาคนโกงออนไลน์", en: "online scam / fraud investigator", angle: "โดนโกงออนไลน์ ตามหาคนโกง มีโอกาสตามเงินคืนไหม" },
+  { th: "นักสืบเอกชนทั่วไทย", en: "private investigator thailand", angle: "บริการสืบทั่วราชอาณาจักร ครอบคลุมพื้นที่ใดบ้าง" },
+  { th: "สำนักงานนักสืบ", en: "private investigator office", angle: "นักสืบเอกชนทำงานอย่างไร (ฟรีแลนซ์ ไม่มีสำนักงานประจำ)" },
+  { th: "เช็คประวัติก่อนแต่งงาน", en: "pre-marriage background check", angle: "ตรวจสอบว่าที่คู่ครองก่อนตัดสินใจแต่งงาน" },
 ];
 
 export interface GeneratedArticle {
@@ -37,7 +54,12 @@ export interface GeneratedArticle {
   model: string;
 }
 
-const SYSTEM = `You are an expert Thai SEO content writer for "Detective Pulse", a professional private-investigation firm in Thailand. Write a genuinely helpful, accurate blog article on the given topic, then an English version.
+const SYSTEM = `You are an expert Thai SEO content writer for "Detective Pulse", a professional private-investigation firm in Thailand. You are given a TARGET KEYWORD (Thai + English) that the firm actually advertises on, plus an angle. Write a genuinely helpful, accurate blog article that ranks for it — a Thai version and an English version.
+
+SEO KEYWORD TARGETING:
+- Weave the THAI keyword naturally into the Thai title, the first paragraph, at least one H2 heading, and the Thai meta description.
+- Weave the ENGLISH keyword the same way into the English title, first paragraph, an H2, and the English meta description.
+- Natural placement only — NO keyword stuffing, no awkward repetition.
 
 RULES:
 - Natural, warm, professional Thai (and natural English for the EN version) — write for real prospective clients, not keyword stuffing.
@@ -80,8 +102,8 @@ export function sanitizeSlug(raw: string, lang: "th" | "en"): string {
   return raw.trim().replace(/\s+/g, "-").replace(/["'`/\\?#]+/g, "").slice(0, 80) || "บทความ";
 }
 
-/** Generate one bilingual article from a topic via Claude. Throws on failure. */
-export async function generateArticle(topic: string): Promise<GeneratedArticle> {
+/** Generate one bilingual, keyword-targeted article via Claude. Throws on failure. */
+export async function generateArticle(seed: KeywordTopic): Promise<GeneratedArticle> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
@@ -99,7 +121,16 @@ export async function generateArticle(topic: string): Promise<GeneratedArticle> 
         system: SYSTEM,
         tools: [ARTICLE_TOOL],
         tool_choice: { type: "tool", name: "save_article" },
-        messages: [{ role: "user", content: `หัวข้อบทความ: ${topic}` }],
+        messages: [
+          {
+            role: "user",
+            content:
+              `TARGET KEYWORD (Thai): ${seed.th}\n` +
+              `TARGET KEYWORD (English): ${seed.en}\n` +
+              `ANGLE: ${seed.angle}\n\n` +
+              `Write the bilingual article and call save_article.`,
+          },
+        ],
       }),
     });
   } finally {
@@ -115,9 +146,9 @@ export async function generateArticle(topic: string): Promise<GeneratedArticle> 
     throw new Error("model did not return a complete article");
   }
 
-  const coverCategory = classifyArticle(`${topic} ${input.th_title}`).key;
+  const coverCategory = classifyArticle(`${seed.th} ${seed.en} ${input.th_title}`).key;
   return {
-    topic,
+    topic: seed.th,
     thTitle: input.th_title.trim(),
     thDescription: input.th_description.trim(),
     thBody: input.th_body.trim(),

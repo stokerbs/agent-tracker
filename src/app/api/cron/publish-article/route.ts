@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
-import { generateArticle, TOPIC_POOL } from "@/lib/marketing/article-gen";
+import { generateArticle, KEYWORD_TOPICS } from "@/lib/marketing/article-gen";
 import { getUsedTopicsAndSlugs, insertDraft } from "@/lib/marketing/articles-db";
 import { pushLineNotify } from "@/lib/line/notify";
 import { notifyRole } from "@/lib/notifications";
@@ -24,13 +24,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Pick a topic we haven't generated before (fall back to a random one if the
-    // pool is exhausted, so the schedule never stalls).
+    // Pick a keyword topic we haven't generated before (fall back to a random one
+    // if the pool is exhausted, so the schedule never stalls).
     const { topics, slugs } = await getUsedTopicsAndSlugs();
-    const fresh = TOPIC_POOL.filter((t) => !topics.has(t));
-    const topic = (fresh.length ? fresh : TOPIC_POOL)[Math.floor(Math.random() * (fresh.length || TOPIC_POOL.length))]!;
+    const fresh = KEYWORD_TOPICS.filter((t) => !topics.has(t.th));
+    const pool = fresh.length ? fresh : KEYWORD_TOPICS;
+    const seed = pool[Math.floor(Math.random() * pool.length)]!;
 
-    const article = await generateArticle(topic);
+    const article = await generateArticle(seed);
 
     // Guard against slug collisions with earlier AI articles (append a suffix).
     let n = 1;
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       priority: "normal",
     });
 
-    return NextResponse.json({ ok: true, id: draft?.id, topic, thSlug: article.thSlug });
+    return NextResponse.json({ ok: true, id: draft?.id, topic: seed.th, thSlug: article.thSlug });
   } catch (e) {
     reportError(e, "cron:publish-article");
     console.error("[cron:publish-article] failed:", e instanceof Error ? e.message : e);
