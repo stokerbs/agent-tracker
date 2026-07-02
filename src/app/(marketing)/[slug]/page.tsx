@@ -8,6 +8,8 @@ import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
+import { ArticleJsonLd } from "@/components/marketing/json-ld";
+import { RelatedArticles } from "@/components/marketing/related-articles";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only the migrated pages; everything else 404s
@@ -55,8 +57,21 @@ export default async function MarketingArticle(
   const page = getMarketingPage(slug);
   if (!page) notFound();
 
+  const cover = getArticleCover(page.slug, page.title, "th", page);
+  const related = getMarketingPages()
+    .filter((p) => p.slug !== page.slug)
+    .slice(0, 3)
+    .map((p) => ({ href: p.path, slug: p.slug, title: p.title }));
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <ArticleJsonLd
+        headline={page.title}
+        description={page.description}
+        image={`https://detectivepulse.com${cover.src}`}
+        url={`https://detectivepulse.com${page.path.replace(/\/+$/, "") || "/"}`}
+        inLanguage="th"
+      />
       <Breadcrumb items={[{ name: "หน้าแรก", href: "/" }, { name: "บทความ", href: "/articles" }, { name: page.title }]} />
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
@@ -82,6 +97,9 @@ export default async function MarketingArticle(
           </ReactMarkdown>
         </div>
       </article>
+      <div className="mt-12">
+        <RelatedArticles heading="บทความที่เกี่ยวข้อง" items={related} lang="th" />
+      </div>
     </div>
   );
 }
