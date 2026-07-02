@@ -7,12 +7,9 @@ import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
-import { getPublishedArticles, getPublishedArticleBySlug } from "@/lib/marketing/articles-db";
+import { getPublishedArticleBySlug } from "@/lib/marketing/articles-db";
 
-export async function generateStaticParams() {
-  const arts = await getPublishedArticles();
-  return arts.map((a) => ({ slug: a.en_slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },

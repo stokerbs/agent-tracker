@@ -7,15 +7,13 @@ import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
-import { getPublishedArticles, getPublishedArticleBySlug } from "@/lib/marketing/articles-db";
+import { getPublishedArticleBySlug } from "@/lib/marketing/articles-db";
 
-// AI-generated articles live in the DB and publish on approval (no redeploy), so
-// this route resolves dynamically. generateStaticParams pre-builds the ones that
-// exist at build time; anything published later renders on demand.
-export async function generateStaticParams() {
-  const arts = await getPublishedArticles();
-  return arts.map((a) => ({ slug: a.th_slug }));
-}
+// AI-generated articles live in the DB and publish on approval (no redeploy).
+// Render dynamically (the app is already dynamic via the root layout's
+// headers()), so newly-approved articles appear immediately and unknown slugs
+// resolve to a clean 404 via notFound().
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
