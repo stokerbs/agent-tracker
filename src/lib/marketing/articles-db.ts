@@ -14,6 +14,10 @@ export interface DbArticle {
   en_title: string;
   en_description: string;
   en_body: string;
+  zh_slug: string | null;
+  zh_title: string | null;
+  zh_description: string | null;
+  zh_body: string | null;
   cover_category: string | null;
   status: string;
   approve_token: string;
@@ -32,9 +36,21 @@ export async function getPublishedArticles(): Promise<DbArticle[]> {
   return (data as DbArticle[]) ?? [];
 }
 
+/** Published articles that have a Chinese version (for the /zh article index). */
+export async function getPublishedArticlesZh(): Promise<DbArticle[]> {
+  const svc = createServiceClient();
+  const { data } = await svc
+    .from("marketing_articles")
+    .select("*")
+    .eq("status", "published")
+    .not("zh_slug", "is", null)
+    .order("published_at", { ascending: false });
+  return (data as DbArticle[]) ?? [];
+}
+
 /** A single published article by its TH or EN slug (public reads). The route
  *  param for non-ASCII (Thai) slugs arrives percent-encoded, so decode first. */
-export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en"): Promise<DbArticle | null> {
+export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en" | "zh"): Promise<DbArticle | null> {
   let decoded = slug;
   try {
     decoded = decodeURIComponent(slug);
@@ -42,7 +58,7 @@ export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en")
     /* malformed encoding — fall back to the raw value */
   }
   const svc = createServiceClient();
-  const col = lang === "en" ? "en_slug" : "th_slug";
+  const col = lang === "en" ? "en_slug" : lang === "zh" ? "zh_slug" : "th_slug";
   const { data } = await svc
     .from("marketing_articles")
     .select("*")
@@ -55,13 +71,14 @@ export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en")
 /** Topics + slugs already used, so the generator avoids repeats/collisions. */
 export async function getUsedTopicsAndSlugs(): Promise<{ topics: Set<string>; slugs: Set<string> }> {
   const svc = createServiceClient();
-  const { data } = await svc.from("marketing_articles").select("topic, th_slug, en_slug");
+  const { data } = await svc.from("marketing_articles").select("topic, th_slug, en_slug, zh_slug");
   const topics = new Set<string>();
   const slugs = new Set<string>();
-  for (const r of (data as Array<{ topic: string; th_slug: string; en_slug: string }>) ?? []) {
+  for (const r of (data as Array<{ topic: string; th_slug: string; en_slug: string; zh_slug: string | null }>) ?? []) {
     topics.add(r.topic);
     slugs.add(r.th_slug);
     slugs.add(r.en_slug);
+    if (r.zh_slug) slugs.add(r.zh_slug);
   }
   return { topics, slugs };
 }
@@ -81,6 +98,10 @@ export async function insertDraft(a: GeneratedArticle, token: string): Promise<{
       en_title: a.enTitle,
       en_description: a.enDescription,
       en_body: a.enBody,
+      zh_slug: a.zhSlug,
+      zh_title: a.zhTitle,
+      zh_description: a.zhDescription,
+      zh_body: a.zhBody,
       cover_category: a.coverCategory,
       status: "draft",
       approve_token: token,

@@ -29,7 +29,9 @@ function req(auth?: string): NextRequest {
 
 const article = {
   topic: "topic-a", thTitle: "T", thDescription: "D", thBody: "B",
-  enTitle: "T", enDescription: "D", enBody: "B", thSlug: "s", enSlug: "s", coverCategory: "hire", model: "m",
+  enTitle: "T", enDescription: "D", enBody: "B",
+  zhTitle: "T", zhDescription: "D", zhBody: "B",
+  thSlug: "s", enSlug: "s", zhSlug: "s", coverCategory: "hire", model: "m",
 };
 
 const OLD = { ...process.env };
