@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckCircle2, PhoneCall, ShieldCheck, Star } from "lucide-react";
 import { DetectiveHero } from "@/components/marketing/detective-hero";
-import { SectionHeading, Stamp } from "@/components/marketing/ui";
+import { SectionHeading, Stamp, CornerTicks } from "@/components/marketing/ui";
+import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { LANDING_PAGES, getLandingPage } from "@/lib/marketing/landing-pages";
@@ -57,7 +58,7 @@ export default async function CampaignLanding(
 
       {/* Benefits */}
       <section className="mx-auto max-w-4xl px-4 py-16">
-        <SectionHeading eyebrow="ทำไมต้องเรา" title={`บริการ${lp.headlineAccent === "นอกใจ?" ? "สืบชู้สาว" : lp.keyword.split(" ")[0]}ที่ไว้ใจได้`} />
+        <SectionHeading eyebrow="ทำไมต้องเรา" title={lp.benefitsTitle} />
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {lp.benefits.map((b) => (
             <div key={b} className="flex items-start gap-3 rounded-xl border border-border bg-card p-5">
@@ -76,6 +77,29 @@ export default async function CampaignLanding(
           <span className="flex items-center gap-1.5 text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> เป็นความลับ 100%</span>
         </div>
       </section>
+
+      {/* What you get */}
+      <section className="border-y border-border/60 bg-card/30">
+        <div className="mx-auto max-w-3xl px-4 py-16">
+          <SectionHeading eyebrow="Deliverables · สิ่งที่คุณจะได้รับ" title="สิ่งที่คุณจะได้รับ" />
+          <div className="relative mt-8 rounded-2xl border border-border bg-card p-6 sm:p-8">
+            <CornerTicks />
+            <ul className="space-y-3">
+              {lp.deliverables.map((d) => (
+                <li key={d} className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm leading-relaxed">{d}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <div className="border-b border-border/60">
+        <Faq items={lp.faq} eyebrow="Briefing · คำถามที่พบบ่อย" title="คำถามที่พบบ่อย" />
+      </div>
 
       {/* Lead form */}
       <section id="contact" className="border-t border-border/60 bg-card/30">
