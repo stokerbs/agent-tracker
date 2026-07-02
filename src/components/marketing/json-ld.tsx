@@ -18,6 +18,42 @@ function LdScript({ data }: { data: unknown }) {
   );
 }
 
+/** BlogPosting structured data for an article page (Google rich results). */
+export function ArticleJsonLd({
+  headline,
+  description,
+  image,
+  url,
+  datePublished,
+  inLanguage,
+}: {
+  headline: string;
+  description?: string;
+  image?: string;
+  url: string;
+  datePublished?: string;
+  inLanguage: "th" | "en" | "zh";
+}) {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: headline.slice(0, 110),
+    ...(description ? { description } : {}),
+    ...(image ? { image: [image] } : {}),
+    url,
+    mainEntityOfPage: url,
+    inLanguage,
+    ...(datePublished ? { datePublished, dateModified: datePublished } : {}),
+    author: { "@type": "Organization", name: "Detective Pulse", url: BASE },
+    publisher: {
+      "@type": "Organization",
+      name: "Detective Pulse",
+      logo: { "@type": "ImageObject", url: `${BASE}/marketing/logo.png` },
+    },
+  };
+  return <LdScript data={data} />;
+}
+
 export function MarketingJsonLd({ faq }: { faq: QA[] }) {
   const business = {
     "@context": "https://schema.org",

@@ -8,6 +8,8 @@ import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
+import { ArticleJsonLd } from "@/components/marketing/json-ld";
+import { RelatedArticles } from "@/components/marketing/related-articles";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 
 export const dynamicParams = false; // only translated pages; everything else 404s
@@ -52,8 +54,21 @@ export default async function MarketingArticleEN(
   const page = getMarketingPageEN(slug);
   if (!page) notFound();
 
+  const cover = getArticleCover(page.slug, page.title, "en", page);
+  const related = getMarketingPagesEN()
+    .filter((p) => p.slug !== page.slug)
+    .slice(0, 3)
+    .map((p) => ({ href: p.path, slug: p.slug, title: p.title }));
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <ArticleJsonLd
+        headline={page.title}
+        description={page.description}
+        image={`https://detectivepulse.com${cover.src}`}
+        url={`https://detectivepulse.com${page.path}`}
+        inLanguage="en"
+      />
       <Breadcrumb items={[{ name: "Home", href: "/en" }, { name: "Articles", href: "/en/articles" }, { name: page.title }]} />
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
@@ -77,6 +92,9 @@ export default async function MarketingArticleEN(
           </ReactMarkdown>
         </div>
       </article>
+      <div className="mt-12">
+        <RelatedArticles heading="Related articles" items={related} lang="en" />
+      </div>
     </div>
   );
 }

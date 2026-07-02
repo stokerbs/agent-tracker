@@ -7,7 +7,9 @@ import { mdComponents } from "@/components/marketing/markdown";
 import { Eyebrow } from "@/components/marketing/ui";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
-import { getPublishedArticleBySlug } from "@/lib/marketing/articles-db";
+import { ArticleJsonLd } from "@/components/marketing/json-ld";
+import { RelatedArticles } from "@/components/marketing/related-articles";
+import { getPublishedArticleBySlug, getPublishedArticles } from "@/lib/marketing/articles-db";
 
 // AI-generated articles live in the DB and publish on approval (no redeploy).
 // Render dynamically (the app is already dynamic via the root layout's
@@ -47,8 +49,22 @@ export default async function DbArticleTH(
   const a = await getPublishedArticleBySlug(slug, "th");
   if (!a) notFound();
 
+  const related = (await getPublishedArticles())
+    .filter((x) => x.id !== a.id)
+    .slice(0, 3)
+    .map((x) => ({ href: `/articles/${x.th_slug}`, slug: x.th_slug, title: x.th_title }));
+  const cover = getArticleCover(a.th_slug, a.th_title, "th");
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <ArticleJsonLd
+        headline={a.th_title}
+        description={a.th_description}
+        image={`https://detectivepulse.com${cover.src}`}
+        url={`https://detectivepulse.com/articles/${a.th_slug}`}
+        datePublished={a.published_at ?? undefined}
+        inLanguage="th"
+      />
       <Breadcrumb items={[{ name: "หน้าแรก", href: "/" }, { name: "บทความ", href: "/articles" }, { name: a.th_title }]} />
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
@@ -66,6 +82,9 @@ export default async function DbArticleTH(
           </ReactMarkdown>
         </div>
       </article>
+      <div className="mt-12">
+        <RelatedArticles heading="บทความที่เกี่ยวข้อง" items={related} lang="th" />
+      </div>
     </div>
   );
 }
