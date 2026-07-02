@@ -23,6 +23,7 @@ import {
   ScanSearch,
   Inbox,
   UserPlus,
+  Sparkles,
   type LucideProps,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ const ICONS = {
   ScanSearch,
   Inbox,
   UserPlus,
+  Sparkles,
 } as const;
 
 export type IconName = keyof typeof ICONS;

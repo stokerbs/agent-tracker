@@ -139,7 +139,8 @@
       "gps903Credentials": "ข้อมูลรับรอง GPS",
       "gpsMonitor": "ติดตาม GPS",
       "leads": "ลูกค้าติดต่อเข้า",
-      "recruitment": "ผู้สมัครร่วมงาน"
+      "recruitment": "ผู้สมัครร่วมงาน",
+      "aiArticles": "บทความ AI"
     },
     "systemNominal": "ระบบทำงานปกติ",
     "opsPrefix": "ปฏิบัติการ"
