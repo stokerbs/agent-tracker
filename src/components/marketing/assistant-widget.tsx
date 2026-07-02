@@ -106,7 +106,7 @@ export function AssistantWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-50" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div className="fixed bottom-[4.75rem] left-5 z-50 lg:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       {open && (
         <div className="absolute bottom-[4.25rem] left-0 flex w-[min(22rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
           <div className="flex items-center justify-between border-b border-border/60 bg-primary px-4 py-3 text-primary-foreground">

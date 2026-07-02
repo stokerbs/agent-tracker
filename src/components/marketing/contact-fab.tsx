@@ -48,7 +48,7 @@ export function ContactFab() {
   }, []);
 
   return (
-    <div className="fixed bottom-5 right-5 z-50" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div className="fixed bottom-[4.75rem] right-5 z-50 lg:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       {/* Channel panel — absolutely positioned above the toggle so opening it
           never resizes this fixed container (that resize was the site's entire
           Cumulative Layout Shift when the panel auto-opens). */}

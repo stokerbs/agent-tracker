@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Crosshair } from "lucide-react";
 import { ContactFab } from "@/components/marketing/contact-fab";
 import { AssistantWidget } from "@/components/marketing/assistant-widget";
+import { StickyContactBar } from "@/components/marketing/sticky-contact-bar";
+import { ExitIntent } from "@/components/marketing/exit-intent";
 import { LangSwitch } from "@/components/marketing/lang-switch";
 
 /**
@@ -93,6 +95,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
       <ContactFab />
       <AssistantWidget />
+      <StickyContactBar />
+      <ExitIntent />
     </div>
   );
 }
