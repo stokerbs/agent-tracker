@@ -47,6 +47,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { labelKey: "leads", href: "/leads", icon: "Inbox", roles: ["admin"] },
       { labelKey: "recruitment", href: "/recruitment", icon: "UserPlus", roles: ["admin"] },
+      { labelKey: "aiArticles", href: "/marketing-articles", icon: "Sparkles", roles: ["admin"] },
       { labelKey: "clients", href: "/clients", icon: "Building2", roles: ["admin"] },
       { labelKey: "invoices", href: "/invoices", icon: "Banknote", roles: STAFF },
       { labelKey: "users", href: "/users", icon: "ShieldCheck", roles: ["admin"] },

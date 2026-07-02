@@ -139,7 +139,8 @@
       "gps903Credentials": "GPS Credentials",
       "gpsMonitor": "GPS Monitor",
       "leads": "Leads",
-      "recruitment": "Recruitment"
+      "recruitment": "Recruitment",
+      "aiArticles": "AI Articles"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
