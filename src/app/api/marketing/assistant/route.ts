@@ -171,6 +171,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, reply: fallback });
   }
 
+  // Bias the reply to the page language (the widget UI is in this language),
+  // while still following the visitor if they clearly switch languages.
+  const langName = loc === "zh" ? "Simplified Chinese (简体中文)" : loc === "en" ? "English" : "Thai (ภาษาไทย)";
+  const system = `${SYSTEM}\n\nThe visitor's interface language is ${langName}. Reply in ${langName} by default; only switch if the visitor clearly writes in a different language.`;
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25_000);
@@ -181,7 +186,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 700,
-        system: SYSTEM,
+        system,
         tools: [CASE_TOOL],
         messages: parsed.data.messages,
       }),
