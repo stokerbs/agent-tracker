@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 
-// The firm's real contact channels (same as the old WordPress site).
-const CHANNELS: { label: string; href: string; bg: string; icon: React.ReactNode }[] = [
-  { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
-  { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66809188324", bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
-  { label: "โทร 096 846 1406", href: "tel:+66968461406", bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
-  { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
-  { label: "อีเมล", href: "mailto:detectivepluse@gmail.com", bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
-];
+type Lang = "th" | "en" | "zh";
+
+const COPY: Record<Lang, { title: string; call: string; email: string; close: string; open: string }> = {
+  th: { title: "ติดต่อนักสืบ — ปรึกษาฟรี", call: "โทร 096 846 1406", email: "อีเมล", close: "ปิด", open: "ช่องทางติดต่อ" },
+  en: { title: "Contact us — free consult", call: "Call 096 846 1406", email: "Email", close: "Close", open: "Contact options" },
+  zh: { title: "联系我们 — 免费咨询", call: "致电 096 846 1406", email: "邮箱", close: "关闭", open: "联系方式" },
+};
+
+function detectLang(pathname: string): Lang {
+  if (pathname === "/en" || pathname.startsWith("/en/")) return "en";
+  if (pathname === "/zh" || pathname.startsWith("/zh/")) return "zh";
+  return "th";
+}
 
 /**
  * Floating contact widget for the marketing site — always visible on every page,
@@ -19,6 +25,14 @@ const CHANNELS: { label: string; href: string; bg: string; icon: React.ReactNode
  * (like the old WP popup) so customers immediately see how to reach us.
  */
 export function ContactFab() {
+  const t = COPY[detectLang(usePathname() || "/")];
+  const channels = [
+    { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
+    { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66809188324", bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
+    { label: t.call, href: "tel:+66968461406", bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
+    { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
+    { label: t.email, href: "mailto:detectivepluse@gmail.com", bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
+  ];
   const [open, setOpen] = useState(false);
   const [nudged, setNudged] = useState(false);
 
@@ -41,11 +55,11 @@ export function ContactFab() {
       {open && (
         <div className="absolute bottom-[4.25rem] right-0 w-60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
           <div className="flex items-center justify-between border-b border-border/60 bg-primary px-4 py-3 text-primary-foreground">
-            <span className="text-sm font-semibold">ติดต่อนักสืบ — ปรึกษาฟรี</span>
-            <button onClick={() => setOpen(false)} aria-label="ปิด"><X className="h-4 w-4" /></button>
+            <span className="text-sm font-semibold">{t.title}</span>
+            <button onClick={() => setOpen(false)} aria-label={t.close}><X className="h-4 w-4" /></button>
           </div>
           <div className="flex flex-col gap-2 p-3">
-            {CHANNELS.map((c) => (
+            {channels.map((c) => (
               <a
                 key={c.label}
                 href={c.href}
@@ -64,7 +78,7 @@ export function ContactFab() {
       {/* Toggle button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="ช่องทางติดต่อ"
+        aria-label={t.open}
         className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
       >
         {!open && !nudged && (

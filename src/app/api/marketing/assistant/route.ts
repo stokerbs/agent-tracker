@@ -28,7 +28,7 @@ const schema = z.object({
     )
     .min(1)
     .max(20),
-  locale: z.enum(["th", "en"]).default("th"),
+  locale: z.enum(["th", "en", "zh"]).default("th"),
 });
 
 // The intake officer calls this tool once it has gathered a case AND the
@@ -160,10 +160,13 @@ export async function POST(request: NextRequest) {
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const loc = parsed.data.locale;
   const fallback =
-    parsed.data.locale === "en"
+    loc === "en"
       ? "Sorry, the assistant is unavailable right now. Please reach us on LINE @detectivepluse or call 096-846-1406 — we'll help you personally."
-      : "ขออภัย ระบบผู้ช่วยไม่พร้อมใช้งานขณะนี้ ทักไลน์ @detectivepluse หรือโทร 096-846-1406 ได้เลย ทีมงานยินดีช่วยเหลือครับ";
+      : loc === "zh"
+        ? "抱歉，助理暂时无法使用。请在 LINE @detectivepluse 联系我们，或致电 096-846-1406，我们会亲自为您服务。"
+        : "ขออภัย ระบบผู้ช่วยไม่พร้อมใช้งานขณะนี้ ทักไลน์ @detectivepluse หรือโทร 096-846-1406 ได้เลย ทีมงานยินดีช่วยเหลือครับ";
   if (!apiKey) {
     return NextResponse.json({ ok: true, reply: fallback });
   }
@@ -202,7 +205,7 @@ export async function POST(request: NextRequest) {
         const c = caseParsed.data;
         const svc = createServiceClient();
         const { error } = await svc.from("marketing_leads").insert({
-          name: c.customer_name?.trim() || (parsed.data.locale === "en" ? "Lead from AI chat" : "ลูกค้าจากแชท AI"),
+          name: c.customer_name?.trim() || (loc === "en" ? "Lead from AI chat" : loc === "zh" ? "AI 聊天客户" : "ลูกค้าจากแชท AI"),
           phone: c.customer_contact,
           email: null,
           case_type: c.service_type,
@@ -227,16 +230,20 @@ export async function POST(request: NextRequest) {
           });
         }
         const confirm =
-          parsed.data.locale === "en"
+          loc === "en"
             ? "Got it — I've sent your case summary to our team. An officer will contact you shortly. For a faster reply, message us on LINE @detectivepluse."
-            : "รับเรื่องเรียบร้อยครับ ✅ ผมส่งสรุปเคสให้เจ้าหน้าที่แล้ว เดี๋ยวมีคนติดต่อกลับโดยเร็วครับ หากต้องการเร็วขึ้น ทักไลน์ @detectivepluse ได้เลยครับ";
+            : loc === "zh"
+              ? "收到 ✅ 我已将您的案件摘要发送给团队，稍后会有专员与您联系。如需更快回复，请在 LINE @detectivepluse 上联系我们。"
+              : "รับเรื่องเรียบร้อยครับ ✅ ผมส่งสรุปเคสให้เจ้าหน้าที่แล้ว เดี๋ยวมีคนติดต่อกลับโดยเร็วครับ หากต้องการเร็วขึ้น ทักไลน์ @detectivepluse ได้เลยครับ";
         return NextResponse.json({ ok: true, reply: modelText ? `${modelText}\n\n${confirm}` : confirm, submitted: true });
       }
       // Tool called without valid consent/contact → don't store; nudge for them.
       const needInfo =
-        parsed.data.locale === "en"
+        loc === "en"
           ? "Before I pass this to our team, could you share a callback number or LINE ID, and confirm you consent to us storing it to contact you?"
-          : "ก่อนส่งให้เจ้าหน้าที่ รบกวนขอเบอร์ติดต่อกลับหรือ LINE ID และยืนยันว่ายินยอมให้เก็บข้อมูลเพื่อติดต่อกลับด้วยนะครับ";
+          : loc === "zh"
+            ? "在转交给团队之前，请提供一个回拨电话或 LINE ID，并确认您同意我们保存这些信息以便联系您。"
+            : "ก่อนส่งให้เจ้าหน้าที่ รบกวนขอเบอร์ติดต่อกลับหรือ LINE ID และยืนยันว่ายินยอมให้เก็บข้อมูลเพื่อติดต่อกลับด้วยนะครับ";
       return NextResponse.json({ ok: true, reply: modelText ? `${modelText}\n\n${needInfo}` : needInfo });
     }
 
