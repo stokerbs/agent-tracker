@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: "/", languages: { th: "/", en: "/en" } },
+    alternates: { canonical: "/", languages: { th: "/", en: "/en", zh: "/zh" } },
     openGraph: { type: "website", url: "https://detectivepulse.com", title, description, siteName: "Detective Pulse", images: [ogImage] },
     twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
     // Google Search Console ownership verification (HTML-tag method) for the

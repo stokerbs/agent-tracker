@@ -22,6 +22,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly",
     priority: 0.7,
   }));
+  const chinese: MetadataRoute.Sitemap = [
+    { url: `${BASE}/zh`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+  ];
   const english: MetadataRoute.Sitemap = [
     { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/en/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
@@ -50,5 +53,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]);
 
-  return [...staticPages, ...marketing, ...english, ...aiEntries];
+  return [...staticPages, ...marketing, ...chinese, ...english, ...aiEntries];
 }

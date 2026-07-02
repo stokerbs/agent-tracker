@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
 import { sendGTMEvent } from "@next/third-parties/google";
 
-type Lang = "th" | "en";
+type Lang = "th" | "en" | "zh";
 
 const COPY = {
   th: {
@@ -48,6 +48,27 @@ const COPY = {
     errRate: "Too many submissions. Please wait a moment and try again, or message us on LINE.",
     errGeneric: "Couldn't send. Please try again, or message us on LINE.",
     required: "Please enter your name and a contact.",
+  },
+  zh: {
+    name: "您的姓名",
+    phone: "电话 或 LINE ID",
+    email: "邮箱（选填）",
+    emailInvalid: "邮箱格式不正确",
+    caseType: "您需要调查什么？",
+    caseOptions: ["婚外情调查", "财产调查", "背景调查", "寻人", "网络 / 线上调查", "其他"],
+    choose: "— 请选择 —",
+    message: "更多详情（选填）",
+    consent: "我同意贵公司存储并使用我的信息以便联系我，依据",
+    consentLink: "隐私政策",
+    consentRequired: "请先同意隐私政策再提交",
+    submit: "提交 — 我们会尽快联系您",
+    sending: "提交中…",
+    successTitle: "已收到您的信息",
+    successBody: "我们的调查团队会尽快与您联系 — 或直接在 LINE 上聊天以获得更快回复。",
+    chat: "立即在 LINE 咨询",
+    errRate: "提交过于频繁，请稍候再试，或在 LINE 上联系我们。",
+    errGeneric: "提交失败，请重试，或在 LINE 上联系我们。",
+    required: "请填写姓名和联系方式。",
   },
 } as const;
 

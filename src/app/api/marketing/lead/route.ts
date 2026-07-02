@@ -13,7 +13,7 @@ const schema = z.object({
   email: z.string().trim().max(120).email().optional().or(z.literal("")),
   caseType: z.string().trim().max(60).optional(),
   message: z.string().trim().max(1000).optional(),
-  locale: z.enum(["th", "en"]).default("th"),
+  locale: z.enum(["th", "en", "zh"]).default("th"),
   // PDPA: explicit consent is required — must be exactly true, or the request
   // is rejected (400) before anything is stored.
   consent: z.literal(true),
