@@ -32,15 +32,22 @@ export async function getPublishedArticles(): Promise<DbArticle[]> {
   return (data as DbArticle[]) ?? [];
 }
 
-/** A single published article by its TH or EN slug (public reads). */
+/** A single published article by its TH or EN slug (public reads). The route
+ *  param for non-ASCII (Thai) slugs arrives percent-encoded, so decode first. */
 export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en"): Promise<DbArticle | null> {
+  let decoded = slug;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    /* malformed encoding — fall back to the raw value */
+  }
   const svc = createServiceClient();
   const col = lang === "en" ? "en_slug" : "th_slug";
   const { data } = await svc
     .from("marketing_articles")
     .select("*")
     .eq("status", "published")
-    .eq(col, slug)
+    .eq(col, decoded)
     .maybeSingle();
   return (data as DbArticle | null) ?? null;
 }
