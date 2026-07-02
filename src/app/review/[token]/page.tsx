@@ -71,6 +71,19 @@ export default async function ReviewPage(
               </div>
             </details>
 
+            {/* ZH preview */}
+            {a.zh_title && a.zh_body && (
+              <details className="mt-6 rounded-xl border border-border bg-card/40 p-5 sm:p-7">
+                <summary className="cursor-pointer font-serif text-lg font-bold">🇨🇳 中文版本 — {a.zh_title}</summary>
+                {a.zh_description && <p className="mt-2 text-sm text-muted-foreground">{a.zh_description}</p>}
+                <div className="mt-4">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                    {a.zh_body}
+                  </ReactMarkdown>
+                </div>
+              </details>
+            )}
+
             <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               slug: /articles/{a.th_slug} · /en/articles/{a.en_slug}
             </p>

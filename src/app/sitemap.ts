@@ -24,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
   const chinese: MetadataRoute.Sitemap = [
     { url: `${BASE}/zh`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/zh/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
   ];
   const english: MetadataRoute.Sitemap = [
     { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
@@ -38,20 +39,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   // Published AI articles (both language versions), newest → higher priority.
   const aiArticles = await getPublishedArticles();
-  const aiEntries: MetadataRoute.Sitemap = aiArticles.flatMap((a) => [
-    {
-      url: `${BASE}/articles/${encodeURI(a.th_slug)}`,
-      lastModified: a.published_at ? new Date(a.published_at) : now,
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    },
-    {
-      url: `${BASE}/en/articles/${encodeURI(a.en_slug)}`,
-      lastModified: a.published_at ? new Date(a.published_at) : now,
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    },
-  ]);
+  const aiEntries: MetadataRoute.Sitemap = aiArticles.flatMap((a) => {
+    const lastModified = a.published_at ? new Date(a.published_at) : now;
+    const entries: MetadataRoute.Sitemap = [
+      { url: `${BASE}/articles/${encodeURI(a.th_slug)}`, lastModified, changeFrequency: "monthly", priority: 0.6 },
+      { url: `${BASE}/en/articles/${encodeURI(a.en_slug)}`, lastModified, changeFrequency: "monthly", priority: 0.6 },
+    ];
+    if (a.zh_slug) {
+      entries.push({ url: `${BASE}/zh/articles/${encodeURI(a.zh_slug)}`, lastModified, changeFrequency: "monthly", priority: 0.6 });
+    }
+    return entries;
+  });
 
   return [...staticPages, ...marketing, ...chinese, ...english, ...aiEntries];
 }

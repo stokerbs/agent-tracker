@@ -22,7 +22,7 @@ describe("generateArticle", () => {
     return new Response(JSON.stringify({ content: [{ type: "tool_use", name: "save_article", input }] }), { status: 200 });
   }
 
-  const seed = { th: "นักสืบชู้สาว", en: "infidelity investigator", angle: "จับผิดคู่รัก" };
+  const seed = { th: "นักสืบชู้สาว", en: "infidelity investigator", zh: "婚外情调查", angle: "จับผิดคู่รัก" };
 
   it("throws without an API key", async () => {
     delete process.env.ANTHROPIC_API_KEY;
@@ -38,14 +38,20 @@ describe("generateArticle", () => {
         en_title: "Infidelity 101",
         en_description: "Desc",
         en_body: "## Heading\nbody",
+        zh_title: "婚外情调查 101",
+        zh_description: "描述",
+        zh_body: "## 标题\n正文",
         th_slug: "สืบชู้สาว 101",
         en_slug: "Infidelity 101!",
+        zh_slug: "婚外情调查 101",
       }),
     );
     const a = await generateArticle(seed);
     expect(a.thTitle).toBe("สืบชู้สาว 101");
     expect(a.enSlug).toBe("infidelity-101");
     expect(a.thSlug).toBe("สืบชู้สาว-101");
+    expect(a.zhTitle).toBe("婚外情调查 101");
+    expect(a.zhSlug).toBe("婚外情调查-101");
     expect(a.coverCategory).toBeTruthy();
     expect(a.topic).toBe("นักสืบชู้สาว");
   });

@@ -10,8 +10,10 @@ import { StatBand } from "@/components/marketing/stat-band";
 import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
+import { ArticleCover } from "@/components/marketing/article-cover";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { FAQ_ZH } from "@/lib/marketing/faq";
+import { getPublishedArticlesZh } from "@/lib/marketing/articles-db";
 
 const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
 
@@ -44,7 +46,8 @@ const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[
   { name: "Fastwork 客户", date: "15/08/2025", stars: 5, text: "非常专业。" },
 ];
 
-export function MarketingHomeZH() {
+export async function MarketingHomeZH() {
+  const articles = (await getPublishedArticlesZh()).slice(0, 6);
   return (
     <>
       <MarketingJsonLd faq={FAQ_ZH} />
@@ -184,6 +187,30 @@ export function MarketingHomeZH() {
           ))}
         </div>
       </section>
+
+      {/* Articles (only if ZH articles have been published) */}
+      {articles.length > 0 && (
+        <section id="articles" className="border-t border-border/60 bg-card/30">
+          <div className="mx-auto max-w-5xl px-4 py-16">
+            <SectionHeading eyebrow="Field Notes · 文章" title="文章与指南" sub="滑动查看 →" />
+            <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+              {articles.map((a, i) => (
+                <Link key={a.id} href={`/zh/articles/${a.zh_slug}`} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+                  <ArticleCover slug={a.zh_slug ?? a.en_slug} title={a.zh_title ?? a.en_title} index={i} lang="en" />
+                  <div className="p-3.5">
+                    <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{a.zh_title}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+              <Link href="/zh/articles" className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10">
+                查看全部文章 <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* FAQ */}
       <div className="border-t border-border/60">
