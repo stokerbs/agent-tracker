@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
 import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content";
+import { getPublishedArticles } from "@/lib/marketing/articles-db";
 
 const BASE = "https://detectivepulse.com";
 
 // Public marketing pages: the static landing/legal pages + every page migrated
-// from WordPress (preserved at its original slug).
-export default function sitemap(): MetadataRoute.Sitemap {
+// from WordPress (preserved at its original slug) + published AI articles.
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
@@ -32,5 +33,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     })),
   ];
-  return [...staticPages, ...marketing, ...english];
+  // Published AI articles (both language versions), newest → higher priority.
+  const aiArticles = await getPublishedArticles();
+  const aiEntries: MetadataRoute.Sitemap = aiArticles.flatMap((a) => [
+    {
+      url: `${BASE}/articles/${encodeURI(a.th_slug)}`,
+      lastModified: a.published_at ? new Date(a.published_at) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+    {
+      url: `${BASE}/en/articles/${encodeURI(a.en_slug)}`,
+      lastModified: a.published_at ? new Date(a.published_at) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+  ]);
+
+  return [...staticPages, ...marketing, ...english, ...aiEntries];
 }
