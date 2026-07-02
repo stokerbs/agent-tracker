@@ -140,7 +140,8 @@
       "gpsMonitor": "GPS Monitor",
       "leads": "Leads",
       "recruitment": "Recruitment",
-      "aiArticles": "AI Articles"
+      "aiArticles": "AI Articles",
+      "marketingInsights": "Marketing Insights"
     },
     "systemNominal": "System Nominal",
     "opsPrefix": "Ops"
