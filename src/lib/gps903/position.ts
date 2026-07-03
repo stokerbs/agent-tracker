@@ -95,13 +95,28 @@ export async function applyPositionToDevice(
   if (positionTime) deviceUpdate.last_position_time = positionTime;
   deviceUpdate.last_ignition = pos.ignition;
 
-  await Promise.all([
-    svc.from("gps_device_positions").insert(posRow),
-    svc.from("gps_devices").update(deviceUpdate).eq("id", gpsDeviceId),
-  ]);
+  // Only persist a HISTORY fix when the device actually moved. GetTracking
+  // returns the frozen last-known position every minute while a device is
+  // parked/offline, which used to write hundreds of identical rows per device
+  // per day (pure waste — and it degraded the replay/brief/anomaly track with
+  // duplicate points). The live gps_devices.last_* fields below still update on
+  // every poll, so the live map and stop-timer stay current; we just skip the
+  // redundant breadcrumb. First fix (no previous position) is always stored.
+  const DEVICE_BREADCRUMB_MIN_M = 30;
+  const displacementM =
+    cur?.last_lat != null && cur?.last_lng != null
+      ? haversineMeters(cur.last_lat, cur.last_lng, pos.lat, pos.lng)
+      : Infinity;
+  const storeFix = displacementM > DEVICE_BREADCRUMB_MIN_M;
+
+  const dbWrites = [
+    svc.from("gps_devices").update(deviceUpdate).eq("id", gpsDeviceId) as PromiseLike<unknown>,
+  ];
+  if (storeFix) dbWrites.push(svc.from("gps_device_positions").insert(posRow));
+  await Promise.all(dbWrites);
 
   console.log(
-    `[GPS903] Position written — device ${gpsDeviceId} ` +
+    `[GPS903] Position ${storeFix ? "written" : "live-only (unmoved, not stored)"} — device ${gpsDeviceId} ` +
     `lat:${pos.lat.toFixed(5)} lng:${pos.lng.toFixed(5)} speed:${pos.speed} battery:${pos.battery ?? "?"}`,
   );
 

@@ -135,6 +135,29 @@ describe("applyPositionToDevice — geofence hysteresis", () => {
     const posInsert = inserts.find((i) => i.table === "gps_device_positions");
     expect(posInsert?.row).toMatchObject({ gps_device_id: DEV, locate_mode: "gps" });
   });
+
+  it("skips the history insert when the device hasn't moved (no frozen duplicates)", async () => {
+    const { svc, inserts, updates } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: null, last_lat: 13.75, last_lng: 100.5 },
+      fences: [],
+    });
+    // Parked/offline: GetTracking returns the exact same last-known point.
+    await applyPositionToDevice(svc, DEV, pos(13.75, 100.5), "Tracker-1");
+    // No redundant history row...
+    expect(inserts.find((i) => i.table === "gps_device_positions")).toBeUndefined();
+    // ...but the live device row still updates so the map/last-seen stay current.
+    expect(updates.some((u) => u.table === "gps_devices")).toBe(true);
+  });
+
+  it("still stores a fix when the device moved beyond the breadcrumb threshold", async () => {
+    const { svc, inserts } = makeSvc({
+      device: { geofence_id: null, geofence_alerted_at: null, stopped_since: null, last_lat: 13.75, last_lng: 100.5 },
+      fences: [],
+    });
+    // ~1.5 km away — clearly moved.
+    await applyPositionToDevice(svc, DEV, pos(13.76, 100.51), "Tracker-1");
+    expect(inserts.find((i) => i.table === "gps_device_positions")).toBeDefined();
+  });
 });
 
 describe("applyPositionToDevice — stop detection (speed OR GPS displacement)", () => {
