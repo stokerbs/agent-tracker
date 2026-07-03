@@ -74,6 +74,16 @@ const nextConfig: NextConfig = {
       { source: "/home", destination: "/", permanent: true },
       { source: "/author/:path*", destination: "/", permanent: true },
       { source: "/category/:path*", destination: "/", permanent: true },
+      // Legacy WordPress blog index still in Google's index → 404 on the new
+      // site (the blog now lives at /articles). 301 so the ranking/links carry
+      // over. The individual old posts already migrated to top-level TH slugs
+      // (they 200), so only the /blog index and RSS feed need catching.
+      { source: "/blog", destination: "/articles", permanent: true },
+      { source: "/blog/:path*", destination: "/articles", permanent: true },
+      { source: "/en/blog", destination: "/en/articles", permanent: true },
+      { source: "/en/blog/:path*", destination: "/en/articles", permanent: true },
+      { source: "/feed", destination: "/articles", permanent: true },
+      { source: "/feed/:path*", destination: "/articles", permanent: true },
     ];
   },
   images: {
