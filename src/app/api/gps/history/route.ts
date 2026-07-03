@@ -10,10 +10,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // live GPS903 history call can be slow
 
 const MAX_HOURS = 72;
+const BKK_DAY_FMT = { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" } as const;
 
 const schema = z.object({
   deviceId: z.string().uuid(),
   hours: z.coerce.number().int().min(1).max(MAX_HOURS).optional(),
+  // Optional specific Bangkok calendar day (YYYY-MM-DD). When given, the window
+  // is that whole day (00:00:00–23:59:59 Asia/Bangkok) instead of the rolling
+  // `hours` window — lets the user pick a past day to replay. GPS903 caps each
+  // response (~575 points), so a single day stays well within one request.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 /** Format a Date as "YYYY-MM-DD HH:MM:SS" in Asia/Bangkok (GetDevicesHistory's TimeZone). */
@@ -55,9 +61,24 @@ export async function GET(request: NextRequest) {
     q = schema.parse({
       deviceId: request.nextUrl.searchParams.get("deviceId"),
       hours: request.nextUrl.searchParams.get("hours") ?? undefined,
+      date: request.nextUrl.searchParams.get("date") ?? undefined,
     });
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // A well-formed but impossible date passes the regex; reject it. JS Date both
+  // returns NaN for gross overflow (2026-13-40) AND silently rolls over day
+  // overflow (2026-02-30 → Mar 1), so round-trip through the Bangkok formatter
+  // and require it to reproduce the input exactly.
+  if (q.date) {
+    const dt = new Date(`${q.date}T00:00:00+07:00`);
+    const roundTrip = Number.isNaN(dt.getTime())
+      ? null
+      : new Intl.DateTimeFormat("en-CA", BKK_DAY_FMT).format(dt);
+    if (roundTrip !== q.date) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
   }
 
   // Device access — RLS-scoped (404 if the caller can't see it).
@@ -89,10 +110,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "GPS903 login failed" }, { status: 502 });
   }
 
-  const hours = q.hours ?? 24;
+  // Window: a specific Bangkok day (?date=) or the rolling last `hours`.
+  // `start`/`end` are Bangkok "YYYY-MM-DD HH:MM:SS" for GPS903; `startIso`/
+  // `endIso` are UTC bounds for the stored-position fallback query.
   const now = new Date();
-  const start = bangkokStamp(new Date(now.getTime() - hours * 3_600_000));
-  const end = bangkokStamp(now);
+  let start: string, end: string, startIso: string, endIso: string;
+  if (q.date) {
+    start = `${q.date} 00:00:00`;
+    end = `${q.date} 23:59:59`;
+    startIso = new Date(`${q.date}T00:00:00+07:00`).toISOString();
+    endIso = new Date(`${q.date}T23:59:59+07:00`).toISOString();
+  } else {
+    const hours = q.hours ?? 24;
+    start = bangkokStamp(new Date(now.getTime() - hours * 3_600_000));
+    end = bangkokStamp(now);
+    startIso = new Date(now.getTime() - hours * 3_600_000).toISOString();
+    endIso = now.toISOString();
+  }
 
   const history = await gps903GetHistory(session, credential.gps903_device_id, start, end);
   let points = history.map((h) => ({
@@ -111,12 +145,12 @@ export async function GET(request: NextRequest) {
   // lookup), so reading this one device's positions via the service client is
   // scoped to a device the caller is allowed to see.
   if (points.length === 0) {
-    const startIso = new Date(now.getTime() - hours * 3_600_000).toISOString();
     const { data: stored } = await svc
       .from("gps_device_positions")
       .select("lat, lng, speed_kmh, recorded_at")
       .eq("gps_device_id", q.deviceId)
       .gte("recorded_at", startIso)
+      .lte("recorded_at", endIso)
       .order("recorded_at", { ascending: true });
     points = (stored ?? []).map((p) => ({
       lat: p.lat as number,

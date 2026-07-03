@@ -8,7 +8,7 @@ import {
   Polyline,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { X, Play, Pause, Gauge, Flag, MapPin, Loader2 } from "lucide-react";
+import { X, Play, Pause, Gauge, Flag, MapPin, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { MAP_ID, formatBangkokTime } from "@/lib/maps/shared";
 import type { GpsDeviceForMap } from "@/lib/types";
 
@@ -20,6 +20,18 @@ interface Pt {
 }
 
 const SPEEDS = [1, 2, 4, 8] as const;
+
+// GPS903 retains roughly a month of history; don't let the picker go further back.
+const HISTORY_MAX_DAYS = 30;
+const BKK_DAY = { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" } as const;
+function bangkokToday(): string {
+  return new Intl.DateTimeFormat("en-CA", BKK_DAY).format(new Date());
+}
+function shiftDay(date: string, delta: number): string {
+  const d = new Date(`${date}T12:00:00+07:00`); // noon avoids any day-boundary rounding
+  d.setDate(d.getDate() + delta);
+  return new Intl.DateTimeFormat("en-CA", BKK_DAY).format(d);
+}
 
 // Fit the map to the full track once, after it loads.
 function FitOnce({ points }: { points: google.maps.LatLngLiteral[] }) {
@@ -49,17 +61,24 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [error, setError] = useState(false);
+  const [date, setDate] = useState<string>(() => bangkokToday());
+  const [reloadKey, setReloadKey] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load the track LIVE from the GPS903 server (last 24h), oldest-first for
-  // replay — the authoritative history, not our stored fixes.
+  const today = bangkokToday();
+  const minDate = shiftDay(today, -HISTORY_MAX_DAYS);
+  const isToday = date >= today;
+
+  // Load the track for the selected Bangkok day: LIVE from GPS903 (authoritative),
+  // falling back to our stored fixes server-side. Oldest-first for replay.
   useEffect(() => {
     let cancelled = false;
     setPts(null);
     setError(false);
+    setPlaying(false);
     (async () => {
       try {
-        const res = await fetch(`/api/gps/history?deviceId=${device.id}&hours=24`);
+        const res = await fetch(`/api/gps/history?deviceId=${device.id}&date=${date}`);
         if (!res.ok) throw new Error(String(res.status));
         const { points } = (await res.json()) as { points: Pt[] };
         if (cancelled) return;
@@ -70,7 +89,7 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
       }
     })();
     return () => { cancelled = true; };
-  }, [device.id]);
+  }, [device.id, date, reloadKey]);
 
   // Playback ticker.
   useEffect(() => {
@@ -118,6 +137,34 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
         </button>
       </div>
 
+      {/* Date navigator — pick which day to replay */}
+      <div className="flex items-center justify-center gap-2 border-b border-border/60 bg-card/60 px-4 py-2">
+        <button
+          onClick={() => setDate((d) => shiftDay(d, -1))}
+          disabled={date <= minDate}
+          aria-label="วันก่อนหน้า"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:bg-muted disabled:opacity-30"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <input
+          type="date"
+          value={date}
+          min={minDate}
+          max={today}
+          onChange={(e) => { if (e.target.value) setDate(e.target.value); }}
+          className="rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground [color-scheme:dark]"
+        />
+        <button
+          onClick={() => setDate((d) => (d >= today ? d : shiftDay(d, 1)))}
+          disabled={isToday}
+          aria-label="วันถัดไป"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:bg-muted disabled:opacity-30"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Map */}
       <div className="relative flex-1 overflow-hidden">
         {!pts && !error && (
@@ -130,7 +177,7 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
             <MapPin className="h-7 w-7 text-destructive/40" />
             <span>ดึงประวัติเส้นทางจาก GPS903 ไม่สำเร็จ</span>
             <button
-              onClick={() => { setError(false); setPts(null); setIdx(0); fetch(`/api/gps/history?deviceId=${device.id}&hours=24`).then(async (r) => { if (!r.ok) throw new Error(); const { points } = await r.json(); setPts(points ?? []); }).catch(() => setError(true)); }}
+              onClick={() => { setError(false); setReloadKey((k) => k + 1); }}
               className="rounded-md border border-border/60 px-3 py-1 text-xs hover:bg-muted"
             >
               ลองใหม่
@@ -140,7 +187,7 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
         {pts && pts.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-7 w-7 text-muted-foreground/30" />
-            ไม่มีประวัติเส้นทางของอุปกรณ์นี้
+            ไม่มีเส้นทางของอุปกรณ์นี้ในวันที่เลือก
           </div>
         )}
         {apiKey && (
