@@ -21,11 +21,16 @@ export interface GenerationResult {
  * admin "generate now" button. Never publishes — approval happens in /review.
  */
 export async function runArticleGeneration(): Promise<GenerationResult> {
-  // Pick a keyword topic not generated before (fall back to random if exhausted).
+  // Pick the highest-priority keyword topic not generated before. KEYWORD_TOPICS
+  // is ordered by proven intent (real Google Search Console winners first), so
+  // take the first unused rather than a random one — that way the near-page-1
+  // keywords get their article next. Fall back to random only once every topic
+  // has been covered, to keep the back-catalogue varied.
   const { topics, slugs } = await getUsedTopicsAndSlugs();
   const fresh = KEYWORD_TOPICS.filter((t) => !topics.has(t.th));
-  const pool = fresh.length ? fresh : KEYWORD_TOPICS;
-  const seed = pool[Math.floor(Math.random() * pool.length)]!;
+  const seed = fresh.length
+    ? fresh[0]!
+    : KEYWORD_TOPICS[Math.floor(Math.random() * KEYWORD_TOPICS.length)]!;
 
   const article = await generateArticle(seed);
 
