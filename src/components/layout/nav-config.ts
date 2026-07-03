@@ -14,6 +14,7 @@ export interface NavSection {
 
 const ALL: UserRole[] = ["admin", "supervisor", "agent"];
 const STAFF: UserRole[] = ["admin", "supervisor"];
+const AGENT: UserRole[] = ["agent"];
 
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -21,11 +22,14 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { labelKey: "dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ALL },
       { labelKey: "field",      href: "/field",       icon: "Radio",      roles: ALL   },
-      { labelKey: "gpsMonitor", href: "/gps-monitor", icon: "Navigation",  roles: ALL   },
+      // Agents get the lightweight live tracker; staff use the richer /map (which
+      // already plots GPS devices), so gps-monitor is hidden from staff to avoid
+      // two near-identical map entries in their sidebar.
+      { labelKey: "gpsMonitor", href: "/gps-monitor", icon: "Navigation",  roles: AGENT },
       { labelKey: "map",        href: "/map",          icon: "MapPin",      roles: STAFF },
+      // Device list, GPS903 discovery/linking and credentials are consolidated
+      // into the one tabbed /gps-devices page (was three separate entries).
       { labelKey: "gpsDevices",        href: "/gps-devices",         icon: "Satellite",  roles: STAFF },
-      { labelKey: "gps903Discovery",  href: "/gps903-discovery",   icon: "ScanSearch", roles: STAFF },
-      { labelKey: "gps903Credentials",href: "/gps903-credentials", icon: "KeyRound",   roles: STAFF },
       { labelKey: "analytics", href: "/analytics", icon: "BarChart2", roles: STAFF },
       { labelKey: "cases", href: "/cases", icon: "Briefcase", roles: ALL },
       { labelKey: "timeline", href: "/timeline", icon: "Clock", roles: ALL },

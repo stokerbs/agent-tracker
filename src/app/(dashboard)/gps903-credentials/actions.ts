@@ -64,7 +64,7 @@ export async function createCredential(
     entityId: data?.id ?? null,
     metadata: { device_name: form.device_name.trim(), imei: form.imei.trim() },
   });
-  revalidatePath("/gps903-credentials");
+  revalidatePath("/gps-devices");
   return { ok: true };
 }
 
@@ -101,7 +101,7 @@ export async function updateCredential(
       password_changed: Boolean(form.device_password),
     },
   });
-  revalidatePath("/gps903-credentials");
+  revalidatePath("/gps-devices");
   return { ok: true };
 }
 
@@ -118,7 +118,7 @@ export async function deleteCredential(id: string): Promise<{ ok?: boolean; erro
     entity: "gps903_credentials",
     entityId: id,
   });
-  revalidatePath("/gps903-credentials");
+  revalidatePath("/gps-devices");
   return { ok: true };
 }
 
@@ -142,7 +142,7 @@ export async function toggleCredentialActive(
     entityId: id,
     metadata: { is_active: active },
   });
-  revalidatePath("/gps903-credentials");
+  revalidatePath("/gps-devices");
   return { ok: true };
 }
 
@@ -224,7 +224,7 @@ export async function testCredential(id: string): Promise<TestResult> {
         .from("gps903_credentials")
         .update({ gps903_device_id: deviceId })
         .eq("id", cred.id);
-      revalidatePath("/gps903-credentials");
+      revalidatePath("/gps-devices");
     }
   }
 

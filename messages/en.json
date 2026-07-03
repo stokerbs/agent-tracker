@@ -1065,6 +1065,11 @@
   "gpsDevices": {
     "title": "GPS Devices",
     "description": "Live status of all GPS903-connected devices and their linked agents.",
+    "tabs": {
+      "devices": "Devices",
+      "discovery": "Discovery",
+      "credentials": "Credentials"
+    },
     "refresh": "Refresh",
     "tableTitle": "Device Fleet",
     "empty": "No GPS903 devices configured yet.",
