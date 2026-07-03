@@ -54,52 +54,78 @@ export default async function LeadsPage() {
           description="เมื่อมีคนกรอกฟอร์มบนเว็บ รายชื่อจะแสดงที่นี่"
         />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>วันที่</TableHead>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead>ติดต่อ</TableHead>
-                  <TableHead>ประเภท</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads.map((l) => (
-                  <TableRow key={l.id}>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {formatDate(l.created_at)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {l.name}
+        <>
+          {/* Mobile: readable stacked cards */}
+          <div className="space-y-3 md:hidden">
+            {leads.map((l) => (
+              <Card key={l.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{l.name}</span>
                       {l.source === "assistant" && (
-                        <span className="ml-2 rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-[10px] font-normal text-primary">
-                          แชท AI
-                        </span>
+                        <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">แชท AI</span>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <a href={`tel:${l.phone}`} className="text-primary hover:underline">
-                        {l.phone}
-                      </a>
-                      {l.email && (
-                        <a href={`mailto:${l.email}`} className="mt-0.5 block text-xs text-muted-foreground hover:text-primary hover:underline">
-                          {l.email}
-                        </a>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">{l.case_type ?? "—"}</TableCell>
-                    <TableCell className="max-w-xs text-sm text-muted-foreground">
-                      <span className="line-clamp-2">{l.message ?? "—"}</span>
-                    </TableCell>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDate(l.created_at)}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <a href={`tel:${l.phone}`} className="font-medium text-primary hover:underline">{l.phone}</a>
+                    {l.email && (
+                      <a href={`mailto:${l.email}`} className="text-sm text-muted-foreground hover:text-primary hover:underline">{l.email}</a>
+                    )}
+                  </div>
+                  {l.case_type && (
+                    <div className="mt-2">
+                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{l.case_type}</span>
+                    </div>
+                  )}
+                  {l.message && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{l.message}</p>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>วันที่</TableHead>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>ติดต่อ</TableHead>
+                    <TableHead>ประเภท</TableHead>
+                    <TableHead>รายละเอียด</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {leads.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(l.created_at)}</TableCell>
+                      <TableCell className="font-medium">
+                        {l.name}
+                        {l.source === "assistant" && (
+                          <span className="ml-2 rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-[10px] font-normal text-primary">แชท AI</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <a href={`tel:${l.phone}`} className="text-primary hover:underline">{l.phone}</a>
+                        {l.email && (
+                          <a href={`mailto:${l.email}`} className="mt-0.5 block text-xs text-muted-foreground hover:text-primary hover:underline">{l.email}</a>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">{l.case_type ?? "—"}</TableCell>
+                      <TableCell className="max-w-xs text-sm text-muted-foreground">
+                        <span className="line-clamp-2">{l.message ?? "—"}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
