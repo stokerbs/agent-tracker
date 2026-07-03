@@ -33,6 +33,7 @@ function svcClient(credRow: unknown, storedRows: unknown[] = []) {
     select: () => b,
     eq: () => b,
     gte: () => b,
+    lte: () => b,
     maybeSingle: async () => ({ data: credRow }),
     order: async () => ({ data: storedRows }),
   });
@@ -94,6 +95,26 @@ describe("GET /api/gps/history — track from the live 903 history API", () => {
 
   it("clamps hours to the schema (rejects >72)", async () => {
     expect((await GET(req(`deviceId=${UUID}&hours=999`))).status).toBe(400);
+  });
+
+  it("accepts a specific ?date= day and returns that day's track", async () => {
+    const res = await GET(req(`deviceId=${UUID}&date=2026-06-08`));
+    expect(res.status).toBe(200);
+    const { points } = await res.json();
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({ lat: 13.7, lng: 100.5 });
+  });
+
+  it("rejects a malformed date (400)", async () => {
+    expect((await GET(req(`deviceId=${UUID}&date=2026-6-8`))).status).toBe(400); // not zero-padded
+  });
+
+  it("rejects a well-formed but impossible date (400)", async () => {
+    expect((await GET(req(`deviceId=${UUID}&date=2026-13-40`))).status).toBe(400);
+  });
+
+  it("rejects a rolled-over date like 2026-02-30 (400, not silently March 1)", async () => {
+    expect((await GET(req(`deviceId=${UUID}&date=2026-02-30`))).status).toBe(400);
   });
 
   it("returns empty (no_credential) when the device has no active credential", async () => {
