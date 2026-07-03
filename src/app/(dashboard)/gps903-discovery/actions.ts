@@ -70,7 +70,7 @@ export async function syncGps903Devices(): Promise<{
 
   if (error) return { error: handleDbError(error, "gps903_devices") };
 
-  revalidatePath("/gps903-discovery");
+  revalidatePath("/gps-devices");
   return { ok: true, count: rows.length };
 }
 
@@ -119,7 +119,7 @@ export async function attachCredentialToCase(
 
   if (error) return { error: handleDbError(error, "gps_devices") };
 
-  revalidatePath("/gps903-discovery");
+  revalidatePath("/gps-devices");
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/gps-devices");
   return { ok: true };
