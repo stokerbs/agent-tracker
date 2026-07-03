@@ -22,6 +22,13 @@ export interface KeywordTopic {
 }
 
 export const KEYWORD_TOPICS: KeywordTopic[] = [
+  // Proven organic winners from the live Google Search Console query report
+  // (3-month). These already earn impressions and sit just off page 1, so
+  // fresh keyword-aligned articles have the best shot at pushing them up —
+  // kept at the very top so the generator (priority order) targets them first.
+  { th: "เช็คประวัติบุคคลจากชื่อนามสกุล", en: "background check by name", zh: "凭姓名背景调查", angle: "เช็คประวัติบุคคลจากแค่ชื่อ-นามสกุล ตรวจอะไรได้บ้าง เริ่มอย่างไร และขอบเขตทางกฎหมาย" },
+  { th: "จ้างนักสืบออนไลน์", en: "hire a private investigator online", zh: "网上聘请私家侦探", angle: "จ้างนักสืบผ่านออนไลน์ ขั้นตอน ราคา และวิธีเลือกให้ปลอดภัยไม่โดนหลอก" },
+  { th: "ตามหาคนจากชื่อ", en: "find someone by name", zh: "凭姓名寻人", angle: "ตามหาคนจากแค่ชื่อ-นามสกุล ทำได้แค่ไหน ต้องมีข้อมูลอะไรบ้าง" },
   { th: "นักสืบไอที", en: "cyber private investigator", zh: "网络侦探调查", angle: "สืบข้อมูลบนโซเชียล/ออนไลน์/ดิจิทัล ทำได้แค่ไหนอย่างถูกกฎหมาย" },
   { th: "จ้างนักสืบตามหาคน", en: "find a missing person investigator", zh: "泰国寻人调查", angle: "ตามหาคนหาย ญาติพลัดพราก ลูกหนี้หลบหนี ตามหาคนโกง" },
   { th: "รับสืบประวัติ", en: "background check investigator", zh: "背景调查服务", angle: "ตรวจสอบประวัติบุคคลก่อนร่วมงาน คบหา หรือทำธุรกิจ" },
