@@ -14,7 +14,6 @@ export interface NavSection {
 
 const ALL: UserRole[] = ["admin", "supervisor", "agent"];
 const STAFF: UserRole[] = ["admin", "supervisor"];
-const AGENT: UserRole[] = ["agent"];
 
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -22,10 +21,10 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { labelKey: "dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ALL },
       { labelKey: "field",      href: "/field",       icon: "Radio",      roles: ALL   },
-      // Agents get the lightweight live tracker; staff use the richer /map (which
-      // already plots GPS devices), so gps-monitor is hidden from staff to avoid
-      // two near-identical map entries in their sidebar.
-      { labelKey: "gpsMonitor", href: "/gps-monitor", icon: "Navigation",  roles: AGENT },
+      // gps-monitor stays visible to ALL roles: unlike /map it carries device
+      // route replay (ดูย้อนหลัง), tail/follow mode, and the staff-only AI
+      // surveillance brief — features /map does not have, so it is NOT redundant.
+      { labelKey: "gpsMonitor", href: "/gps-monitor", icon: "Navigation",  roles: ALL   },
       { labelKey: "map",        href: "/map",          icon: "MapPin",      roles: STAFF },
       // Device list, GPS903 discovery/linking and credentials are consolidated
       // into the one tabbed /gps-devices page (was three separate entries).
