@@ -58,7 +58,10 @@ export function DetectiveHero(p: DetectiveHeroProps) {
           <span>{p.statusLabel}</span>
         </div>
 
-        <div className="dp-hero-in mb-6 flex items-center justify-center" style={{ animationDelay: ".12s" }}>
+        {/* No entrance fade on the logo either: like the h1, it's an above-the-fold
+            LCP candidate, so an opacity:0 start would delay LCP. It shares the
+            "hero content paints instantly, chrome fades in" rhythm with the h1. */}
+        <div className="mb-6 flex items-center justify-center">
           <Image src="/marketing/logo.png" alt="Detective Pulse" width={402} height={111} priority className="h-11 w-auto" />
         </div>
 
