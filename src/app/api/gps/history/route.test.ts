@@ -25,10 +25,17 @@ function userClient(deviceRow: unknown) {
   Object.assign(b, { select: () => b, eq: () => b, maybeSingle: async () => ({ data: deviceRow }) });
   return { from: () => b };
 }
-// Service client: gps903_credentials lookup.
-function svcClient(credRow: unknown) {
+// Service client: gps903_credentials lookup (maybeSingle) + gps_device_positions
+// fallback query (gte + order). Both go through the same chainable builder.
+function svcClient(credRow: unknown, storedRows: unknown[] = []) {
   const b: Record<string, unknown> = {};
-  Object.assign(b, { select: () => b, eq: () => b, maybeSingle: async () => ({ data: credRow }) });
+  Object.assign(b, {
+    select: () => b,
+    eq: () => b,
+    gte: () => b,
+    maybeSingle: async () => ({ data: credRow }),
+    order: async () => ({ data: storedRows }),
+  });
   return { from: () => b };
 }
 
@@ -105,5 +112,34 @@ describe("GET /api/gps/history — track from the live 903 history API", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).points).toEqual([]);
     expect(gps903GetHistory).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/gps/history — stored fallback", () => {
+  it("falls back to gps_device_positions when the live 903 history is empty", async () => {
+    vi.mocked(gps903GetHistory).mockResolvedValue([] as never);
+    vi.mocked(createServiceClient).mockReturnValue(
+      svcClient(cred, [
+        { lat: 13.7, lng: 100.5, speed_kmh: 12, recorded_at: "2026-07-03T10:00:00.000Z" },
+        { lat: 13.8, lng: 100.6, speed_kmh: null, recorded_at: "2026-07-03T10:01:00.000Z" },
+      ]) as never,
+    );
+    const res = await GET(req(`deviceId=${UUID}&hours=24`));
+    expect(res.status).toBe(200);
+    const { points } = await res.json();
+    expect(points).toHaveLength(2);
+    // speed_kmh -> speed, recorded_at -> t; null speed coerced to 0.
+    expect(points[0]).toMatchObject({ lat: 13.7, lng: 100.5, speed: 12, t: "2026-07-03T10:00:00.000Z" });
+    expect(points[1]).toMatchObject({ lat: 13.8, lng: 100.6, speed: 0 });
+  });
+
+  it("prefers the live 903 track and does not hit stored fallback when live has points", async () => {
+    // beforeEach sets one live point; stored rows would differ if used.
+    vi.mocked(createServiceClient).mockReturnValue(
+      svcClient(cred, [{ lat: 0, lng: 0, speed_kmh: 99, recorded_at: "2026-07-03T00:00:00.000Z" }]) as never,
+    );
+    const { points } = await (await GET(req(`deviceId=${UUID}&hours=24`))).json();
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({ lat: 13.7, lng: 100.5 }); // live, not stored
   });
 });

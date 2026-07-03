@@ -30,9 +30,11 @@ function bangkokStamp(d: Date): string {
 /**
  * GET /api/gps/history?deviceId=<uuid>&hours=<1-72>
  * Route-replay track pulled LIVE from the GPS903 server (GetDevicesHistory) —
- * the authoritative history, independent of our every-minute storage (which can
- * miss fixes when the upstream poll times out). Staff-only; device visibility is
- * checked with the user-session client so RLS scopes access; rate-limited.
+ * the authoritative source when available. When the live call returns no points
+ * (device offline for the window, or upstream hiccup) it falls back to our own
+ * every-minute gps_device_positions storage so replay still has a track.
+ * Staff-only; device visibility is checked with the user-session client so RLS
+ * scopes access; rate-limited.
  * Returns { points: [{ lat, lng, speed, t(ISO UTC) }] } oldest-first.
  */
 export async function GET(request: NextRequest) {
@@ -93,13 +95,39 @@ export async function GET(request: NextRequest) {
   const end = bangkokStamp(now);
 
   const history = await gps903GetHistory(session, credential.gps903_device_id, start, end);
-  const points = history.map((h) => ({
+  let points = history.map((h) => ({
     lat: h.lat,
     lng: h.lng,
     speed: h.speed,
     // Normalise the device's UTC fix time to a proper ISO string for the client.
     t: gps903DateToIso(h.fixTime) ?? h.fixTime,
   }));
+
+  // Fallback to our own stored track. The live GPS903 GetDevicesHistory call
+  // routinely comes back empty (device offline for the window, or an upstream
+  // hiccup) — which showed the user an empty replay. We persist a fix every
+  // minute in gps_device_positions, so replay that instead of showing nothing.
+  // Device visibility was already RLS-checked above (the user-client `dev`
+  // lookup), so reading this one device's positions via the service client is
+  // scoped to a device the caller is allowed to see.
+  if (points.length === 0) {
+    const startIso = new Date(now.getTime() - hours * 3_600_000).toISOString();
+    const { data: stored } = await svc
+      .from("gps_device_positions")
+      .select("lat, lng, speed_kmh, recorded_at")
+      .eq("gps_device_id", q.deviceId)
+      .gte("recorded_at", startIso)
+      .order("recorded_at", { ascending: true });
+    points = (stored ?? []).map((p) => ({
+      lat: p.lat as number,
+      lng: p.lng as number,
+      speed: (p.speed_kmh as number | null) ?? 0,
+      t: p.recorded_at as string,
+    }));
+    console.log(
+      `[gps-history] live GPS903 empty → stored fallback: ${points.length} points for device ${q.deviceId}`,
+    );
+  }
 
   return NextResponse.json({ points });
 }
