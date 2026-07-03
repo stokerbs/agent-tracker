@@ -22,7 +22,7 @@ const HEALTH: { label: string; note?: string }[] = [
   { label: "SEO", note: "100 / 100 (Lighthouse)" },
   { label: "Accessibility", note: "100 / 100" },
   { label: "Best Practices", note: "100 / 100" },
-  { label: "Performance", note: "~79 (มือถือ) · CLS 0" },
+  { label: "Performance", note: "~87 (มือถือ) · CLS 0" },
   { label: "3 ภาษา", note: "ไทย / English / 中文 + hreflang" },
   { label: "Sitemap + robots.txt", note: "ส่ง Google เก็บบทความได้" },
   { label: "Structured data", note: "ธุรกิจ · FAQ · บทความ (rich results)" },
