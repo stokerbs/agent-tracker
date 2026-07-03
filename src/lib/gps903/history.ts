@@ -51,11 +51,19 @@ export async function gps903GetHistory(
   const points = (Array.isArray(data) ? data : (data as Record<string, unknown> | null)?.devices) as unknown[];
   if (!Array.isArray(points)) return [];
 
+  // GetDevicesHistory names its coordinates baiduLat/baiduLng (unlike
+  // GetTracking, which returns latitude/longitude). Outside China gps903 applies
+  // no BD-09 offset, so baiduLat == the WGS84 latitude (confirmed: GetTracking
+  // returns latitude == baiduLat == oLat identically). Accept either name so
+  // both endpoints parse — matching the wrong field silently dropped every point
+  // and made route replay come back empty.
+  const coord = (p: Record<string, unknown>, wgs: string, baidu: string) =>
+    p[wgs] ?? p[baidu];
   const mapped = (points as Record<string, unknown>[])
-    .filter((p) => p.latitude != null && p.longitude != null)
+    .filter((p) => coord(p, "latitude", "baiduLat") != null && coord(p, "longitude", "baiduLng") != null)
     .map((p) => ({
-      lat:         parseFloat(String(p.latitude)),
-      lng:         parseFloat(String(p.longitude)),
+      lat:         parseFloat(String(coord(p, "latitude", "baiduLat"))),
+      lng:         parseFloat(String(coord(p, "longitude", "baiduLng"))),
       speed:       parseFloat(String(p.speed))         || 0,
       course:      Number(p.course)                    || 0,
       fixTime:     String(p.deviceUtcDate              ?? ""),

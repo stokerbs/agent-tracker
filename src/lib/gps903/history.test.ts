@@ -52,6 +52,22 @@ describe("gps903GetHistory", () => {
     expect(out[0]).toMatchObject({ lat: 13.75, lng: 100.5, speed: 42, stopMinutes: 12 });
   });
 
+  it("parses the real GetDevicesHistory shape (devices wrapper + baiduLat/baiduLng)", async () => {
+    // Captured from live gps903: coordinates are baiduLat/baiduLng (not
+    // latitude/longitude), wrapped in {devices:[...]}. Regression guard for the
+    // field-name bug that silently dropped every point → empty replay.
+    const d =
+      '{devices:[' +
+      '{deviceUtcDate:"2026-07-03 00:00:32",baiduLat:"13.87347",baiduLng:"100.59773",speed:"8.00",course:"305",dataType:"1",IsStop:0,stopTimeMinute:0},' +
+      '{deviceUtcDate:"2026-07-03 00:00:57",baiduLat:"13.87412",baiduLng:"100.59737",speed:"24.00",course:"344",dataType:"1",IsStop:0,stopTimeMinute:0}' +
+      ']}';
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ d }) }) as unknown as Response));
+    const out = await call();
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ lat: 13.87347, lng: 100.59773, speed: 8, course: 305 });
+    expect(out[1]).toMatchObject({ lat: 13.87412, lng: 100.59737, speed: 24 });
+  });
+
   it("returns [] on a non-OK response", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500 }) as Response));
     expect(await call()).toEqual([]);
