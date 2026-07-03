@@ -55,32 +55,49 @@ export default async function LeadsPage() {
         />
       ) : (
         <>
-          {/* Mobile: readable stacked cards */}
+          {/* Mobile: readable stacked cards with clear labels */}
           <div className="space-y-3 md:hidden">
             {leads.map((l) => (
               <Card key={l.id}>
                 <CardContent className="p-4">
+                  {/* Contact person (who to call back) */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">{l.name}</span>
-                      {l.source === "assistant" && (
-                        <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">แชท AI</span>
-                      )}
+                    <div>
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">ผู้ติดต่อกลับ</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-bold">{l.name}</span>
+                        {l.source === "assistant" && (
+                          <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">แชท AI</span>
+                        )}
+                      </div>
                     </div>
                     <span className="shrink-0 text-xs text-muted-foreground">{formatDate(l.created_at)}</span>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <a href={`tel:${l.phone}`} className="font-medium text-primary hover:underline">{l.phone}</a>
+
+                  <div className="mt-3 space-y-2 text-sm">
+                    <div className="flex gap-2">
+                      <span className="w-16 shrink-0 text-muted-foreground">เบอร์</span>
+                      <a href={`tel:${l.phone}`} className="font-medium text-primary hover:underline">{l.phone}</a>
+                    </div>
                     {l.email && (
-                      <a href={`mailto:${l.email}`} className="text-sm text-muted-foreground hover:text-primary hover:underline">{l.email}</a>
+                      <div className="flex gap-2">
+                        <span className="w-16 shrink-0 text-muted-foreground">อีเมล</span>
+                        <a href={`mailto:${l.email}`} className="break-all text-primary hover:underline">{l.email}</a>
+                      </div>
+                    )}
+                    {l.case_type && (
+                      <div className="flex gap-2">
+                        <span className="w-16 shrink-0 text-muted-foreground">ประเภท</span>
+                        <span className="font-medium">{l.case_type}</span>
+                      </div>
+                    )}
+                    {l.message && (
+                      <div className="flex gap-2">
+                        <span className="w-16 shrink-0 text-muted-foreground">รายละเอียด</span>
+                        <p className="flex-1 whitespace-pre-line leading-relaxed">{l.message}</p>
+                      </div>
                     )}
                   </div>
-                  {l.case_type && (
-                    <div className="mt-2">
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{l.case_type}</span>
-                    </div>
-                  )}
-                  {l.message && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{l.message}</p>}
                 </CardContent>
               </Card>
             ))}
