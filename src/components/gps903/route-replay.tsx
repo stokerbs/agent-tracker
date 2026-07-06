@@ -32,6 +32,13 @@ function shiftDay(date: string, delta: number): string {
   d.setDate(d.getDate() + delta);
   return new Intl.DateTimeFormat("en-CA", BKK_DAY).format(d);
 }
+// Bangkok calendar day of an ISO timestamp (or null if absent/invalid).
+function bangkokDateOf(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", BKK_DAY).format(d);
+}
 
 // Fit the map to the full track once, after it loads.
 function FitOnce({ points }: { points: google.maps.LatLngLiteral[] }) {
@@ -61,7 +68,15 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [error, setError] = useState(false);
-  const [date, setDate] = useState<string>(() => bangkokToday());
+  // Default to the last day the device actually reported (so the replay opens on
+  // a day with a track instead of a blank "today" when the device is offline),
+  // clamped to the pickable range. Falls back to today when unknown.
+  const [date, setDate] = useState<string>(() => {
+    const t = bangkokToday();
+    const min = shiftDay(t, -HISTORY_MAX_DAYS);
+    const last = bangkokDateOf(device.last_position_time ?? device.last_seen_at);
+    return last && last >= min && last <= t ? last : t;
+  });
   const [reloadKey, setReloadKey] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -185,9 +200,10 @@ export function RouteReplay({ device, onClose }: { device: GpsDeviceForMap; onCl
           </div>
         )}
         {pts && pts.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 px-6 text-center text-sm text-muted-foreground">
             <MapPin className="h-7 w-7 text-muted-foreground/30" />
-            ไม่มีเส้นทางของอุปกรณ์นี้ในวันที่เลือก
+            <span className="font-medium">ไม่มีเส้นทางในวันที่ {date}</span>
+            <span className="text-xs text-muted-foreground/70">อุปกรณ์อาจปิด/ออฟไลน์วันนั้น — ลองเลือกวันอื่นด้วยปฏิทินด้านบน</span>
           </div>
         )}
         {apiKey && (
