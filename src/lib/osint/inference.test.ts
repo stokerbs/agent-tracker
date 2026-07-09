@@ -5,7 +5,22 @@ import {
   normalizeObjects,
   getInferenceAdapter,
   noopInferenceAdapter,
+  isReplicateHost,
 } from "./inference";
+
+describe("isReplicateHost (token-leak guard)", () => {
+  it.each([
+    ["https://api.replicate.com/v1/predictions/p1", true],
+    ["https://api.replicate.com/anything", true],
+    ["https://evil.com/steal", false],
+    ["https://api.replicate.com.evil.com/x", false],
+    ["http://api.replicate.com/x", true],
+    [undefined, false],
+    ["not a url", false],
+  ])("%s → %s", (url, expected) => {
+    expect(isReplicateHost(url as string | undefined)).toBe(expected);
+  });
+});
 
 describe("normalizeFaces", () => {
   it("normalizes pixel bbox to 0..1 and reads pose/quality", () => {

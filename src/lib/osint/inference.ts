@@ -147,6 +147,16 @@ async function toDataUri(buffer: Buffer): Promise<{ uri: string; width: number; 
  * create call blocks until the prediction settles (or ~60s), then polls as a
  * fallback for longer runs, up to REPLICATE_TIMEOUT_MS. Throws on API failure.
  */
+/** True only for URLs on Replicate's API host (guards where we send the token). */
+export function isReplicateHost(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).host === "api.replicate.com";
+  } catch {
+    return false;
+  }
+}
+
 async function runReplicate(token: string, modelRef: string, imageDataUri: string): Promise<unknown> {
   const [owner, rest] = modelRef.split("/");
   const [name, version] = (rest ?? "").split(":");
@@ -172,7 +182,11 @@ async function runReplicate(token: string, modelRef: string, imageDataUri: strin
   while (pred.status === "starting" || pred.status === "processing") {
     if (Date.now() - start > REPLICATE_TIMEOUT_MS) throw new Error("Replicate prediction timed out");
     await new Promise((r) => setTimeout(r, 1500));
-    const getUrl = pred.urls?.get ?? `${REPLICATE_API}/predictions/${pred.id}`;
+    // The poll URL comes from the API response and we attach the API token to it,
+    // so only follow it when it's on Replicate's host — otherwise fall back to a
+    // URL we construct ourselves. Prevents leaking the token to an unexpected host.
+    const fallback = `${REPLICATE_API}/predictions/${pred.id}`;
+    const getUrl = isReplicateHost(pred.urls?.get) ? pred.urls!.get! : fallback;
     res = await fetch(getUrl, { headers: { authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error(`Replicate poll ${res.status}: ${await res.text()}`);
     pred = (await res.json()) as typeof pred;
