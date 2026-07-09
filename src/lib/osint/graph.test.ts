@@ -17,6 +17,9 @@ function result(over: Partial<AnalysisResult> = {}): AnalysisResult {
     integrity: null,
     reverseSearch: [],
     report: null,
+    faces: [],
+    objects: [],
+    ocr: [],
     error: null,
     ...over,
   };
@@ -51,6 +54,21 @@ describe("buildGraph", () => {
     // cloud/cdn anchored to the final host
     expect(g.edges.some((e) => e.target === "cloud:Amazon S3")).toBe(true);
     expect(g.edges.some((e) => e.target === "cdn:Cloudflare")).toBe(true);
+  });
+
+  it("adds face and object nodes hung off the image", () => {
+    const g = buildGraph(
+      result({
+        faces: [
+          { faceIndex: 0, bbox: { x: 0, y: 0, w: 0.1, h: 0.1 }, blurScore: null, yaw: null, pitch: null, roll: null, hasGlasses: null, hasMask: null, confidence: 0.9 },
+        ],
+        objects: [{ label: "car", category: "vehicle", bbox: null, confidence: 0.8 }],
+      }),
+    );
+    expect(g.nodes.find((n) => n.type === "face")).toBeTruthy();
+    expect(g.nodes.find((n) => n.type === "object" && n.label === "car")).toBeTruthy();
+    expect(g.edges.some((e) => e.target === "face:0")).toBe(true);
+    expect(g.edges.some((e) => e.target === "object:car")).toBe(true);
   });
 
   it("adds a case node when linked", () => {

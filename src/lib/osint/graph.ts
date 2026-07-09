@@ -87,6 +87,20 @@ export function buildGraph(result: AnalysisResult): Graph {
     addEdge(anchorId, id, "cdn");
   }
 
+  // Faces (Phase 2) — one node per detected face, hung off the image.
+  result.faces.forEach((_, i) => {
+    const fid = `face:${i}`;
+    addNode(fid, `Face ${i + 1}`, "face");
+    addEdge(imageId, fid, "face");
+  });
+
+  // Objects (Phase 2) — one node per distinct label.
+  for (const obj of result.objects) {
+    const oid = `object:${obj.label}`;
+    addNode(oid, obj.label, "object");
+    addEdge(imageId, oid, "object");
+  }
+
   // Linked case.
   if (result.caseId) {
     const id = `case:${result.caseId}`;

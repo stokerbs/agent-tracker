@@ -23,6 +23,9 @@
       "redirect": "Redirect resolution",
       "attribution": "Cloud & CDN attribution",
       "integrity": "Integrity heuristics",
+      "ocr": "OCR (text extraction)",
+      "faces": "Face detection",
+      "objects": "Object detection",
       "report": "AI analyst report"
     },
     "panels": {
@@ -32,10 +35,25 @@
       "metadata": "Metadata & EXIF",
       "integrity": "Image integrity",
       "attribution": "Attribution",
+      "faces": "Faces",
+      "objects": "Objects",
+      "ocr": "Text (OCR)",
       "redirects": "Redirect chain",
       "reverseSearch": "Reverse image search",
       "graph": "Relationship graph",
       "stageFailed": "This stage did not complete."
+    },
+    "faces": {
+      "none": "No faces detected.",
+      "face": "Face",
+      "glasses": "Glasses",
+      "mask": "Mask"
+    },
+    "objects": {
+      "none": "No objects detected."
+    },
+    "ocr": {
+      "none": "No text detected."
     },
     "report": {
       "risk": "Risk",

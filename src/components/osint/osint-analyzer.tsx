@@ -17,6 +17,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Paperclip,
+  ScanFace,
+  Boxes,
+  Type,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +56,9 @@ const STAGE_ORDER: StageName[] = [
   "redirect",
   "attribution",
   "integrity",
+  "ocr",
+  "faces",
+  "objects",
   "report",
 ];
 
@@ -367,6 +373,9 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
             <MetadataPanel t={t} result={result} />
             <IntegrityPanel t={t} result={result} />
             <AttributionPanel t={t} result={result} />
+            <FacesPanel t={t} result={result} />
+            <ObjectsPanel t={t} result={result} />
+            <OcrPanel t={t} result={result} />
             <RedirectPanel t={t} result={result} />
             <ReverseSearchPanel t={t} result={result} />
             {graph && (
@@ -627,6 +636,87 @@ function RedirectPanel({ t, result }: { t: T; result: AnalysisResult }) {
           </li>
         ))}
       </ol>
+    </Section>
+  );
+}
+
+function FacesPanel({ t, result }: { t: T; result: AnalysisResult }) {
+  const state = result.stageStatus.faces;
+  // Hide entirely when face detection wasn't run (no ML provider configured).
+  if (state === "skipped" || state === undefined) return null;
+  return (
+    <Section icon={<ScanFace className="h-4 w-4 text-amber-400" />} title={`${t("panels.faces")} (${result.faces.length})`}>
+      {result.faces.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{state === "failed" ? t("panels.stageFailed") : t("faces.none")}</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {result.faces.map((f) => (
+            <div key={f.faceIndex} className="rounded-lg border border-border p-2 text-xs">
+              <div className="mb-1 font-medium">
+                {t("faces.face")} {f.faceIndex + 1}
+                {f.confidence != null && <span className="text-muted-foreground"> · {Math.round(f.confidence * 100)}%</span>}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {f.hasGlasses && <Badge variant="secondary">{t("faces.glasses")}</Badge>}
+                {f.hasMask && <Badge variant="secondary">{t("faces.mask")}</Badge>}
+                {(f.yaw != null || f.pitch != null || f.roll != null) && (
+                  <Badge variant="outline">
+                    Y{fmt(f.yaw)} P{fmt(f.pitch)} R{fmt(f.roll)}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function fmt(v: number | null): string {
+  return v == null ? "–" : String(Math.round(v));
+}
+
+function ObjectsPanel({ t, result }: { t: T; result: AnalysisResult }) {
+  const state = result.stageStatus.objects;
+  if (state === "skipped" || state === undefined) return null;
+  return (
+    <Section icon={<Boxes className="h-4 w-4 text-emerald-400" />} title={`${t("panels.objects")} (${result.objects.length})`}>
+      {result.objects.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{state === "failed" ? t("panels.stageFailed") : t("objects.none")}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {result.objects.map((o, i) => (
+            <Badge key={`${o.label}-${i}`} variant="outline" title={o.category ?? undefined}>
+              {o.label}
+              {o.confidence != null && <span className="ml-1 text-muted-foreground">{Math.round(o.confidence * 100)}%</span>}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function OcrPanel({ t, result }: { t: T; result: AnalysisResult }) {
+  const state = result.stageStatus.ocr;
+  if (state === "skipped" || state === undefined) return null;
+  return (
+    <Section icon={<Type className="h-4 w-4 text-sky-400" />} title={`${t("panels.ocr")} (${result.ocr.length})`}>
+      {result.ocr.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{state === "failed" ? t("panels.stageFailed") : t("ocr.none")}</p>
+      ) : (
+        <ul className="space-y-1">
+          {result.ocr.map((o, i) => (
+            <li key={i} className="flex items-center gap-2 text-sm">
+              <Badge variant="outline" className="shrink-0 uppercase">
+                {o.category ?? "raw"}
+              </Badge>
+              <span className="break-all font-mono text-xs text-foreground">{o.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Section>
   );
 }

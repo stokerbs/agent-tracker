@@ -17,9 +17,12 @@ import type {
   AnalysisResult,
   AnalyzeRequest,
   Attribution,
+  FaceDetection,
   ImageHashes,
   ImageMetadata,
   Integrity,
+  ObjectDetection,
+  OcrResult,
   RedirectHop,
   SourceType,
   StageName,
@@ -33,6 +36,8 @@ import { assessIntegrity } from "./integrity";
 import { attribute } from "./attribution";
 import { buildReverseSearchLinks } from "./reverse-search";
 import { generateReport } from "./report";
+import { getInferenceAdapter } from "./inference";
+import { runOcr } from "./ocr";
 
 const BUCKET = "evidence";
 
@@ -105,6 +110,10 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   // 1. Resolve + validate input up-front (throws → 4xx, no row written).
   const input = await resolveInput(req);
 
+  // ML adapter: faces/objects only run when a provider (Replicate) is configured;
+  // OCR is local (tesseract.js) and always runs.
+  const adapter = getInferenceAdapter();
+
   // 2. Create the root row.
   const stageStatus: StageStatus = {
     ingest: "complete",
@@ -114,9 +123,9 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     attribution: input.finalHeaders ? "processing" : "skipped",
     integrity: "processing",
     report: "processing",
-    faces: "skipped",
-    ocr: "skipped",
-    objects: "skipped",
+    ocr: "processing",
+    faces: adapter.available ? "processing" : "skipped",
+    objects: adapter.available ? "processing" : "skipped",
   };
 
   const { data: created, error: insErr } = await svc
@@ -169,24 +178,34 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
 
   const reverseSearch = buildReverseSearchLinks(input.finalUrl);
 
-  // AI report — depends on hashes + metadata + integrity being present.
-  let report: AnalysisResult["report"] = null;
-  if (hashes && metadata && integrity) {
-    report = await stage(
-      () =>
-        generateReport(
-          { metadata, hashes, attribution, redirects: input.redirects, integrity, finalImageUrl: input.finalUrl },
-          buf,
-        ),
-      stageStatus,
-      "report",
-    );
-  } else {
-    stageStatus.report = "skipped";
-  }
+  // Run the AI report and the ML stages concurrently — they're independent, and
+  // the ML calls (Replicate / OCR) dominate latency. Each is isolated via stage().
+  const reportRun =
+    hashes && metadata && integrity
+      ? stage(
+          () =>
+            generateReport(
+              { metadata, hashes, attribution, redirects: input.redirects, integrity, finalImageUrl: input.finalUrl },
+              buf,
+            ),
+          stageStatus,
+          "report",
+        )
+      : Promise.resolve<AnalysisResult["report"]>(((stageStatus.report = "skipped"), null));
+
+  const [report, ocr, faces, objects] = await Promise.all([
+    reportRun,
+    stage<OcrResult[]>(() => runOcr(buf), stageStatus, "ocr"),
+    adapter.available
+      ? stage<FaceDetection[]>(() => adapter.detectFaces(buf), stageStatus, "faces")
+      : Promise.resolve<FaceDetection[] | null>(null),
+    adapter.available
+      ? stage<ObjectDetection[]>(() => adapter.detectObjects(buf), stageStatus, "objects")
+      : Promise.resolve<ObjectDetection[] | null>(null),
+  ]);
 
   // 5. Persist child rows + finalize.
-  await persist(svc, id, { hashes, metadata, redirects: input.redirects, report });
+  await persist(svc, id, { hashes, metadata, redirects: input.redirects, report, ocr, faces, objects });
 
   const anyFailed = Object.values(stageStatus).some((s) => s === "failed");
   await svc
@@ -218,6 +237,9 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     integrity,
     reverseSearch,
     report,
+    faces: faces ?? [],
+    objects: objects ?? [],
+    ocr: ocr ?? [],
     error: anyFailed ? "one or more stages failed" : null,
   };
 }
@@ -245,6 +267,9 @@ async function persist(
     metadata: ImageMetadata | null;
     redirects: RedirectHop[];
     report: AnalysisResult["report"];
+    ocr: OcrResult[] | null;
+    faces: FaceDetection[] | null;
+    objects: ObjectDetection[] | null;
   },
 ): Promise<void> {
   const ops: PromiseLike<unknown>[] = [];
@@ -298,6 +323,50 @@ async function persist(
         risk_score: r.riskScore,
         confidence: r.confidence,
       }),
+    );
+  }
+  if (data.ocr && data.ocr.length) {
+    ops.push(
+      svc.from("image_ocr").insert(
+        data.ocr.map((o) => ({
+          analysis_id: analysisId,
+          text: o.text,
+          category: o.category,
+          bbox: o.bbox,
+          confidence: o.confidence,
+        })),
+      ),
+    );
+  }
+  if (data.faces && data.faces.length) {
+    ops.push(
+      svc.from("image_faces").insert(
+        data.faces.map((f) => ({
+          analysis_id: analysisId,
+          face_index: f.faceIndex,
+          bbox: f.bbox,
+          blur_score: f.blurScore,
+          yaw: f.yaw,
+          pitch: f.pitch,
+          roll: f.roll,
+          has_glasses: f.hasGlasses,
+          has_mask: f.hasMask,
+          confidence: f.confidence,
+        })),
+      ),
+    );
+  }
+  if (data.objects && data.objects.length) {
+    ops.push(
+      svc.from("image_objects").insert(
+        data.objects.map((o) => ({
+          analysis_id: analysisId,
+          label: o.label,
+          category: o.category,
+          bbox: o.bbox,
+          confidence: o.confidence,
+        })),
+      ),
     );
   }
 

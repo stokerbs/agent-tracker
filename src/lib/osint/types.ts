@@ -146,6 +146,37 @@ export interface ReverseSearchLink {
   url: string;
 }
 
+// ── ML (Phase 2) result shapes ───────────────────────────────────────────────
+// Defined here (pure, no runtime deps) so both the server inference layer and the
+// client UI can share them without pulling sharp/tesseract into the bundle.
+
+export interface FaceDetection {
+  faceIndex: number;
+  bbox: { x: number; y: number; w: number; h: number };
+  blurScore: number | null;
+  yaw: number | null;
+  pitch: number | null;
+  roll: number | null;
+  hasGlasses: boolean | null;
+  hasMask: boolean | null;
+  confidence: number | null;
+  // NB: no embedding field — faces are detected, never vectorized (PDPA).
+}
+
+export interface ObjectDetection {
+  label: string;
+  category: string | null;
+  bbox: { x: number; y: number; w: number; h: number } | null;
+  confidence: number | null;
+}
+
+export interface OcrResult {
+  text: string;
+  category: string | null;
+  bbox: { x: number; y: number; w: number; h: number } | null;
+  confidence: number | null;
+}
+
 export interface AiReport {
   model: string;
   summary: string;
@@ -173,5 +204,8 @@ export interface AnalysisResult {
   integrity: Integrity | null;
   reverseSearch: ReverseSearchLink[];
   report: AiReport | null;
+  faces: FaceDetection[];
+  objects: ObjectDetection[];
+  ocr: OcrResult[];
   error: string | null;
 }

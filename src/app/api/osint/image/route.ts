@@ -17,7 +17,9 @@ import { SsrfError } from "@/lib/osint/fetch-guard";
 // Node runtime is required (sharp + node:crypto + node:dns). Analysis can take a
 // few seconds (download + AI), so we raise maxDuration.
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// ML stages (Replicate face/object inference + local OCR) add latency on top of
+// the forensic pipeline, so allow a longer budget than the Phase-1 default.
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   const profile = await getCurrentProfile();
