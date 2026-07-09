@@ -1,4 +1,82 @@
 {
+  "osint": {
+    "title": "OSINT Image Intelligence",
+    "subtitle": "Forensic analysis of an image: hashes, EXIF & GPS, redirect chain, cloud/CDN attribution, integrity heuristics and an AI analyst report.",
+    "empty": "Provide an image, URL, redirect link or base64 to run a forensic analysis.",
+    "input": {
+      "title": "Input",
+      "modes": { "upload": "Upload", "url": "URL", "redirect": "Redirect", "base64": "Base64" },
+      "dropzone": "Drag & drop, paste, or click to select an image",
+      "urlLabel": "Image URL",
+      "redirectLabel": "Redirect / landing URL",
+      "redirectHint": "e.g. a PimEyes result link — we follow the chain to the final image.",
+      "base64Label": "Base64 image data",
+      "caseLabel": "Link to case (optional)",
+      "noCase": "No case"
+    },
+    "actions": { "analyze": "Analyze", "analyzing": "Analyzing…", "retry": "Retry" },
+    "progress": { "title": "Analysis progress" },
+    "stages": {
+      "ingest": "Ingest & validate",
+      "hashes": "Hash analysis",
+      "metadata": "Metadata & EXIF",
+      "redirect": "Redirect resolution",
+      "attribution": "Cloud & CDN attribution",
+      "integrity": "Integrity heuristics",
+      "report": "AI analyst report"
+    },
+    "panels": {
+      "preview": "Preview",
+      "report": "AI intelligence report",
+      "hashes": "Hashes",
+      "metadata": "Metadata & EXIF",
+      "integrity": "Image integrity",
+      "attribution": "Attribution",
+      "redirects": "Redirect chain",
+      "reverseSearch": "Reverse image search",
+      "graph": "Relationship graph",
+      "stageFailed": "This stage did not complete."
+    },
+    "report": {
+      "risk": "Risk",
+      "confidence": "Confidence",
+      "origin": "Likely origin",
+      "leads": "Investigative leads",
+      "recommendations": "OSINT recommendations"
+    },
+    "meta": {
+      "dimensions": "Dimensions",
+      "format": "Format",
+      "filesize": "File size",
+      "dpi": "DPI",
+      "camera": "Camera",
+      "software": "Software",
+      "takenAt": "Taken at",
+      "noGps": "No GPS metadata found."
+    },
+    "integrity": {
+      "stripped": "Metadata stripped",
+      "resized": "Resized",
+      "screenshot": "Screenshot",
+      "edited": "Edited",
+      "confidence": "Confidence",
+      "software": "Editing software",
+      "yes": "yes",
+      "no": "no"
+    },
+    "attribution": { "host": "Host", "cloud": "Cloud storage", "cdn": "CDN" },
+    "attach": {
+      "prompt": "Save this analysis into a case's evidence.",
+      "button": "Attach to case",
+      "needCase": "Select a case first",
+      "success": "Attached to case evidence."
+    },
+    "errors": {
+      "generic": "Analysis failed.",
+      "tooLarge": "Image exceeds the 25 MB limit.",
+      "tooLargeInline": "This image is too large to upload directly (max ~3 MB). For larger images, use the URL tab."
+    }
+  },
   "common": {
     "save": "Save changes",
     "cancel": "Cancel",
@@ -114,9 +192,11 @@
     "sections": {
       "operations": "Operations",
       "field": "Field",
+      "intelligence": "Intelligence",
       "administration": "Administration"
     },
     "items": {
+      "osintImage": "Image Intelligence",
       "dashboard": "Dashboard",
       "map": "Live Map",
       "cases": "Cases",
