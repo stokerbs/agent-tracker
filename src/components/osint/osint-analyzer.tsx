@@ -163,8 +163,26 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? t("errors.generic"));
+      // Platform errors (413 too-large, 504 timeout, 500 crash) return non-JSON
+      // bodies. Parse defensively so we surface a clear status instead of a raw
+      // DOMException from res.json() ("string did not match the expected pattern").
+      const rawText = await res.text();
+      let json: { error?: string; analysis?: AnalysisResult } | null = null;
+      try {
+        json = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        json = null;
+      }
+      if (!res.ok || !json) {
+        const msg =
+          json?.error ??
+          (res.status === 413
+            ? t("errors.tooLarge")
+            : res.status === 504
+              ? t("errors.timeout")
+              : `${t("errors.generic")} (${res.status})`);
+        throw new Error(msg);
+      }
       setResult(json.analysis as AnalysisResult);
       setStatus("done");
     } catch (err) {
