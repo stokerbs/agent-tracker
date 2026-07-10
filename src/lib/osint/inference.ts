@@ -157,14 +157,16 @@ export function isReplicateHost(url: string | undefined): boolean {
   }
 }
 
-async function runReplicate(token: string, modelRef: string, imageDataUri: string): Promise<unknown> {
+async function runReplicate(
+  token: string,
+  modelRef: string,
+  input: Record<string, unknown>,
+): Promise<unknown> {
   const [owner, rest] = modelRef.split("/");
   const [name, version] = (rest ?? "").split(":");
   const isVersioned = Boolean(version);
   const url = isVersioned ? `${REPLICATE_API}/predictions` : `${REPLICATE_API}/models/${owner}/${name}/predictions`;
-  const body = isVersioned
-    ? { version, input: { image: imageDataUri } }
-    : { input: { image: imageDataUri } };
+  const body = isVersioned ? { version, input } : { input };
 
   const start = Date.now();
   let res = await fetch(url, {
@@ -198,6 +200,27 @@ async function runReplicate(token: string, modelRef: string, imageDataUri: strin
   return pred.output;
 }
 
+/** Non-empty env value, or undefined. */
+function envOrUndef(key: string): string | undefined {
+  const v = process.env[key];
+  return v && v.trim() ? v.trim() : undefined;
+}
+
+/**
+ * Build the model input. `image` is always sent. When a `query` is configured
+ * (open-vocabulary detectors like Grounding DINO require one), include it plus a
+ * box threshold; plain detectors leave the query unset and receive only `image`.
+ */
+export function buildModelInput(uri: string, query: string | undefined): Record<string, unknown> {
+  const input: Record<string, unknown> = { image: uri };
+  if (query) {
+    input.query = query;
+    const bt = Number(process.env.OSINT_REPLICATE_BOX_THRESHOLD);
+    input.box_threshold = Number.isFinite(bt) ? bt : 0.3;
+  }
+  return input;
+}
+
 class ReplicateInferenceAdapter implements InferenceAdapter {
   constructor(private readonly token: string) {}
   get available() {
@@ -207,14 +230,16 @@ class ReplicateInferenceAdapter implements InferenceAdapter {
     const model = process.env.OSINT_REPLICATE_FACE_MODEL;
     if (!model) return [];
     const { uri, width, height } = await toDataUri(image);
-    const out = await runReplicate(this.token, model, uri);
+    const input = buildModelInput(uri, envOrUndef("OSINT_REPLICATE_FACE_QUERY"));
+    const out = await runReplicate(this.token, model, input);
     return normalizeFaces(out, width, height);
   }
   async detectObjects(image: Buffer): Promise<ObjectDetection[]> {
     const model = process.env.OSINT_REPLICATE_OBJECT_MODEL;
     if (!model) return [];
     const { uri, width, height } = await toDataUri(image);
-    const out = await runReplicate(this.token, model, uri);
+    const input = buildModelInput(uri, envOrUndef("OSINT_REPLICATE_OBJECT_QUERY"));
+    const out = await runReplicate(this.token, model, input);
     return normalizeObjects(out, width, height);
   }
 }

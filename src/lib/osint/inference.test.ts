@@ -6,7 +6,53 @@ import {
   getInferenceAdapter,
   noopInferenceAdapter,
   isReplicateHost,
+  buildModelInput,
 } from "./inference";
+
+// Real output captured from adirik/grounding-dino (query "face. person. hat")
+// on a 512x512 image — the exact shape our normalizers must handle.
+const GROUNDING_DINO_OUTPUT = {
+  detections: [
+    { bbox: [57, 43, 418, 511], confidence: 0.51, label: "person" },
+    { bbox: [217, 202, 356, 388], confidence: 0.8, label: "face" },
+    { bbox: [117, 43, 418, 253], confidence: 0.34, label: "hat" },
+  ],
+  result_image: "https://replicate.delivery/x.png",
+};
+
+describe("Grounding DINO real output", () => {
+  it("normalizeObjects reads its detections + maps categories + normalizes pixel bbox", () => {
+    const objs = normalizeObjects(GROUNDING_DINO_OUTPUT, 512, 512);
+    expect(objs.map((o) => o.label)).toEqual(["person", "face", "hat"]);
+    expect(objs[0].category).toBe("person");
+    expect(objs[0].confidence).toBeCloseTo(0.51);
+    // pixel [57,43,418,511] on 512px → normalized 0..1
+    expect(objs[0].bbox!.x).toBeCloseTo(57 / 512);
+    expect(objs[0].bbox!.w).toBeCloseTo((418 - 57) / 512);
+  });
+
+  it("normalizeFaces reads a face detection with pose/quality left null", () => {
+    const faces = normalizeFaces({ detections: [GROUNDING_DINO_OUTPUT.detections[1]] }, 512, 512);
+    expect(faces).toHaveLength(1);
+    expect(faces[0].confidence).toBeCloseTo(0.8);
+    expect(faces[0].bbox.x).toBeCloseTo(217 / 512);
+    expect(faces[0].yaw).toBeNull();
+    expect(faces[0].hasGlasses).toBeNull();
+  });
+});
+
+describe("buildModelInput", () => {
+  it("sends only the image when no query is configured", () => {
+    expect(buildModelInput("data:image/jpeg;base64,x", undefined)).toEqual({
+      image: "data:image/jpeg;base64,x",
+    });
+  });
+  it("includes query + box_threshold when a query is given", () => {
+    const input = buildModelInput("data:...", "face");
+    expect(input.query).toBe("face");
+    expect(input.box_threshold).toBe(0.3);
+  });
+});
 
 describe("isReplicateHost (token-leak guard)", () => {
   it.each([
