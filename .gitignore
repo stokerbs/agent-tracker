@@ -37,3 +37,6 @@ yarn-error.log*
 # supabase
 .supabase/
 supabase/.temp/
+
+# tesseract.js language data (downloaded at runtime, never commit)
+*.traineddata
