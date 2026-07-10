@@ -157,6 +157,45 @@ export function isReplicateHost(url: string | undefined): boolean {
   }
 }
 
+const MAX_429_RETRIES = 5;
+// Cap total time spent retrying so a run can't blow past the route's maxDuration.
+const RETRY_BUDGET_MS = 60_000;
+
+/** Parse a Retry-After (header or JSON body), clamped, in ms. Default 5s. */
+export function retryAfterMs(header: string | null, bodyRetryAfter?: unknown): number {
+  // Guard: Number(null) and Number("") are 0 (finite), which would mask a
+  // missing header — treat empty/null as absent so we fall back correctly.
+  const fromHeader = header != null && header !== "" ? Number(header) : NaN;
+  const fromBody = bodyRetryAfter != null && bodyRetryAfter !== "" ? Number(bodyRetryAfter) : NaN;
+  const secs = Number.isFinite(fromHeader) ? fromHeader : Number.isFinite(fromBody) ? fromBody : 5;
+  return Math.min(Math.max(secs, 1), 30) * 1000 + 250;
+}
+
+/** POST a prediction, backing off on 429 (throttling) up to a bounded budget. */
+async function createWithRetry(url: string, token: string, body: unknown): Promise<Response> {
+  const start = Date.now();
+  let res!: Response;
+  for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json", prefer: "wait" },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 429 || attempt === MAX_429_RETRIES) return res;
+    let ra: unknown;
+    try {
+      ra = (await res.clone().json())?.retry_after;
+    } catch {
+      /* ignore */
+    }
+    const wait = retryAfterMs(res.headers.get("retry-after"), ra);
+    // Give up (return the 429) rather than sleep past the retry budget.
+    if (Date.now() - start + wait > RETRY_BUDGET_MS) return res;
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  return res;
+}
+
 async function runReplicate(
   token: string,
   modelRef: string,
@@ -169,15 +208,11 @@ async function runReplicate(
   const body = isVersioned ? { version, input } : { input };
 
   const start = Date.now();
-  let res = await fetch(url, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-      prefer: "wait",
-    },
-    body: JSON.stringify(body),
-  });
+  // Create the prediction, retrying on 429. Replicate throttles "create"
+  // requests (as low as burst=1 while an account holds < $5 credit), so two
+  // near-simultaneous calls (faces + objects) can collide; we honor Retry-After
+  // and back off rather than fail the stage.
+  let res = await createWithRetry(url, token, body);
   if (!res.ok) throw new Error(`Replicate ${res.status}: ${await res.text()}`);
   let pred = (await res.json()) as { id: string; status: string; output?: unknown; error?: unknown; urls?: { get?: string } };
 

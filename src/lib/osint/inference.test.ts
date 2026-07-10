@@ -7,7 +7,24 @@ import {
   noopInferenceAdapter,
   isReplicateHost,
   buildModelInput,
+  retryAfterMs,
 } from "./inference";
+
+describe("retryAfterMs", () => {
+  it("reads the header seconds, adds jitter", () => {
+    expect(retryAfterMs("10", undefined)).toBe(10_250);
+  });
+  it("falls back to the JSON body value", () => {
+    expect(retryAfterMs(null, 3)).toBe(3_250);
+  });
+  it("defaults to 5s when neither is present", () => {
+    expect(retryAfterMs(null, undefined)).toBe(5_250);
+  });
+  it("clamps to [1,30] seconds", () => {
+    expect(retryAfterMs("0", undefined)).toBe(1_250);
+    expect(retryAfterMs("999", undefined)).toBe(30_250);
+  });
+});
 
 // Real output captured from adirik/grounding-dino (query "face. person. hat")
 // on a 512x512 image — the exact shape our normalizers must handle.
@@ -172,6 +189,25 @@ describe("ReplicateInferenceAdapter.detectFaces (mocked API)", () => {
     expect(String(url)).toContain("/models/acme/retinaface/predictions");
     expect((opts as { headers: Record<string, string> }).headers.authorization).toBe("Bearer r8_test");
   });
+
+  it("retries once on 429 (throttled) then succeeds", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        clone: () => ({ json: async () => ({ retry_after: 1 }) }),
+        text: async () => "throttled",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: "p1", status: "succeeded", output: [{ bbox: [0, 0, 20, 20], score: 0.9 }] }),
+      });
+    const faces = await getInferenceAdapter().detectFaces(await png());
+    expect(faces).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  }, 6000);
 
   it("returns [] when no face model is configured", async () => {
     vi.stubEnv("OSINT_REPLICATE_FACE_MODEL", "");

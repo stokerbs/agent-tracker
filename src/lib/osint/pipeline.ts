@@ -193,16 +193,25 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
         )
       : Promise.resolve<AnalysisResult["report"]>(((stageStatus.report = "skipped"), null));
 
-  const [report, ocr, faces, objects] = await Promise.all([
+  // Faces + objects hit the same Replicate provider, which throttles concurrent
+  // "create" calls (burst can be 1 on low-credit accounts). Run them one after
+  // the other — the adapter also retries on 429 — while the AI report and local
+  // OCR run in parallel with the whole ML step.
+  const mlRun: Promise<{ faces: FaceDetection[] | null; objects: ObjectDetection[] | null }> =
+    adapter.available
+      ? (async () => {
+          const faces = await stage<FaceDetection[]>(() => adapter.detectFaces(buf), stageStatus, "faces");
+          const objects = await stage<ObjectDetection[]>(() => adapter.detectObjects(buf), stageStatus, "objects");
+          return { faces, objects };
+        })()
+      : Promise.resolve({ faces: null, objects: null });
+
+  const [report, ocr, ml] = await Promise.all([
     reportRun,
     stage<OcrResult[]>(() => runOcr(buf), stageStatus, "ocr"),
-    adapter.available
-      ? stage<FaceDetection[]>(() => adapter.detectFaces(buf), stageStatus, "faces")
-      : Promise.resolve<FaceDetection[] | null>(null),
-    adapter.available
-      ? stage<ObjectDetection[]>(() => adapter.detectObjects(buf), stageStatus, "objects")
-      : Promise.resolve<ObjectDetection[] | null>(null),
+    mlRun,
   ]);
+  const { faces, objects } = ml;
 
   // 5. Persist child rows + finalize.
   await persist(svc, id, { hashes, metadata, redirects: input.redirects, report, ocr, faces, objects });
