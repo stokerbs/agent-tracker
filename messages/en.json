@@ -92,7 +92,8 @@
     "errors": {
       "generic": "Analysis failed.",
       "tooLarge": "Image exceeds the 25 MB limit.",
-      "tooLargeInline": "This image is too large to upload directly (max ~3 MB). For larger images, use the URL tab."
+      "tooLargeInline": "This image is too large to upload directly (max ~3 MB). For larger images, use the URL tab.",
+      "timeout": "The analysis took too long and timed out. Try a smaller image or the URL tab."
     }
   },
   "common": {
