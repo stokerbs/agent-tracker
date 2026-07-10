@@ -158,6 +158,8 @@ export function isReplicateHost(url: string | undefined): boolean {
 }
 
 const MAX_429_RETRIES = 5;
+// Cap total time spent retrying so a run can't blow past the route's maxDuration.
+const RETRY_BUDGET_MS = 60_000;
 
 /** Parse a Retry-After (header or JSON body), clamped, in ms. Default 5s. */
 export function retryAfterMs(header: string | null, bodyRetryAfter?: unknown): number {
@@ -171,6 +173,7 @@ export function retryAfterMs(header: string | null, bodyRetryAfter?: unknown): n
 
 /** POST a prediction, backing off on 429 (throttling) up to a bounded budget. */
 async function createWithRetry(url: string, token: string, body: unknown): Promise<Response> {
+  const start = Date.now();
   let res!: Response;
   for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
     res = await fetch(url, {
@@ -185,7 +188,10 @@ async function createWithRetry(url: string, token: string, body: unknown): Promi
     } catch {
       /* ignore */
     }
-    await new Promise((r) => setTimeout(r, retryAfterMs(res.headers.get("retry-after"), ra)));
+    const wait = retryAfterMs(res.headers.get("retry-after"), ra);
+    // Give up (return the 429) rather than sleep past the retry budget.
+    if (Date.now() - start + wait > RETRY_BUDGET_MS) return res;
+    await new Promise((r) => setTimeout(r, wait));
   }
   return res;
 }
