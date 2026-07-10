@@ -38,6 +38,7 @@ import { buildReverseSearchLinks } from "./reverse-search";
 import { generateReport } from "./report";
 import { getInferenceAdapter } from "./inference";
 import { runOcr } from "./ocr";
+import sharp from "sharp";
 
 const BUCKET = "evidence";
 
@@ -110,9 +111,10 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   // 1. Resolve + validate input up-front (throws → 4xx, no row written).
   const input = await resolveInput(req);
 
-  // ML adapter: faces/objects only run when a provider (Replicate) is configured;
-  // OCR is local (tesseract.js) and always runs.
+  // ML adapter: faces/objects only run when a provider (Replicate) is configured.
   const adapter = getInferenceAdapter();
+  // OCR (local tesseract.js) can be disabled via env as a serverless safety valve.
+  const ocrEnabled = process.env.OSINT_OCR_ENABLED !== "false";
 
   // 2. Create the root row.
   const stageStatus: StageStatus = {
@@ -123,7 +125,7 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     attribution: input.finalHeaders ? "processing" : "skipped",
     integrity: "processing",
     report: "processing",
-    ocr: "processing",
+    ocr: ocrEnabled ? "processing" : "skipped",
     faces: adapter.available ? "processing" : "skipped",
     objects: adapter.available ? "processing" : "skipped",
   };
@@ -157,6 +159,21 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   // 4. Run stages. Each is isolated so one failure doesn't abort the rest.
   const buf = input.image.buffer;
 
+  // Downscaled working copy for the HEAVY stages (OCR + Replicate). Full-res
+  // phone selfies blow up serverless memory/time; the detectors and OCR don't
+  // need more than ~1600px. Hashes + EXIF still run on the ORIGINAL bytes, so
+  // forensic integrity is preserved.
+  let mlBuf = buf;
+  try {
+    mlBuf = await sharp(buf)
+      .rotate() // bake in EXIF orientation before we drop the metadata
+      .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+  } catch {
+    mlBuf = buf; // if downscale fails, fall back to the original
+  }
+
   const [hashes, metadata] = await Promise.all([
     stage<ImageHashes>(() => computeHashes(buf), stageStatus, "hashes"),
     stage<ImageMetadata>(() => extractMetadata(buf), stageStatus, "metadata"),
@@ -186,7 +203,7 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
           () =>
             generateReport(
               { metadata, hashes, attribution, redirects: input.redirects, integrity, finalImageUrl: input.finalUrl },
-              buf,
+              mlBuf,
             ),
           stageStatus,
           "report",
@@ -200,17 +217,19 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   const mlRun: Promise<{ faces: FaceDetection[] | null; objects: ObjectDetection[] | null }> =
     adapter.available
       ? (async () => {
-          const faces = await stage<FaceDetection[]>(() => adapter.detectFaces(buf), stageStatus, "faces");
-          const objects = await stage<ObjectDetection[]>(() => adapter.detectObjects(buf), stageStatus, "objects");
+          const faces = await stage<FaceDetection[]>(() => adapter.detectFaces(mlBuf), stageStatus, "faces");
+          const objects = await stage<ObjectDetection[]>(() => adapter.detectObjects(mlBuf), stageStatus, "objects");
           return { faces, objects };
         })()
       : Promise.resolve({ faces: null, objects: null });
 
-  const [report, ocr, ml] = await Promise.all([
-    reportRun,
-    stage<OcrResult[]>(() => runOcr(buf), stageStatus, "ocr"),
-    mlRun,
-  ]);
+  // OCR (tesseract WASM) is heavy on serverless; the ocrEnabled env flag (above)
+  // lets us disable it without touching the rest of the analysis.
+  const ocrRun: Promise<OcrResult[] | null> = ocrEnabled
+    ? stage<OcrResult[]>(() => runOcr(mlBuf), stageStatus, "ocr")
+    : Promise.resolve<OcrResult[] | null>(((stageStatus.ocr = "skipped"), null));
+
+  const [report, ocr, ml] = await Promise.all([reportRun, ocrRun, mlRun]);
   const { faces, objects } = ml;
 
   // 5. Persist child rows + finalize.
