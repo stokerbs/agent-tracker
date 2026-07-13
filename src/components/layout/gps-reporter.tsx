@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { isNative } from "@/lib/native";
-import { distanceM, reportIntervalMs } from "@/lib/geo/cadence";
+import { distanceM, reportIntervalMs, IDLE_INTERVAL_MS } from "@/lib/geo/cadence";
 
 interface BatteryManager {
   readonly charging: boolean;
@@ -20,65 +20,50 @@ async function readBattery(): Promise<{ battery: number; charging: boolean } | n
 }
 
 /**
- * Invisible background component that continuously reports the logged-in
- * agent's GPS position, speed, heading, and battery level to /api/agents/location.
+ * Invisible background component that reports the logged-in agent's GPS position,
+ * speed, heading, and battery level to /api/agents/location.
  * Runs for all authenticated users; silently no-ops when no agent profile is
  * linked (the API returns 404 which is ignored).
  *
- * Cadence is adaptive: ~9 s while the agent is moving (so the live map glides
- * smoothly) and ~60 s when stationary (to spare battery and DB writes).
+ * Battery: instead of a continuous high-accuracy `watchPosition` (which keeps the
+ * GPS radio powered 100% of the time — a major drain), we DUTY-CYCLE — take a
+ * single `getCurrentPosition` fix, report it, then sleep until the next scheduled
+ * tick so the radio can power down in between. Cadence is unchanged and adaptive:
+ * ~9 s while moving (the live map still glides) and ~60 s when stationary.
  *
- * On first successful report the API auto-promotes status offline → available
- * so the agent appears on the live map without any manual action.
- *
- * Speed is derived from Geolocation API (m/s → km/h).
- * Heading is the compass bearing in degrees (0 = north).
+ * On first successful report the API auto-promotes status offline → available.
+ * Speed = Geolocation API (m/s → km/h); heading = compass bearing (0 = north).
  */
 export function GpsReporter() {
-  const lastReportRef = useRef<number>(0);
-  const lastPosRef    = useRef<{ lat: number; lng: number } | null>(null);
-
-  // Web browser only: navigator.geolocation watch. On native, GPS is handled by
-  // the background-geolocation watcher started in NativeBootstrap (covers
-  // foreground + background), so this no-ops to avoid double reporting.
+  // Web browser only: on native, GPS is handled by the background-geolocation
+  // watcher started in NativeBootstrap (foreground + background), so this no-ops.
   useEffect(() => {
     if (isNative()) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
 
-    const report = async (position: GeolocationPosition) => {
-      const now = Date.now();
-      const { coords } = position;
-      const here = { lat: coords.latitude, lng: coords.longitude };
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastPos: { lat: number; lng: number } | null = null;
 
-      // Decide cadence: moving (fast enough OR displaced enough) → 9 s, else 60 s.
-      const speedKmh =
-        coords.speed !== null && coords.speed >= 0 ? coords.speed * 3.6 : 0;
-      const movedM = lastPosRef.current
-        ? distanceM(lastPosRef.current, here)
-        : null;
-      const interval = reportIntervalMs(speedKmh, movedM);
+    const schedule = (ms: number) => {
+      if (stopped) return;
+      timer = setTimeout(tick, ms);
+    };
 
-      if (now - lastReportRef.current < interval) return;
-      lastReportRef.current = now;
-      lastPosRef.current = here;
+    const postReport = async (coords: GeolocationCoordinates) => {
+      const speedKmh = coords.speed !== null && coords.speed >= 0 ? coords.speed * 3.6 : 0;
+      const battery = await readBattery();
 
-      const batteryInfo = await readBattery();
-
-      const body: Record<string, unknown> = { lat: here.lat, lng: here.lng };
-
-      // Speed: Geolocation API returns m/s (or null if unavailable)
+      const body: Record<string, unknown> = { lat: coords.latitude, lng: coords.longitude };
       if (coords.speed !== null && coords.speed >= 0) {
         body.speed_kmh = Math.round(speedKmh * 10) / 10;
       }
-
-      // Heading: compass degrees 0–359 (or null if stationary/unavailable)
       if (coords.heading !== null && !isNaN(coords.heading)) {
         body.heading = Math.round(coords.heading) % 360;
       }
-
-      if (batteryInfo) {
-        body.battery = batteryInfo.battery;
-        body.charging = batteryInfo.charging;
+      if (battery) {
+        body.battery = battery.battery;
+        body.charging = battery.charging;
       }
 
       try {
@@ -92,15 +77,34 @@ export function GpsReporter() {
       }
     };
 
-    // maximumAge kept low so each tick is a fresh fix — essential for the ~9 s
-    // moving cadence (a stale cached position would freeze the marker).
-    const watchId = navigator.geolocation.watchPosition(report, () => {}, {
-      enableHighAccuracy: true,
-      timeout: 15_000,
-      maximumAge: 5_000,
-    });
+    function tick() {
+      if (stopped) return;
 
-    return () => navigator.geolocation.clearWatch(watchId);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          if (stopped) return;
+          const { coords } = position;
+          const here = { lat: coords.latitude, lng: coords.longitude };
+          const speedKmh = coords.speed !== null && coords.speed >= 0 ? coords.speed * 3.6 : 0;
+          const movedM = lastPos ? distanceM(lastPos, here) : null;
+          lastPos = here;
+
+          await postReport(coords);
+
+          // Schedule the NEXT fix by movement: moving → 9 s, stationary → 60 s.
+          schedule(reportIntervalMs(speedKmh, movedM));
+        },
+        () => schedule(IDLE_INTERVAL_MS), // fix failed/timed out → back off, retry
+        { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 },
+      );
+    }
+
+    tick(); // first fix right away
+
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   return null;
