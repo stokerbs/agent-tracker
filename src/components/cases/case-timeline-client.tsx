@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useLocale } from "next-intl";
 import { TimelineEntryCard } from "@/components/cases/timeline-entry-card";
@@ -32,6 +32,10 @@ interface Props {
   canEdit: boolean;
   isAdmin: boolean;
   todayBangkok: string;
+  /** Shown when there are no entries yet. Rendered inside this component so the
+   *  FAB (case:fab) listener + add-observation dialog stay mounted on an empty
+   *  timeline — otherwise tapping the "+" FAB does nothing. */
+  emptyState?: ReactNode;
 }
 
 function fmtDate(dateStr: string, locale: string) {
@@ -48,6 +52,7 @@ export function CaseTimelineClient({
   canEdit,
   isAdmin,
   todayBangkok,
+  emptyState,
 }: Props) {
   const locale = useLocale();
 
@@ -71,7 +76,7 @@ export function CaseTimelineClient({
   return (
     <>
       <div className="space-y-2">
-        {dateGroups.map((dg) => {
+        {dateGroups.length === 0 ? emptyState : dateGroups.map((dg) => {
           const isOpen = !!expanded[dg.date];
           const isToday = dg.date === todayBangkok;
 

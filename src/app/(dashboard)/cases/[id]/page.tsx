@@ -646,24 +646,25 @@ export default async function CaseDetailPage({
             </TabsTrigger>
           </TabsList>
 
-          {/* Timeline */}
+          {/* Timeline — always mount CaseTimelineClient (even when empty) so the
+              "+" FAB's case:fab listener + add-observation dialog stay available;
+              it renders the empty state itself when there are no entries. */}
           <TabsContent value="timeline" className="space-y-2">
-            {dateGroups.length === 0 ? (
-              <EmptyState
-                icon={<Clock className="h-6 w-6" />}
-                title={t("noTimeline")}
-                description={t("noTimelineDescription")}
-              />
-            ) : (
-              <CaseTimelineClient
-                caseId={id}
-                dateGroups={dateGroups}
-                canInsert={canInsert}
-                canEdit={staff}
-                isAdmin={isAdmin}
-                todayBangkok={todayBKK}
-              />
-            )}
+            <CaseTimelineClient
+              caseId={id}
+              dateGroups={dateGroups}
+              canInsert={canInsert}
+              canEdit={staff}
+              isAdmin={isAdmin}
+              todayBangkok={todayBKK}
+              emptyState={
+                <EmptyState
+                  icon={<Clock className="h-6 w-6" />}
+                  title={t("noTimeline")}
+                  description={t("noTimelineDescription")}
+                />
+              }
+            />
           </TabsContent>
 
           {/* Evidence */}
