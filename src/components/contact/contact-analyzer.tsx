@@ -7,7 +7,6 @@ import {
   Phone,
   Search,
   Link2,
-  Sparkles,
   Loader2,
   AlertTriangle,
   CheckCircle2,
@@ -29,7 +28,7 @@ export interface CaseOption {
   label: string;
 }
 
-const STAGE_ORDER: ContactStageName[] = ["input", "phone", "breach", "accounts", "report"];
+const STAGE_ORDER: ContactStageName[] = ["input", "phone", "breach", "accounts"];
 
 export function ContactAnalyzer({ cases }: { cases: CaseOption[] }) {
   const t = useTranslations("osintContact");
@@ -202,7 +201,6 @@ export function ContactAnalyzer({ cases }: { cases: CaseOption[] }) {
               </CardContent>
             </Card>
 
-            {result.report && <ReportPanel t={t} report={result.report} />}
             {result.phone && <PhonePanel t={t} result={result} />}
             <ReversePanel t={t} result={result} />
           </>
@@ -278,44 +276,6 @@ function PhonePanel({ t, result }: { t: T; result: ContactResult }) {
       <Row k="E.164" v={p.e164 ?? "—"} />
       <Row k={t("phone.national")} v={p.national ?? "—"} />
       <Row k={t("phone.country")} v={[p.country, p.countryCallingCode].filter(Boolean).join(" ") || "—"} />
-    </Section>
-  );
-}
-
-function ReportPanel({ t, report }: { t: T; report: NonNullable<ContactResult["report"]> }) {
-  return (
-    <Section icon={<Sparkles className="h-4 w-4 text-amber-400" />} title={t("panels.report")}>
-      <div className="space-y-3 text-sm">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">
-            {t("report.risk")}: {report.riskScore}/100
-          </Badge>
-          <Badge variant="outline">
-            {t("report.confidence")}: {report.confidence}/100
-          </Badge>
-        </div>
-        <p className="whitespace-pre-wrap text-foreground">{report.summary}</p>
-        {report.leads.length > 0 && (
-          <div>
-            <p className="font-medium">{t("report.leads")}</p>
-            <ul className="list-inside list-disc text-muted-foreground">
-              {report.leads.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {report.recommendations.length > 0 && (
-          <div>
-            <p className="font-medium">{t("report.recommendations")}</p>
-            <ul className="list-inside list-disc text-muted-foreground">
-              {report.recommendations.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
     </Section>
   );
 }

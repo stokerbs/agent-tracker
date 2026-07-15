@@ -24,7 +24,7 @@ export const contactRequestSchema = z.object({
 export type ContactRequest = z.infer<typeof contactRequestSchema>;
 
 // ── Stages ────────────────────────────────────────────────────────────────────
-export const CONTACT_STAGE_NAMES = ["input", "phone", "breach", "accounts", "report"] as const;
+export const CONTACT_STAGE_NAMES = ["input", "phone", "breach", "accounts"] as const;
 export type ContactStageName = (typeof CONTACT_STAGE_NAMES)[number];
 export type StageState = "pending" | "processing" | "complete" | "failed" | "skipped";
 export type ContactStageStatus = Partial<Record<ContactStageName, StageState>>;
@@ -49,15 +49,6 @@ export interface ContactReverseLink {
   url: string;
 }
 
-export interface ContactReport {
-  model: string;
-  summary: string;
-  leads: string[];
-  recommendations: string[];
-  riskScore: number; // 0..100
-  confidence: number; // 0..100
-}
-
 export interface ContactResult {
   id: string;
   status: "complete" | "failed" | "processing";
@@ -68,6 +59,5 @@ export interface ContactResult {
   inputDisplay: string;
   phone: PhoneInfo | null;
   reverseSearch: ContactReverseLink[];
-  report: ContactReport | null;
   error: string | null;
 }

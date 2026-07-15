@@ -35,7 +35,6 @@ import { extractMetadata } from "./metadata";
 import { assessIntegrity } from "./integrity";
 import { attribute } from "./attribution";
 import { buildReverseSearchLinks } from "./reverse-search";
-import { generateReport } from "./report";
 import { getInferenceAdapter } from "./inference";
 import { runOcr } from "./ocr";
 import { geolocateImage, geolocationAvailable } from "./geolocation";
@@ -131,7 +130,6 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     redirect: input.redirects.length ? "complete" : "skipped",
     attribution: input.finalHeaders ? "processing" : "skipped",
     integrity: "processing",
-    report: "processing",
     ocr: ocrEnabled ? "processing" : "skipped",
     faces: adapter.available ? "processing" : "skipped",
     objects: adapter.available ? "processing" : "skipped",
@@ -203,25 +201,10 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
 
   const reverseSearch = buildReverseSearchLinks(input.finalUrl);
 
-  // Run the AI report and the ML stages concurrently — they're independent, and
-  // the ML calls (Replicate / OCR) dominate latency. Each is isolated via stage().
-  const reportRun =
-    hashes && metadata && integrity
-      ? stage(
-          () =>
-            generateReport(
-              { metadata, hashes, attribution, redirects: input.redirects, integrity, finalImageUrl: input.finalUrl },
-              mlBuf,
-            ),
-          stageStatus,
-          "report",
-        )
-      : Promise.resolve<AnalysisResult["report"]>(((stageStatus.report = "skipped"), null));
-
   // Faces + objects hit the same Replicate provider, which throttles concurrent
   // "create" calls (burst can be 1 on low-credit accounts). Run them one after
-  // the other — the adapter also retries on 429 — while the AI report and local
-  // OCR run in parallel with the whole ML step.
+  // the other — the adapter also retries on 429 — while local OCR and geolocation
+  // run in parallel with the whole ML step.
   const mlRun: Promise<{ faces: FaceDetection[] | null; objects: ObjectDetection[] | null }> =
     adapter.available
       ? (async () => {
@@ -243,11 +226,11 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     ? stage<GeoPrediction | null>(() => withTimeout(geolocateImage(mlBuf), STAGE_TIMEOUT_MS, "geolocation"), stageStatus, "geolocation")
     : Promise.resolve<GeoPrediction | null>(null);
 
-  const [report, ocr, ml, geolocation] = await Promise.all([reportRun, ocrRun, mlRun, geoRun]);
+  const [ocr, ml, geolocation] = await Promise.all([ocrRun, mlRun, geoRun]);
   const { faces, objects } = ml;
 
   // 5. Persist child rows + finalize.
-  await persist(svc, id, { hashes, metadata, redirects: input.redirects, report, ocr, faces, objects, geolocation });
+  await persist(svc, id, { hashes, metadata, redirects: input.redirects, ocr, faces, objects, geolocation });
 
   const anyFailed = Object.values(stageStatus).some((s) => s === "failed");
   await svc
@@ -278,7 +261,6 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     attribution,
     integrity,
     reverseSearch,
-    report,
     faces: faces ?? [],
     objects: objects ?? [],
     ocr: ocr ?? [],
@@ -321,7 +303,6 @@ async function persist(
     hashes: ImageHashes | null;
     metadata: ImageMetadata | null;
     redirects: RedirectHop[];
-    report: AnalysisResult["report"];
     ocr: OcrResult[] | null;
     faces: FaceDetection[] | null;
     objects: ObjectDetection[] | null;
@@ -364,21 +345,6 @@ async function persist(
           resolved_ip: h.resolvedIp,
         })),
       ),
-    );
-  }
-  if (data.report) {
-    const r = data.report;
-    ops.push(
-      svc.from("image_reports").insert({
-        analysis_id: analysisId,
-        model: r.model,
-        summary: r.summary,
-        likely_origin: r.likelyOrigin,
-        leads: r.leads,
-        recommendations: r.recommendations,
-        risk_score: r.riskScore,
-        confidence: r.confidence,
-      }),
     );
   }
   if (data.ocr && data.ocr.length) {

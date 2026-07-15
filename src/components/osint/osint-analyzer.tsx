@@ -11,7 +11,6 @@ import {
   GitBranch,
   Cloud,
   ShieldAlert,
-  Sparkles,
   Search,
   Loader2,
   AlertTriangle,
@@ -61,7 +60,6 @@ const STAGE_ORDER: StageName[] = [
   "faces",
   "objects",
   "geolocation",
-  "report",
 ];
 
 // Uploads/base64 travel in the JSON request body. Serverless functions cap the
@@ -388,7 +386,6 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
               </CardContent>
             </Card>
 
-            {result.report && <ReportPanel t={t} report={result.report} />}
             <HashPanel t={t} result={result} />
             <MetadataPanel t={t} result={result} />
             <IntegrityPanel t={t} result={result} />
@@ -478,48 +475,6 @@ function ProgressTimeline({
   );
 }
 
-function ReportPanel({ t, report }: { t: T; report: NonNullable<AnalysisResult["report"]> }) {
-  return (
-    <Section icon={<Sparkles className="h-4 w-4 text-amber-400" />} title={t("panels.report")}>
-      <div className="space-y-3 text-sm">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">
-            {t("report.risk")}: {report.riskScore}/100
-          </Badge>
-          <Badge variant="outline">
-            {t("report.confidence")}: {report.confidence}/100
-          </Badge>
-          <Badge variant="secondary">{report.model}</Badge>
-        </div>
-        <p className="whitespace-pre-wrap text-foreground">{report.summary}</p>
-        <div>
-          <p className="font-medium">{t("report.origin")}</p>
-          <p className="text-muted-foreground">{report.likelyOrigin}</p>
-        </div>
-        {report.leads.length > 0 && (
-          <div>
-            <p className="font-medium">{t("report.leads")}</p>
-            <ul className="list-inside list-disc text-muted-foreground">
-              {report.leads.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {report.recommendations.length > 0 && (
-          <div>
-            <p className="font-medium">{t("report.recommendations")}</p>
-            <ul className="list-inside list-disc text-muted-foreground">
-              {report.recommendations.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </Section>
-  );
-}
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (

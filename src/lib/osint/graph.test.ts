@@ -16,7 +16,6 @@ function result(over: Partial<AnalysisResult> = {}): AnalysisResult {
     attribution: null,
     integrity: null,
     reverseSearch: [],
-    report: null,
     faces: [],
     objects: [],
     ocr: [],

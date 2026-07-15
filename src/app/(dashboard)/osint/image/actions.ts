@@ -6,7 +6,10 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { BUCKETS } from "@/lib/constants";
-import { googleMapsUrl } from "@/lib/osint/report";
+/** Pre-built Google Maps link for a coordinate (evidence note). */
+function googleMapsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
 
 const attachSchema = z.object({
   analysisId: z.string().uuid(),

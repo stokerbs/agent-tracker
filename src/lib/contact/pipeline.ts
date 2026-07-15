@@ -22,7 +22,6 @@ import type {
 } from "./types";
 import { parsePhone } from "./phone";
 import { buildContactReverseLinks } from "./reverse";
-import { generateContactReport } from "./report";
 import { getBreachAdapter, getUsernameAdapter } from "./providers";
 
 export interface ContactPipelineContext {
@@ -59,7 +58,6 @@ export async function runContactPipeline(
     phone: req.type === "phone" ? "processing" : "skipped",
     breach: req.type === "email" && breachAvail ? "processing" : "skipped",
     accounts: req.type === "username" && accountsAvail ? "processing" : "skipped",
-    report: "processing",
   };
 
   // Root row — input stored ENCRYPTED + blind-indexed, never plaintext.
@@ -84,18 +82,8 @@ export async function runContactPipeline(
 
   const reverseSearch = buildContactReverseLinks(req.type, display, phone);
 
-  // AI report.
-  let report: ContactResult["report"] = null;
-  try {
-    report = await generateContactReport({ inputType: req.type, inputDisplay: display, phone });
-    stageStatus.report = "complete";
-  } catch (err) {
-    stageStatus.report = "failed";
-    console.error("[contact] report stage failed:", err);
-  }
-
   // Persist child rows.
-  await persist(svc, id, { phone, report });
+  await persist(svc, id, { phone });
 
   const anyFailed = Object.values(stageStatus).some((s) => s === "failed");
   await svc
@@ -112,7 +100,6 @@ export async function runContactPipeline(
     inputDisplay: display,
     phone,
     reverseSearch,
-    report,
     error: anyFailed ? "one or more stages failed" : null,
   };
 }
@@ -120,7 +107,7 @@ export async function runContactPipeline(
 async function persist(
   svc: ReturnType<typeof createServiceClient>,
   analysisId: string,
-  data: { phone: PhoneInfo | null; report: ContactResult["report"] },
+  data: { phone: PhoneInfo | null },
 ): Promise<void> {
   const ops: PromiseLike<unknown>[] = [];
 
@@ -139,21 +126,6 @@ async function persist(
       }),
     );
   }
-  if (data.report) {
-    const r = data.report;
-    ops.push(
-      svc.from("contact_reports").insert({
-        analysis_id: analysisId,
-        model: r.model,
-        summary: r.summary,
-        leads: r.leads,
-        recommendations: r.recommendations,
-        risk_score: r.riskScore,
-        confidence: r.confidence,
-      }),
-    );
-  }
-
   const results = await Promise.allSettled(ops);
   for (const res of results) {
     if (res.status === "rejected") console.error("[contact] persist failed:", res.reason);
