@@ -9,7 +9,7 @@
 
 import type { AnalysisResult } from "./types";
 
-export type GraphNodeType = "image" | "domain" | "cdn" | "cloud" | "case" | "face" | "object";
+export type GraphNodeType = "image" | "domain" | "cdn" | "cloud" | "case" | "face" | "object" | "location";
 
 export interface GraphNode {
   id: string;
@@ -99,6 +99,15 @@ export function buildGraph(result: AnalysisResult): Graph {
     const oid = `object:${obj.label}`;
     addNode(oid, obj.label, "object");
     addEdge(imageId, oid, "object");
+  }
+
+  // AI-predicted location (Picarta).
+  const geo = result.geolocation;
+  if (geo && geo.lat != null && geo.lon != null) {
+    const label = [geo.city, geo.country].filter(Boolean).join(", ") || "Predicted location";
+    const gid = "location:ai";
+    addNode(gid, label, "location");
+    addEdge(imageId, gid, "likely at");
   }
 
   // Linked case.

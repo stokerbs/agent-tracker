@@ -13,6 +13,7 @@ const TYPE_COLOR: Record<string, string> = {
   case: "#f472b6", // pink
   face: "#facc15",
   object: "#94a3b8",
+  location: "#fb7185", // rose
 };
 
 /**

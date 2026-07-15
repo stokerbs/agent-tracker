@@ -26,6 +26,7 @@
       "ocr": "OCR (text extraction)",
       "faces": "Face detection",
       "objects": "Object detection",
+      "geolocation": "AI geolocation",
       "report": "AI analyst report"
     },
     "panels": {
@@ -38,6 +39,7 @@
       "faces": "Faces",
       "objects": "Objects",
       "ocr": "Text (OCR)",
+      "geolocation": "AI location estimate",
       "redirects": "Redirect chain",
       "reverseSearch": "Reverse image search",
       "graph": "Relationship graph",
@@ -54,6 +56,12 @@
     },
     "ocr": {
       "none": "No text detected."
+    },
+    "geo": {
+      "none": "Could not estimate a location.",
+      "note": "AI estimate from image content (not EXIF GPS) — treat as a lead, not proof.",
+      "confidence": "Confidence",
+      "alternatives": "Other candidates"
     },
     "report": {
       "risk": "Risk",

@@ -38,6 +38,8 @@ import { buildReverseSearchLinks } from "./reverse-search";
 import { generateReport } from "./report";
 import { getInferenceAdapter } from "./inference";
 import { runOcr } from "./ocr";
+import { geolocateImage, geolocationAvailable } from "./geolocation";
+import type { GeoPrediction } from "./types";
 import sharp from "sharp";
 
 const BUCKET = "evidence";
@@ -115,6 +117,8 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   const adapter = getInferenceAdapter();
   // OCR (local tesseract.js) can be disabled via env as a serverless safety valve.
   const ocrEnabled = process.env.OSINT_OCR_ENABLED !== "false";
+  // AI geolocation (Picarta) only runs when a token is configured.
+  const geoEnabled = geolocationAvailable();
 
   // 2. Create the root row.
   const stageStatus: StageStatus = {
@@ -128,6 +132,7 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     ocr: ocrEnabled ? "processing" : "skipped",
     faces: adapter.available ? "processing" : "skipped",
     objects: adapter.available ? "processing" : "skipped",
+    geolocation: geoEnabled ? "processing" : "skipped",
   };
 
   const { data: created, error: insErr } = await svc
@@ -229,11 +234,16 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     ? stage<OcrResult[]>(() => runOcr(mlBuf), stageStatus, "ocr")
     : Promise.resolve<OcrResult[] | null>(((stageStatus.ocr = "skipped"), null));
 
-  const [report, ocr, ml] = await Promise.all([reportRun, ocrRun, mlRun]);
+  // AI geolocation (Picarta) — independent provider, runs in parallel with the rest.
+  const geoRun: Promise<GeoPrediction | null> = geoEnabled
+    ? stage<GeoPrediction | null>(() => geolocateImage(mlBuf), stageStatus, "geolocation")
+    : Promise.resolve<GeoPrediction | null>(null);
+
+  const [report, ocr, ml, geolocation] = await Promise.all([reportRun, ocrRun, mlRun, geoRun]);
   const { faces, objects } = ml;
 
   // 5. Persist child rows + finalize.
-  await persist(svc, id, { hashes, metadata, redirects: input.redirects, report, ocr, faces, objects });
+  await persist(svc, id, { hashes, metadata, redirects: input.redirects, report, ocr, faces, objects, geolocation });
 
   const anyFailed = Object.values(stageStatus).some((s) => s === "failed");
   await svc
@@ -268,6 +278,7 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     faces: faces ?? [],
     objects: objects ?? [],
     ocr: ocr ?? [],
+    geolocation,
     error: anyFailed ? "one or more stages failed" : null,
   };
 }
@@ -298,6 +309,7 @@ async function persist(
     ocr: OcrResult[] | null;
     faces: FaceDetection[] | null;
     objects: ObjectDetection[] | null;
+    geolocation: GeoPrediction | null;
   },
 ): Promise<void> {
   const ops: PromiseLike<unknown>[] = [];
@@ -395,6 +407,22 @@ async function persist(
           confidence: o.confidence,
         })),
       ),
+    );
+  }
+  if (data.geolocation && (data.geolocation.lat != null || data.geolocation.predictions.length)) {
+    const g = data.geolocation;
+    ops.push(
+      svc.from("image_geolocation").insert({
+        analysis_id: analysisId,
+        provider: g.provider,
+        ai_lat: g.lat,
+        ai_lon: g.lon,
+        confidence: g.confidence,
+        country: g.country,
+        city: g.city,
+        province: g.province,
+        predictions: g.predictions,
+      }),
     );
   }
 
