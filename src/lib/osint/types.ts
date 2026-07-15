@@ -60,7 +60,6 @@ export const STAGE_NAMES = [
   "redirect",
   "attribution",
   "integrity",
-  "report",
   // Phase-2 (skipped in Phase 1):
   "faces",
   "ocr",
@@ -212,16 +211,6 @@ export interface GeoPrediction {
   predictions: GeoPredictionItem[];
 }
 
-export interface AiReport {
-  model: string;
-  summary: string;
-  likelyOrigin: string;
-  leads: string[];
-  recommendations: string[];
-  riskScore: number; // 0..100
-  confidence: number; // 0..100
-}
-
 export type SourceType = "upload" | "url" | "base64" | "redirect";
 
 /** The full result returned to the client after an analysis completes. */
@@ -238,7 +227,6 @@ export interface AnalysisResult {
   attribution: Attribution | null;
   integrity: Integrity | null;
   reverseSearch: ReverseSearchLink[];
-  report: AiReport | null;
   faces: FaceDetection[];
   objects: ObjectDetection[];
   ocr: OcrResult[];
