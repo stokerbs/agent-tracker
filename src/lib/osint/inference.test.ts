@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import sharp from "sharp";
 import {
   normalizeFaces,
-  normalizeObjects,
   getInferenceAdapter,
   noopInferenceAdapter,
   isReplicateHost,
@@ -38,16 +37,6 @@ const GROUNDING_DINO_OUTPUT = {
 };
 
 describe("Grounding DINO real output", () => {
-  it("normalizeObjects reads its detections + maps categories + normalizes pixel bbox", () => {
-    const objs = normalizeObjects(GROUNDING_DINO_OUTPUT, 512, 512);
-    expect(objs.map((o) => o.label)).toEqual(["person", "face", "hat"]);
-    expect(objs[0].category).toBe("person");
-    expect(objs[0].confidence).toBeCloseTo(0.51);
-    // pixel [57,43,418,511] on 512px → normalized 0..1
-    expect(objs[0].bbox!.x).toBeCloseTo(57 / 512);
-    expect(objs[0].bbox!.w).toBeCloseTo((418 - 57) / 512);
-  });
-
   it("normalizeFaces reads a face detection with pose/quality left null", () => {
     const faces = normalizeFaces({ detections: [GROUNDING_DINO_OUTPUT.detections[1]] }, 512, 512);
     expect(faces).toHaveLength(1);
@@ -120,26 +109,6 @@ describe("normalizeFaces", () => {
     const faces = normalizeFaces(out, 100, 100);
     expect(faces).toHaveLength(1);
     expect(faces[0].confidence).toBeCloseTo(0.7);
-  });
-});
-
-describe("normalizeObjects", () => {
-  it("maps labels to coarse categories and normalizes bbox", () => {
-    const out = [
-      { label: "car", box: [0, 0, 100, 100], confidence: 0.8 },
-      { class: "person", bbox: [10, 10, 20, 20], score: 0.6 },
-      { name: "cell phone", confidence: 0.5 },
-    ];
-    const objs = normalizeObjects(out, 200, 200);
-    expect(objs.map((o) => o.category)).toEqual(["vehicle", "person", "device"]);
-    expect(objs[0].bbox).toEqual({ x: 0, y: 0, w: 0.5, h: 0.5 });
-    expect(objs[2].bbox).toBeNull();
-  });
-
-  it("drops detections with no label and buckets unknown labels as 'other'", () => {
-    const objs = normalizeObjects([{ confidence: 0.9 }, { label: "umbrella", confidence: 0.4 }], 100, 100);
-    expect(objs).toHaveLength(1);
-    expect(objs[0].category).toBe("other");
   });
 });
 

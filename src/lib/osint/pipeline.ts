@@ -16,12 +16,9 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type {
   AnalysisResult,
   AnalyzeRequest,
-  Attribution,
   FaceDetection,
   ImageHashes,
   ImageMetadata,
-  Integrity,
-  ObjectDetection,
   OcrResult,
   RedirectHop,
   SourceType,
@@ -32,8 +29,6 @@ import { decodeBase64, downloadImage, validateImage, type ValidatedImage } from 
 import { resolveChain } from "./redirect";
 import { computeHashes } from "./hashes";
 import { extractMetadata } from "./metadata";
-import { assessIntegrity } from "./integrity";
-import { attribute } from "./attribution";
 import { buildReverseSearchLinks } from "./reverse-search";
 import { getInferenceAdapter } from "./inference";
 import { runOcr } from "./ocr";
@@ -115,7 +110,7 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   // 1. Resolve + validate input up-front (throws → 4xx, no row written).
   const input = await resolveInput(req);
 
-  // ML adapter: faces/objects only run when a provider (Replicate) is configured.
+  // ML adapter: face detection only runs when a provider (Replicate) is configured.
   const adapter = getInferenceAdapter();
   // OCR (local tesseract.js) can be disabled via env as a serverless safety valve.
   const ocrEnabled = process.env.OSINT_OCR_ENABLED !== "false";
@@ -128,11 +123,8 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     hashes: "processing",
     metadata: "processing",
     redirect: input.redirects.length ? "complete" : "skipped",
-    attribution: input.finalHeaders ? "processing" : "skipped",
-    integrity: "processing",
     ocr: ocrEnabled ? "processing" : "skipped",
     faces: adapter.available ? "processing" : "skipped",
-    objects: adapter.available ? "processing" : "skipped",
     geolocation: geoEnabled ? "processing" : "skipped",
   };
 
@@ -185,34 +177,13 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     stage<ImageMetadata>(() => extractMetadata(buf), stageStatus, "metadata"),
   ]);
 
-  let integrity: Integrity | null = null;
-  if (metadata) {
-    integrity = assessIntegrity(metadata);
-    stageStatus.integrity = "complete";
-  } else {
-    stageStatus.integrity = "failed";
-  }
-
-  let attribution: Attribution | null = null;
-  if (input.finalUrl && input.finalHeaders) {
-    attribution = attribute(input.finalUrl, input.finalHeaders);
-    stageStatus.attribution = "complete";
-  }
-
   const reverseSearch = buildReverseSearchLinks(input.finalUrl);
 
-  // Faces + objects hit the same Replicate provider, which throttles concurrent
-  // "create" calls (burst can be 1 on low-credit accounts). Run them one after
-  // the other — the adapter also retries on 429 — while local OCR and geolocation
-  // run in parallel with the whole ML step.
-  const mlRun: Promise<{ faces: FaceDetection[] | null; objects: ObjectDetection[] | null }> =
-    adapter.available
-      ? (async () => {
-          const faces = await stage<FaceDetection[]>(() => withTimeout(adapter.detectFaces(mlBuf), STAGE_TIMEOUT_MS, "faces"), stageStatus, "faces");
-          const objects = await stage<ObjectDetection[]>(() => withTimeout(adapter.detectObjects(mlBuf), STAGE_TIMEOUT_MS, "objects"), stageStatus, "objects");
-          return { faces, objects };
-        })()
-      : Promise.resolve({ faces: null, objects: null });
+  // Face detection (Replicate), local OCR, and AI geolocation run in parallel;
+  // each is isolated + timeout-bounded via stage()/withTimeout.
+  const facesRun: Promise<FaceDetection[] | null> = adapter.available
+    ? stage<FaceDetection[]>(() => withTimeout(adapter.detectFaces(mlBuf), STAGE_TIMEOUT_MS, "faces"), stageStatus, "faces")
+    : Promise.resolve<FaceDetection[] | null>(null);
 
   // OCR (tesseract WASM) is heavy on serverless; the ocrEnabled env flag (above)
   // lets us disable it, and a timeout keeps a slow cold-start from stalling the
@@ -221,16 +192,15 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     ? stage<OcrResult[]>(() => withTimeout(runOcr(mlBuf), OCR_TIMEOUT_MS, "ocr"), stageStatus, "ocr")
     : Promise.resolve<OcrResult[] | null>(((stageStatus.ocr = "skipped"), null));
 
-  // AI geolocation (Picarta) — independent provider, runs in parallel with the rest.
+  // AI geolocation (Picarta) — independent provider.
   const geoRun: Promise<GeoPrediction | null> = geoEnabled
     ? stage<GeoPrediction | null>(() => withTimeout(geolocateImage(mlBuf), STAGE_TIMEOUT_MS, "geolocation"), stageStatus, "geolocation")
     : Promise.resolve<GeoPrediction | null>(null);
 
-  const [ocr, ml, geolocation] = await Promise.all([ocrRun, mlRun, geoRun]);
-  const { faces, objects } = ml;
+  const [ocr, faces, geolocation] = await Promise.all([ocrRun, facesRun, geoRun]);
 
   // 5. Persist child rows + finalize.
-  await persist(svc, id, { hashes, metadata, redirects: input.redirects, ocr, faces, objects, geolocation });
+  await persist(svc, id, { hashes, metadata, redirects: input.redirects, ocr, faces, geolocation });
 
   const anyFailed = Object.values(stageStatus).some((s) => s === "failed");
   await svc
@@ -243,7 +213,6 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
       height: metadata?.height ?? null,
       format: metadata?.format ?? null,
       dpi: metadata?.dpi ?? null,
-      integrity,
       error: anyFailed ? "one or more stages failed" : null,
     })
     .eq("id", id);
@@ -258,11 +227,8 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
     metadata,
     hashes,
     redirects: input.redirects,
-    attribution,
-    integrity,
     reverseSearch,
     faces: faces ?? [],
-    objects: objects ?? [],
     ocr: ocr ?? [],
     geolocation,
     error: anyFailed ? "one or more stages failed" : null,
@@ -305,7 +271,6 @@ async function persist(
     redirects: RedirectHop[];
     ocr: OcrResult[] | null;
     faces: FaceDetection[] | null;
-    objects: ObjectDetection[] | null;
     geolocation: GeoPrediction | null;
   },
 ): Promise<void> {
@@ -374,19 +339,6 @@ async function persist(
           has_glasses: f.hasGlasses,
           has_mask: f.hasMask,
           confidence: f.confidence,
-        })),
-      ),
-    );
-  }
-  if (data.objects && data.objects.length) {
-    ops.push(
-      svc.from("image_objects").insert(
-        data.objects.map((o) => ({
-          analysis_id: analysisId,
-          label: o.label,
-          category: o.category,
-          bbox: o.bbox,
-          confidence: o.confidence,
         })),
       ),
     );

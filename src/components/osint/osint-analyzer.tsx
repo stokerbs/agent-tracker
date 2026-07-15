@@ -9,15 +9,12 @@ import {
   Fingerprint,
   MapPin,
   GitBranch,
-  Cloud,
-  ShieldAlert,
   Search,
   Loader2,
   AlertTriangle,
   CheckCircle2,
   Paperclip,
   ScanFace,
-  Boxes,
   Type,
   Globe2,
 } from "lucide-react";
@@ -37,8 +34,6 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult, StageName, StageState } from "@/lib/osint/types";
-import { buildGraph } from "@/lib/osint/graph";
-import { OsintGraph } from "./osint-graph";
 import { OsintGpsMap } from "./osint-gps-map";
 import { attachToCase } from "@/app/(dashboard)/osint/image/actions";
 
@@ -54,11 +49,8 @@ const STAGE_ORDER: StageName[] = [
   "hashes",
   "metadata",
   "redirect",
-  "attribution",
-  "integrity",
   "ocr",
   "faces",
-  "objects",
   "geolocation",
 ];
 
@@ -199,8 +191,6 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
       else toast.error(r.error);
     });
   }
-
-  const graph = useMemo(() => (result ? buildGraph(result) : null), [result]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
@@ -388,19 +378,11 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
 
             <HashPanel t={t} result={result} />
             <MetadataPanel t={t} result={result} />
-            <IntegrityPanel t={t} result={result} />
-            <AttributionPanel t={t} result={result} />
             <GeolocationPanel t={t} result={result} />
             <FacesPanel t={t} result={result} />
-            <ObjectsPanel t={t} result={result} />
             <OcrPanel t={t} result={result} />
             <RedirectPanel t={t} result={result} />
             <ReverseSearchPanel t={t} result={result} />
-            {graph && (
-              <Section icon={<GitBranch className="h-4 w-4 text-violet-400" />} title={t("panels.graph")}>
-                <OsintGraph graph={graph} />
-              </Section>
-            )}
           </>
         )}
       </div>
@@ -494,9 +476,6 @@ function HashPanel({ t, result }: { t: T; result: AnalysisResult }) {
           <Row k="MD5" v={h.md5} />
           <Row k="SHA-1" v={h.sha1} />
           <Row k="SHA-256" v={h.sha256} />
-          <Row k="pHash" v={h.phash} />
-          <Row k="dHash" v={h.dhash} />
-          <Row k="aHash" v={h.ahash} />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">{t("panels.stageFailed")}</p>
@@ -529,70 +508,6 @@ function MetadataPanel({ t, result }: { t: T; result: AnalysisResult }) {
       ) : (
         <p className="text-sm text-muted-foreground">{t("panels.stageFailed")}</p>
       )}
-    </Section>
-  );
-}
-
-function IntegrityPanel({ t, result }: { t: T; result: AnalysisResult }) {
-  const g = result.integrity;
-  if (!g) return null;
-  const flags: [string, boolean][] = [
-    [t("integrity.stripped"), g.metadataStripped],
-    [t("integrity.resized"), g.likelyResized],
-    [t("integrity.screenshot"), g.likelyScreenshot],
-    [t("integrity.edited"), Boolean(g.likelyEditedSoftware)],
-  ];
-  return (
-    <Section icon={<ShieldAlert className="h-4 w-4 text-orange-400" />} title={t("panels.integrity")}>
-      <div className="flex flex-wrap gap-2">
-        {flags.map(([label, on]) => (
-          <Badge key={label} variant={on ? "destructive" : "outline"}>
-            {label}: {on ? t("integrity.yes") : t("integrity.no")}
-          </Badge>
-        ))}
-        <Badge variant="secondary">
-          {t("integrity.confidence")}: {Math.round(g.confidence * 100)}%
-        </Badge>
-      </div>
-      {g.likelyEditedSoftware && (
-        <p className="mt-2 text-xs text-muted-foreground">{t("integrity.software")}: {g.likelyEditedSoftware}</p>
-      )}
-    </Section>
-  );
-}
-
-function AttributionPanel({ t, result }: { t: T; result: AnalysisResult }) {
-  const a = result.attribution;
-  if (!a) return null;
-  return (
-    <Section icon={<Cloud className="h-4 w-4 text-emerald-400" />} title={t("panels.attribution")}>
-      <div className="space-y-2 text-sm">
-        <Row k={t("attribution.host")} v={a.host ?? "—"} />
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">{t("attribution.cloud")}:</span>
-          {a.cloud.length ? (
-            a.cloud.map((c) => (
-              <Badge key={c.provider} variant="secondary" title={c.evidence}>
-                {c.provider}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">{t("attribution.cdn")}:</span>
-          {a.cdn.length ? (
-            a.cdn.map((c) => (
-              <Badge key={c.provider} variant="secondary" title={c.evidence}>
-                {c.provider}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          )}
-        </div>
-      </div>
     </Section>
   );
 }
@@ -693,27 +608,6 @@ function FacesPanel({ t, result }: { t: T; result: AnalysisResult }) {
 
 function fmt(v: number | null): string {
   return v == null ? "–" : String(Math.round(v));
-}
-
-function ObjectsPanel({ t, result }: { t: T; result: AnalysisResult }) {
-  const state = result.stageStatus.objects;
-  if (state === "skipped" || state === undefined) return null;
-  return (
-    <Section icon={<Boxes className="h-4 w-4 text-emerald-400" />} title={`${t("panels.objects")} (${result.objects.length})`}>
-      {result.objects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{state === "failed" ? t("panels.stageFailed") : t("objects.none")}</p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {result.objects.map((o, i) => (
-            <Badge key={`${o.label}-${i}`} variant="outline" title={o.category ?? undefined}>
-              {o.label}
-              {o.confidence != null && <span className="ml-1 text-muted-foreground">{Math.round(o.confidence * 100)}%</span>}
-            </Badge>
-          ))}
-        </div>
-      )}
-    </Section>
-  );
 }
 
 function OcrPanel({ t, result }: { t: T; result: AnalysisResult }) {

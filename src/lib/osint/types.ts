@@ -58,12 +58,8 @@ export const STAGE_NAMES = [
   "hashes",
   "metadata",
   "redirect",
-  "attribution",
-  "integrity",
-  // Phase-2 (skipped in Phase 1):
   "faces",
   "ocr",
-  "objects",
   "geolocation",
 ] as const;
 export type StageName = (typeof STAGE_NAMES)[number];
@@ -77,9 +73,6 @@ export interface ImageHashes {
   md5: string;
   sha1: string;
   sha256: string;
-  phash: string;
-  dhash: string;
-  ahash: string;
 }
 
 export interface ImageMetadata {
@@ -108,36 +101,6 @@ export interface RedirectHop {
   statusCode: number | null;
   resolvedHost: string | null;
   resolvedIp: string | null;
-}
-
-export interface CloudMatch {
-  provider: string; // "Amazon S3", "Cloudflare R2", ...
-  evidence: string; // what matched (hostname pattern / header)
-}
-
-export interface CdnMatch {
-  provider: string; // "Cloudflare", "Fastly", ...
-  evidence: string;
-}
-
-export interface Attribution {
-  host: string | null;
-  cloud: CloudMatch[];
-  cdn: CdnMatch[];
-}
-
-export interface IntegritySignal {
-  key: string;
-  detail: string;
-}
-
-export interface Integrity {
-  metadataStripped: boolean;
-  likelyResized: boolean;
-  likelyScreenshot: boolean;
-  likelyEditedSoftware: string | null;
-  confidence: number; // 0..1
-  signals: IntegritySignal[];
 }
 
 export type ReverseSearchEngine =
@@ -173,13 +136,6 @@ export interface FaceDetection {
   hasMask: boolean | null;
   confidence: number | null;
   // NB: no embedding field — faces are detected, never vectorized (PDPA).
-}
-
-export interface ObjectDetection {
-  label: string;
-  category: string | null;
-  bbox: { x: number; y: number; w: number; h: number } | null;
-  confidence: number | null;
 }
 
 export interface OcrResult {
@@ -224,11 +180,8 @@ export interface AnalysisResult {
   metadata: ImageMetadata | null;
   hashes: ImageHashes | null;
   redirects: RedirectHop[];
-  attribution: Attribution | null;
-  integrity: Integrity | null;
   reverseSearch: ReverseSearchLink[];
   faces: FaceDetection[];
-  objects: ObjectDetection[];
   ocr: OcrResult[];
   geolocation: GeoPrediction | null;
   error: string | null;
