@@ -43,10 +43,30 @@ export function buildReverseSearchLinks(imageUrl: string | null): ReverseSearchL
       url: enc ? `https://tineye.com/search?url=${enc}` : "https://tineye.com/",
     },
     {
-      // PimEyes is upload-only (face search) — always the landing page.
+      // Baidu image search — strong for Asian/Chinese-origin imagery. Upload-only
+      // (no stable image-URL deep link), so always its landing page.
+      engine: "baidu",
+      label: "Baidu Image",
+      url: "https://graph.baidu.com/",
+    },
+    // ── Face-recognition engines (upload-only, PDPA-sensitive) ────────────────
+    {
       engine: "pimeyes",
       label: "PimEyes",
+      face: true,
       url: "https://pimeyes.com/en",
+    },
+    {
+      engine: "facecheck",
+      label: "FaceCheck.ID",
+      face: true,
+      url: "https://facecheck.id/",
+    },
+    {
+      engine: "lenso",
+      label: "Lenso.ai",
+      face: true,
+      url: "https://lenso.ai/",
     },
   ];
 }
