@@ -48,7 +48,7 @@
   },
   "osint": {
     "title": "OSINT Image Intelligence",
-    "subtitle": "Forensic analysis of an image: hashes, EXIF & GPS, redirect chain, cloud/CDN attribution, integrity heuristics and an AI analyst report.",
+    "subtitle": "Forensic analysis of an image: hashes, EXIF & GPS, redirect chain, reverse-search links, face detection, OCR and AI geolocation.",
     "empty": "Provide an image, URL, redirect link or base64 to run a forensic analysis.",
     "input": {
       "title": "Input",
