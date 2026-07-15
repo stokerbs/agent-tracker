@@ -43,6 +43,9 @@ import type { GeoPrediction } from "./types";
 import sharp from "sharp";
 
 const BUCKET = "evidence";
+// Per-stage ceilings so one slow stage can't exhaust the function's maxDuration.
+const STAGE_TIMEOUT_MS = 45_000; // Replicate / Picarta network calls
+const OCR_TIMEOUT_MS = 45_000; // tesseract WASM incl. first cold-start
 
 interface ResolvedInput {
   sourceType: SourceType;
@@ -222,21 +225,22 @@ export async function runPipeline(req: AnalyzeRequest, ctx: PipelineContext): Pr
   const mlRun: Promise<{ faces: FaceDetection[] | null; objects: ObjectDetection[] | null }> =
     adapter.available
       ? (async () => {
-          const faces = await stage<FaceDetection[]>(() => adapter.detectFaces(mlBuf), stageStatus, "faces");
-          const objects = await stage<ObjectDetection[]>(() => adapter.detectObjects(mlBuf), stageStatus, "objects");
+          const faces = await stage<FaceDetection[]>(() => withTimeout(adapter.detectFaces(mlBuf), STAGE_TIMEOUT_MS, "faces"), stageStatus, "faces");
+          const objects = await stage<ObjectDetection[]>(() => withTimeout(adapter.detectObjects(mlBuf), STAGE_TIMEOUT_MS, "objects"), stageStatus, "objects");
           return { faces, objects };
         })()
       : Promise.resolve({ faces: null, objects: null });
 
   // OCR (tesseract WASM) is heavy on serverless; the ocrEnabled env flag (above)
-  // lets us disable it without touching the rest of the analysis.
+  // lets us disable it, and a timeout keeps a slow cold-start from stalling the
+  // whole request.
   const ocrRun: Promise<OcrResult[] | null> = ocrEnabled
-    ? stage<OcrResult[]>(() => runOcr(mlBuf), stageStatus, "ocr")
+    ? stage<OcrResult[]>(() => withTimeout(runOcr(mlBuf), OCR_TIMEOUT_MS, "ocr"), stageStatus, "ocr")
     : Promise.resolve<OcrResult[] | null>(((stageStatus.ocr = "skipped"), null));
 
   // AI geolocation (Picarta) — independent provider, runs in parallel with the rest.
   const geoRun: Promise<GeoPrediction | null> = geoEnabled
-    ? stage<GeoPrediction | null>(() => geolocateImage(mlBuf), stageStatus, "geolocation")
+    ? stage<GeoPrediction | null>(() => withTimeout(geolocateImage(mlBuf), STAGE_TIMEOUT_MS, "geolocation"), stageStatus, "geolocation")
     : Promise.resolve<GeoPrediction | null>(null);
 
   const [report, ocr, ml, geolocation] = await Promise.all([reportRun, ocrRun, mlRun, geoRun]);
@@ -295,6 +299,18 @@ async function stage<T>(fn: () => Promise<T>, status: StageStatus, name: StageNa
     console.error(`[osint] stage ${name} failed:`, err);
     return null;
   }
+}
+
+/**
+ * Bound a slow stage so it can't hold the whole serverless request open (which
+ * would make the function time out and return a non-JSON error). On timeout the
+ * promise rejects and stage() records the failure, isolated from the rest.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ]);
 }
 
 /** Insert the child rows for whichever stages produced data. */
