@@ -16,7 +16,7 @@ describe("buildReverseSearchLinks", () => {
 
   it("falls back to landing pages when there is no image URL", () => {
     const links = buildReverseSearchLinks(null);
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(8);
     for (const l of links) {
       expect(l.url).toMatch(/^https:\/\//);
       expect(l.url).not.toContain("undefined");
@@ -24,8 +24,27 @@ describe("buildReverseSearchLinks", () => {
     }
   });
 
-  it("covers all five engines exactly once", () => {
+  it("covers all engines exactly once", () => {
     const engines = buildReverseSearchLinks("https://x.com/y.jpg").map((l) => l.engine).sort();
-    expect(engines).toEqual(["bing", "google_lens", "pimeyes", "tineye", "yandex"]);
+    expect(engines).toEqual([
+      "baidu",
+      "bing",
+      "facecheck",
+      "google_lens",
+      "lenso",
+      "pimeyes",
+      "tineye",
+      "yandex",
+    ]);
+  });
+
+  it("marks the face-recognition engines and always uses their landing pages", () => {
+    const links = buildReverseSearchLinks("https://x.com/y.jpg");
+    const faceEngines = links.filter((l) => l.face).map((l) => l.engine).sort();
+    expect(faceEngines).toEqual(["facecheck", "lenso", "pimeyes"]);
+    // Upload-only engines never embed the image URL.
+    for (const l of links.filter((x) => x.face)) {
+      expect(l.url).not.toContain("x.com");
+    }
   });
 });

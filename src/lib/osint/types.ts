@@ -140,9 +140,21 @@ export interface Integrity {
   signals: IntegritySignal[];
 }
 
+export type ReverseSearchEngine =
+  | "google_lens"
+  | "yandex"
+  | "bing"
+  | "tineye"
+  | "baidu"
+  | "pimeyes"
+  | "facecheck"
+  | "lenso";
+
 export interface ReverseSearchLink {
-  engine: "google_lens" | "yandex" | "bing" | "tineye" | "pimeyes";
+  engine: ReverseSearchEngine;
   label: string;
+  /** True for face-recognition engines (upload-only, PDPA-sensitive). */
+  face?: boolean;
   url: string;
 }
 
