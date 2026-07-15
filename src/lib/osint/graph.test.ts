@@ -20,6 +20,7 @@ function result(over: Partial<AnalysisResult> = {}): AnalysisResult {
     faces: [],
     objects: [],
     ocr: [],
+    geolocation: null,
     error: null,
     ...over,
   };
@@ -69,6 +70,25 @@ describe("buildGraph", () => {
     expect(g.nodes.find((n) => n.type === "object" && n.label === "car")).toBeTruthy();
     expect(g.edges.some((e) => e.target === "face:0")).toBe(true);
     expect(g.edges.some((e) => e.target === "object:car")).toBe(true);
+  });
+
+  it("adds an AI-location node when geolocation is present", () => {
+    const g = buildGraph(
+      result({
+        geolocation: {
+          provider: "picarta",
+          lat: 43.46,
+          lon: 11.04,
+          confidence: 0.9,
+          country: "Italy",
+          city: "San Gimignano",
+          province: "Tuscany",
+          predictions: [],
+        },
+      }),
+    );
+    expect(g.nodes.find((n) => n.type === "location")).toBeTruthy();
+    expect(g.edges.some((e) => e.target === "location:ai")).toBe(true);
   });
 
   it("adds a case node when linked", () => {

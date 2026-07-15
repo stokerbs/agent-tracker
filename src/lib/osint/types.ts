@@ -65,6 +65,7 @@ export const STAGE_NAMES = [
   "faces",
   "ocr",
   "objects",
+  "geolocation",
 ] as const;
 export type StageName = (typeof STAGE_NAMES)[number];
 
@@ -189,6 +190,28 @@ export interface OcrResult {
   confidence: number | null;
 }
 
+/** One ranked AI geolocation guess. */
+export interface GeoPredictionItem {
+  lat: number;
+  lon: number;
+  confidence: number | null; // 0..1
+  country: string | null;
+  city: string | null;
+  province: string | null;
+}
+
+/** AI-predicted location of the photo (distinct from EXIF GPS). */
+export interface GeoPrediction {
+  provider: string;
+  lat: number | null;
+  lon: number | null;
+  confidence: number | null; // 0..1 for the top prediction
+  country: string | null;
+  city: string | null;
+  province: string | null;
+  predictions: GeoPredictionItem[];
+}
+
 export interface AiReport {
   model: string;
   summary: string;
@@ -219,5 +242,6 @@ export interface AnalysisResult {
   faces: FaceDetection[];
   objects: ObjectDetection[];
   ocr: OcrResult[];
+  geolocation: GeoPrediction | null;
   error: string | null;
 }

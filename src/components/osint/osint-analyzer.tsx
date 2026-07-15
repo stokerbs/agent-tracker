@@ -20,6 +20,7 @@ import {
   ScanFace,
   Boxes,
   Type,
+  Globe2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,7 @@ const STAGE_ORDER: StageName[] = [
   "ocr",
   "faces",
   "objects",
+  "geolocation",
   "report",
 ];
 
@@ -391,6 +393,7 @@ export function OsintAnalyzer({ cases }: { cases: CaseOption[] }) {
             <MetadataPanel t={t} result={result} />
             <IntegrityPanel t={t} result={result} />
             <AttributionPanel t={t} result={result} />
+            <GeolocationPanel t={t} result={result} />
             <FacesPanel t={t} result={result} />
             <ObjectsPanel t={t} result={result} />
             <OcrPanel t={t} result={result} />
@@ -654,6 +657,48 @@ function RedirectPanel({ t, result }: { t: T; result: AnalysisResult }) {
           </li>
         ))}
       </ol>
+    </Section>
+  );
+}
+
+function GeolocationPanel({ t, result }: { t: T; result: AnalysisResult }) {
+  const state = result.stageStatus.geolocation;
+  // Hidden unless AI geolocation actually ran (no Picarta token → skipped).
+  if (state === "skipped" || state === undefined) return null;
+  const g = result.geolocation;
+  return (
+    <Section icon={<Globe2 className="h-4 w-4 text-rose-400" />} title={t("panels.geolocation")}>
+      {!g || g.lat == null || g.lon == null ? (
+        <p className="text-sm text-muted-foreground">
+          {state === "failed" ? t("panels.stageFailed") : t("geo.none")}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">{t("geo.note")}</p>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">{[g.city, g.province, g.country].filter(Boolean).join(", ") || "—"}</span>
+            {g.confidence != null && (
+              <Badge variant="outline">
+                {t("geo.confidence")}: {Math.round(g.confidence * 100)}%
+              </Badge>
+            )}
+          </div>
+          <OsintGpsMap lat={g.lat} lng={g.lon} />
+          {g.predictions.length > 1 && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">{t("geo.alternatives")}</p>
+              <ul className="space-y-1 text-xs">
+                {g.predictions.slice(1, 4).map((p, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <Badge variant="secondary">{p.confidence != null ? `${Math.round(p.confidence * 100)}%` : "–"}</Badge>
+                    <span>{[p.city, p.country].filter(Boolean).join(", ") || `${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}`}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </Section>
   );
 }
