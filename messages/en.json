@@ -1,4 +1,51 @@
 {
+  "osintContact": {
+    "title": "Contact Intelligence",
+    "subtitle": "Look up a target's phone, email or username — parse it, build reverse-search links, and generate an AI analyst report.",
+    "empty": "Enter a phone number to look up.",
+    "pdpaNote": "The identifier is personal data — it's stored encrypted and every lookup is audited.",
+    "input": {
+      "title": "Lookup",
+      "types": { "phone": "Phone", "email": "Email", "username": "Username" },
+      "phase2": "Coming in Phase 2",
+      "phoneLabel": "Phone number",
+      "hint": "Local (081…) or international (+66…) format.",
+      "caseLabel": "Link to case (optional)",
+      "noCase": "No case"
+    },
+    "actions": { "analyze": "Look up", "analyzing": "Looking up…", "retry": "Retry" },
+    "progress": { "title": "Progress" },
+    "stages": {
+      "input": "Validate & encrypt",
+      "phone": "Phone parsing",
+      "breach": "Breach check",
+      "accounts": "Account discovery",
+      "report": "AI analyst report"
+    },
+    "panels": {
+      "phone": "Phone",
+      "report": "AI intelligence report",
+      "reverse": "Reverse lookup"
+    },
+    "phone": {
+      "valid": "Valid",
+      "invalid": "Invalid",
+      "national": "National",
+      "country": "Country"
+    },
+    "report": {
+      "risk": "Risk",
+      "confidence": "Confidence",
+      "leads": "Investigative leads",
+      "recommendations": "OSINT recommendations"
+    },
+    "attach": {
+      "prompt": "Attach this lookup to a case.",
+      "button": "Attach to case",
+      "success": "Attached to case."
+    },
+    "errors": { "generic": "Lookup failed." }
+  },
   "osint": {
     "title": "OSINT Image Intelligence",
     "subtitle": "Forensic analysis of an image: hashes, EXIF & GPS, redirect chain, cloud/CDN attribution, integrity heuristics and an AI analyst report.",
@@ -224,6 +271,7 @@
     },
     "items": {
       "osintImage": "Image Intelligence",
+      "osintContact": "Contact Intelligence",
       "dashboard": "Dashboard",
       "map": "Live Map",
       "cases": "Cases",

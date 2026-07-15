@@ -24,6 +24,7 @@ import {
   Inbox,
   UserPlus,
   Sparkles,
+  Contact,
   type LucideProps,
 } from "lucide-react";
 
@@ -51,6 +52,7 @@ const ICONS = {
   Inbox,
   UserPlus,
   Sparkles,
+  Contact,
 } as const;
 
 export type IconName = keyof typeof ICONS;

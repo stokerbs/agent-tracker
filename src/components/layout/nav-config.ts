@@ -49,6 +49,7 @@ export const NAV_SECTIONS: NavSection[] = [
     sectionKey: "intelligence",
     items: [
       { labelKey: "osintImage", href: "/osint/image", icon: "ScanSearch", roles: STAFF },
+      { labelKey: "osintContact", href: "/osint/contact", icon: "Contact", roles: STAFF },
     ],
   },
   {

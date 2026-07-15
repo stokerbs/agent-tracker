@@ -41,6 +41,8 @@ export const RATE_LIMITS = {
   assistant:  { limit: 30, windowMs: 3_600_000 },
   /** 20 OSINT image analyses per hour per user — bounds outbound fetches + AI cost. */
   osint_analyze: { limit: 20, windowMs: 3_600_000 },
+  /** 40 OSINT contact lookups per hour per user — PII lookups, audited + bounded. */
+  contact_lookup: { limit: 40, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
