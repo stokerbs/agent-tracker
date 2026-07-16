@@ -554,7 +554,7 @@ async function fetchReportPhotos(
       .map((s) => [s.path as string, s.signedUrl as string]),
   );
 
-  const photos: ReportPhoto[] = [];
+  const photos: Array<ReportPhoto & { sortKey: string }> = [];
   for (const r of rows) {
     const url = urlByPath.get(r.storage_path);
     if (!url) continue;
@@ -564,9 +564,17 @@ async function fetchReportPhotos(
     const snippet = e?.entry
       ? e.entry.length > 90 ? `${e.entry.slice(0, 90)}…` : e.entry
       : "";
-    photos.push({ url, label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — ") });
+    photos.push({
+      url,
+      label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — "),
+      // Order by the linked entry's chronological position (timeline order),
+      // not upload order. rows are already uploaded_at-sorted, so upload order
+      // stays the tiebreaker for multiple photos on the same entry (stable sort).
+      sortKey: `${e?.entry_date ?? ""}T${e?.entry_time ?? ""}`,
+    });
   }
-  return photos;
+  photos.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  return photos.map(({ url, label }) => ({ url, label }));
   } catch {
     // Never let an evidence/storage hiccup fail the whole report — degrade to
     // a text-only report (no embedded photos).
