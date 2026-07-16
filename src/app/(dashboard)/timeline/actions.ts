@@ -96,7 +96,9 @@ export async function updateTimelineEntry(
   caseId: string,
   data: { entry_date: string; entry_time: string; entry: string; location: string | null },
 ) {
-  const profile = await requireRole(["admin", "supervisor"]);
+  // Agents are allowed too — RLS (0106) scopes them to their OWN entries; a
+  // blocked write affects 0 rows and is surfaced as "Not authorized" below.
+  const profile = await requireRole(["admin", "supervisor", "agent"]);
   const entry = data.entry.trim();
   if (!entry) return { error: "Entry text is required" };
 
@@ -128,7 +130,9 @@ export async function updateTimelineEntry(
 }
 
 export async function deleteTimelineEntry(id: string, caseId: string) {
-  const profile = await requireRole(["admin", "supervisor"]);
+  // Agents may soft-delete their OWN entries — RLS (0106) enforces the scope;
+  // a blocked delete affects 0 rows and is surfaced as "Not authorized" below.
+  const profile = await requireRole(["admin", "supervisor", "agent"]);
   const supabase = await createClient();
 
   const { data: deleted, error } = await supabase
