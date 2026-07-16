@@ -516,77 +516,152 @@ End of Report`;
 }
 
 export type ReportPhoto = { url: string; label: string };
+export type ReportLocation = { name: string; url: string };
+/** One timeline observation with its own photos + location — for the per-entry
+ *  report layout: observation → evidence photos → location, repeated per entry. */
+export type ReportBlock = { time: string; text: string; photos: ReportPhoto[]; location: ReportLocation | null };
 
 /**
- * Fetch the `photo` evidence linked to the given timeline entries → short-lived
- * signed URLs + a label (entry date/time + snippet), so a report can embed the
- * actual photos, not just the "[N photos attached]" note. Non-fatal: returns []
- * on any miss so report generation never fails over evidence.
+ * Fetch the `photo` evidence linked to the given timeline entries, GROUPED by
+ * entry id, as short-lived signed URLs (upload order within each entry).
+ * Non-fatal: returns an empty map on any miss so report generation never fails
+ * over evidence.
  */
 async function fetchReportPhotos(
   supabase: Awaited<ReturnType<typeof createClient>>,
   entries: Array<{ id: string; entry_time: string; entry: string; entry_date?: string }>,
-): Promise<ReportPhoto[]> {
-  if (entries.length === 0) return [];
+): Promise<Map<string, ReportPhoto[]>> {
+  const byEntry = new Map<string, ReportPhoto[]>();
+  if (entries.length === 0) return byEntry;
   try {
-  const byId = new Map(entries.map((e) => [e.id, e]));
+    const byId = new Map(entries.map((e) => [e.id, e]));
+    const { data: evRows, error: evErr } = await supabase
+      .from("evidence")
+      .select("timeline_entry_id, storage_path, type, uploaded_at")
+      .in("timeline_entry_id", entries.map((e) => e.id))
+      .eq("type", "photo")
+      .order("uploaded_at", { ascending: true });
+    if (evErr) console.error("[report-photos] evidence query error:", evErr.message);
 
-  const { data: evRows, error: evErr } = await supabase
-    .from("evidence")
-    .select("timeline_entry_id, storage_path, type, uploaded_at")
-    .in("timeline_entry_id", entries.map((e) => e.id))
-    .eq("type", "photo")
-    .order("uploaded_at", { ascending: true });
-  if (evErr) console.error("[report-photos] evidence query error:", evErr.message);
+    const rows = (evRows ?? []).filter(
+      (r) => !!r.timeline_entry_id && !!r.storage_path,
+    ) as Array<{ timeline_entry_id: string; storage_path: string }>;
+    if (rows.length === 0) return byEntry;
 
-  const rows = (evRows ?? []).filter(
-    (r) => !!r.timeline_entry_id && !!r.storage_path,
-  ) as Array<{ timeline_entry_id: string; storage_path: string }>;
-  if (rows.length === 0) return [];
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(BUCKETS.evidence)
+      .createSignedUrls(rows.map((r) => r.storage_path), 60 * 60); // 1h TTL — long enough to print
+    if (signErr) console.error("[report-photos] sign error:", signErr.message);
+    const urlByPath = new Map(
+      (signed ?? [])
+        .filter((s) => s.signedUrl && s.path)
+        .map((s) => [s.path as string, s.signedUrl as string]),
+    );
 
-  const { data: signed, error: signErr } = await supabase.storage
-    .from(BUCKETS.evidence)
-    .createSignedUrls(rows.map((r) => r.storage_path), 60 * 60); // 1h TTL — long enough to print
-  if (signErr) console.error("[report-photos] sign error:", signErr.message);
-  const urlByPath = new Map(
-    (signed ?? [])
-      .filter((s) => s.signedUrl && s.path)
-      .map((s) => [s.path as string, s.signedUrl as string]),
-  );
-
-  const photos: Array<ReportPhoto & { sortKey: string }> = [];
-  for (const r of rows) {
-    const url = urlByPath.get(r.storage_path);
-    if (!url) continue;
-    const e = byId.get(r.timeline_entry_id);
-    const time = e?.entry_time?.slice(0, 5) ?? "";
-    const datePart = e?.entry_date ? `${e.entry_date} ` : "";
-    const snippet = e?.entry
-      ? e.entry.length > 90 ? `${e.entry.slice(0, 90)}…` : e.entry
-      : "";
-    photos.push({
-      url,
-      label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — "),
-      // Order by the linked entry's chronological position (timeline order),
-      // not upload order. rows are already uploaded_at-sorted, so upload order
-      // stays the tiebreaker for multiple photos on the same entry (stable sort).
-      sortKey: `${e?.entry_date ?? ""}T${e?.entry_time ?? ""}`,
-    });
-  }
-  photos.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-  return photos.map(({ url, label }) => ({ url, label }));
+    for (const r of rows) {
+      const url = urlByPath.get(r.storage_path);
+      if (!url) continue;
+      const e = byId.get(r.timeline_entry_id);
+      const time = e?.entry_time?.slice(0, 5) ?? "";
+      const snippet = e?.entry
+        ? e.entry.length > 90 ? `${e.entry.slice(0, 90)}…` : e.entry
+        : "";
+      const arr = byEntry.get(r.timeline_entry_id) ?? [];
+      arr.push({ url, label: [time, snippet].filter(Boolean).join(" — ") });
+      byEntry.set(r.timeline_entry_id, arr);
+    }
+    return byEntry;
   } catch {
-    // Never let an evidence/storage hiccup fail the whole report — degrade to
-    // a text-only report (no embedded photos).
-    return [];
+    return byEntry;
   }
+}
+
+/** Flatten grouped photos into a single timeline-ordered list (for the range
+ *  report's flat gallery / structured-parse fallback). */
+function flattenPhotos(entries: Array<{ id: string }>, byEntry: Map<string, ReportPhoto[]>): ReportPhoto[] {
+  const out: ReportPhoto[] = [];
+  for (const e of entries) out.push(...(byEntry.get(e.id) ?? []));
+  return out;
+}
+
+/** entry.id → its Google-Maps-linked location (for the per-entry Location row). */
+function locationsByEntry(entries: Array<{ id: string; location?: string | null }>): Map<string, ReportLocation> {
+  const m = new Map<string, ReportLocation>();
+  for (const e of entries) {
+    const loc = e.location?.trim();
+    if (loc) m.set(e.id, { name: loc, url: mapsSearchLink(loc) });
+  }
+  return m;
+}
+
+const OBS_TIME_RE = /^\s*(\d{1,2})[:.](\d{2})/;
+function cleanObs(line: string): string {
+  return line
+    .replace(/\s*\(Maps:\s*https?:\/\/[^)]*\)/gi, "") // inline map URL → moves to the Location row
+    .replace(/\s*\[\d+\s*photos?\s*attached\]/gi, "") // redundant note → photos are shown
+    .replace(/\s+$/, "");
+}
+
+/**
+ * Parse an AI report (one line per observation) into per-entry blocks: each is
+ * an observation line paired with the photos + location of the entry it matches
+ * (by HH:MM, consuming duplicate times in order). Header/footer = lines before
+ * the first / after the last timed line. Returns empty blocks when no timed
+ * lines are found so the caller keeps the flat layout.
+ */
+function buildReportStructure(
+  reportText: string,
+  entries: Array<{ id: string; entry_time: string }>,
+  photosByEntry: Map<string, ReportPhoto[]>,
+  locByEntry: Map<string, ReportLocation>,
+): { header: string; blocks: ReportBlock[]; footer: string } {
+  const lines = reportText.split("\n");
+  const firstObs = lines.findIndex((l) => OBS_TIME_RE.test(l));
+  if (firstObs === -1) return { header: reportText, blocks: [], footer: "" };
+  let lastObs = firstObs;
+  for (let i = lines.length - 1; i >= firstObs; i--) {
+    if (OBS_TIME_RE.test(lines[i])) { lastObs = i; break; }
+  }
+
+  const entriesByTime = new Map<string, string[]>();
+  for (const e of entries) {
+    const k = (e.entry_time ?? "").slice(0, 5);
+    const arr = entriesByTime.get(k) ?? [];
+    arr.push(e.id);
+    entriesByTime.set(k, arr);
+  }
+
+  const header = lines.slice(0, firstObs).join("\n").replace(/\s+$/, "");
+  const footer = lines.slice(lastObs + 1).join("\n").trim();
+
+  const blocks: ReportBlock[] = [];
+  let cur: ReportBlock | null = null;
+  for (let i = firstObs; i <= lastObs; i++) {
+    const line = lines[i];
+    const m = line.match(OBS_TIME_RE);
+    if (m) {
+      if (cur) blocks.push(cur);
+      const hhmm = `${m[1].padStart(2, "0")}:${m[2]}`;
+      const entryId = entriesByTime.get(hhmm)?.shift() ?? null;
+      cur = {
+        time: hhmm,
+        text: cleanObs(line),
+        photos: entryId ? photosByEntry.get(entryId) ?? [] : [],
+        location: entryId ? locByEntry.get(entryId) ?? null : null,
+      };
+    } else if (cur && line.trim()) {
+      cur.text += "\n" + cleanObs(line);
+    }
+  }
+  if (cur) blocks.push(cur);
+  return { header, blocks, footer };
 }
 
 export async function generateReport(
   caseId: string,
   date: string,
   reportType: ReportType,
-): Promise<{ report?: string; photos?: ReportPhoto[]; error?: string }> {
+): Promise<{ report?: string; header?: string; blocks?: ReportBlock[]; footer?: string; photos?: ReportPhoto[]; error?: string }> {
   // Auth: must be an authenticated, non-client user. Case access is enforced
   // below via the RLS-scoped cases lookup (admins see all, supervisors via
   // is_staff, agents only their assigned cases). Blocks invoking the paid AI
@@ -627,7 +702,15 @@ export async function generateReport(
     }
   }
 
-  const photos = await fetchReportPhotos(supabase, entries);
+  const photosByEntry = await fetchReportPhotos(supabase, entries);
+  const locByEntry = locationsByEntry(entries);
+  const finalize = (report: string) => ({
+    report,
+    // Flat photo list too, so if parsing yields no blocks the client's flat
+    // fallback still shows the evidence gallery.
+    photos: flattenPhotos(entries, photosByEntry),
+    ...buildReportStructure(report, entries, photosByEntry, locByEntry),
+  });
 
   const timelineText = entries.length
     ? entries
@@ -640,7 +723,7 @@ export async function generateReport(
     : "(ไม่มีรายการบันทึก / No entries recorded)";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, entries), photos };
+    return finalize(buildFallbackReport(reportType, caseNumber, date, entries));
   }
 
   const thaiDate = formatThaiDate(date);
@@ -744,17 +827,14 @@ Return only the report text, no extra explanation.`,
 
     // If still truncated after retry, append a visible warning rather than silently returning partial text.
     if (result.stop_reason === "max_tokens") {
-      return {
-        report: result.text.trimEnd() +
-          "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณากด Download TXT เพื่อรับรายงานฉบับเต็ม" +
-          "\n⚠️ Report truncated due to data size. Use Download TXT for the complete report.",
-        photos,
-      };
+      return finalize(result.text.trimEnd() +
+        "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณากด Download TXT เพื่อรับรายงานฉบับเต็ม" +
+        "\n⚠️ Report truncated due to data size. Use Download TXT for the complete report.");
     }
 
-    return { report: result.text.trim(), photos };
-  } catch (err) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, entries), photos };
+    return finalize(result.text.trim());
+  } catch {
+    return finalize(buildFallbackReport(reportType, caseNumber, date, entries));
   }
 }
 
@@ -875,7 +955,7 @@ export async function generateRangeReport(
     }
   }
 
-  const photos = await fetchReportPhotos(supabase, entries);
+  const photos = flattenPhotos(entries, await fetchReportPhotos(supabase, entries));
 
   const days = groupByDate(entries);
   const timelineText = days.length
