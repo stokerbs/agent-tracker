@@ -35,12 +35,18 @@ interface Props {
 
 type Mode = "single" | "range";
 
-// Turn http(s) URLs in plain report text into clickable links.
+// Short, clickable label for a URL — long Google Maps links (esp. Thai queries
+// that percent-encode into huge strings) become "📍 แผนที่"; other links show as-is.
+function linkLabel(url: string) {
+  return /google\.[a-z.]+\/maps/i.test(url) ? "📍 แผนที่" : url;
+}
+
+// Turn http(s) URLs in plain report text into clickable (shortened) links.
 function linkify(text: string) {
   return text.split(/(https?:\/\/[^\s)]+)/g).map((part, i) =>
     /^https?:\/\//.test(part) ? (
       <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-sky-500 underline underline-offset-2 break-all">
-        {part}
+        {linkLabel(part)}
       </a>
     ) : (
       part
@@ -93,7 +99,7 @@ function printReport(text: string, title: string, photos: ReportPhoto[] = []) {
   .gallery figcaption { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4; }
   @media print { body { padding: 20px; } }
 </style>
-</head><body><pre>${escapeHtml(text).replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1">$1</a>')}</pre>${gallery}
+</head><body><pre>${escapeHtml(text).replace(/(https?:\/\/[^\s)]+)/g, (m) => `<a href="${m}">${linkLabel(m)}</a>`)}</pre>${gallery}
 <script>
   // Wait for evidence images to load before opening the print dialog so they
   // aren't blank in the PDF; fall back after a timeout if some are slow.
