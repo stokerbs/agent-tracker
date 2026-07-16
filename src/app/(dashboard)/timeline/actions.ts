@@ -531,21 +531,23 @@ async function fetchReportPhotos(
   try {
   const byId = new Map(entries.map((e) => [e.id, e]));
 
-  const { data: evRows } = await supabase
+  const { data: evRows, error: evErr } = await supabase
     .from("evidence")
     .select("timeline_entry_id, storage_path, type, created_at")
     .in("timeline_entry_id", entries.map((e) => e.id))
     .eq("type", "photo")
     .order("created_at", { ascending: true });
+  if (evErr) console.error("[report-photos] evidence query error:", evErr.message);
 
   const rows = (evRows ?? []).filter(
     (r) => !!r.timeline_entry_id && !!r.storage_path,
   ) as Array<{ timeline_entry_id: string; storage_path: string }>;
   if (rows.length === 0) return [];
 
-  const { data: signed } = await supabase.storage
+  const { data: signed, error: signErr } = await supabase.storage
     .from(BUCKETS.evidence)
     .createSignedUrls(rows.map((r) => r.storage_path), 60 * 60); // 1h TTL — long enough to print
+  if (signErr) console.error("[report-photos] sign error:", signErr.message);
   const urlByPath = new Map(
     (signed ?? [])
       .filter((s) => s.signedUrl && s.path)
@@ -564,6 +566,7 @@ async function fetchReportPhotos(
       : "";
     photos.push({ url, label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — ") });
   }
+  console.log(`[report-photos] entries=${entries.length} evRows=${(evRows ?? []).length} rows=${rows.length} signed=${(signed ?? []).length} photos=${photos.length}`);
   return photos;
   } catch {
     // Never let an evidence/storage hiccup fail the whole report — degrade to
