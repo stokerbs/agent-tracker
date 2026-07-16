@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { generateReport, generateRangeReport } from "@/app/(dashboard)/timeline/actions";
-import type { ReportType } from "@/app/(dashboard)/timeline/actions";
+import type { ReportType, ReportPhoto } from "@/app/(dashboard)/timeline/actions";
 import { bangkokDateKey } from "@/lib/utils";
 
 interface CaseOption {
@@ -62,23 +62,54 @@ function downloadText(text: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function printReport(text: string, title: string) {
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function printReport(text: string, title: string, photos: ReportPhoto[] = []) {
   const win = window.open("", "_blank");
   if (!win) return;
+
+  const gallery = photos.length
+    ? `<h2 class="gallery-title">ภาพประกอบหลักฐาน / Evidence Photos (${photos.length})</h2>
+       <div class="gallery">${photos
+         .map(
+           (p) =>
+             `<figure><img src="${escapeHtml(p.url)}" loading="eager" /><figcaption>${escapeHtml(p.label)}</figcaption></figure>`,
+         )
+         .join("")}</div>`
+    : "";
+
   win.document.write(`<!DOCTYPE html>
 <html><head>
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>
 <style>
   body { font-family: 'Sarabun', 'Courier New', monospace; padding: 40px; max-width: 800px; margin: 0 auto; font-size: 13px; line-height: 1.8; color: #111; }
   pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
+  .gallery-title { font-size: 15px; margin: 28px 0 12px; padding-top: 16px; border-top: 1px solid #ccc; page-break-before: auto; }
+  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .gallery figure { margin: 0; page-break-inside: avoid; break-inside: avoid; }
+  .gallery img { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 6px; }
+  .gallery figcaption { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4; }
   @media print { body { padding: 20px; } }
 </style>
-</head><body><pre>${text
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1">$1</a>')}</pre></body></html>`);
+</head><body><pre>${escapeHtml(text).replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1">$1</a>')}</pre>${gallery}
+<script>
+  // Wait for evidence images to load before opening the print dialog so they
+  // aren't blank in the PDF; fall back after a timeout if some are slow.
+  (function () {
+    var imgs = Array.prototype.slice.call(document.images);
+    var pending = imgs.filter(function (i) { return !i.complete; }).length;
+    function go() { window.focus(); window.print(); }
+    if (pending === 0) { go(); return; }
+    var done = 0, fired = false;
+    function tick() { if (!fired && ++done >= pending) { fired = true; go(); } }
+    imgs.forEach(function (i) { if (!i.complete) { i.addEventListener('load', tick); i.addEventListener('error', tick); } });
+    setTimeout(function () { if (!fired) { fired = true; go(); } }, 6000);
+  })();
+</script>
+</body></html>`);
   win.document.close();
-  win.print();
 }
 
 export function ReportGenerator({ cases }: Props) {
@@ -94,6 +125,7 @@ export function ReportGenerator({ cases }: Props) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reportText, setReportText] = useState("");
+  const [reportPhotos, setReportPhotos] = useState<ReportPhoto[]>([]);
   const [copied, setCopied] = useState(false);
   const [generating, startGenerate] = useTransition();
 
@@ -132,6 +164,7 @@ export function ReportGenerator({ cases }: Props) {
         return;
       }
       setReportText(res.report ?? "");
+      setReportPhotos(res.photos ?? []);
       setCopied(false);
       setDialogOpen(true);
     });
@@ -304,12 +337,33 @@ export function ReportGenerator({ cases }: Props) {
           <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
             {linkify(reportText)}
           </pre>
+
+          {reportPhotos.length > 0 && (
+            <div className="rounded-md border border-border p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                ภาพประกอบหลักฐาน · {reportPhotos.length} รูป (จะฝังในรายงานเมื่อพิมพ์/บันทึก PDF)
+              </p>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {reportPhotos.map((p, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={p.url}
+                    alt={p.label}
+                    title={p.label}
+                    className="aspect-square w-full rounded object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => printReport(reportText, dialogTitle)}
+              onClick={() => printReport(reportText, dialogTitle, reportPhotos)}
             >
               <Printer className="h-3.5 w-3.5" /> {t("print")}
             </Button>

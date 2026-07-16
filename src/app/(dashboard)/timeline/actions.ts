@@ -515,11 +515,68 @@ ${obsLines.length ? obsLines.join("\n") : "(No entries recorded)"}
 End of Report`;
 }
 
+export type ReportPhoto = { url: string; label: string };
+
+/**
+ * Fetch the `photo` evidence linked to the given timeline entries → short-lived
+ * signed URLs + a label (entry date/time + snippet), so a report can embed the
+ * actual photos, not just the "[N photos attached]" note. Non-fatal: returns []
+ * on any miss so report generation never fails over evidence.
+ */
+async function fetchReportPhotos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  entries: Array<{ id: string; entry_time: string; entry: string; entry_date?: string }>,
+): Promise<ReportPhoto[]> {
+  if (entries.length === 0) return [];
+  try {
+  const byId = new Map(entries.map((e) => [e.id, e]));
+
+  const { data: evRows } = await supabase
+    .from("evidence")
+    .select("timeline_entry_id, storage_path, type, created_at")
+    .in("timeline_entry_id", entries.map((e) => e.id))
+    .eq("type", "photo")
+    .order("created_at", { ascending: true });
+
+  const rows = (evRows ?? []).filter(
+    (r) => !!r.timeline_entry_id && !!r.storage_path,
+  ) as Array<{ timeline_entry_id: string; storage_path: string }>;
+  if (rows.length === 0) return [];
+
+  const { data: signed } = await supabase.storage
+    .from(BUCKETS.evidence)
+    .createSignedUrls(rows.map((r) => r.storage_path), 60 * 60); // 1h TTL — long enough to print
+  const urlByPath = new Map(
+    (signed ?? [])
+      .filter((s) => s.signedUrl && s.path)
+      .map((s) => [s.path as string, s.signedUrl as string]),
+  );
+
+  const photos: ReportPhoto[] = [];
+  for (const r of rows) {
+    const url = urlByPath.get(r.storage_path);
+    if (!url) continue;
+    const e = byId.get(r.timeline_entry_id);
+    const time = e?.entry_time?.slice(0, 5) ?? "";
+    const datePart = e?.entry_date ? `${e.entry_date} ` : "";
+    const snippet = e?.entry
+      ? e.entry.length > 90 ? `${e.entry.slice(0, 90)}…` : e.entry
+      : "";
+    photos.push({ url, label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — ") });
+  }
+  return photos;
+  } catch {
+    // Never let an evidence/storage hiccup fail the whole report — degrade to
+    // a text-only report (no embedded photos).
+    return [];
+  }
+}
+
 export async function generateReport(
   caseId: string,
   date: string,
   reportType: ReportType,
-): Promise<{ report?: string; error?: string }> {
+): Promise<{ report?: string; photos?: ReportPhoto[]; error?: string }> {
   // Auth: must be an authenticated, non-client user. Case access is enforced
   // below via the RLS-scoped cases lookup (admins see all, supervisors via
   // is_staff, agents only their assigned cases). Blocks invoking the paid AI
@@ -560,6 +617,8 @@ export async function generateReport(
     }
   }
 
+  const photos = await fetchReportPhotos(supabase, entries);
+
   const timelineText = entries.length
     ? entries
         .map((e) => {
@@ -571,7 +630,7 @@ export async function generateReport(
     : "(ไม่มีรายการบันทึก / No entries recorded)";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
+    return { report: buildFallbackReport(reportType, caseNumber, date, entries), photos };
   }
 
   const thaiDate = formatThaiDate(date);
@@ -679,12 +738,13 @@ Return only the report text, no extra explanation.`,
         report: result.text.trimEnd() +
           "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณากด Download TXT เพื่อรับรายงานฉบับเต็ม" +
           "\n⚠️ Report truncated due to data size. Use Download TXT for the complete report.",
+        photos,
       };
     }
 
-    return { report: result.text.trim() };
+    return { report: result.text.trim(), photos };
   } catch (err) {
-    return { report: buildFallbackReport(reportType, caseNumber, date, entries) };
+    return { report: buildFallbackReport(reportType, caseNumber, date, entries), photos };
   }
 }
 
@@ -760,7 +820,7 @@ export async function generateRangeReport(
   startDate: string,
   endDate: string,
   reportType: ReportType,
-): Promise<{ report?: string; error?: string }> {
+): Promise<{ report?: string; photos?: ReportPhoto[]; error?: string }> {
   // Auth: authenticated, non-client only. Case access enforced via the
   // RLS-scoped cases lookup below (see generateReport).
   const profile = await getCurrentProfile();
@@ -805,6 +865,8 @@ export async function generateRangeReport(
     }
   }
 
+  const photos = await fetchReportPhotos(supabase, entries);
+
   const days = groupByDate(entries);
   const timelineText = days.length
     ? days
@@ -824,7 +886,7 @@ export async function generateRangeReport(
     : "(ไม่มีรายการบันทึก / No entries recorded)";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries) };
+    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries), photos };
   }
 
   const thaiStart = formatThaiDate(startDate);
@@ -934,12 +996,13 @@ Return only the report text, no extra explanation.`,
         report: result.text.trimEnd() +
           "\n\n⚠️ รายงานถูกตัดทอนเนื่องจากข้อมูลมีขนาดใหญ่เกินไป กรุณาลดช่วงวันที่หรือกด Download TXT" +
           "\n⚠️ Report truncated due to data size. Narrow the date range or use Download TXT.",
+        photos,
       };
     }
 
-    return { report: result.text.trim() };
+    return { report: result.text.trim(), photos };
   } catch {
-    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries) };
+    return { report: buildRangeFallbackReport(reportType, caseNumber, startDate, endDate, entries), photos };
   }
 }
 
