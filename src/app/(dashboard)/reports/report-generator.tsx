@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { generateReport, generateRangeReport } from "@/app/(dashboard)/timeline/actions";
-import type { ReportType, ReportPhoto } from "@/app/(dashboard)/timeline/actions";
+import type { ReportType, ReportPhoto, ReportBlock } from "@/app/(dashboard)/timeline/actions";
 import { bangkokDateKey } from "@/lib/utils";
 
 interface CaseOption {
@@ -72,34 +72,57 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function printReport(text: string, title: string, photos: ReportPhoto[] = []) {
+const URL_RE = /(https?:\/\/[^\s)]+)/g;
+const linkifyHtml = (escaped: string) => escaped.replace(URL_RE, (m) => `<a href="${m}">${linkLabel(m)}</a>`);
+
+type PrintArgs =
+  | { header: string; blocks: ReportBlock[]; footer: string } // per-entry layout (single date)
+  | { text: string; photos: ReportPhoto[] };                   // flat layout (range / fallback)
+
+function buildPrintBody(a: PrintArgs): string {
+  if ("blocks" in a) {
+    const head = a.header ? `<pre>${linkifyHtml(escapeHtml(a.header))}</pre>` : "";
+    const body = a.blocks
+      .map(
+        (b) => `<section class="block">
+  <p class="obs">${escapeHtml(b.text)}</p>
+  ${b.photos.length ? `<div class="gallery">${b.photos.map((p) => `<figure><img src="${escapeHtml(p.url)}" loading="eager" /></figure>`).join("")}</div>` : ""}
+  ${b.location ? `<p class="loc">📍 <a href="${escapeHtml(b.location.url)}">${escapeHtml(b.location.name)}</a></p>` : ""}
+</section>`,
+      )
+      .join("");
+    const foot = a.footer ? `<pre>${escapeHtml(a.footer)}</pre>` : "";
+    return head + body + foot;
+  }
+  const gallery = a.photos.length
+    ? `<h2 class="gallery-title">ภาพประกอบหลักฐาน / Evidence Photos (${a.photos.length})</h2>
+       <div class="gallery">${a.photos.map((p) => `<figure><img src="${escapeHtml(p.url)}" loading="eager" /><figcaption>${escapeHtml(p.label)}</figcaption></figure>`).join("")}</div>`
+    : "";
+  return `<pre>${linkifyHtml(escapeHtml(a.text))}</pre>${gallery}`;
+}
+
+function printReport(title: string, args: PrintArgs) {
   const win = window.open("", "_blank");
   if (!win) return;
-
-  const gallery = photos.length
-    ? `<h2 class="gallery-title">ภาพประกอบหลักฐาน / Evidence Photos (${photos.length})</h2>
-       <div class="gallery">${photos
-         .map(
-           (p) =>
-             `<figure><img src="${escapeHtml(p.url)}" loading="eager" /><figcaption>${escapeHtml(p.label)}</figcaption></figure>`,
-         )
-         .join("")}</div>`
-    : "";
 
   win.document.write(`<!DOCTYPE html>
 <html><head>
 <title>${escapeHtml(title)}</title>
 <style>
   body { font-family: 'Sarabun', 'Courier New', monospace; padding: 40px; max-width: 800px; margin: 0 auto; font-size: 13px; line-height: 1.8; color: #111; }
-  pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
-  .gallery-title { font-size: 15px; margin: 28px 0 12px; padding-top: 16px; border-top: 1px solid #ccc; page-break-before: auto; }
-  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; }
+  .block { margin: 14px 0; padding-top: 12px; border-top: 1px solid #e5e5e5; }
+  .block .obs { white-space: pre-wrap; margin: 0 0 8px; }
+  .block .loc { margin: 8px 0 0; font-size: 12px; }
+  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 8px 0; }
   .gallery figure { margin: 0; page-break-inside: avoid; break-inside: avoid; }
   .gallery img { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 6px; }
   .gallery figcaption { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4; }
+  .gallery-title { font-size: 15px; margin: 28px 0 12px; padding-top: 16px; border-top: 1px solid #ccc; }
+  a { color: #1a56db; }
   @media print { body { padding: 20px; } }
 </style>
-</head><body><pre>${escapeHtml(text).replace(/(https?:\/\/[^\s)]+)/g, (m) => `<a href="${m}">${linkLabel(m)}</a>`)}</pre>${gallery}
+</head><body>${buildPrintBody(args)}
 <script>
   // Wait for evidence images to load before opening the print dialog so they
   // aren't blank in the PDF; fall back after a timeout if some are slow.
@@ -132,6 +155,11 @@ export function ReportGenerator({ cases }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reportText, setReportText] = useState("");
   const [reportPhotos, setReportPhotos] = useState<ReportPhoto[]>([]);
+  // Single-date reports come back as per-entry blocks (obs → photos → location);
+  // range reports come back flat (reportText + reportPhotos gallery).
+  const [reportBlocks, setReportBlocks] = useState<ReportBlock[]>([]);
+  const [reportHeader, setReportHeader] = useState("");
+  const [reportFooter, setReportFooter] = useState("");
   const [copied, setCopied] = useState(false);
   const [generating, startGenerate] = useTransition();
 
@@ -169,8 +197,14 @@ export function ReportGenerator({ cases }: Props) {
         toast.error(res.error);
         return;
       }
-      setReportText(res.report ?? "");
-      setReportPhotos(res.photos ?? []);
+      const r = res as {
+        report?: string; header?: string; blocks?: ReportBlock[]; footer?: string; photos?: ReportPhoto[];
+      };
+      setReportText(r.report ?? "");
+      setReportBlocks(r.blocks ?? []);
+      setReportHeader(r.header ?? "");
+      setReportFooter(r.footer ?? "");
+      setReportPhotos(r.photos ?? []);
       setCopied(false);
       setDialogOpen(true);
     });
@@ -340,36 +374,63 @@ export function ReportGenerator({ cases }: Props) {
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription className="sr-only">Generated surveillance report</DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
-            {linkify(reportText)}
-          </pre>
-
-          {reportPhotos.length > 0 && (
-            <div className="rounded-md border border-border p-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                ภาพประกอบหลักฐาน · {reportPhotos.length} รูป (จะฝังในรายงานเมื่อพิมพ์/บันทึก PDF)
-              </p>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {reportPhotos.map((p, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={p.url}
-                    alt={p.label}
-                    title={p.label}
-                    className="aspect-square w-full rounded object-cover"
-                  />
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto rounded-md bg-muted/50 p-4 font-mono text-xs leading-relaxed">
+            {reportBlocks.length > 0 ? (
+              <>
+                {reportHeader && <pre className="whitespace-pre-wrap">{linkify(reportHeader)}</pre>}
+                {reportBlocks.map((b, i) => (
+                  <div key={i} className="border-t border-border/40 pt-3 first:border-0 first:pt-0">
+                    <p className="whitespace-pre-wrap">{b.text}</p>
+                    {b.photos.length > 0 && (
+                      <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+                        {b.photos.map((p, j) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img key={j} src={p.url} alt="" className="aspect-square w-full rounded object-cover" />
+                        ))}
+                      </div>
+                    )}
+                    {b.location && (
+                      <a href={b.location.url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-block text-sky-500 hover:underline">
+                        📍 {b.location.name}
+                      </a>
+                    )}
+                  </div>
                 ))}
-              </div>
-            </div>
-          )}
+                {reportFooter && <pre className="whitespace-pre-wrap">{reportFooter}</pre>}
+              </>
+            ) : (
+              <>
+                <pre className="whitespace-pre-wrap">{linkify(reportText)}</pre>
+                {reportPhotos.length > 0 && (
+                  <div className="rounded-md border border-border p-3">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      ภาพประกอบหลักฐาน · {reportPhotos.length} รูป (จะฝังในรายงานเมื่อพิมพ์/บันทึก PDF)
+                    </p>
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                      {reportPhotos.map((p, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={p.url} alt={p.label} title={p.label} className="aspect-square w-full rounded object-cover" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => printReport(reportText, dialogTitle, reportPhotos)}
+              onClick={() =>
+                printReport(
+                  dialogTitle,
+                  reportBlocks.length > 0
+                    ? { header: reportHeader, blocks: reportBlocks, footer: reportFooter }
+                    : { text: reportText, photos: reportPhotos },
+                )
+              }
             >
               <Printer className="h-3.5 w-3.5" /> {t("print")}
             </Button>
