@@ -29,8 +29,12 @@ interface Props {
   caseId: string;
   dateGroups: DateGroup[];
   canInsert: boolean;
+  /** Staff (admin/supervisor) can edit/delete any entry (RLS-scoped). */
   canEdit: boolean;
   isAdmin: boolean;
+  /** The viewer's own agent id (agents only). Lets an agent edit/delete just
+   *  the entries they authored (agent_id === myAgentId), per RLS 0106. */
+  myAgentId?: string | null;
   todayBangkok: string;
   /** Shown when there are no entries yet. Rendered inside this component so the
    *  FAB (case:fab) listener + add-observation dialog stay mounted on an empty
@@ -51,6 +55,7 @@ export function CaseTimelineClient({
   canInsert,
   canEdit,
   isAdmin,
+  myAgentId,
   todayBangkok,
   emptyState,
 }: Props) {
@@ -132,7 +137,11 @@ export function CaseTimelineClient({
                 <div className="px-4 pb-4">
                   <div className="relative space-y-0 pl-5">
                     <div className="absolute inset-y-0 left-[7px] w-px bg-border/50" />
-                    {dg.entries.map((entry) => (
+                    {dg.entries.map((entry) => {
+                      // Agents get the editable card only on entries they authored.
+                      const canEditThis =
+                        canEdit || (!!myAgentId && entry.agent_id === myAgentId);
+                      return (
                       <div
                         key={entry.id}
                         className="group relative flex gap-4 pb-4 last:pb-0"
@@ -143,7 +152,7 @@ export function CaseTimelineClient({
                         <span className="mt-3 shrink-0 font-mono text-xs text-muted-foreground/70">
                           {entry.entry_time?.slice(0, 5)}
                         </span>
-                        {canEdit ? (
+                        {canEditThis ? (
                           <TimelineEntryCard
                             entry={entry}
                             canEdit
@@ -164,7 +173,8 @@ export function CaseTimelineClient({
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Mobile: Add Observation inside open section */}

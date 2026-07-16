@@ -258,6 +258,18 @@ export default async function CaseDetailPage({
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
 
+  // Agents may edit/soft-delete only their OWN timeline entries (RLS 0106); the
+  // timeline needs their agent id to show edit controls on just those entries.
+  let myAgentId: string | null = null;
+  if (profile.role === "agent") {
+    const { data: myAgent } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+    myAgentId = myAgent?.id ?? null;
+  }
+
   const todayBKK = bangkokDateKey();
   const todayEntryCount = timelineEntries.filter((e) => e.entry_date === todayBKK).length;
   const dateMap = new Map<string, typeof timelineEntries>();
@@ -656,6 +668,7 @@ export default async function CaseDetailPage({
               canInsert={canInsert}
               canEdit={staff}
               isAdmin={isAdmin}
+              myAgentId={myAgentId}
               todayBangkok={todayBKK}
               emptyState={
                 <EmptyState
