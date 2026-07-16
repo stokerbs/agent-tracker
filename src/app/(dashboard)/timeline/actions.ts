@@ -533,10 +533,10 @@ async function fetchReportPhotos(
 
   const { data: evRows, error: evErr } = await supabase
     .from("evidence")
-    .select("timeline_entry_id, storage_path, type, created_at")
+    .select("timeline_entry_id, storage_path, type, uploaded_at")
     .in("timeline_entry_id", entries.map((e) => e.id))
     .eq("type", "photo")
-    .order("created_at", { ascending: true });
+    .order("uploaded_at", { ascending: true });
   if (evErr) console.error("[report-photos] evidence query error:", evErr.message);
 
   const rows = (evRows ?? []).filter(
@@ -566,7 +566,6 @@ async function fetchReportPhotos(
       : "";
     photos.push({ url, label: [`${datePart}${time}`.trim(), snippet].filter(Boolean).join(" — ") });
   }
-  console.log(`[report-photos] entries=${entries.length} evRows=${(evRows ?? []).length} rows=${rows.length} signed=${(signed ?? []).length} photos=${photos.length}`);
   return photos;
   } catch {
     // Never let an evidence/storage hiccup fail the whole report — degrade to
