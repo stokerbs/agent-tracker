@@ -43,6 +43,12 @@ export const RATE_LIMITS = {
   osint_analyze: { limit: 20, windowMs: 3_600_000 },
   /** 40 OSINT contact lookups per hour per user — PII lookups, audited + bounded. */
   contact_lookup: { limit: 40, windowMs: 3_600_000 },
+  /** 100 manual AirTag ping entries per hour per user — evidentiary data entry, generous but bounded. */
+  air_tag_ping: { limit: 100, windowMs: 3_600_000 },
+  /** 10 AirTag CSV imports per hour per user — each import can carry up to 5,000 rows. */
+  air_tag_csv_import: { limit: 10, windowMs: 3_600_000 },
+  /** 60 AirTag history fetches per hour per user — DB-only query, lighter than the live GPS903 call. */
+  air_tag_history: { limit: 60, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
