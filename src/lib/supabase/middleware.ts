@@ -7,6 +7,19 @@ import { persistAuthCookie } from "./cookie-options";
 // (no login) — the random one-time token is the capability, so it's public.
 const PUBLIC_PATHS = ["/login", "/register", "/auth", "/portal/login", "/privacy", "/support", "/review"];
 
+// Narrow, explicit allowlist of individual API routes that are intentionally
+// unauthenticated-by-session — deliberately NOT folded into PUBLIC_PATHS
+// (which matches by startsWith prefix) to avoid ever accidentally exempting
+// a broader "/api/..." prefix and stripping session auth from every other,
+// currently-protected API route.
+//
+// /api/air-tags/webhook/ping — called by an unattended iOS Shortcuts
+// automation with a per-tracker bearer token and no interactive Supabase
+// session, so there is never a session cookie for this route to check. Auth
+// is enforced inside the route handler itself (Authorization: Bearer token,
+// validated against air_tag_webhook_tokens), not by this session middleware.
+const EXEMPT_API_ROUTES = ["/api/air-tags/webhook/ping"];
+
 /**
  * Refreshes the Supabase session on every request and enforces auth on
  * protected routes. Wired up in the root middleware.ts.
@@ -50,7 +63,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p)) || EXEMPT_API_ROUTES.includes(path);
 
   if (!user && !isPublic && path !== "/") {
     const url = request.nextUrl.clone();

@@ -43,6 +43,20 @@ export const RATE_LIMITS = {
   osint_analyze: { limit: 20, windowMs: 3_600_000 },
   /** 40 OSINT contact lookups per hour per user — PII lookups, audited + bounded. */
   contact_lookup: { limit: 40, windowMs: 3_600_000 },
+  /** 100 manual AirTag ping entries per hour per user — evidentiary data entry, generous but bounded. */
+  air_tag_ping: { limit: 100, windowMs: 3_600_000 },
+  /** 10 AirTag CSV imports per hour per user — each import can carry up to 5,000 rows. */
+  air_tag_csv_import: { limit: 10, windowMs: 3_600_000 },
+  /** 60 AirTag history fetches per hour per user — DB-only query, lighter than the live GPS903 call. */
+  air_tag_history: { limit: 60, windowMs: 3_600_000 },
+  /** 120 AirTag position-table page fetches per hour per user — paginated DB read for the tabular history view. */
+  air_tag_positions_list: { limit: 120, windowMs: 3_600_000 },
+  /** 20 AirTag webhook token creations per hour per user — token minting should be infrequent. */
+  air_tag_webhook_token_create: { limit: 20, windowMs: 3_600_000 },
+  /** 120 AirTag webhook pings per hour per token — generous for a periodic (e.g. 15-min) Shortcuts automation, but bounded. */
+  air_tag_webhook_ping: { limit: 120, windowMs: 3_600_000 },
+  /** 300 AirTag webhook requests per hour per source IP — coarse defense-in-depth against brute-forcing tokens across many trackers from one source, independent of the per-token bucket above. */
+  air_tag_webhook_ip: { limit: 300, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

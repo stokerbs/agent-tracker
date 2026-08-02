@@ -520,6 +520,9 @@
         "title": "GPS Devices",
         "noDevices": "No GPS devices on this case."
       },
+      "airTagsSection": {
+        "title": "AirTags"
+      },
       "ops": {
         "lastLocation": "Last Location",
         "noLocation": "No location recorded",
@@ -1261,6 +1264,237 @@
         "lng": "Longitude",
         "speed": "Speed",
         "heading": "Heading"
+      }
+    }
+  },
+  "airTags": {
+    "backLink": "Back to case",
+    "tabs": {
+      "overview": "Overview",
+      "history": "Position History",
+      "replay": "Route Replay",
+      "automation": "Automation"
+    },
+    "detail": {
+      "trackerInfo": "Tracker Info",
+      "label": "Label",
+      "serial": "Apple Serial",
+      "noSerial": "Not recorded",
+      "notes": "Notes",
+      "noNotes": "No notes recorded.",
+      "case": "Case",
+      "addedBy": "Added by",
+      "addedOn": "Added",
+      "unknownUser": "Unknown",
+      "stats": {
+        "title": "Quick Stats",
+        "totalPings": "Total Pings",
+        "lastPing": "Last Ping",
+        "never": "Never"
+      }
+    },
+    "delete": {
+      "trigger": "Delete AirTag",
+      "title": "Delete this AirTag tracker?",
+      "message": "This soft-deletes the tracker. Its position history is preserved for audit purposes.",
+      "irreversible": "You won't be able to undo this from the UI.",
+      "cancel": "Cancel",
+      "confirm": "Delete AirTag",
+      "toast": {
+        "success": "AirTag tracker deleted"
+      }
+    },
+    "create": {
+      "trigger": "Add AirTag",
+      "title": "Add an AirTag tracker",
+      "description": "Register a new Apple AirTag for manual location tracking on this case.",
+      "fields": {
+        "label": "Label",
+        "labelPlaceholder": "e.g. Target's backpack",
+        "labelRequired": "Label is required (1–120 characters).",
+        "serial": "Apple Serial",
+        "serialPlaceholder": "Optional serial number",
+        "notes": "Notes",
+        "notesPlaceholder": "Optional notes about this tracker…"
+      },
+      "submit": "Add AirTag",
+      "toast": {
+        "success": "AirTag tracker added"
+      }
+    },
+    "ping": {
+      "trigger": "Add Manual Ping",
+      "title": "Add a manual position",
+      "description": "Record a location manually observed for this AirTag.",
+      "fields": {
+        "recordedAt": "Date & time",
+        "recordedAtHint": "Cannot be in the future",
+        "lat": "Latitude",
+        "latHint": "Between -90 and 90",
+        "lng": "Longitude",
+        "lngHint": "Between -180 and 180",
+        "accuracy": "Accuracy (meters)",
+        "accuracyPlaceholder": "Optional",
+        "accuracyHint": "Must be a positive whole number",
+        "note": "Note",
+        "notePlaceholder": "Optional note (max 500 characters)…"
+      },
+      "submit": "Add Ping",
+      "errors": {
+        "invalidForm": "Please fix the highlighted fields before submitting."
+      },
+      "toast": {
+        "success": "Position added"
+      }
+    },
+    "csv": {
+      "trigger": "Import CSV",
+      "title": "Import positions from CSV",
+      "description": "Upload a CSV of manually-collected AirTag positions.",
+      "fields": {
+        "file": "CSV file"
+      },
+      "templateButton": "Download CSV template",
+      "templateHint": "Columns: lat, lng, recorded_at, accuracy_m, note",
+      "submit": "Import",
+      "noFile": "Choose a .csv file first",
+      "errors": {
+        "notCsv": "Please choose a .csv file.",
+        "readFailed": "Couldn't read that file. Please try again."
+      },
+      "results": {
+        "title": "Import results",
+        "inserted": "{count} inserted",
+        "skipped": "{count} skipped",
+        "rowCol": "Row",
+        "reasonCol": "Reason",
+        "noSkips": "All rows imported successfully."
+      },
+      "toast": {
+        "success": "{count} position(s) imported",
+        "noneInserted": "No rows were imported — see the results below."
+      }
+    },
+    "caseSection": {
+      "empty": "No AirTags added to this case yet.",
+      "emptyHint": "Add an AirTag to start recording manual location history.",
+      "retry": "Try again",
+      "noSerial": "No serial recorded",
+      "view": "View"
+    },
+    "table": {
+      "title": "Position History",
+      "loadingBadge": "Loading…",
+      "loadingRows": "Loading position history…",
+      "error": "Failed to load position history.",
+      "retry": "Retry",
+      "empty": "No AirTag positions yet",
+      "count": "{count, plural, one {# position} other {# positions}}",
+      "columns": {
+        "time": "Time",
+        "lat": "Lat",
+        "lng": "Lng",
+        "accuracy": "Accuracy",
+        "note": "Note",
+        "source": "Source",
+        "enteredBy": "Entered by"
+      },
+      "pagination": {
+        "previous": "Previous page",
+        "next": "Next page",
+        "pageOf": "Page {page} of {pageCount}"
+      }
+    },
+    "replay": {
+      "subtitle": "AirTag sighting replay",
+      "disclosureAriaLabel": "Manual sightings disclosure",
+      "disclosureText": "Manual sightings — not a continuous GPS track. Gaps between points are unknown movement.",
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "loading": "Loading sightings…",
+      "error": "Failed to load sighting history.",
+      "retry": "Retry",
+      "emptyTitle": "No sightings recorded for this date",
+      "emptyHint": "Try another day with the date picker above, or add a manual ping / import a CSV.",
+      "accuracyLine": "Accuracy: {value}",
+      "accuracyUnknown": "unknown",
+      "accuracyUnknownShort": "accuracy unknown",
+      "play": "Play",
+      "pause": "Pause"
+    },
+    "webhook": {
+      "panelTitle": "Automation Tokens",
+      "panelDescription": "Let an iOS Shortcuts automation auto-post AirTag/Hocco pings, so you don't have to type positions in by hand.",
+      "empty": "No automation tokens yet",
+      "emptyHint": "Generate a token to connect an iOS Shortcuts automation to this tracker.",
+      "error": "Failed to load automation tokens.",
+      "retry": "Retry",
+      "untitled": "Untitled token",
+      "revokedBadge": "Revoked",
+      "created": "Created {date}",
+      "lastUsed": "Last used {date}",
+      "neverUsed": "Never used",
+      "generate": {
+        "trigger": "Generate Token",
+        "title": "Generate an automation token",
+        "description": "This token lets an iOS Shortcuts automation post AirTag/Hocco positions to this tracker without you signing in.",
+        "labelField": "Label",
+        "labelPlaceholder": "e.g. My iPhone Shortcut",
+        "labelTooLong": "Label must be 120 characters or fewer.",
+        "submit": "Generate",
+        "revealTitle": "Copy your token now",
+        "revealDescription": "This is the only time this token will ever be shown. Copy it into your Shortcut now — once you close this dialog, it cannot be recovered. If you lose it, revoke it and generate a new one.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copiedToast": "Token copied to clipboard",
+        "copyFailed": "Couldn't copy automatically — please select and copy the token manually.",
+        "warning": "This token will never be shown again after you close this dialog. Make sure it's copied into your Shortcut before continuing.",
+        "done": "I've copied it — done"
+      },
+      "revoke": {
+        "trigger": "Revoke",
+        "title": "Revoke this automation token?",
+        "message": "The iOS Shortcut using this token will immediately stop being able to post new positions. This does not delete any positions already recorded.",
+        "irreversible": "You won't be able to undo this from the UI.",
+        "cancel": "Cancel",
+        "confirm": "Revoke Token",
+        "toast": {
+          "success": "Automation token revoked"
+        }
+      },
+      "guide": {
+        "title": "How to set up the iOS Shortcut",
+        "intro": "Follow these steps in the Shortcuts app on the iPhone that has this AirTag/Hocco set up in Find My. No coding required.",
+        "steps": {
+          "automation": {
+            "title": "1. Create a Personal Automation",
+            "body": "Open the Shortcuts app, go to the Automation tab, and tap the + button to create a new Personal Automation. Choose a trigger that fits how often you want to check in — a Time of Day automation (e.g. every hour) works well for periodic tracking, or you can run it manually whenever you need an update."
+          },
+          "findMy": {
+            "title": "2. Add a \"Find My\" action",
+            "body": "Add the \"Find My\" action to the automation and select the specific item you're tracking (your AirTag or Hocco tag). This action fetches that item's current location each time the automation runs."
+          },
+          "getContents": {
+            "title": "3. Add a \"Get Contents of URL\" action",
+            "body": "Add a \"Get Contents of URL\" action after the Find My action. Set the method to POST, add the Authorization header with your token, and set the request body to JSON containing the latitude and longitude from the Find My action. See the exact values to enter below."
+          },
+          "test": {
+            "title": "4. Save and test it",
+            "body": "Save the automation and run it once manually to confirm it works — the new position should appear in this tracker's Position History within a few seconds. Turn off \"Ask Before Running\" so it can post automatically in the background."
+          }
+        },
+        "referenceTitle": "Values to enter in \"Get Contents of URL\"",
+        "methodLabel": "Method",
+        "endpointLabel": "URL",
+        "headerLabel": "Header",
+        "bodyLabel": "Request body (JSON)",
+        "referenceHint": "Replace <your token> with a token generated above, and map the Find My action's Latitude/Longitude outputs into lat/lng.",
+        "toasts": {
+          "methodCopied": "Method copied",
+          "endpointCopied": "URL copied",
+          "headerCopied": "Header copied",
+          "bodyCopied": "Request body copied"
+        }
       }
     }
   },

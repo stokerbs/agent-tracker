@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Radio,
   Receipt,
+  Tag,
   Wallet,
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -42,6 +43,8 @@ import { listPendingClaims } from "@/app/(dashboard)/cases/board-actions";
 import { CaseTabShell } from "@/components/cases/case-tab-shell";
 import { CollapsibleCard } from "@/components/shared/collapsible-card";
 import { ImportFromGps903Dialog } from "@/components/gps903/import-from-gps903-dialog";
+import { AirTagsCaseSection } from "@/components/air-tags/air-tags-case-section";
+import { listAirTagsForCase } from "@/app/(dashboard)/air-tags/actions";
 import { EmptyState } from "@/components/shared/empty-state";
 import { IntelligenceTab, IntelligenceTabSkeleton } from "./intelligence-tab";
 import { IntelligenceOverview, IntelligenceOverviewSkeleton } from "./intelligence-overview";
@@ -131,6 +134,7 @@ export default async function CaseDetailPage({
     { data: paymentsRaw },
     { data: messagesRaw },
     { data: myView },
+    airTagsResult,
   ] = await Promise.all([
     supabase
       .from("timeline_entries")
@@ -178,6 +182,10 @@ export default async function CaseDetailPage({
       .eq("case_id", id)
       .eq("profile_id", profile.id)
       .maybeSingle(),
+    // AirTags — RLS has no client SELECT policy on air_tag_trackers, so a
+    // client caller simply gets back an empty (not an error) trackers list;
+    // the section itself is hidden from clients below regardless.
+    listAirTagsForCase({ caseId: id }),
   ]);
 
   // Enrich timeline entries with linked evidence + server-signed URLs
@@ -257,6 +265,10 @@ export default async function CaseDetailPage({
   const isAdmin = profile.role === "admin";
   const isSupervisor = profile.role === "supervisor";
   const canInsert = profile.role !== "client";
+  // RLS only grants air_tag_trackers INSERT to admin/agent (0107) — supervisors
+  // can view + soft-delete trackers but not create them.
+  const canCreateAirTag = profile.role === "admin" || profile.role === "agent";
+  const airTagCount = airTagsResult.ok ? airTagsResult.trackers.length : undefined;
 
   // Agents may edit/soft-delete only their OWN timeline entries (RLS 0106); the
   // timeline needs their agent id to show edit controls on just those entries.
@@ -410,6 +422,20 @@ export default async function CaseDetailPage({
                 ))}
               </div>
             )}
+          </CollapsibleCard>
+        </FadeUp>
+      )}
+
+      {/* AirTags — manual/CSV location-history trackers, collapsed by default */}
+      {profile.role !== "client" && (
+        <FadeUp delay={0.08}>
+          <CollapsibleCard
+            title={t("airTagsSection.title")}
+            icon={<Tag className="h-4 w-4 text-sky-500" />}
+            count={airTagCount}
+            triggerId="air-tags"
+          >
+            <AirTagsCaseSection caseId={id} canCreate={canCreateAirTag} initial={airTagsResult} />
           </CollapsibleCard>
         </FadeUp>
       )}
