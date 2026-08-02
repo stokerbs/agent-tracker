@@ -287,6 +287,111 @@ export type Database = {
         }
         Relationships: []
       }
+      air_tag_positions: {
+        Row: {
+          accuracy_m: number | null
+          air_tag_id: string
+          created_at: string
+          entered_by: string
+          id: string
+          lat: number
+          lng: number
+          note: string | null
+          recorded_at: string
+          source: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          air_tag_id: string
+          created_at?: string
+          entered_by: string
+          id?: string
+          lat: number
+          lng: number
+          note?: string | null
+          recorded_at: string
+          source?: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          air_tag_id?: string
+          created_at?: string
+          entered_by?: string
+          id?: string
+          lat?: number
+          lng?: number
+          note?: string | null
+          recorded_at?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "air_tag_positions_air_tag_id_fkey"
+            columns: ["air_tag_id"]
+            isOneToOne: false
+            referencedRelation: "air_tag_trackers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "air_tag_positions_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      air_tag_trackers: {
+        Row: {
+          apple_serial: string | null
+          case_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          label: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          apple_serial?: string | null
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apple_serial?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "air_tag_trackers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "air_tag_trackers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
