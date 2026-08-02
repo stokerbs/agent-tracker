@@ -861,6 +861,224 @@ export type Database = {
           },
         ]
       }
+      contact_accounts: {
+        Row: {
+          analysis_id: string
+          confidence: number | null
+          created_at: string
+          exists_flag: boolean | null
+          id: number
+          platform: string
+          url: string | null
+        }
+        Insert: {
+          analysis_id: string
+          confidence?: number | null
+          created_at?: string
+          exists_flag?: boolean | null
+          id?: number
+          platform: string
+          url?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          confidence?: number | null
+          created_at?: string
+          exists_flag?: boolean | null
+          id?: number
+          platform?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_accounts_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "contact_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_analysis: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          input_bidx: string
+          input_enc: string
+          input_type: Database["public"]["Enums"]["contact_input_type"]
+          stage_status: Json
+          status: Database["public"]["Enums"]["osint_status"]
+          updated_at: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          input_bidx: string
+          input_enc: string
+          input_type: Database["public"]["Enums"]["contact_input_type"]
+          stage_status?: Json
+          status?: Database["public"]["Enums"]["osint_status"]
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          input_bidx?: string
+          input_enc?: string
+          input_type?: Database["public"]["Enums"]["contact_input_type"]
+          stage_status?: Json
+          status?: Database["public"]["Enums"]["osint_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_analysis_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_analysis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_breaches: {
+        Row: {
+          analysis_id: string
+          breach_date: string | null
+          created_at: string
+          data_classes: Json | null
+          id: number
+          name: string | null
+          source: string
+        }
+        Insert: {
+          analysis_id: string
+          breach_date?: string | null
+          created_at?: string
+          data_classes?: Json | null
+          id?: number
+          name?: string | null
+          source: string
+        }
+        Update: {
+          analysis_id?: string
+          breach_date?: string | null
+          created_at?: string
+          data_classes?: Json | null
+          id?: number
+          name?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_breaches_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "contact_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_phone: {
+        Row: {
+          analysis_id: string
+          country: string | null
+          created_at: string
+          e164_enc: string | null
+          line_type: string | null
+          national_fmt_enc: string | null
+          possible: boolean | null
+          raw: Json | null
+          valid: boolean | null
+        }
+        Insert: {
+          analysis_id: string
+          country?: string | null
+          created_at?: string
+          e164_enc?: string | null
+          line_type?: string | null
+          national_fmt_enc?: string | null
+          possible?: boolean | null
+          raw?: Json | null
+          valid?: boolean | null
+        }
+        Update: {
+          analysis_id?: string
+          country?: string | null
+          created_at?: string
+          e164_enc?: string | null
+          line_type?: string | null
+          national_fmt_enc?: string | null
+          possible?: boolean | null
+          raw?: Json | null
+          valid?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_phone_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "contact_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_reports: {
+        Row: {
+          analysis_id: string
+          confidence: number | null
+          created_at: string
+          leads: Json | null
+          model: string
+          recommendations: Json | null
+          risk_score: number | null
+          summary: string | null
+        }
+        Insert: {
+          analysis_id: string
+          confidence?: number | null
+          created_at?: string
+          leads?: Json | null
+          model: string
+          recommendations?: Json | null
+          risk_score?: number | null
+          summary?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          confidence?: number | null
+          created_at?: string
+          leads?: Json | null
+          model?: string
+          recommendations?: Json | null
+          risk_score?: number | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_reports_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "contact_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_tokens: {
         Row: {
           created_at: string
@@ -1632,6 +1850,442 @@ export type Database = {
           },
         ]
       }
+      image_analysis: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          created_by: string | null
+          dpi: number | null
+          error: string | null
+          filesize: number | null
+          format: string | null
+          height: number | null
+          id: string
+          integrity: Json | null
+          mime: string | null
+          source_ref: string | null
+          source_type: Database["public"]["Enums"]["osint_source_type"]
+          stage_status: Json
+          status: Database["public"]["Enums"]["osint_status"]
+          storage_path: string | null
+          updated_at: string
+          width: number | null
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dpi?: number | null
+          error?: string | null
+          filesize?: number | null
+          format?: string | null
+          height?: number | null
+          id?: string
+          integrity?: Json | null
+          mime?: string | null
+          source_ref?: string | null
+          source_type: Database["public"]["Enums"]["osint_source_type"]
+          stage_status?: Json
+          status?: Database["public"]["Enums"]["osint_status"]
+          storage_path?: string | null
+          updated_at?: string
+          width?: number | null
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dpi?: number | null
+          error?: string | null
+          filesize?: number | null
+          format?: string | null
+          height?: number | null
+          id?: string
+          integrity?: Json | null
+          mime?: string | null
+          source_ref?: string | null
+          source_type?: Database["public"]["Enums"]["osint_source_type"]
+          stage_status?: Json
+          status?: Database["public"]["Enums"]["osint_status"]
+          storage_path?: string | null
+          updated_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_analysis_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_analysis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_faces: {
+        Row: {
+          analysis_id: string
+          bbox: Json | null
+          blur_score: number | null
+          confidence: number | null
+          created_at: string
+          face_index: number
+          has_glasses: boolean | null
+          has_mask: boolean | null
+          id: number
+          pitch: number | null
+          roll: number | null
+          yaw: number | null
+        }
+        Insert: {
+          analysis_id: string
+          bbox?: Json | null
+          blur_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          face_index: number
+          has_glasses?: boolean | null
+          has_mask?: boolean | null
+          id?: number
+          pitch?: number | null
+          roll?: number | null
+          yaw?: number | null
+        }
+        Update: {
+          analysis_id?: string
+          bbox?: Json | null
+          blur_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          face_index?: number
+          has_glasses?: boolean | null
+          has_mask?: boolean | null
+          id?: number
+          pitch?: number | null
+          roll?: number | null
+          yaw?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_faces_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_geolocation: {
+        Row: {
+          ai_lat: number | null
+          ai_lon: number | null
+          analysis_id: string
+          city: string | null
+          confidence: number | null
+          country: string | null
+          created_at: string
+          predictions: Json | null
+          provider: string
+          province: string | null
+        }
+        Insert: {
+          ai_lat?: number | null
+          ai_lon?: number | null
+          analysis_id: string
+          city?: string | null
+          confidence?: number | null
+          country?: string | null
+          created_at?: string
+          predictions?: Json | null
+          provider?: string
+          province?: string | null
+        }
+        Update: {
+          ai_lat?: number | null
+          ai_lon?: number | null
+          analysis_id?: string
+          city?: string | null
+          confidence?: number | null
+          country?: string | null
+          created_at?: string
+          predictions?: Json | null
+          provider?: string
+          province?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_geolocation_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_hashes: {
+        Row: {
+          ahash: string | null
+          analysis_id: string
+          created_at: string
+          dhash: string | null
+          md5: string | null
+          phash: string | null
+          sha1: string | null
+          sha256: string | null
+        }
+        Insert: {
+          ahash?: string | null
+          analysis_id: string
+          created_at?: string
+          dhash?: string | null
+          md5?: string | null
+          phash?: string | null
+          sha1?: string | null
+          sha256?: string | null
+        }
+        Update: {
+          ahash?: string | null
+          analysis_id?: string
+          created_at?: string
+          dhash?: string | null
+          md5?: string | null
+          phash?: string | null
+          sha1?: string | null
+          sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_hashes_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_metadata: {
+        Row: {
+          analysis_id: string
+          camera_make: string | null
+          camera_model: string | null
+          created_at: string
+          gps_altitude: number | null
+          gps_lat: number | null
+          gps_lng: number | null
+          lens: string | null
+          orientation: number | null
+          raw_exif: Json | null
+          software: string | null
+          taken_at: string | null
+        }
+        Insert: {
+          analysis_id: string
+          camera_make?: string | null
+          camera_model?: string | null
+          created_at?: string
+          gps_altitude?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          lens?: string | null
+          orientation?: number | null
+          raw_exif?: Json | null
+          software?: string | null
+          taken_at?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          camera_make?: string | null
+          camera_model?: string | null
+          created_at?: string
+          gps_altitude?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          lens?: string | null
+          orientation?: number | null
+          raw_exif?: Json | null
+          software?: string | null
+          taken_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_metadata_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_objects: {
+        Row: {
+          analysis_id: string
+          bbox: Json | null
+          category: string | null
+          confidence: number | null
+          created_at: string
+          id: number
+          label: string
+        }
+        Insert: {
+          analysis_id: string
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: number
+          label: string
+        }
+        Update: {
+          analysis_id?: string
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: number
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_objects_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_ocr: {
+        Row: {
+          analysis_id: string
+          bbox: Json | null
+          category: string | null
+          confidence: number | null
+          created_at: string
+          id: number
+          text: string
+        }
+        Insert: {
+          analysis_id: string
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: number
+          text: string
+        }
+        Update: {
+          analysis_id?: string
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_ocr_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_redirects: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          hop_index: number
+          id: number
+          kind: Database["public"]["Enums"]["osint_redirect_kind"]
+          resolved_host: string | null
+          resolved_ip: string | null
+          status_code: number | null
+          url: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          hop_index: number
+          id?: number
+          kind: Database["public"]["Enums"]["osint_redirect_kind"]
+          resolved_host?: string | null
+          resolved_ip?: string | null
+          status_code?: number | null
+          url: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          hop_index?: number
+          id?: number
+          kind?: Database["public"]["Enums"]["osint_redirect_kind"]
+          resolved_host?: string | null
+          resolved_ip?: string | null
+          status_code?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_redirects_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_reports: {
+        Row: {
+          analysis_id: string
+          confidence: number | null
+          created_at: string
+          leads: Json | null
+          likely_origin: string | null
+          model: string
+          recommendations: Json | null
+          risk_score: number | null
+          summary: string | null
+        }
+        Insert: {
+          analysis_id: string
+          confidence?: number | null
+          created_at?: string
+          leads?: Json | null
+          likely_origin?: string | null
+          model: string
+          recommendations?: Json | null
+          risk_score?: number | null
+          summary?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          confidence?: number | null
+          created_at?: string
+          leads?: Json | null
+          likely_origin?: string | null
+          model?: string
+          recommendations?: Json | null
+          risk_score?: number | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_reports_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: true
+            referencedRelation: "image_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -1730,6 +2384,120 @@ export type Database = {
           },
         ]
       }
+      marketing_articles: {
+        Row: {
+          approve_token: string
+          cover_category: string | null
+          created_at: string
+          en_body: string
+          en_description: string
+          en_slug: string
+          en_title: string
+          id: string
+          model: string | null
+          published_at: string | null
+          status: string
+          th_body: string
+          th_description: string
+          th_slug: string
+          th_title: string
+          topic: string
+          zh_body: string | null
+          zh_description: string | null
+          zh_slug: string | null
+          zh_title: string | null
+        }
+        Insert: {
+          approve_token: string
+          cover_category?: string | null
+          created_at?: string
+          en_body: string
+          en_description: string
+          en_slug: string
+          en_title: string
+          id?: string
+          model?: string | null
+          published_at?: string | null
+          status?: string
+          th_body: string
+          th_description: string
+          th_slug: string
+          th_title: string
+          topic: string
+          zh_body?: string | null
+          zh_description?: string | null
+          zh_slug?: string | null
+          zh_title?: string | null
+        }
+        Update: {
+          approve_token?: string
+          cover_category?: string | null
+          created_at?: string
+          en_body?: string
+          en_description?: string
+          en_slug?: string
+          en_title?: string
+          id?: string
+          model?: string | null
+          published_at?: string | null
+          status?: string
+          th_body?: string
+          th_description?: string
+          th_slug?: string
+          th_title?: string
+          topic?: string
+          zh_body?: string | null
+          zh_description?: string | null
+          zh_slug?: string | null
+          zh_title?: string | null
+        }
+        Relationships: []
+      }
+      marketing_leads: {
+        Row: {
+          case_type: string | null
+          consent_at: string | null
+          created_at: string
+          email: string | null
+          id: string
+          locale: string
+          message: string | null
+          name: string
+          phone: string
+          source: string
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          case_type?: string | null
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          name: string
+          phone: string
+          source?: string
+          status?: string
+          user_agent?: string | null
+        }
+        Update: {
+          case_type?: string | null
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          name?: string
+          phone?: string
+          source?: string
+          status?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -1804,6 +2572,54 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      recruitment_applications: {
+        Row: {
+          consent_at: string | null
+          created_at: string
+          email: string | null
+          experience: string | null
+          id: string
+          locale: string
+          message: string | null
+          name: string
+          phone: string
+          position: string | null
+          source: string
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          experience?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          name: string
+          phone: string
+          position?: string | null
+          source?: string
+          status?: string
+          user_agent?: string | null
+        }
+        Update: {
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          experience?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          name?: string
+          phone?: string
+          position?: string | null
+          source?: string
+          status?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
@@ -2209,6 +3025,8 @@ export type Database = {
         }[]
       }
       can_access_case: { Args: { target_case: string }; Returns: boolean }
+      can_read_contact_analysis: { Args: { target: string }; Returns: boolean }
+      can_read_image_analysis: { Args: { target: string }; Returns: boolean }
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -2241,6 +3059,7 @@ export type Database = {
         | "closed"
         | "cancelled"
       claim_status: "pending" | "approved" | "rejected"
+      contact_input_type: "phone" | "email" | "username"
       evidence_type: "photo" | "video" | "pdf" | "document" | "audio"
       expense_category:
         | "fuel"
@@ -2260,6 +3079,9 @@ export type Database = {
         | "report"
         | "assignment"
         | "system"
+      osint_redirect_kind: "http" | "meta" | "js" | "origin"
+      osint_source_type: "upload" | "url" | "base64" | "redirect"
+      osint_status: "pending" | "processing" | "complete" | "failed"
       payroll_status: "pending" | "paid" | "cancelled" | "adjusted"
       user_role: "admin" | "supervisor" | "agent" | "client"
     }
@@ -2400,6 +3222,7 @@ export const Constants = {
         "cancelled",
       ],
       claim_status: ["pending", "approved", "rejected"],
+      contact_input_type: ["phone", "email", "username"],
       evidence_type: ["photo", "video", "pdf", "document", "audio"],
       expense_category: [
         "fuel",
@@ -2421,6 +3244,9 @@ export const Constants = {
         "assignment",
         "system",
       ],
+      osint_redirect_kind: ["http", "meta", "js", "origin"],
+      osint_source_type: ["upload", "url", "base64", "redirect"],
+      osint_status: ["pending", "processing", "complete", "failed"],
       payroll_status: ["pending", "paid", "cancelled", "adjusted"],
       user_role: ["admin", "supervisor", "agent", "client"],
     },
