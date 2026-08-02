@@ -28,6 +28,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   APIProvider,
   Map,
@@ -102,6 +103,8 @@ export function AirTagRouteReplay({
   tracker: AirTagTrackerForReplay;
   onClose: () => void;
 }) {
+  const t = useTranslations("airTags.replay");
+  const tCommon = useTranslations("common");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
   const [pts, setPts] = useState<AirTagPoint[] | null>(null);
@@ -179,11 +182,11 @@ export function AirTagRouteReplay({
       <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{tracker.label}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">AirTag sighting replay</p>
+          <p className="font-mono text-[11px] text-muted-foreground">{t("subtitle")}</p>
         </div>
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={tCommon("close")}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground hover:bg-muted"
         >
           <X className="h-4 w-4" />
@@ -196,11 +199,11 @@ export function AirTagRouteReplay({
           conditional content area. */}
       <div
         role="note"
-        aria-label="Manual sightings disclosure"
+        aria-label={t("disclosureAriaLabel")}
         className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-400"
       >
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-        <span>Manual sightings — not a continuous GPS track. Gaps between points are unknown movement.</span>
+        <span>{t("disclosureText")}</span>
       </div>
 
       {/* Date navigator — unbounded back to the tracker's creation date;
@@ -209,7 +212,7 @@ export function AirTagRouteReplay({
         <button
           onClick={() => setDate((d) => shiftAirTagDay(d, -1))}
           disabled={date <= minDate}
-          aria-label="Previous day"
+          aria-label={t("previousDay")}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:bg-muted disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -227,7 +230,7 @@ export function AirTagRouteReplay({
         <button
           onClick={() => setDate((d) => (d >= today ? d : shiftAirTagDay(d, 1)))}
           disabled={isToday}
-          aria-label="Next day"
+          aria-label={t("nextDay")}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:bg-muted disabled:opacity-30"
         >
           <ChevronRight className="h-4 w-4" />
@@ -239,14 +242,14 @@ export function AirTagRouteReplay({
         {/* Loading state */}
         {!pts && !error && (
           <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading sightings…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}
           </div>
         )}
         {/* Error state — with retry */}
         {error && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-7 w-7 text-destructive/40" />
-            <span>Failed to load sighting history.</span>
+            <span>{t("error")}</span>
             <button
               onClick={() => {
                 setError(false);
@@ -254,7 +257,7 @@ export function AirTagRouteReplay({
               }}
               className="rounded-md border border-border/60 px-3 py-1 text-xs hover:bg-muted"
             >
-              Retry
+              {t("retry")}
             </button>
           </div>
         )}
@@ -262,9 +265,9 @@ export function AirTagRouteReplay({
         {pts && pts.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 px-6 text-center text-sm text-muted-foreground">
             <MapPin className="h-7 w-7 text-muted-foreground/30" />
-            <span className="font-medium">No sightings recorded for this date</span>
+            <span className="font-medium">{t("emptyTitle")}</span>
             <span className="text-xs text-muted-foreground/70">
-              Try another day with the date picker above, or add a manual ping / import a CSV.
+              {t("emptyHint")}
             </span>
           </div>
         )}
@@ -356,8 +359,12 @@ export function AirTagRouteReplay({
                     </p>
                     <p className="flex items-center gap-1 text-xs">
                       <Ruler className="h-3 w-3 text-muted-foreground" />
-                      Accuracy:{" "}
-                      {pts[selectedIdx].accuracyM != null ? `±${pts[selectedIdx].accuracyM} m` : "unknown"}
+                      {t("accuracyLine", {
+                        value:
+                          pts[selectedIdx].accuracyM != null
+                            ? `±${pts[selectedIdx].accuracyM} m`
+                            : t("accuracyUnknown"),
+                      })}
                     </p>
                     {pts[selectedIdx].note && (
                       <p className="flex items-start gap-1 text-xs">
@@ -379,7 +386,7 @@ export function AirTagRouteReplay({
           <span className="font-mono text-muted-foreground">{cur ? formatBangkokTime(cur.t) : "—"}</span>
           <span className="flex items-center gap-1 font-mono text-amber-600 dark:text-amber-400">
             <Ruler className="h-3.5 w-3.5" />
-            {cur?.accuracyM != null ? `±${cur.accuracyM} m` : "accuracy unknown"}
+            {cur?.accuracyM != null ? `±${cur.accuracyM} m` : t("accuracyUnknownShort")}
           </span>
         </div>
 
@@ -403,7 +410,7 @@ export function AirTagRouteReplay({
             className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {playing ? "Pause" : "Play"}
+            {playing ? t("pause") : t("play")}
           </button>
 
           <div className="flex items-center gap-1">

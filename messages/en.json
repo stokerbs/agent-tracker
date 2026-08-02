@@ -1380,6 +1380,46 @@
       "retry": "Try again",
       "noSerial": "No serial recorded",
       "view": "View"
+    },
+    "table": {
+      "title": "Position History",
+      "loadingBadge": "Loading…",
+      "loadingRows": "Loading position history…",
+      "error": "Failed to load position history.",
+      "retry": "Retry",
+      "empty": "No AirTag positions yet",
+      "count": "{count, plural, one {# position} other {# positions}}",
+      "columns": {
+        "time": "Time",
+        "lat": "Lat",
+        "lng": "Lng",
+        "accuracy": "Accuracy",
+        "note": "Note",
+        "source": "Source",
+        "enteredBy": "Entered by"
+      },
+      "pagination": {
+        "previous": "Previous page",
+        "next": "Next page",
+        "pageOf": "Page {page} of {pageCount}"
+      }
+    },
+    "replay": {
+      "subtitle": "AirTag sighting replay",
+      "disclosureAriaLabel": "Manual sightings disclosure",
+      "disclosureText": "Manual sightings — not a continuous GPS track. Gaps between points are unknown movement.",
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "loading": "Loading sightings…",
+      "error": "Failed to load sighting history.",
+      "retry": "Retry",
+      "emptyTitle": "No sightings recorded for this date",
+      "emptyHint": "Try another day with the date picker above, or add a manual ping / import a CSV.",
+      "accuracyLine": "Accuracy: {value}",
+      "accuracyUnknown": "unknown",
+      "accuracyUnknownShort": "accuracy unknown",
+      "play": "Play",
+      "pause": "Pause"
     }
   },
   "analytics": {
