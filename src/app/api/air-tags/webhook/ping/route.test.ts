@@ -162,6 +162,27 @@ describe("POST /api/air-tags/webhook/ping — rate limiting", () => {
     expect(res.headers.get("Retry-After")).toBe("5");
   });
 
+  it("429 on the per-IP bucket even with no Authorization header — the IP gate runs before the token-presence check, not after", async () => {
+    vi.mocked(checkRateLimit).mockImplementation(async (bucket) =>
+      bucket === "air_tag_webhook_ip"
+        ? { allowed: false, remaining: 0, retryAfterMs: 5000 }
+        : { allowed: true, remaining: 10, retryAfterMs: 0 },
+    );
+    const res = await POST(req(validBody, { authHeader: null }));
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "rate_limited" });
+  });
+
+  it("429 on the per-IP bucket even with a malformed Authorization header — same reasoning as above", async () => {
+    vi.mocked(checkRateLimit).mockImplementation(async (bucket) =>
+      bucket === "air_tag_webhook_ip"
+        ? { allowed: false, remaining: 0, retryAfterMs: 5000 }
+        : { allowed: true, remaining: 10, retryAfterMs: 0 },
+    );
+    const res = await POST(req(validBody, { authHeader: "not-a-bearer-token" }));
+    expect(res.status).toBe(429);
+  });
+
   it("429 when the per-token bucket is exceeded for an otherwise-valid token", async () => {
     vi.mocked(checkRateLimit).mockImplementation(async (bucket) =>
       bucket === "air_tag_webhook_ping"
@@ -262,6 +283,20 @@ describe("POST /api/air-tags/webhook/ping — success + server-derived fields", 
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     const res = await POST(req(validBody));
     expect(res.status).toBe(500);
+  });
+
+  it("200 { ok: true } — a duplicate ping (23505 unique-violation on air_tag_id/recorded_at/lat/lng) is idempotent success, not a 500", async () => {
+    const s = svc({
+      tokenRow: activeTokenRow,
+      insertError: {
+        code: "23505",
+        message: 'duplicate key value violates unique constraint "air_tag_positions_dedupe_unique"',
+      },
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req(validBody));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
   });
 
   it("500 when the token lookup query itself errors", async () => {

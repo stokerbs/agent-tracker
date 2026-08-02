@@ -27,7 +27,12 @@ export const dynamic = "force-dynamic";
  *   note/future-timestamp rules as the manual-entry form (parsePosition()).
  *
  * Response:
- *   200 { "ok": true }                              — position recorded.
+ *   200 { "ok": true }                              — position recorded, OR
+ *       it was a duplicate of an already-recorded ping (same air_tag_id +
+ *       recorded_at + lat + lng — the unique constraint from migration 0107)
+ *       and is treated as an idempotent no-op success, not an error. A
+ *       Shortcuts automation retrying a timed-out request should never see a
+ *       failure for a ping that in fact already landed.
  *   400 { "error": "invalid_json" | "invalid_input" } — malformed body.
  *   401 { "error": "Unauthorized" }                  — missing/malformed
  *       Authorization header, OR the token is unknown/revoked, OR the
@@ -37,7 +42,8 @@ export const dynamic = "force-dynamic";
  *       "wrong token" from "right format, revoked" while brute-forcing.
  *   429 { "error": "rate_limited" }                  — per-token or per-IP
  *       bucket exceeded (see rate-limit section below); Retry-After header set.
- *   500 { "error": "server_error" }                  — DB insert failed.
+ *   500 { "error": "server_error" }                  — DB insert failed (for
+ *       a reason other than the duplicate-ping unique-constraint above).
  *
  * air_tag_id / entered_by / source are never taken from the request body —
  * they are entirely determined by which token was presented: air_tag_id and
@@ -55,13 +61,22 @@ export const dynamic = "force-dynamic";
  * doesn't already pin (air_tag_id, entered_by, source).
  *
  * Rate limiting is two-layered:
- *   - Per-token (air_tag_webhook_ping, 120/hour): bounds a single automation,
- *     generous enough for periodic (e.g. every-15-min) Shortcuts runs.
  *   - Per-IP (air_tag_webhook_ip, 300/hour): coarse defense-in-depth against
  *     a caller brute-forcing many different token guesses from one source,
  *     which the per-token bucket alone can't catch (an unknown token has no
  *     token-derived key to rate-limit against). Reuses the same
  *     x-forwarded-for extraction already used by the public marketing routes.
+ *     Checked FIRST, before even the Authorization-header-presence check, so
+ *     it gates every request regardless of what's in that header.
+ *   - Per-token (air_tag_webhook_ping, 120/hour): bounds a single automation,
+ *     generous enough for periodic (e.g. every-15-min) Shortcuts runs.
+ *     Checked only once the token is known-valid.
+ *
+ * Note this endpoint is NOT covered by the session-auth check in
+ * src/lib/supabase/middleware.ts (see EXEMPT_API_ROUTES there) — it is
+ * deliberately, explicitly exempted, since it's designed to be called with a
+ * bearer token and no session cookie. Auth is entirely this route handler's
+ * responsibility, not the session middleware's.
  *
  * The plaintext bearer token is never logged — every log line below uses the
  * token's row id and/or 8-char prefix (once resolved) instead.
@@ -88,20 +103,21 @@ function rateLimited(retryAfterMs: number) {
 export async function POST(request: NextRequest) {
   const ip = clientIp(request);
 
+  // Coarse per-IP bucket is the very first gate on every request, regardless
+  // of what's in (or missing from) the Authorization header — otherwise a
+  // request with no/malformed header would skip this bucket entirely, since
+  // it would always short-circuit on the token-presence check below first.
+  const ipRl = await checkRateLimit("air_tag_webhook_ip", ip);
+  if (!ipRl.allowed) {
+    console.warn(`[air-tag-webhook] ip rate-limited ip=${ip}`);
+    return rateLimited(ipRl.retryAfterMs);
+  }
+
   const authHeader = request.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (!token) {
     console.warn(`[air-tag-webhook] missing/malformed Authorization header ip=${ip}`);
     return unauthorized();
-  }
-
-  // Coarse per-IP bucket first — defense-in-depth against brute-forcing many
-  // different token guesses from one source, independent of the per-token
-  // bucket below (which can't key on an unknown token).
-  const ipRl = await checkRateLimit("air_tag_webhook_ip", ip);
-  if (!ipRl.allowed) {
-    console.warn(`[air-tag-webhook] ip rate-limited ip=${ip}`);
-    return rateLimited(ipRl.retryAfterMs);
   }
 
   const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -174,6 +190,19 @@ export async function POST(request: NextRequest) {
   });
 
   if (insertError) {
+    // Postgres unique-violation on air_tag_positions_dedupe_unique (air_tag_id,
+    // recorded_at, lat, lng — migration 0107) means this exact ping was
+    // already recorded, most likely a Shortcuts automation retry after a
+    // timeout. Treat that as an idempotent success rather than a failure —
+    // matching how importAirTagPingsCsv already treats a dedupe collision as
+    // skip-not-fail (src/app/(dashboard)/air-tags/actions.ts) — instead of
+    // surfacing a 500 for a ping that in fact already landed.
+    if ((insertError as { code?: string }).code === "23505") {
+      console.log(
+        `[air-tag-webhook] duplicate ping ignored (already recorded) ip=${ip} tokenId=${tokenRow.id} airTagId=${tokenRow.air_tag_id}`,
+      );
+      return NextResponse.json({ ok: true });
+    }
     console.error(`[air-tag-webhook] insert failed ip=${ip} tokenId=${tokenRow.id}`, insertError);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
