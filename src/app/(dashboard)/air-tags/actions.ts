@@ -516,3 +516,110 @@ export async function listAirTagsForCase(
 
   return { ok: true, trackers: (data ?? []) as AirTagTrackerSummary[] };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// listAirTagPositions
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MAX_POSITIONS_PAGE_SIZE = 100;
+const DEFAULT_POSITIONS_PAGE_SIZE = 25;
+
+const listPositionsSchema = z.object({
+  airTagId: z.string().uuid(),
+  page: z.coerce.number().int().min(1).max(100_000).optional(),
+  pageSize: z.coerce.number().int().min(1).max(MAX_POSITIONS_PAGE_SIZE).optional(),
+});
+
+export type AirTagPositionRow = {
+  id: string;
+  lat: number;
+  lng: number;
+  /** ISO 8601 UTC. */
+  recorded_at: string;
+  accuracy_m: number | null;
+  note: string | null;
+  source: string;
+  entered_by: string | null;
+  entered_by_name: string | null;
+};
+
+/**
+ * Paginated, newest-first listing of every position row for one AirTag
+ * tracker — powers the Position History table (unlike /api/air-tags/history,
+ * which is scoped to a single Bangkok day for the map replay and
+ * deliberately omits `source`/`entered_by`). AirTag data is never
+ * auto-pruned (migration 0107), so unlike the GPS903 Position History tab's
+ * unpaginated 100-row cap, this is paginated to stay bounded regardless of
+ * how much manual/CSV history has accumulated.
+ *
+ * RLS (user-session client) scopes visibility to the caller's assigned
+ * cases via the parent tracker — an inaccessible/soft-deleted tracker simply
+ * yields an empty page rather than an error, matching listAirTagsForCase's
+ * read-only convention.
+ */
+export async function listAirTagPositions(
+  input: unknown,
+): Promise<ActionResult<{ positions: AirTagPositionRow[]; totalCount: number; page: number; pageSize: number }>> {
+  const profile = await requireUser();
+
+  const rl = await checkRateLimit("air_tag_positions_list", profile.id);
+  if (!rl.allowed) {
+    console.warn(`[air-tag] listAirTagPositions rate-limited actor=${profile.id}`);
+    return { ok: false, error: "Rate limit exceeded. Please try again later." };
+  }
+
+  const parsed = listPositionsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+
+  const page = parsed.data.page ?? 1;
+  const pageSize = parsed.data.pageSize ?? DEFAULT_POSITIONS_PAGE_SIZE;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const supabase = await createClient();
+  const { data, error, count } = await supabase
+    .from("air_tag_positions")
+    .select(
+      "id, lat, lng, recorded_at, accuracy_m, note, source, entered_by, profiles!air_tag_positions_entered_by_fkey(full_name)",
+      { count: "exact" },
+    )
+    .eq("air_tag_id", parsed.data.airTagId)
+    .order("recorded_at", { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error(
+      `[air-tag] listAirTagPositions failed actor=${profile.id} airTagId=${parsed.data.airTagId}`,
+      error,
+    );
+    return { ok: false, error: handleDbError(error, "air_tag_positions") };
+  }
+
+  const positions: AirTagPositionRow[] = (data ?? []).map((row) => {
+    const r = row as unknown as {
+      id: string;
+      lat: number;
+      lng: number;
+      recorded_at: string;
+      accuracy_m: number | null;
+      note: string | null;
+      source: string;
+      entered_by: string | null;
+      profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+    };
+    const profileRel = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+    return {
+      id: r.id,
+      lat: r.lat,
+      lng: r.lng,
+      recorded_at: r.recorded_at,
+      accuracy_m: r.accuracy_m,
+      note: r.note,
+      source: r.source,
+      entered_by: r.entered_by,
+      entered_by_name: profileRel?.full_name ?? null,
+    };
+  });
+
+  return { ok: true, positions, totalCount: count ?? positions.length, page, pageSize };
+}

@@ -20,6 +20,7 @@ const h = vi.hoisted(() => {
     insertResult: { data: { id: "pos-1" }, error: null } as unknown,
     upsertResult: { data: [] as unknown[], error: null } as unknown,
     updateResult: { data: { id: "tag-1" }, error: null } as unknown,
+    listResult: { data: [] as unknown[], error: null, count: 0 } as unknown,
     getCurrentProfile: vi.fn(),
     requireStaff: vi.fn(),
     checkRateLimit: vi.fn(),
@@ -56,6 +57,10 @@ vi.mock("@/lib/supabase/server", () => ({
         h.insertedWith = vals;
         return { ...b, select: async () => h.upsertResult };
       };
+      // listAirTagPositions: select(...).eq().order().range() — range() is the
+      // final, directly-awaited call (mirrors how the real supabase-js builder
+      // is thenable at any point in the chain).
+      b.range = async () => h.listResult;
       return b;
     },
   }),
@@ -68,6 +73,7 @@ import {
   importAirTagPingsCsv,
   createAirTagTracker,
   deleteAirTagTracker,
+  listAirTagPositions,
   MAX_CSV_ROWS,
 } from "./actions";
 
@@ -339,5 +345,98 @@ describe("importAirTagPingsCsv — CSV row validation + dedupe-as-skip-not-fail"
     expect(h.insertedWith).toEqual(
       expect.arrayContaining([expect.objectContaining({ note: "seen near, the pier" })]),
     );
+  });
+});
+
+describe("listAirTagPositions", () => {
+  it("rejects an invalid airTagId before touching the DB", async () => {
+    const res = await listAirTagPositions({ airTagId: "not-a-uuid" });
+    expect(res.ok).toBe(false);
+  });
+
+  it("returns a rate-limit error without querying when limited", async () => {
+    h.checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0, retryAfterMs: 1000 });
+    const res = await listAirTagPositions({ airTagId: AIR_TAG_ID });
+    expect(res.ok).toBe(false);
+  });
+
+  it("defaults to page 1 / pageSize 25 and maps rows, flattening the joined profile name", async () => {
+    h.listResult = {
+      data: [
+        {
+          id: "p1",
+          lat: 13.7,
+          lng: 100.5,
+          recorded_at: "2026-06-08T03:00:00.000Z",
+          accuracy_m: 5,
+          note: "seen at market",
+          source: "manual",
+          entered_by: "u1",
+          profiles: { full_name: "Jane Agent" },
+        },
+        {
+          id: "p2",
+          lat: 13.71,
+          lng: 100.51,
+          recorded_at: "2026-06-08T04:00:00.000Z",
+          accuracy_m: null,
+          note: null,
+          source: "csv_import",
+          entered_by: "u2",
+          profiles: null,
+        },
+      ],
+      error: null,
+      count: 2,
+    };
+
+    const res = await listAirTagPositions({ airTagId: AIR_TAG_ID });
+    expect(res).toEqual({
+      ok: true,
+      page: 1,
+      pageSize: 25,
+      totalCount: 2,
+      positions: [
+        {
+          id: "p1",
+          lat: 13.7,
+          lng: 100.5,
+          recorded_at: "2026-06-08T03:00:00.000Z",
+          accuracy_m: 5,
+          note: "seen at market",
+          source: "manual",
+          entered_by: "u1",
+          entered_by_name: "Jane Agent",
+        },
+        {
+          id: "p2",
+          lat: 13.71,
+          lng: 100.51,
+          recorded_at: "2026-06-08T04:00:00.000Z",
+          accuracy_m: null,
+          note: null,
+          source: "csv_import",
+          entered_by: "u2",
+          entered_by_name: null,
+        },
+      ],
+    });
+  });
+
+  it("honors an explicit page/pageSize and caps totalCount from the DB, not the page length", async () => {
+    h.listResult = { data: [], error: null, count: 130 };
+    const res = await listAirTagPositions({ airTagId: AIR_TAG_ID, page: 3, pageSize: 50 });
+    expect(res).toEqual({ ok: true, page: 3, pageSize: 50, totalCount: 130, positions: [] });
+  });
+
+  it("rejects a pageSize over the max without querying", async () => {
+    const res = await listAirTagPositions({ airTagId: AIR_TAG_ID, pageSize: 1000 });
+    expect(res.ok).toBe(false);
+  });
+
+  it("surfaces a friendly DB error", async () => {
+    h.listResult = { data: null, error: { message: "boom" }, count: null };
+    const res = await listAirTagPositions({ airTagId: AIR_TAG_ID });
+    expect(res).toEqual({ ok: false, error: "boom" });
   });
 });

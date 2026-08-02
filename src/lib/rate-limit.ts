@@ -49,6 +49,8 @@ export const RATE_LIMITS = {
   air_tag_csv_import: { limit: 10, windowMs: 3_600_000 },
   /** 60 AirTag history fetches per hour per user — DB-only query, lighter than the live GPS903 call. */
   air_tag_history: { limit: 60, windowMs: 3_600_000 },
+  /** 120 AirTag position-table page fetches per hour per user — paginated DB read for the tabular history view. */
+  air_tag_positions_list: { limit: 120, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
