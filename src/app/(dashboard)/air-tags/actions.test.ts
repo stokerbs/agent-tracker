@@ -67,15 +67,13 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import {
-  parsePosition,
-  parseCsv,
   addManualPing,
   importAirTagPingsCsv,
   createAirTagTracker,
   deleteAirTagTracker,
   listAirTagPositions,
-  MAX_CSV_ROWS,
 } from "./actions";
+import { parsePosition, parseCsv, MAX_CSV_ROWS } from "./validation";
 
 const AIR_TAG_ID = "11111111-1111-1111-1111-111111111111";
 const CASE_ID = "22222222-2222-2222-2222-222222222222";

@@ -520,6 +520,9 @@
         "title": "GPS Devices",
         "noDevices": "No GPS devices on this case."
       },
+      "airTagsSection": {
+        "title": "AirTags"
+      },
       "ops": {
         "lastLocation": "Last Location",
         "noLocation": "No location recorded",
@@ -1262,6 +1265,121 @@
         "speed": "Speed",
         "heading": "Heading"
       }
+    }
+  },
+  "airTags": {
+    "backLink": "Back to case",
+    "tabs": {
+      "overview": "Overview",
+      "history": "Position History",
+      "replay": "Route Replay"
+    },
+    "detail": {
+      "trackerInfo": "Tracker Info",
+      "label": "Label",
+      "serial": "Apple Serial",
+      "noSerial": "Not recorded",
+      "notes": "Notes",
+      "noNotes": "No notes recorded.",
+      "case": "Case",
+      "addedBy": "Added by",
+      "addedOn": "Added",
+      "unknownUser": "Unknown",
+      "stats": {
+        "title": "Quick Stats",
+        "totalPings": "Total Pings",
+        "lastPing": "Last Ping",
+        "never": "Never"
+      }
+    },
+    "delete": {
+      "trigger": "Delete AirTag",
+      "title": "Delete this AirTag tracker?",
+      "message": "This soft-deletes the tracker. Its position history is preserved for audit purposes.",
+      "irreversible": "You won't be able to undo this from the UI.",
+      "cancel": "Cancel",
+      "confirm": "Delete AirTag",
+      "toast": {
+        "success": "AirTag tracker deleted"
+      }
+    },
+    "create": {
+      "trigger": "Add AirTag",
+      "title": "Add an AirTag tracker",
+      "description": "Register a new Apple AirTag for manual location tracking on this case.",
+      "fields": {
+        "label": "Label",
+        "labelPlaceholder": "e.g. Target's backpack",
+        "labelRequired": "Label is required (1–120 characters).",
+        "serial": "Apple Serial",
+        "serialPlaceholder": "Optional serial number",
+        "notes": "Notes",
+        "notesPlaceholder": "Optional notes about this tracker…"
+      },
+      "submit": "Add AirTag",
+      "toast": {
+        "success": "AirTag tracker added"
+      }
+    },
+    "ping": {
+      "trigger": "Add Manual Ping",
+      "title": "Add a manual position",
+      "description": "Record a location manually observed for this AirTag.",
+      "fields": {
+        "recordedAt": "Date & time",
+        "recordedAtHint": "Cannot be in the future",
+        "lat": "Latitude",
+        "latHint": "Between -90 and 90",
+        "lng": "Longitude",
+        "lngHint": "Between -180 and 180",
+        "accuracy": "Accuracy (meters)",
+        "accuracyPlaceholder": "Optional",
+        "accuracyHint": "Must be a positive whole number",
+        "note": "Note",
+        "notePlaceholder": "Optional note (max 500 characters)…"
+      },
+      "submit": "Add Ping",
+      "errors": {
+        "invalidForm": "Please fix the highlighted fields before submitting."
+      },
+      "toast": {
+        "success": "Position added"
+      }
+    },
+    "csv": {
+      "trigger": "Import CSV",
+      "title": "Import positions from CSV",
+      "description": "Upload a CSV of manually-collected AirTag positions.",
+      "fields": {
+        "file": "CSV file"
+      },
+      "templateButton": "Download CSV template",
+      "templateHint": "Columns: lat, lng, recorded_at, accuracy_m, note",
+      "submit": "Import",
+      "noFile": "Choose a .csv file first",
+      "errors": {
+        "notCsv": "Please choose a .csv file.",
+        "readFailed": "Couldn't read that file. Please try again."
+      },
+      "results": {
+        "title": "Import results",
+        "inserted": "{count} inserted",
+        "skipped": "{count} skipped",
+        "rowCol": "Row",
+        "reasonCol": "Reason",
+        "noSkips": "All rows imported successfully."
+      },
+      "toast": {
+        "success": "{count} position(s) imported",
+        "noneInserted": "No rows were imported — see the results below."
+      }
+    },
+    "caseSection": {
+      "empty": "No AirTags added to this case yet.",
+      "emptyHint": "Add an AirTag to start recording manual location history.",
+      "retry": "Try again",
+      "noSerial": "No serial recorded",
+      "view": "View"
     }
   },
   "analytics": {
