@@ -21,6 +21,7 @@ const h = vi.hoisted(() => {
     upsertResult: { data: [] as unknown[], error: null } as unknown,
     updateResult: { data: { id: "tag-1" }, error: null } as unknown,
     listResult: { data: [] as unknown[], error: null, count: 0 } as unknown,
+    tokenResult: { data: { id: "tok-1" }, error: null } as unknown,
     getCurrentProfile: vi.fn(),
     requireStaff: vi.fn(),
     checkRateLimit: vi.fn(),
@@ -47,6 +48,22 @@ vi.mock("@/lib/supabase/server", () => ({
         };
         return b;
       }
+      if (table === "air_tag_webhook_tokens") {
+        // Shared by generateWebhookToken (insert().select().single()),
+        // revokeWebhookToken (update().eq().is().select().maybeSingle()), and
+        // listWebhookTokens (select().eq().order(), awaited directly via the
+        // thenable) — each test sets h.tokenResult to the shape it needs.
+        const b = h.makeBuilder(h.tokenResult) as Record<string, unknown>;
+        b.insert = (vals: unknown) => {
+          h.insertedWith = vals;
+          return b;
+        };
+        b.update = (vals: unknown) => {
+          h.insertedWith = vals;
+          return b;
+        };
+        return b;
+      }
       // air_tag_positions
       const b = h.makeBuilder(h.insertResult) as Record<string, unknown>;
       b.insert = (vals: unknown) => {
@@ -66,12 +83,16 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
+import { createHash } from "node:crypto";
 import {
   addManualPing,
   importAirTagPingsCsv,
   createAirTagTracker,
   deleteAirTagTracker,
   listAirTagPositions,
+  generateWebhookToken,
+  revokeWebhookToken,
+  listWebhookTokens,
 } from "./actions";
 import { parsePosition, parseCsv, MAX_CSV_ROWS } from "./validation";
 
@@ -84,6 +105,7 @@ beforeEach(() => {
   h.insertResult = { data: { id: "pos-1" }, error: null };
   h.upsertResult = { data: [], error: null };
   h.updateResult = { data: { id: "tag-1" }, error: null };
+  h.tokenResult = { data: { id: "tok-1" }, error: null };
   h.getCurrentProfile.mockResolvedValue({ id: "u1", role: "agent" });
   h.requireStaff.mockResolvedValue({ id: "admin-1", role: "admin" });
   h.checkRateLimit.mockResolvedValue({ allowed: true, remaining: 10, retryAfterMs: 0 });
@@ -435,6 +457,154 @@ describe("listAirTagPositions", () => {
   it("surfaces a friendly DB error", async () => {
     h.listResult = { data: null, error: { message: "boom" }, count: null };
     const res = await listAirTagPositions({ airTagId: AIR_TAG_ID });
+    expect(res).toEqual({ ok: false, error: "boom" });
+  });
+});
+
+describe("generateWebhookToken", () => {
+  it("rejects an invalid airTagId before touching the DB", async () => {
+    const res = await generateWebhookToken({ airTagId: "not-a-uuid" });
+    expect(res.ok).toBe(false);
+    expect(h.insertedWith).toBeUndefined();
+  });
+
+  it("returns a rate-limit error without touching the DB when limited", async () => {
+    h.checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0, retryAfterMs: 1000 });
+    const res = await generateWebhookToken({ airTagId: AIR_TAG_ID });
+    expect(res.ok).toBe(false);
+    expect(h.insertedWith).toBeUndefined();
+  });
+
+  it("generates a cryptographically random token, stores only its SHA-256 hash + 8-char prefix, and returns the plaintext exactly once", async () => {
+    const res = await generateWebhookToken({ airTagId: AIR_TAG_ID, label: "Keys AirTag" });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    expect(res.tokenId).toBe("tok-1");
+    expect(res.token).toEqual(expect.any(String));
+    expect(res.token.length).toBeGreaterThan(32); // 32 random bytes, base64url-encoded
+    expect(res.tokenPrefix).toBe(res.token.slice(0, 8));
+
+    const expectedHash = createHash("sha256").update(res.token).digest("hex");
+    expect(h.insertedWith).toMatchObject({
+      air_tag_id: AIR_TAG_ID,
+      token_hash: expectedHash,
+      token_prefix: res.tokenPrefix,
+      created_by: "u1", // server-derived from the session, never client input
+      label: "Keys AirTag",
+    });
+    // The hash is a one-way digest of the returned plaintext, never the
+    // plaintext itself.
+    expect((h.insertedWith as Record<string, unknown>).token_hash).not.toBe(res.token);
+  });
+
+  it("generates a different token (and hash) on every call — never reused/predictable", async () => {
+    const a = await generateWebhookToken({ airTagId: AIR_TAG_ID });
+    const b = await generateWebhookToken({ airTagId: AIR_TAG_ID });
+    expect(a.ok && b.ok).toBe(true);
+    if (a.ok && b.ok) {
+      expect(a.token).not.toBe(b.token);
+    }
+  });
+
+  it("ignores a client-supplied created_by/tokenId — created_by is always the session user", async () => {
+    const res = await generateWebhookToken({
+      airTagId: AIR_TAG_ID,
+      createdBy: "someone-else",
+    });
+    expect(res.ok).toBe(true);
+    expect(h.insertedWith).toMatchObject({ created_by: "u1" });
+  });
+
+  it("never logs the plaintext token, in success or failure logs", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await generateWebhookToken({ airTagId: AIR_TAG_ID });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    const allLoggedArgs = [...logSpy.mock.calls, ...warnSpy.mock.calls, ...errorSpy.mock.calls]
+      .flat()
+      .map((a) => (typeof a === "string" ? a : JSON.stringify(a)));
+    for (const line of allLoggedArgs) {
+      expect(line).not.toContain(res.token);
+    }
+
+    logSpy.mockRestore();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("surfaces a friendly DB error", async () => {
+    h.tokenResult = { data: null, error: { message: "boom" } };
+    const res = await generateWebhookToken({ airTagId: AIR_TAG_ID });
+    expect(res).toEqual({ ok: false, error: "boom" });
+  });
+});
+
+describe("revokeWebhookToken", () => {
+  const TOKEN_ID = "33333333-3333-3333-3333-333333333333";
+
+  it("rejects an invalid tokenId before touching the DB", async () => {
+    const res = await revokeWebhookToken({ tokenId: "not-a-uuid" });
+    expect(res.ok).toBe(false);
+    expect(h.insertedWith).toBeUndefined();
+  });
+
+  it("returns a clean not-found error when RLS blocks the update (0 rows affected) or the token is already revoked", async () => {
+    h.tokenResult = { data: null, error: null };
+    const res = await revokeWebhookToken({ tokenId: TOKEN_ID });
+    expect(res).toEqual({ ok: false, error: "Token not found or not accessible" });
+  });
+
+  it("revokes on success", async () => {
+    h.tokenResult = { data: { id: TOKEN_ID }, error: null };
+    const res = await revokeWebhookToken({ tokenId: TOKEN_ID });
+    expect(res).toEqual({ ok: true });
+    expect(h.insertedWith).toMatchObject({ revoked_at: expect.any(String) });
+  });
+
+  it("surfaces a friendly DB error", async () => {
+    h.tokenResult = { data: null, error: { message: "boom" } };
+    const res = await revokeWebhookToken({ tokenId: TOKEN_ID });
+    expect(res).toEqual({ ok: false, error: "boom" });
+  });
+});
+
+describe("listWebhookTokens", () => {
+  it("rejects an invalid airTagId before touching the DB", async () => {
+    const res = await listWebhookTokens({ airTagId: "not-a-uuid" });
+    expect(res.ok).toBe(false);
+  });
+
+  it("lists tokens without ever including token_hash", async () => {
+    h.tokenResult = {
+      data: [
+        {
+          id: "tok-1",
+          label: "Keys AirTag",
+          token_prefix: "abcd1234",
+          created_at: "2026-08-01T00:00:00.000Z",
+          last_used_at: null,
+          revoked_at: null,
+        },
+      ],
+      error: null,
+    };
+    const res = await listWebhookTokens({ airTagId: AIR_TAG_ID });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.tokens).toHaveLength(1);
+      expect(res.tokens[0]).not.toHaveProperty("token_hash");
+      expect(res.tokens[0]).toMatchObject({ id: "tok-1", token_prefix: "abcd1234" });
+    }
+  });
+
+  it("surfaces a friendly DB error", async () => {
+    h.tokenResult = { data: null, error: { message: "boom" } };
+    const res = await listWebhookTokens({ airTagId: AIR_TAG_ID });
     expect(res).toEqual({ ok: false, error: "boom" });
   });
 });

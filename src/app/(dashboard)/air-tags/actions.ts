@@ -17,6 +17,7 @@
  */
 
 import { z } from "zod";
+import { randomBytes, createHash } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, requireStaff } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -503,4 +504,170 @@ export async function listAirTagPositions(
   });
 
   return { ok: true, positions, totalCount: count ?? positions.length, page, pageSize };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// generateWebhookToken / revokeWebhookToken / listWebhookTokens
+//
+// Token management for the automated (iOS Shortcuts) ingestion webhook — see
+// supabase/migrations/0108_air_tag_webhook_tokens.sql and
+// src/app/api/air-tags/webhook/ping/route.ts (the public endpoint these
+// tokens authenticate against). Everything below runs through the
+// user-session client, so RLS still governs who may mint/revoke/list tokens
+// for a given tracker (agent/supervisor/admin per that migration) — these
+// actions never touch the service-role client, unlike the webhook endpoint
+// itself.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TOKEN_PREFIX_LEN = 8;
+
+const generateTokenSchema = z.object({
+  airTagId: z.string().uuid(),
+  label: z.string().trim().max(120, "label must be 120 characters or fewer").optional(),
+});
+
+/**
+ * Mint a new webhook bearer token for a tracker. The plaintext token is
+ * generated with `crypto.randomBytes` (never `Math.random`, which is not
+ * cryptographically secure) and is returned to the caller exactly once —
+ * only its SHA-256 hash and an 8-char display prefix are ever persisted.
+ * There is no way to recover the plaintext after this call returns; losing
+ * it means revoking and minting a new one.
+ */
+export async function generateWebhookToken(
+  input: unknown,
+): Promise<ActionResult<{ token: string; tokenId: string; tokenPrefix: string }>> {
+  const profile = await requireUser();
+
+  const rl = await checkRateLimit("air_tag_webhook_token_create", profile.id);
+  if (!rl.allowed) {
+    console.warn(`[air-tag] generateWebhookToken rate-limited actor=${profile.id}`);
+    return { ok: false, error: "Rate limit exceeded. Please try again later." };
+  }
+
+  const parsed = generateTokenSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request" };
+  }
+
+  // base64url so the plaintext is URL/header-safe with no padding characters.
+  const plaintext = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(plaintext).digest("hex");
+  const tokenPrefix = plaintext.slice(0, TOKEN_PREFIX_LEN);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("air_tag_webhook_tokens")
+    .insert({
+      air_tag_id: parsed.data.airTagId,
+      token_hash: tokenHash,
+      token_prefix: tokenPrefix,
+      created_by: profile.id,
+      label: parsed.data.label || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error(
+      `[air-tag] generateWebhookToken failed actor=${profile.id} airTagId=${parsed.data.airTagId}`,
+      error,
+    );
+    return { ok: false, error: handleDbError(error, "air_tag_webhook_tokens") };
+  }
+
+  // Never log the plaintext token — id/prefix only, even at debug level.
+  console.log(
+    `[air-tag] generateWebhookToken ok actor=${profile.id} airTagId=${parsed.data.airTagId} tokenId=${data.id} tokenPrefix=${tokenPrefix}`,
+  );
+  await logAudit({
+    actorId: profile.id,
+    action: "AIR_TAG_WEBHOOK_TOKEN_CREATED",
+    entity: "air_tag_webhook_tokens",
+    entityId: data.id,
+    metadata: { air_tag_id: parsed.data.airTagId, token_prefix: tokenPrefix },
+  });
+
+  return { ok: true, token: plaintext, tokenId: data.id, tokenPrefix };
+}
+
+const revokeTokenSchema = z.object({ tokenId: z.string().uuid() });
+
+/**
+ * Revoke a webhook token (sets revoked_at). RLS scopes which tokens the
+ * caller may update to trackers on their assigned cases; a 0-row update
+ * (already revoked, not found, or not accessible) surfaces as a generic
+ * not-found rather than distinguishing the cause.
+ */
+export async function revokeWebhookToken(input: unknown): Promise<ActionResult> {
+  const profile = await requireUser();
+
+  const parsed = revokeTokenSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("air_tag_webhook_tokens")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", parsed.data.tokenId)
+    .is("revoked_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[air-tag] revokeWebhookToken failed actor=${profile.id} tokenId=${parsed.data.tokenId}`, error);
+    return { ok: false, error: handleDbError(error, "air_tag_webhook_tokens") };
+  }
+  if (!data) {
+    return { ok: false, error: "Token not found or not accessible" };
+  }
+
+  console.log(`[air-tag] revokeWebhookToken ok actor=${profile.id} tokenId=${parsed.data.tokenId}`);
+  await logAudit({
+    actorId: profile.id,
+    action: "AIR_TAG_WEBHOOK_TOKEN_REVOKED",
+    entity: "air_tag_webhook_tokens",
+    entityId: parsed.data.tokenId,
+  });
+
+  return { ok: true };
+}
+
+const listTokensSchema = z.object({ airTagId: z.string().uuid() });
+
+export type AirTagWebhookTokenSummary = {
+  id: string;
+  label: string | null;
+  token_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
+
+/**
+ * List webhook tokens for a tracker's management UI. `token_hash` is never
+ * selected — the UI only ever needs the display prefix, not the lookup
+ * secret.
+ */
+export async function listWebhookTokens(
+  input: unknown,
+): Promise<ActionResult<{ tokens: AirTagWebhookTokenSummary[] }>> {
+  const profile = await requireUser();
+
+  const parsed = listTokensSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("air_tag_webhook_tokens")
+    .select("id, label, token_prefix, created_at, last_used_at, revoked_at")
+    .eq("air_tag_id", parsed.data.airTagId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(`[air-tag] listWebhookTokens failed actor=${profile.id} airTagId=${parsed.data.airTagId}`, error);
+    return { ok: false, error: handleDbError(error, "air_tag_webhook_tokens") };
+  }
+
+  return { ok: true, tokens: (data ?? []) as AirTagWebhookTokenSummary[] };
 }
