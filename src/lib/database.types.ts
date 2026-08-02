@@ -392,6 +392,57 @@ export type Database = {
           },
         ]
       }
+      air_tag_webhook_tokens: {
+        Row: {
+          air_tag_id: string
+          created_at: string
+          created_by: string
+          id: string
+          label: string | null
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Insert: {
+          air_tag_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Update: {
+          air_tag_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string | null
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          token_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "air_tag_webhook_tokens_air_tag_id_fkey"
+            columns: ["air_tag_id"]
+            isOneToOne: false
+            referencedRelation: "air_tag_trackers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "air_tag_webhook_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
