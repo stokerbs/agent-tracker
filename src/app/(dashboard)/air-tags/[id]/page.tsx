@@ -19,6 +19,7 @@ import { ImportCsvDialog } from "@/components/air-tags/import-csv-dialog";
 import { DeleteAirTagDialog } from "@/components/air-tags/delete-air-tag-dialog";
 import { AirTagPositionTable } from "@/components/air-tags/air-tag-position-table";
 import { AirTagRouteReplayPanel } from "@/components/air-tags/air-tag-route-replay-panel";
+import { WebhookTokensPanel } from "@/components/air-tags/webhook-tokens-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `AirTag — ${id.slice(0, 8)}` };
 }
 
-const TAB_KEYS = ["overview", "history", "replay"] as const;
+const TAB_KEYS = ["overview", "history", "replay", "automation"] as const;
 
 type Tab = (typeof TAB_KEYS)[number];
 
@@ -256,6 +257,19 @@ export default async function AirTagDetailPage({ params, searchParams }: Props) 
         <AirTagRouteReplayPanel
           tracker={{ id: tracker.id, label: tracker.label, created_at: tracker.created_at }}
         />
+      )}
+
+      {/* ── Tab: Automation ──
+          Webhook token management for the iOS Shortcuts auto-post
+          integration; self-contained client component that fetches via
+          listWebhookTokens and owns its own loading/error(retry)/empty/data
+          states, mirroring the Position History tab. */}
+      {tab === "automation" && (
+        <Card>
+          <CardContent className="pt-4">
+            <WebhookTokensPanel airTagId={tracker.id} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

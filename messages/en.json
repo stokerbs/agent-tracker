@@ -1272,7 +1272,8 @@
     "tabs": {
       "overview": "Overview",
       "history": "Position History",
-      "replay": "Route Replay"
+      "replay": "Route Replay",
+      "automation": "Automation"
     },
     "detail": {
       "trackerInfo": "Tracker Info",
@@ -1420,6 +1421,81 @@
       "accuracyUnknownShort": "accuracy unknown",
       "play": "Play",
       "pause": "Pause"
+    },
+    "webhook": {
+      "panelTitle": "Automation Tokens",
+      "panelDescription": "Let an iOS Shortcuts automation auto-post AirTag/Hocco pings, so you don't have to type positions in by hand.",
+      "empty": "No automation tokens yet",
+      "emptyHint": "Generate a token to connect an iOS Shortcuts automation to this tracker.",
+      "error": "Failed to load automation tokens.",
+      "retry": "Retry",
+      "untitled": "Untitled token",
+      "revokedBadge": "Revoked",
+      "created": "Created {date}",
+      "lastUsed": "Last used {date}",
+      "neverUsed": "Never used",
+      "generate": {
+        "trigger": "Generate Token",
+        "title": "Generate an automation token",
+        "description": "This token lets an iOS Shortcuts automation post AirTag/Hocco positions to this tracker without you signing in.",
+        "labelField": "Label",
+        "labelPlaceholder": "e.g. My iPhone Shortcut",
+        "labelTooLong": "Label must be 120 characters or fewer.",
+        "submit": "Generate",
+        "revealTitle": "Copy your token now",
+        "revealDescription": "This is the only time this token will ever be shown. Copy it into your Shortcut now — once you close this dialog, it cannot be recovered. If you lose it, revoke it and generate a new one.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copiedToast": "Token copied to clipboard",
+        "copyFailed": "Couldn't copy automatically — please select and copy the token manually.",
+        "warning": "This token will never be shown again after you close this dialog. Make sure it's copied into your Shortcut before continuing.",
+        "done": "I've copied it — done"
+      },
+      "revoke": {
+        "trigger": "Revoke",
+        "title": "Revoke this automation token?",
+        "message": "The iOS Shortcut using this token will immediately stop being able to post new positions. This does not delete any positions already recorded.",
+        "irreversible": "You won't be able to undo this from the UI.",
+        "cancel": "Cancel",
+        "confirm": "Revoke Token",
+        "toast": {
+          "success": "Automation token revoked"
+        }
+      },
+      "guide": {
+        "title": "How to set up the iOS Shortcut",
+        "intro": "Follow these steps in the Shortcuts app on the iPhone that has this AirTag/Hocco set up in Find My. No coding required.",
+        "steps": {
+          "automation": {
+            "title": "1. Create a Personal Automation",
+            "body": "Open the Shortcuts app, go to the Automation tab, and tap the + button to create a new Personal Automation. Choose a trigger that fits how often you want to check in — a Time of Day automation (e.g. every hour) works well for periodic tracking, or you can run it manually whenever you need an update."
+          },
+          "findMy": {
+            "title": "2. Add a \"Find My\" action",
+            "body": "Add the \"Find My\" action to the automation and select the specific item you're tracking (your AirTag or Hocco tag). This action fetches that item's current location each time the automation runs."
+          },
+          "getContents": {
+            "title": "3. Add a \"Get Contents of URL\" action",
+            "body": "Add a \"Get Contents of URL\" action after the Find My action. Set the method to POST, add the Authorization header with your token, and set the request body to JSON containing the latitude and longitude from the Find My action. See the exact values to enter below."
+          },
+          "test": {
+            "title": "4. Save and test it",
+            "body": "Save the automation and run it once manually to confirm it works — the new position should appear in this tracker's Position History within a few seconds. Turn off \"Ask Before Running\" so it can post automatically in the background."
+          }
+        },
+        "referenceTitle": "Values to enter in \"Get Contents of URL\"",
+        "methodLabel": "Method",
+        "endpointLabel": "URL",
+        "headerLabel": "Header",
+        "bodyLabel": "Request body (JSON)",
+        "referenceHint": "Replace <your token> with a token generated above, and map the Find My action's Latitude/Longitude outputs into lat/lng.",
+        "toasts": {
+          "methodCopied": "Method copied",
+          "endpointCopied": "URL copied",
+          "headerCopied": "Header copied",
+          "bodyCopied": "Request body copied"
+        }
+      }
     }
   },
   "analytics": {
