@@ -2384,6 +2384,79 @@ export type Database = {
           },
         ]
       }
+      line_accounts: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          id: string
+          line_user_id: string
+          linked_at: string | null
+          otp_attempts: number
+          otp_code_hash: string | null
+          otp_expires_at: string | null
+          otp_requested_at: string | null
+          pending_attachment_case_id: string | null
+          pending_attachment_entry_id: string | null
+          pending_attachment_expires_at: string | null
+          phone_at_link_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          line_user_id: string
+          linked_at?: string | null
+          otp_attempts?: number
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
+          phone_at_link_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          line_user_id?: string
+          linked_at?: string | null
+          otp_attempts?: number
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
+          phone_at_link_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_accounts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_case_id_fkey"
+            columns: ["pending_attachment_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_entry_id_fkey"
+            columns: ["pending_attachment_entry_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_articles: {
         Row: {
           approve_token: string

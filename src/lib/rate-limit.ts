@@ -57,6 +57,48 @@ export const RATE_LIMITS = {
   air_tag_webhook_ping: { limit: 120, windowMs: 3_600_000 },
   /** 300 AirTag webhook requests per hour per source IP — coarse defense-in-depth against brute-forcing tokens across many trackers from one source, independent of the per-token bucket above. */
   air_tag_webhook_ip: { limit: 300, windowMs: 3_600_000 },
+  /** 3 LINE-bot OTP link requests per 10 minutes per LINE user — bounds SMS spend/spam, on top of the per-account otp_requested_at cooldown enforced in application state. */
+  line_otp_request: { limit: 3, windowMs: 10 * 60_000 },
+  /** 5 LINE-bot OTP verification attempts per 10 minutes per LINE user — coarse defense-in-depth alongside the per-account otp_attempts lockout stored on line_accounts. */
+  line_otp_verify: { limit: 5, windowMs: 10 * 60_000 },
+  /**
+   * 4 LINE-bot OTP link requests per hour per RESOLVED TARGET AGENT (keyed on
+   * agents.id, not the requesting LINE identity). `line_otp_request` above is
+   * keyed on lineUserId, which is free for an attacker to mint an unlimited
+   * number of — so it does nothing to stop many distinct LINE identities from
+   * each requesting an OTP for the SAME victim phone number (SMS-bombing /
+   * cost-DoS on a real agent who never asked for any of it). This bucket
+   * closes that gap: it caps how many OTP SMS a single agent can receive in
+   * an hour, no matter how many different LINE accounts are asking. Small
+   * enough to make bombing impractical, generous enough for a legitimate
+   * agent to retry a few times if they fat-finger the flow.
+   */
+  line_otp_request_target: { limit: 4, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "add timeline entry" writes per hour per agent (agents.id).
+   * A write command is a materially better abuse/cost target than the
+   * read-only case/timeline commands (currently unlimited) — this bounds it
+   * while staying generous enough for legitimate rapid-fire field note-taking
+   * during active surveillance.
+   */
+  line_add_timeline: { limit: 30, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "attach location" writes per hour per agent (agents.id) —
+   * mirrors line_add_timeline's rationale/limit. Coordinates are raw,
+   * client-supplied webhook data (see src/lib/line/commands/attach-location.ts's
+   * module doc), so this GPS-update ingestion path is rate-limited same as
+   * every other write command, per this repo's Maps coding standard.
+   */
+  line_attach_location: { limit: 30, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "attach photo" writes per hour per agent (agents.id) —
+   * mirrors line_add_timeline/line_attach_location's rationale/limit. Each
+   * request downloads from LINE's Content API and writes to Storage, a
+   * materially more expensive write than a plain text/location update, so
+   * it gets the same bound as the other write commands rather than being
+   * left unlimited.
+   */
+  line_attach_photo: { limit: 30, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
