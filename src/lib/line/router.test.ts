@@ -20,6 +20,7 @@ vi.mock("@/lib/sms/twilio", () => ({ sendSms: vi.fn() }));
 vi.mock("@/lib/line/reply", () => ({ replyLineMessage: vi.fn() }));
 vi.mock("@/lib/line/commands/case", () => ({ handleCaseLookupCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/timeline", () => ({ handleTimelineListCommand: vi.fn() }));
+vi.mock("@/lib/line/commands/add-timeline", () => ({ handleAddTimelineEntryCommand: vi.fn() }));
 
 import { handleLineMessage, parseCommand } from "./router";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -28,6 +29,7 @@ import { sendSms } from "@/lib/sms/twilio";
 import { replyLineMessage } from "@/lib/line/reply";
 import { handleCaseLookupCommand } from "@/lib/line/commands/case";
 import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
+import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
 import { hashOtp, OTP_MAX_ATTEMPTS } from "./otp";
 import * as msg from "./messages";
 
@@ -137,6 +139,48 @@ describe("parseCommand", () => {
 
   it("falls back to help for anything unrecognized", () => {
     expect(parseCommand("สวัสดีครับ")).toEqual({ type: "help" });
+  });
+
+  describe("add-timeline (write) keyword", () => {
+    it("parses เพิ่มไทม์ไลน์ with a case number and entry text", () => {
+      expect(parseCommand("เพิ่มไทม์ไลน์ CASE-001 พบเป้าหมายที่ห้างสรรพสินค้า")).toEqual({
+        type: "add_timeline",
+        caseNumber: "CASE-001",
+        text: "พบเป้าหมายที่ห้างสรรพสินค้า",
+      });
+    });
+
+    it("parses บันทึกไทม์ไลน์ with a case number and multi-word entry text", () => {
+      expect(parseCommand("บันทึกไทม์ไลน์ CASE-002 เป้าหมายออกจากบ้าน เวลา 10:00")).toEqual({
+        type: "add_timeline",
+        caseNumber: "CASE-002",
+        text: "เป้าหมายออกจากบ้าน เวลา 10:00",
+      });
+    });
+
+    it("parses the English add-timeline keyword variant", () => {
+      expect(parseCommand("add-timeline CASE-003 subject left the residence")).toEqual({
+        type: "add_timeline",
+        caseNumber: "CASE-003",
+        text: "subject left the residence",
+      });
+    });
+
+    it("does not collide with the plain timeline-list command", () => {
+      // The plain list command still parses as "timeline", not "add_timeline".
+      expect(parseCommand("ไทม์ไลน์ CASE-001")).toEqual({ type: "timeline", args: "CASE-001" });
+      // And the add-timeline keyword never parses as a plain "timeline" list command.
+      const parsed = parseCommand("เพิ่มไทม์ไลน์ CASE-001 พบเป้าหมายที่ห้างสรรพสินค้า");
+      expect(parsed.type).toBe("add_timeline");
+    });
+
+    it("falls back to help when the add-timeline keyword is used with no case number/text", () => {
+      expect(parseCommand("เพิ่มไทม์ไลน์")).toEqual({ type: "help" });
+    });
+
+    it("falls back to help when the add-timeline keyword is used with only a case number (no entry text)", () => {
+      expect(parseCommand("เพิ่มไทม์ไลน์ CASE-001")).toEqual({ type: "help" });
+    });
   });
 });
 
@@ -484,6 +528,25 @@ describe("handleLineMessage — linked-user commands", () => {
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await handleLineMessage(LINE_USER_ID, "ไทม์ไลน์ CASE-001", "rt1");
     expect(handleTimelineListCommand).toHaveBeenCalledWith(AGENT_ID, "CASE-001", "rt1");
+  });
+
+  it("dispatches an add-timeline command to handleAddTimelineEntryCommand with the resolved agentId", async () => {
+    const s = makeSvc({ accountRow: linkedAccount });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "เพิ่มไทม์ไลน์ CASE-001 พบเป้าหมายที่ห้างสรรพสินค้า", "rt1");
+    expect(handleAddTimelineEntryCommand).toHaveBeenCalledWith(
+      AGENT_ID,
+      "CASE-001",
+      "พบเป้าหมายที่ห้างสรรพสินค้า",
+      "rt1",
+    );
+    expect(replyLineMessage).not.toHaveBeenCalled();
+  });
+
+  it("gates the add-timeline command behind linked status same as other commands", async () => {
+    await handleLineMessage(LINE_USER_ID, "เพิ่มไทม์ไลน์ CASE-001 พบเป้าหมายที่ห้างสรรพสินค้า", "rt1");
+    expect(handleAddTimelineEntryCommand).not.toHaveBeenCalled();
+    expect(lastReply()).toBe(msg.notLinkedHelp(LINE_USER_ID));
   });
 
   it("replies with LINKED_HELP for an unrecognized command from a linked user", async () => {

@@ -21,7 +21,8 @@ export function notLinkedHelp(lineUserId: string): string {
 export const LINKED_HELP =
   `คำสั่งที่ใช้ได้ตอนนี้:\n` +
   `• เคส <คำค้นหา> — ค้นหาเคส\n` +
-  `• ไทม์ไลน์ <รหัสเคส> — ดูไทม์ไลน์ของเคส`;
+  `• ไทม์ไลน์ <รหัสเคส> — ดูไทม์ไลน์ของเคส\n` +
+  `• เพิ่มไทม์ไลน์ <รหัสเคส> <ข้อความ> — เพิ่มรายการไทม์ไลน์ใหม่ (เช่น บันทึกไทม์ไลน์ CASE-2026-0042 พบเป้าหมายที่ห้างสรรพสินค้า)`;
 
 export const INVALID_PHONE =
   `รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาพิมพ์ใหม่ เช่น: ${LINK_EXAMPLE}`;
@@ -90,6 +91,22 @@ export const CASE_NOT_FOUND =
 
 export const TIMELINE_NO_ENTRIES =
   "ยังไม่มีรายการไทม์ไลน์สำหรับเคสนี้ครับ";
+
+// ── Add-timeline (write, Round 2) command replies ───────────────────────────
+
+/** Shown when the "add timeline" keyword is recognized but the case number
+ * and/or entry text couldn't be parsed out (e.g. missing arguments). */
+export const ADD_TIMELINE_EMPTY_ARGS =
+  "กรุณาระบุรหัสเคสและข้อความ เช่น: เพิ่มไทม์ไลน์ CASE-2026-0042 พบเป้าหมายที่ห้างสรรพสินค้า";
+
+/**
+ * Round-2 handoff-stub placeholder reply — src/lib/line/commands/add-timeline.ts
+ * doesn't implement the real DB write yet (see that file's module doc). This
+ * is intentionally temporary; the next engineer replaces both the handler
+ * body and, likely, this message with a real success/error reply.
+ */
+export const ADD_TIMELINE_NOT_YET_IMPLEMENTED =
+  "ขออภัยครับ คำสั่งเพิ่มไทม์ไลน์ผ่าน LINE ยังไม่เปิดใช้งานในขณะนี้ กรุณาเพิ่มรายการไทม์ไลน์ผ่านเว็บแอประบบไปก่อน";
 
 const CASE_STATUS_LABEL: Record<string, string> = {
   new: "ใหม่",

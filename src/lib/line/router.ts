@@ -19,12 +19,16 @@ import {
 import * as msg from "@/lib/line/messages";
 import { handleCaseLookupCommand } from "@/lib/line/commands/case";
 import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
+import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
- * account linking, plus a gate for the read-only commands implemented
+ * account linking, plus a gate for the case/timeline commands implemented
  * elsewhere — see src/lib/line/commands/case.ts and
- * src/lib/line/commands/timeline.ts for that extension point).
+ * src/lib/line/commands/timeline.ts (read-only) and
+ * src/lib/line/commands/add-timeline.ts (write, Round 2 — currently a
+ * parsing/dispatch stub, see that file's module doc) for that extension
+ * point).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
@@ -66,11 +70,21 @@ type Command =
   | { type: "verify"; code: string }
   | { type: "case"; args: string }
   | { type: "timeline"; args: string }
+  | { type: "add_timeline"; caseNumber: string; text: string }
   | { type: "help" };
 
 const LINK_KEYWORDS = /^(?:link|ผูกบัญชี|ผูก|เชื่อมบัญชี|เชื่อมต่อบัญชี)\s+(.+)$/iu;
 const CASE_KEYWORDS = /^(?:case|เคส)\s+(.+)$/iu;
 const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)\s*(.*)$/iu;
+// Write command (Round 2): "เพิ่มไทม์ไลน์ <รหัสเคส> <ข้อความ>" / "บันทึกไทม์ไลน์ <รหัสเคส> <ข้อความ>".
+// First captured group is the case number, second is the entry text. Its
+// keyword prefixes ("เพิ่มไทม์ไลน์"/"บันทึกไทม์ไลน์") never start with, and so
+// never collide with, the plain TIMELINE_KEYWORDS prefixes ("timeline" /
+// "ไทม์ไลน์" / "ไทม์ไลน") — still checked BEFORE TIMELINE_KEYWORDS in
+// parseCommand() below out of caution, since TIMELINE_KEYWORDS' `\s*(.*)`
+// tail is unanchored/greedy enough that any future edit narrowing its
+// keyword list could otherwise silently start swallowing this command.
+const ADD_TIMELINE_KEYWORDS = /^(?:add.?timeline|เพิ่มไทม์ไลน์|บันทึกไทม์ไลน์)\s+(\S+)\s+(.+)$/iu;
 const OTP_PATTERN = /^\d{6}$/;
 
 /** Forgiving text-command parser — see module doc for the design rationale. */
@@ -84,6 +98,12 @@ export function parseCommand(raw: string): Command {
 
   const caseMatch = text.match(CASE_KEYWORDS);
   if (caseMatch) return { type: "case", args: caseMatch[1]!.trim() };
+
+  // Checked before TIMELINE_KEYWORDS — see the constant's comment above.
+  const addTimeline = text.match(ADD_TIMELINE_KEYWORDS);
+  if (addTimeline) {
+    return { type: "add_timeline", caseNumber: addTimeline[1]!.trim(), text: addTimeline[2]!.trim() };
+  }
 
   const timeline = text.match(TIMELINE_KEYWORDS);
   if (timeline) return { type: "timeline", args: timeline[1]!.trim() };
@@ -157,6 +177,9 @@ export async function handleLineMessage(
       return;
     case "timeline":
       await handleTimelineListCommand(agentId, command.args, replyToken);
+      return;
+    case "add_timeline":
+      await handleAddTimelineEntryCommand(agentId, command.caseNumber, command.text, replyToken);
       return;
     default:
       await replyLineMessage(replyToken, msg.LINKED_HELP);
