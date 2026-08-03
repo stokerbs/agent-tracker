@@ -192,7 +192,7 @@ describe("parseCommand", () => {
     });
   });
 
-  describe("intel (Round 4, stub) keyword", () => {
+  describe("intel (Round 4) keyword", () => {
     it("parses the Thai ข่าวกรอง keyword with a case number", () => {
       expect(parseCommand("ข่าวกรอง CASE-2026-0042")).toEqual({
         type: "intel",

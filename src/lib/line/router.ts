@@ -33,9 +33,9 @@ import { handleIntelCommand } from "@/lib/line/commands/intel";
  * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3 —
  * photo/location follow-up attachments to a just-added timeline entry, see
  * handleLineMediaMessage() below and those files' module docs), and
- * src/lib/line/commands/intel.ts (Round 4 — target-intelligence lookup;
- * currently a stub, see that file's module doc for the handoff contract)
- * for those extension points).
+ * src/lib/line/commands/intel.ts (Round 4 — target-intelligence lookup, see
+ * that file's module doc for the full authorization/decryption/audit
+ * contract) for those extension points).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
@@ -111,7 +111,7 @@ const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไ
 // tail is unanchored/greedy enough that any future edit narrowing its
 // keyword list could otherwise silently start swallowing this command.
 const ADD_TIMELINE_KEYWORDS = /^(?:add.?timeline|เพิ่มไทม์ไลน์|บันทึกไทม์ไลน์)\s+(\S+)\s+(.+)$/iu;
-// Target-intelligence lookup (Round 4, stub wiring — see
+// Target-intelligence lookup (Round 4 — see
 // src/lib/line/commands/intel.ts): "ข่าวกรอง <รหัสเคส>" / "intel <case>".
 // Single captured group is the case number, same shape as CASE_KEYWORDS.
 // Keyword prefixes ("intel" / "ข่าวกรอง") don't start with and are never a
