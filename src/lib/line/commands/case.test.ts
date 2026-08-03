@@ -17,42 +17,55 @@ const AGENT_ID = "22222222-2222-2222-2222-222222222222";
 type Result = { data: unknown; error: unknown };
 
 /** Minimal chainable stand-in for a PostgREST query builder: every filter
- * method returns itself, and it resolves via either `.maybeSingle()` or by
- * being awaited directly (`.then`), matching how src/lib/line/commands/case.ts
+ * method is a `vi.fn()` that returns itself — so calls stay chainable AND
+ * are recorded (inspectable afterward via e.g. `builder.eq.mock.calls`),
+ * which lets tests assert on the authorization-critical filter arguments
+ * (not just the final returned data — see the "authorization regression
+ * guard" tests below). It resolves via either `.maybeSingle()` or by being
+ * awaited directly (`.then`), matching how src/lib/line/commands/case.ts
  * uses the real client. */
 function chainable(result: Result) {
-  const builder: {
-    select: () => typeof builder;
-    ilike: () => typeof builder;
-    eq: () => typeof builder;
-    limit: () => typeof builder;
-    maybeSingle: () => Promise<Result>;
+  const b: Record<string, unknown> = {};
+  for (const m of ["select", "ilike", "eq", "limit"]) {
+    b[m] = vi.fn(() => b);
+  }
+  b.maybeSingle = vi.fn(async () => result);
+  (b as { then: unknown }).then = (
+    resolve: (value: Result) => unknown,
+    reject: (reason: unknown) => unknown,
+  ) => Promise.resolve(result).then(resolve, reject);
+  return b as {
+    select: ReturnType<typeof vi.fn>;
+    ilike: ReturnType<typeof vi.fn>;
+    eq: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+    maybeSingle: ReturnType<typeof vi.fn>;
     then: (
       resolve: (value: Result) => unknown,
       reject: (reason: unknown) => unknown,
     ) => Promise<unknown>;
-  } = {
-    select: () => builder,
-    ilike: () => builder,
-    eq: () => builder,
-    limit: () => builder,
-    maybeSingle: async () => result,
-    then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
   };
-  return builder;
 }
+
+type Builder = ReturnType<typeof chainable>;
 
 /** Queues chainable results for each successive `svc.from("cases")` call, in
  * call order. handleCaseLookupCommand issues, at most: [0] exact match,
- * [1] target-name search, [2] client-name search. */
+ * [1] target-name search, [2] client-name search. Every builder handed out
+ * is also collected on `.builders` (in that same call order) so tests can
+ * assert on the args each query's `.select()`/`.eq()` calls were made with. */
 function makeSvc(casesQueue: Result[]) {
   let idx = 0;
+  const builders: Builder[] = [];
   return {
+    builders,
     from(table: string) {
       if (table !== "cases") throw new Error(`unexpected table: ${table}`);
       const result = casesQueue[idx] ?? { data: null, error: null };
       idx++;
-      return chainable(result);
+      const b = chainable(result);
+      builders.push(b);
+      return b;
     },
   };
 }
@@ -177,5 +190,59 @@ describe("handleCaseLookupCommand", () => {
 
     await handleCaseLookupCommand(AGENT_ID, "Somchai", "rt1");
     expect(lastReply()).toBe(msg.GENERIC_ERROR);
+  });
+
+  describe("authorization regression guard", () => {
+    // These assert on the *args* the query builder's `.select()`/`.eq()`
+    // methods were called with, not just the returned data. The prior
+    // ignore-all-args mock would have kept passing even if a refactor
+    // silently dropped `case_agents!inner(agent_id)` from CASE_SELECT or the
+    // `.eq("case_agents.agent_id", agentId)` filter from shared.ts — the
+    // SOLE guard against one agent reading another agent's case/target PII
+    // over LINE (no Supabase Auth session / RLS in this webhook context).
+
+    it("scopes the exact-match query to case_agents!inner + this agent's case_agents.agent_id filter", async () => {
+      const svc = makeSvc([{ data: caseRow(), error: null }]);
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleCaseLookupCommand(AGENT_ID, "CASE-2026-0001", "rt1");
+
+      const exactBuilder = svc.builders[0]!;
+      expect(exactBuilder.select).toHaveBeenCalledWith(
+        expect.stringContaining("case_agents!inner(agent_id)"),
+      );
+      expect(exactBuilder.eq).toHaveBeenCalledWith("case_agents.agent_id", AGENT_ID);
+    });
+
+    it("parameterizes the case_agents.agent_id filter per agentId — a different agentId produces a different eq() argument (not hardcoded/stale)", async () => {
+      const OTHER_AGENT_ID = "99999999-9999-9999-9999-999999999999";
+      const svc = makeSvc([{ data: null, error: null }]); // exact miss -> falls through to search
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleCaseLookupCommand(OTHER_AGENT_ID, "CASE-2026-0001", "rt1");
+
+      const exactBuilder = svc.builders[0]!;
+      expect(exactBuilder.eq).toHaveBeenCalledWith("case_agents.agent_id", OTHER_AGENT_ID);
+      expect(exactBuilder.eq).not.toHaveBeenCalledWith("case_agents.agent_id", AGENT_ID);
+    });
+
+    it("scopes BOTH fallback-search queries (target-name and client-name) to case_agents!inner + this agent's case_agents.agent_id filter", async () => {
+      const svc = makeSvc([
+        { data: null, error: null }, // exact miss
+        { data: [], error: null }, // target-name search miss
+        { data: [], error: null }, // client-name search miss
+      ]);
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleCaseLookupCommand(AGENT_ID, "Somchai", "rt1");
+
+      const [, byTargetBuilder, byClientBuilder] = svc.builders;
+      for (const b of [byTargetBuilder!, byClientBuilder!]) {
+        expect(b.select).toHaveBeenCalledWith(
+          expect.stringContaining("case_agents!inner(agent_id)"),
+        );
+        expect(b.eq).toHaveBeenCalledWith("case_agents.agent_id", AGENT_ID);
+      }
+    });
   });
 });

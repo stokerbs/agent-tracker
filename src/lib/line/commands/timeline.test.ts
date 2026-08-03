@@ -19,34 +19,44 @@ const CASE_NUMBER = "CASE-2026-0001";
 type Result = { data: unknown; error: unknown; count?: number | null };
 
 /** Minimal chainable stand-in for a PostgREST query builder — see the
- * matching helper in ./case.test.ts for the rationale. Adds `.is()`/`.order()`
- * on top of the case.ts helper set since timeline queries use those too. */
+ * matching helper in ./case.test.ts for the rationale (every filter method
+ * is a `vi.fn()` that returns itself, so calls stay chainable AND are
+ * recorded/inspectable afterward, e.g. `builder.eq.mock.calls`). Adds
+ * `.is()`/`.order()` on top of the case.ts helper set since timeline
+ * queries use those too. */
 function chainable(result: Result) {
-  const builder: {
-    select: () => typeof builder;
-    ilike: () => typeof builder;
-    eq: () => typeof builder;
-    is: () => typeof builder;
-    order: () => typeof builder;
-    limit: () => typeof builder;
-    maybeSingle: () => Promise<Result>;
+  const b: Record<string, unknown> = {};
+  for (const m of ["select", "ilike", "eq", "is", "order", "limit"]) {
+    b[m] = vi.fn(() => b);
+  }
+  b.maybeSingle = vi.fn(async () => result);
+  (b as { then: unknown }).then = (
+    resolve: (value: Result) => unknown,
+    reject: (reason: unknown) => unknown,
+  ) => Promise.resolve(result).then(resolve, reject);
+  return b as {
+    select: ReturnType<typeof vi.fn>;
+    ilike: ReturnType<typeof vi.fn>;
+    eq: ReturnType<typeof vi.fn>;
+    is: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+    maybeSingle: ReturnType<typeof vi.fn>;
     then: (
       resolve: (value: Result) => unknown,
       reject: (reason: unknown) => unknown,
     ) => Promise<unknown>;
-  } = {
-    select: () => builder,
-    ilike: () => builder,
-    eq: () => builder,
-    is: () => builder,
-    order: () => builder,
-    limit: () => builder,
-    maybeSingle: async () => result,
-    then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
   };
-  return builder;
 }
 
+type Builder = ReturnType<typeof chainable>;
+
+/** As in case.test.ts's makeSvc, every builder handed out is also collected
+ * (in call order, per table) on `.caseBuilders` / `.timelineBuilders` so
+ * tests can assert on the args each query's `.select()`/`.eq()` calls were
+ * made with — in particular the case-resolution query, which reuses
+ * shared.ts's `findAuthorizedCaseByNumber` (same authorization guard as
+ * case.ts). */
 function makeSvc({
   caseResult,
   timelineQueue = [],
@@ -55,13 +65,23 @@ function makeSvc({
   timelineQueue?: Result[];
 }) {
   let tIdx = 0;
+  const caseBuilders: Builder[] = [];
+  const timelineBuilders: Builder[] = [];
   return {
+    caseBuilders,
+    timelineBuilders,
     from(table: string) {
-      if (table === "cases") return chainable(caseResult);
+      if (table === "cases") {
+        const b = chainable(caseResult);
+        caseBuilders.push(b);
+        return b;
+      }
       if (table === "timeline_entries") {
         const result = timelineQueue[tIdx] ?? { data: null, error: null, count: null };
         tIdx++;
-        return chainable(result);
+        const b = chainable(result);
+        timelineBuilders.push(b);
+        return b;
       }
       throw new Error(`unexpected table: ${table}`);
     },
@@ -230,5 +250,55 @@ describe("handleTimelineListCommand", () => {
     expect(reply).toContain("Siam Paragon");
     expect(reply).not.toContain(longText); // truncated
     expect(reply).toContain("x".repeat(150)); // first 150 chars kept
+  });
+
+  describe("authorization regression guard", () => {
+    // Timeline reads authorize via the SAME shared.ts helper case.ts uses
+    // (findAuthorizedCaseByNumber) — the timeline_entries queries themselves
+    // only filter by the already-authorized case_id, so the case-resolution
+    // query below is the sole gate preventing one agent from reading
+    // another agent's timeline. These assert on the *args* `.select()`/
+    // `.eq()` were called with, not just the returned data, so a refactor
+    // that silently dropped `case_agents!inner(agent_id)`/the
+    // `.eq("case_agents.agent_id", agentId)` filter in shared.ts would fail
+    // these tests even though the canned mock data would otherwise still
+    // "work".
+
+    it("scopes the case-resolution query to case_agents!inner + this agent's case_agents.agent_id filter", async () => {
+      const svc = makeSvc({
+        caseResult: { data: authorizedCaseRow(), error: null },
+        timelineQueue: [
+          { data: null, error: null, count: 1 },
+          { data: [entry(1)], error: null },
+        ],
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleTimelineListCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      const caseBuilder = svc.caseBuilders[0]!;
+      expect(caseBuilder.select).toHaveBeenCalledWith(
+        expect.stringContaining("case_agents!inner(agent_id)"),
+      );
+      expect(caseBuilder.eq).toHaveBeenCalledWith("case_agents.agent_id", AGENT_ID);
+
+      // The subsequent timeline_entries queries filter by the *resolved,
+      // already-authorized* case id — never by unvalidated caller input.
+      for (const b of svc.timelineBuilders) {
+        expect(b.eq).toHaveBeenCalledWith("case_id", CASE_ID);
+      }
+    });
+
+    it("parameterizes the case-resolution authorization filter per agentId — a different agentId produces a different eq() argument (not hardcoded/stale)", async () => {
+      const OTHER_AGENT_ID = "99999999-9999-9999-9999-999999999999";
+      const svc = makeSvc({ caseResult: { data: null, error: null } });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleTimelineListCommand(OTHER_AGENT_ID, CASE_NUMBER, "rt1");
+
+      const caseBuilder = svc.caseBuilders[0]!;
+      expect(caseBuilder.eq).toHaveBeenCalledWith("case_agents.agent_id", OTHER_AGENT_ID);
+      expect(caseBuilder.eq).not.toHaveBeenCalledWith("case_agents.agent_id", AGENT_ID);
+    });
   });
 });
