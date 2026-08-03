@@ -1,21 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
+import { handleLineMessage } from "@/lib/line/router";
 
 // LINE Messaging API webhook for the Detective Pulse Official Account.
 //
-// Primary purpose today: help the owner discover their LINE `userId` — message
-// the OA and it replies with your userId, which you then set as
-// LINE_NOTIFY_USER_ID to receive lead/case notifications. It also verifies the
-// X-Line-Signature so the endpoint can safely grow into two-way handling later.
+// Verifies X-Line-Signature (HMAC-SHA256, timing-safe compare) then routes
+// every text message through src/lib/line/router.ts's command dispatcher:
+// phone+OTP account linking ("link"/"verify"), gated read-only commands for
+// already-linked agents (case lookup / timeline list — implemented in
+// src/lib/line/commands/*, stubbed for now), and a help/link-prompt reply for
+// everything else. See router.ts's module doc for the full dispatch flow.
 //
 // Requires LINE_CHANNEL_SECRET (to verify) + LINE_CHANNEL_ACCESS_TOKEN (to reply).
-
-const LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply";
 
 interface LineEvent {
   type: string;
   replyToken?: string;
   source?: { userId?: string };
+  message?: { type: string; text?: string };
 }
 
 export async function POST(request: NextRequest) {
@@ -45,26 +47,15 @@ export async function POST(request: NextRequest) {
 
   for (const ev of events) {
     const userId = ev.source?.userId;
-    if (ev.type === "message" && ev.replyToken && token && userId) {
-      try {
-        await fetch(LINE_REPLY_URL, {
-          method: "POST",
-          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            replyToken: ev.replyToken,
-            messages: [
-              {
-                type: "text",
-                text:
-                  `✅ เชื่อมต่อ Detective Pulse สำเร็จ\n\nuserId ของคุณคือ:\n${userId}\n\n` +
-                  `นำค่านี้ไปตั้งเป็น LINE_NOTIFY_USER_ID เพื่อรับแจ้งเตือนลูกค้า/เคสใหม่ทาง LINE ครับ`,
-              },
-            ],
-          }),
-        });
-      } catch (e) {
-        console.error("[line-webhook] reply failed:", e instanceof Error ? e.message : e);
-      }
+    if (ev.type !== "message" || !ev.replyToken || !token || !userId) continue;
+    // Only plain-text messages carry a command; anything else (sticker,
+    // image, location, …) is silently ignored rather than routed.
+    if (ev.message?.type !== "text" || typeof ev.message.text !== "string") continue;
+
+    try {
+      await handleLineMessage(userId, ev.message.text, ev.replyToken);
+    } catch (e) {
+      console.error("[line-webhook] dispatch failed:", e instanceof Error ? e.message : e);
     }
   }
 

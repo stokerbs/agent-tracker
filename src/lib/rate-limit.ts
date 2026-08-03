@@ -57,6 +57,10 @@ export const RATE_LIMITS = {
   air_tag_webhook_ping: { limit: 120, windowMs: 3_600_000 },
   /** 300 AirTag webhook requests per hour per source IP — coarse defense-in-depth against brute-forcing tokens across many trackers from one source, independent of the per-token bucket above. */
   air_tag_webhook_ip: { limit: 300, windowMs: 3_600_000 },
+  /** 3 LINE-bot OTP link requests per 10 minutes per LINE user — bounds SMS spend/spam, on top of the per-account otp_requested_at cooldown enforced in application state. */
+  line_otp_request: { limit: 3, windowMs: 10 * 60_000 },
+  /** 5 LINE-bot OTP verification attempts per 10 minutes per LINE user — coarse defense-in-depth alongside the per-account otp_attempts lockout stored on line_accounts. */
+  line_otp_verify: { limit: 5, windowMs: 10 * 60_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

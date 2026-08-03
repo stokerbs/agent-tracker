@@ -1,0 +1,376 @@
+import "server-only";
+
+import { createServiceClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { normalizePhone } from "@/lib/security/encryption";
+import { parsePhone } from "@/lib/contact/phone";
+import { sendSms } from "@/lib/sms/twilio";
+import { replyLineMessage } from "@/lib/line/reply";
+import {
+  generateOtp,
+  hashOtp,
+  verifyOtpHash,
+  isOtpExpired,
+  canRequestNewOtp,
+  OTP_TTL_MS,
+  OTP_MAX_ATTEMPTS,
+} from "@/lib/line/otp";
+import * as msg from "@/lib/line/messages";
+import { handleCaseLookupCommand } from "@/lib/line/commands/case";
+import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
+
+/**
+ * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
+ * account linking, plus a gate for the read-only commands implemented
+ * elsewhere — see src/lib/line/commands/case.ts and
+ * src/lib/line/commands/timeline.ts for that extension point).
+ *
+ * Every inbound text message flows through handleLineMessage(), which:
+ *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
+ *      This is the ONLY place agent identity is derived; every downstream
+ *      command handler receives an already-resolved, already-verified
+ *      agentId — never a raw value from the LINE payload.
+ *   2. Parses the message text into a Command (see parseCommand()).
+ *   3. "link" and "verify" are always handled regardless of link state (you
+ *      have to be able to link/verify precisely because you aren't linked
+ *      yet). Every OTHER command is gated behind "is this LINE user linked" —
+ *      unlinked users get a help/link-prompt message instead.
+ *
+ * Uses the service-role Supabase client throughout: a LINE webhook request
+ * carries no Supabase session/auth.uid(), so there is no user-scoped client
+ * to use here (same rationale documented in
+ * supabase/migrations/0109_line_accounts.sql). Authorization is enforced in
+ * this application layer instead (LINE signature verification happens
+ * upstream in route.ts; OTP possession proves phone ownership here).
+ */
+
+/** Shape of the columns selected from line_accounts by handleLineMessage() below. */
+type LineAccountLookup = {
+  id: string;
+  agent_id: string | null;
+  phone_at_link_time: string | null;
+  otp_code_hash: string | null;
+  otp_expires_at: string | null;
+  otp_attempts: number;
+  otp_requested_at: string | null;
+  linked_at: string | null;
+};
+
+type AgentPhoneRow = { id: string; phone: string | null };
+
+// ── Command parsing ─────────────────────────────────────────────────────────
+
+type Command =
+  | { type: "link"; phone: string }
+  | { type: "verify"; code: string }
+  | { type: "case"; args: string }
+  | { type: "timeline"; args: string }
+  | { type: "help" };
+
+const LINK_KEYWORDS = /^(?:link|ผูกบัญชี|ผูก|เชื่อมบัญชี|เชื่อมต่อบัญชี)\s+(.+)$/iu;
+const CASE_KEYWORDS = /^(?:case|เคส)\s+(.+)$/iu;
+const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)\s*(.*)$/iu;
+const OTP_PATTERN = /^\d{6}$/;
+
+/** Forgiving text-command parser — see module doc for the design rationale. */
+export function parseCommand(raw: string): Command {
+  const text = raw.trim();
+
+  if (OTP_PATTERN.test(text)) return { type: "verify", code: text };
+
+  const link = text.match(LINK_KEYWORDS);
+  if (link) return { type: "link", phone: link[1]!.trim() };
+
+  const caseMatch = text.match(CASE_KEYWORDS);
+  if (caseMatch) return { type: "case", args: caseMatch[1]!.trim() };
+
+  const timeline = text.match(TIMELINE_KEYWORDS);
+  if (timeline) return { type: "timeline", args: timeline[1]!.trim() };
+
+  return { type: "help" };
+}
+
+// ── Logging helpers ──────────────────────────────────────────────────────────
+
+/** Never log a full LINE userId or phone/OTP — a short, non-reversible-enough reference is enough for correlating log lines. */
+function redact(value: string): string {
+  if (value.length <= 8) return "***";
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
+// ── Main dispatcher ──────────────────────────────────────────────────────────
+
+/**
+ * Handle one inbound LINE text message. Called by the webhook route for
+ * every `message` event with `message.type === "text"`.
+ */
+export async function handleLineMessage(
+  lineUserId: string,
+  text: string,
+  replyToken: string,
+): Promise<void> {
+  const svc = createServiceClient();
+  const command = parseCommand(text);
+
+  const { data: account, error: fetchError } = await svc
+    .from("line_accounts")
+    .select(
+      "id, agent_id, phone_at_link_time, otp_code_hash, otp_expires_at, otp_attempts, otp_requested_at, linked_at",
+    )
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error(`[line:router] line_accounts lookup failed userId=${redact(lineUserId)}`, fetchError);
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  const isLinked = Boolean(account?.agent_id && account?.linked_at);
+
+  console.log(
+    `[line:router] dispatch userId=${redact(lineUserId)} command=${command.type} linked=${isLinked}`,
+  );
+
+  if (command.type === "link") {
+    await handleLinkCommand(svc, lineUserId, account, command.phone, replyToken);
+    return;
+  }
+
+  if (command.type === "verify") {
+    await handleVerifyCommand(svc, lineUserId, account, command.code, replyToken);
+    return;
+  }
+
+  // Every other command is gated behind "is this LINE user linked".
+  if (!isLinked) {
+    console.log(`[line:router] blocked unlinked user command=${command.type} userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
+    return;
+  }
+
+  const agentId = account!.agent_id!;
+  switch (command.type) {
+    case "case":
+      await handleCaseLookupCommand(agentId, command.args, replyToken);
+      return;
+    case "timeline":
+      await handleTimelineListCommand(agentId, command.args, replyToken);
+      return;
+    default:
+      await replyLineMessage(replyToken, msg.LINKED_HELP);
+  }
+}
+
+// ── link command ──────────────────────────────────────────────────────────
+
+async function findUniqueAgentByPhone(
+  svc: ReturnType<typeof createServiceClient>,
+  normalizedPhone: string,
+): Promise<{ ok: true; agent: AgentPhoneRow } | { ok: false; count: number }> {
+  const { data, error } = await svc.from("agents").select("id, phone").not("phone", "is", null);
+  if (error) {
+    console.error("[line:router] agents lookup failed", error);
+    return { ok: false, count: 0 };
+  }
+  const matches = ((data ?? []) as AgentPhoneRow[]).filter(
+    (a) => a.phone && normalizePhone(a.phone) === normalizedPhone,
+  );
+  if (matches.length !== 1) return { ok: false, count: matches.length };
+  return { ok: true, agent: matches[0]! };
+}
+
+async function handleLinkCommand(
+  svc: ReturnType<typeof createServiceClient>,
+  lineUserId: string,
+  account: LineAccountLookup | null,
+  rawPhone: string,
+  replyToken: string,
+): Promise<void> {
+  if (account?.agent_id && account?.linked_at) {
+    console.log(`[line:link] already-linked lineAccountId=${account.id}`);
+    await replyLineMessage(replyToken, msg.ALREADY_LINKED);
+    return;
+  }
+
+  const rl = await checkRateLimit("line_otp_request", lineUserId);
+  if (!rl.allowed) {
+    console.warn(`[line:link] rate-limited userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.RATE_LIMITED);
+    return;
+  }
+
+  if (account?.otp_requested_at && !canRequestNewOtp(account.otp_requested_at)) {
+    console.log(`[line:link] otp-cooldown-active lineAccountId=${account.id}`);
+    await replyLineMessage(replyToken, msg.OTP_COOLDOWN);
+    return;
+  }
+
+  const normalizedInput = normalizePhone(rawPhone);
+  if (normalizedInput.length < 8) {
+    console.log(`[line:link] invalid-phone-format userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.INVALID_PHONE);
+    return;
+  }
+
+  const match = await findUniqueAgentByPhone(svc, normalizedInput);
+  if (!match.ok) {
+    // Deliberately identical reply whether 0 or >1 agents matched — never
+    // leak how many candidates a phone number resolved to.
+    console.log(`[line:link] no-unique-agent-match count=${match.count} userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.NO_MATCH);
+    return;
+  }
+
+  const otp = generateOtp();
+  const otpHash = hashOtp(otp);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + OTP_TTL_MS).toISOString();
+
+  // Upsert by line_user_id. Deliberately does NOT include agent_id/linked_at
+  // — those are only ever set by a successful verify, never here, so a
+  // repeated/failed link attempt can never silently link an account.
+  const { data: upserted, error: upsertError } = await svc
+    .from("line_accounts")
+    .upsert(
+      {
+        line_user_id: lineUserId,
+        phone_at_link_time: rawPhone.trim(),
+        otp_code_hash: otpHash,
+        otp_expires_at: expiresAt,
+        otp_attempts: 0,
+        otp_requested_at: now.toISOString(),
+      },
+      { onConflict: "line_user_id" },
+    )
+    .select("id")
+    .single();
+
+  if (upsertError || !upserted) {
+    console.error("[line:link] upsert failed", upsertError);
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  const phoneInfo = parsePhone(match.agent.phone ?? "", "TH");
+  const smsTarget = phoneInfo.e164 ?? match.agent.phone!;
+  const smsResult = await sendSms(
+    smsTarget,
+    `รหัส OTP ยืนยันบัญชี Detective Pulse ของคุณคือ ${otp} (หมดอายุใน 10 นาที) กรุณาอย่าเปิดเผยรหัสนี้กับผู้อื่น`,
+  );
+
+  if (!smsResult.ok) {
+    console.error(`[line:link] sms-send-failed lineAccountId=${upserted.id} reason=${smsResult.error}`);
+    await replyLineMessage(replyToken, msg.SMS_FAILED);
+    return;
+  }
+
+  console.log(`[line:link] otp-sent lineAccountId=${upserted.id}`);
+  await replyLineMessage(replyToken, msg.OTP_SENT);
+}
+
+// ── verify command ────────────────────────────────────────────────────────
+
+async function handleVerifyCommand(
+  svc: ReturnType<typeof createServiceClient>,
+  lineUserId: string,
+  account: LineAccountLookup | null,
+  code: string,
+  replyToken: string,
+): Promise<void> {
+  if (account?.agent_id && account?.linked_at) {
+    await replyLineMessage(replyToken, msg.ALREADY_LINKED);
+    return;
+  }
+
+  if (!account || !account.otp_code_hash || !account.otp_expires_at) {
+    console.log(`[line:verify] no-pending-otp userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.NO_PENDING_LINK);
+    return;
+  }
+
+  if (account.otp_attempts >= OTP_MAX_ATTEMPTS) {
+    console.warn(`[line:verify] locked-out lineAccountId=${account.id}`);
+    await replyLineMessage(replyToken, msg.OTP_LOCKED);
+    return;
+  }
+
+  if (isOtpExpired(account.otp_expires_at)) {
+    console.log(`[line:verify] otp-expired lineAccountId=${account.id}`);
+    await replyLineMessage(replyToken, msg.OTP_EXPIRED);
+    return;
+  }
+
+  const rl = await checkRateLimit("line_otp_verify", lineUserId);
+  if (!rl.allowed) {
+    console.warn(`[line:verify] rate-limited userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.RATE_LIMITED);
+    return;
+  }
+
+  const valid = verifyOtpHash(code, account.otp_code_hash);
+  if (!valid) {
+    const nextAttempts = account.otp_attempts + 1;
+    const { error: incError } = await svc
+      .from("line_accounts")
+      .update({ otp_attempts: nextAttempts })
+      .eq("id", account.id);
+    if (incError) console.error("[line:verify] attempt-increment failed", incError);
+
+    if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      console.warn(`[line:verify] locked-out-after-failed-attempt lineAccountId=${account.id}`);
+      await replyLineMessage(replyToken, msg.OTP_LOCKED);
+    } else {
+      console.log(`[line:verify] invalid-code lineAccountId=${account.id}`);
+      await replyLineMessage(replyToken, msg.OTP_INVALID);
+    }
+    return;
+  }
+
+  if (!account.phone_at_link_time) {
+    console.error(`[line:verify] missing-phone-at-link-time lineAccountId=${account.id}`);
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  // Re-resolve the candidate agent at verify time too (not just at link
+  // time) — defense-in-depth against the matching phone having changed/
+  // become ambiguous in the interim between the link and verify messages.
+  const normalizedPhone = normalizePhone(account.phone_at_link_time);
+  const match = await findUniqueAgentByPhone(svc, normalizedPhone);
+  if (!match.ok) {
+    console.error(
+      `[line:verify] candidate-agent-no-longer-unique count=${match.count} lineAccountId=${account.id}`,
+    );
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  const { error: linkError } = await svc
+    .from("line_accounts")
+    .update({
+      agent_id: match.agent.id,
+      linked_at: new Date().toISOString(),
+      otp_code_hash: null,
+      otp_expires_at: null,
+      otp_attempts: 0,
+      otp_requested_at: null,
+    })
+    .eq("id", account.id);
+
+  if (linkError) {
+    // Unique-violation (23505) on line_accounts_agent_id_unique means this
+    // agent got linked to a different LINE account in the interim.
+    if ((linkError as { code?: string }).code === "23505") {
+      console.warn(`[line:verify] agent-already-linked-elsewhere lineAccountId=${account.id}`);
+      await replyLineMessage(replyToken, msg.AGENT_ALREADY_LINKED);
+      return;
+    }
+    console.error("[line:verify] link update failed", linkError);
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  console.log(`[line:verify] linked lineAccountId=${account.id}`);
+  await replyLineMessage(replyToken, msg.LINK_SUCCESS);
+}
