@@ -20,10 +20,13 @@ vi.mock("@/lib/security/encryption", () => ({
   }),
 }));
 
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(async () => {}) }));
+
 import { handleIntelCommand } from "./intel";
 import { createServiceClient } from "@/lib/supabase/server";
 import { replyLineMessages } from "@/lib/line/reply";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit";
 import * as msg from "@/lib/line/messages";
 
 const AGENT_ID = "22222222-2222-2222-2222-222222222222";
@@ -67,16 +70,19 @@ type Builder = ReturnType<typeof chainable>;
 
 const DEFAULT_LIST_RESULT: Result = { data: [], error: null, count: 0 };
 const DEFAULT_PHOTO_RESULT: Result = { data: null, error: null };
+/** Default: agent has no linked portal login -> resolves to a null actorId. */
+const DEFAULT_AGENT_PROFILE_RESULT: Result = { data: { profile_id: null }, error: null };
 
 /**
  * Wires a mock Supabase client for handleIntelCommand's exact query
  * sequence: [0] `cases` (findAuthorizedCaseByNumber's authorization lookup),
  * [1] `cases` (this command's own intel-columns fetch, scoped by the already-
  * authorized case.id), then `target_vehicles` / `target_locations` /
- * `target_relationships` / `target_photos` (fired together via Promise.all).
- * Every builder handed out is collected (per table, in call order) so tests
- * can assert on the args each query's `.select()`/`.eq()` calls were made
- * with — in particular the authorization filter.
+ * `target_relationships` / `target_photos` / `agents` (fired together via
+ * Promise.all — the last resolves the audit actorId). Every builder handed
+ * out is collected (per table, in call order) so tests can assert on the
+ * args each query's `.select()`/`.eq()` calls were made with — in
+ * particular the authorization filter.
  */
 function makeSvc({
   authCaseResult,
@@ -85,6 +91,7 @@ function makeSvc({
   locationsResult = DEFAULT_LIST_RESULT,
   relationshipsResult = DEFAULT_LIST_RESULT,
   primaryPhotoResult = DEFAULT_PHOTO_RESULT,
+  agentProfileResult = DEFAULT_AGENT_PROFILE_RESULT,
   signedUrlsResult = { data: [] as Array<{ signedUrl?: string | null; path?: string }>, error: null as unknown },
 }: {
   authCaseResult: Result;
@@ -93,6 +100,7 @@ function makeSvc({
   locationsResult?: Result;
   relationshipsResult?: Result;
   primaryPhotoResult?: Result;
+  agentProfileResult?: Result;
   signedUrlsResult?: { data: Array<{ signedUrl?: string | null; path?: string }>; error: unknown };
 }) {
   const caseBuilders: Builder[] = [];
@@ -100,6 +108,7 @@ function makeSvc({
   const locationBuilders: Builder[] = [];
   const relationshipBuilders: Builder[] = [];
   const photoBuilders: Builder[] = [];
+  const agentBuilders: Builder[] = [];
   const casesQueue = [authCaseResult, profileResult ?? { data: null, error: null }];
   let casesCallIdx = 0;
 
@@ -112,6 +121,7 @@ function makeSvc({
     locationBuilders,
     relationshipBuilders,
     photoBuilders,
+    agentBuilders,
     createSignedUrls,
     storageFrom,
     storage: { from: storageFrom },
@@ -141,6 +151,11 @@ function makeSvc({
       if (table === "target_photos") {
         const b = chainable(primaryPhotoResult);
         photoBuilders.push(b);
+        return b;
+      }
+      if (table === "agents") {
+        const b = chainable(agentProfileResult);
+        agentBuilders.push(b);
         return b;
       }
       throw new Error(`unexpected table: ${table}`);
@@ -685,6 +700,107 @@ describe("handleIntelCommand", () => {
       logSpy.mockRestore();
       warnSpy.mockRestore();
       errSpy.mockRestore();
+    });
+  });
+
+  describe("audit trail", () => {
+    it("writes a LINE_INTEL_VIEW audit row on a successful lookup, with counts/ids only (no decrypted PII) in metadata", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        vehiclesResult: {
+          data: [
+            { make: "Toyota", model: "Camry", color: null, license_plate_enc: "enc:กข-1234", is_primary: true, photo_url: null },
+          ],
+          error: null,
+          count: 1,
+        },
+        relationshipsResult: {
+          data: [{ name_enc: "enc:สมหญิง รักดี", relation: "spouse" }],
+          error: null,
+          count: 1,
+        },
+        agentProfileResult: { data: { profile_id: "profile-123" }, error: null },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      expect(logAudit).toHaveBeenCalledTimes(1);
+      const call = vi.mocked(logAudit).mock.calls[0]![0];
+      expect(call.action).toBe("LINE_INTEL_VIEW");
+      expect(call.entity).toBe("cases");
+      expect(call.entityId).toBe(CASE_ID);
+      expect(call.actorId).toBe("profile-123");
+      expect(call.metadata).toMatchObject({
+        agent_id: AGENT_ID,
+        vehicles: 1,
+        relationships: 1,
+      });
+
+      const metadataText = JSON.stringify(call.metadata);
+      expect(metadataText).not.toContain("สมชาย ใจดี"); // target_name
+      expect(metadataText).not.toContain("กข-1234"); // vehicle plate
+      expect(metadataText).not.toContain("สมหญิง รักดี"); // relationship name
+      expect(metadataText).not.toContain("enc:");
+    });
+
+    it("resolves actorId to null when the linked agent has no profile_id, but still includes agent_id in metadata", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        agentProfileResult: { data: { profile_id: null }, error: null },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      const call = vi.mocked(logAudit).mock.calls[0]![0];
+      expect(call.actorId).toBeNull();
+      expect(call.metadata).toMatchObject({ agent_id: AGENT_ID });
+    });
+
+    it("resolves actorId to null (never throws) when the agent-profile lookup itself errors", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        agentProfileResult: { data: null, error: { message: "db down" } },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      expect(lastText()).not.toBe(msg.GENERIC_ERROR);
+      const call = vi.mocked(logAudit).mock.calls[0]![0];
+      expect(call.actorId).toBeNull();
+      errSpy.mockRestore();
+    });
+
+    it("still sends the reply even when logAudit itself rejects", async () => {
+      allowRateLimit();
+      vi.mocked(logAudit).mockRejectedValueOnce(new Error("audit write failed"));
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await expect(handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1")).resolves.not.toThrow();
+      expect(replyLineMessages).toHaveBeenCalledTimes(1);
+      expect(lastText()).toContain(CASE_NUMBER);
+    });
+
+    it("never writes an audit row when the lookup fails authorization or errors before success", async () => {
+      allowRateLimit();
+      const svc = makeSvc({ authCaseResult: { data: null, error: null } });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, "CASE-NOT-MINE", "rt1");
+      expect(logAudit).not.toHaveBeenCalled();
     });
   });
 });

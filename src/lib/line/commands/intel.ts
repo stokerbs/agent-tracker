@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { decryptField } from "@/lib/security/encryption";
 import { parseSocials } from "@/lib/socials";
 import { BUCKETS } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
 import {
   CASE_NOT_FOUND,
   GENERIC_ERROR,
@@ -87,7 +88,32 @@ import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
  * ── Logging discipline ─────────────────────────────────────────────────
  * NEVER log decrypted target PII (name/phone/address/notes/socials/plate/
  * relationship name) at any log level, including error paths — only IDs,
- * counts, field *names* (not values), and booleans.
+ * counts, field *names* (not values), and booleans. This applies equally to
+ * the `logAudit()` metadata written on success (see below) — counts/ids
+ * only, never a decrypted value.
+ *
+ * ── Audit trail ────────────────────────────────────────────────────────
+ * Every SUCCESSFUL lookup writes a `LINE_INTEL_VIEW` row to `audit_logs` via
+ * logAudit() (src/lib/audit.ts) — this is the bot's highest-sensitivity
+ * command (full PII dossier), so a supervisor must be able to later answer
+ * "which target dossiers did this agent pull, and when" (e.g. if a linked
+ * LINE account is ever found compromised or abused). Mirrors the
+ * CONTACT_LOOKUP audit precedent in src/app/api/osint/contact/route.ts.
+ *
+ * `audit_logs.actor_id` has an FK to `profiles(id)`, not `agents(id)`, and
+ * this webhook only has an `agents.id` in scope — so `agentId` can never be
+ * passed directly as `actorId` (that would violate the FK and the insert
+ * would silently no-op, since logAudit() swallows its own errors). Instead,
+ * this best-effort-resolves the linked agent's `profile_id` and passes THAT
+ * as `actorId` when present, or `actorId: null` when the agent has no linked
+ * portal login (nullable per schema) — same accepted pattern already
+ * documented in supabase/migrations/0109_line_accounts.sql for
+ * service-role/webhook-originated audit rows with no interactive session.
+ * `agent_id` is always included in `metadata` regardless, so the trail
+ * remains useful even when `actor_id` ends up null. Resolving the profile_id
+ * is itself best-effort — a failure there degrades to `actorId: null` rather
+ * than failing the whole command (this command's read is far more important
+ * than the audit row born from it, and logAudit() is non-fatal anyway).
  */
 const DISPLAY_CAP = 5;
 /** 1 text summary + at most 4 photos = 5 messages, LINE's per-reply cap. */
@@ -180,33 +206,40 @@ export async function handleIntelCommand(
   // Child tables, each scoped by case_id = the already-authorized case.id —
   // no further per-row case_agents check needed. Ordered so an is_primary
   // row (vehicles) always sorts within the first DISPLAY_CAP rows.
-  const [vehiclesResult, locationsResult, relationshipsResult, primaryPhotoResult] = await Promise.all([
-    svc
-      .from("target_vehicles")
-      .select("make, model, color, license_plate_enc, is_primary, photo_url", { count: "exact" })
-      .eq("case_id", caseRow.id)
-      .order("is_primary", { ascending: false })
-      .order("created_at", { ascending: true })
-      .limit(DISPLAY_CAP),
-    svc
-      .from("target_locations")
-      .select("location_type, location_name, address_enc", { count: "exact" })
-      .eq("case_id", caseRow.id)
-      .order("created_at", { ascending: true })
-      .limit(DISPLAY_CAP),
-    svc
-      .from("target_relationships")
-      .select("name_enc, relation", { count: "exact" })
-      .eq("case_id", caseRow.id)
-      .order("created_at", { ascending: true })
-      .limit(DISPLAY_CAP),
-    svc
-      .from("target_photos")
-      .select("storage_path")
-      .eq("case_id", caseRow.id)
-      .eq("is_primary", true)
-      .maybeSingle(),
-  ]);
+  const [vehiclesResult, locationsResult, relationshipsResult, primaryPhotoResult, agentProfileResult] =
+    await Promise.all([
+      svc
+        .from("target_vehicles")
+        .select("make, model, color, license_plate_enc, is_primary, photo_url", { count: "exact" })
+        .eq("case_id", caseRow.id)
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(DISPLAY_CAP),
+      svc
+        .from("target_locations")
+        .select("location_type, location_name, address_enc", { count: "exact" })
+        .eq("case_id", caseRow.id)
+        .order("created_at", { ascending: true })
+        .limit(DISPLAY_CAP),
+      svc
+        .from("target_relationships")
+        .select("name_enc, relation", { count: "exact" })
+        .eq("case_id", caseRow.id)
+        .order("created_at", { ascending: true })
+        .limit(DISPLAY_CAP),
+      svc
+        .from("target_photos")
+        .select("storage_path")
+        .eq("case_id", caseRow.id)
+        .eq("is_primary", true)
+        .maybeSingle(),
+      // Best-effort resolve for the audit trail below — audit_logs.actor_id
+      // FKs to profiles(id), not agents(id), so agentId itself can never be
+      // passed as actorId. A failure here is NOT fatal to the command (see
+      // the actorId resolution below): it just degrades the audit row's
+      // actor_id to null while agent_id still lands in metadata.
+      svc.from("agents").select("profile_id").eq("id", agentId).maybeSingle(),
+    ]);
 
   const childError =
     vehiclesResult.error ?? locationsResult.error ?? relationshipsResult.error ?? primaryPhotoResult.error;
@@ -215,6 +248,15 @@ export async function handleIntelCommand(
     await replyLineMessages(replyToken, [{ type: "text", text: GENERIC_ERROR }]);
     return;
   }
+
+  if (agentProfileResult.error) {
+    // Best-effort only — never block the reply over the audit-actor lookup.
+    console.error(
+      `[line:intel] agent-profile-lookup-failed agentId=${agentId} caseId=${caseRow.id}`,
+      agentProfileResult.error,
+    );
+  }
+  const auditActorId: string | null = agentProfileResult.data?.profile_id ?? null;
 
   // ── Decrypt profile fields (independent try/catch per field) ───────────
   const socialsJson = safeDecrypt(profileRow.target_socials_enc, "target_socials");
@@ -312,6 +354,30 @@ export async function handleIntelCommand(
       `locations=${locationsTotal} relationships=${relationshipsTotal} photos=${imageMessages.length} ` +
       `decryptFailures=${decryptFailures}`,
   );
+
+  // Audit every successful PII-dossier lookup — see the "Audit trail" module
+  // doc above. logAudit() already swallows its own errors internally, but
+  // this call is additionally wrapped here (belt-and-suspenders) so that an
+  // audit-write hiccup can NEVER prevent the reply below from being sent,
+  // even if that internal guarantee ever regresses. Counts/ids only in
+  // metadata — never a decrypted PII value.
+  try {
+    await logAudit({
+      actorId: auditActorId,
+      action: "LINE_INTEL_VIEW",
+      entity: "cases",
+      entityId: caseRow.id,
+      metadata: {
+        agent_id: agentId,
+        vehicles: vehiclesTotal,
+        locations: locationsTotal,
+        relationships: relationshipsTotal,
+        photos: imageMessages.length,
+      },
+    });
+  } catch (auditErr) {
+    console.error(`[line:intel] audit-log-failed agentId=${agentId} caseId=${caseRow.id}`, auditErr);
+  }
 
   await replyLineMessages(replyToken, [textMessage, ...imageMessages]);
 }
