@@ -99,6 +99,19 @@ export const RATE_LIMITS = {
    * left unlimited.
    */
   line_attach_photo: { limit: 30, windowMs: 3_600_000 },
+  /**
+   * 15 LINE-bot "target intelligence" lookups per hour per agent (agents.id).
+   * The most sensitive and DB/decrypt-heavy READ command in this bot (see
+   * src/lib/line/commands/intel.ts): every invocation decrypts the full
+   * target profile plus every vehicle/location/relationship row shown, and
+   * generates Storage signed URLs for photos. Kept more modest than the
+   * write-command buckets above (line_add_timeline et al, 30/hour) even
+   * though it never writes — the per-request cost here is decrypt +
+   * Storage-signing work, not a single row write, and it's the single
+   * highest-value target for an attacker (or a compromised linked account)
+   * to hammer for PII.
+   */
+  line_intel: { limit: 15, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
