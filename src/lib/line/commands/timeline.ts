@@ -1,48 +1,111 @@
 import "server-only";
 
+import { createServiceClient } from "@/lib/supabase/server";
 import { replyLineMessage } from "@/lib/line/reply";
-import { NOT_YET_IMPLEMENTED } from "@/lib/line/messages";
+import {
+  CASE_NOT_FOUND,
+  GENERIC_ERROR,
+  TIMELINE_EMPTY_ARGS,
+  TIMELINE_NO_ENTRIES,
+  formatTimelineList,
+} from "@/lib/line/messages";
+import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
+
+/** LINE messages have a practical length ceiling — cap to the most recent N
+ * entries rather than dumping an unbounded timeline into one chat bubble. */
+const TIMELINE_DISPLAY_LIMIT = 12;
 
 /**
- * Handles the "timeline list" (read-only) LINE-bot command (Round 2 — NOT
- * implemented here, stub only; the Round-2 write/add-timeline-entry command
- * is a separate, later feature and out of scope for this stub too). Wired up
- * by src/lib/line/router.ts's dispatcher when a message parses as a
- * timeline-list command (e.g. "ไทม์ไลน์ <รหัสเคส>").
+ * Handles the read-only "timeline list" LINE-bot command (e.g.
+ * "ไทม์ไลน์ <รหัสเคส>"). Wired up by src/lib/line/router.ts, which
+ * guarantees `agentId` is an already-linked, already-verified agent before
+ * this is ever called. Round-2 write/add-entry-via-LINE is explicitly out
+ * of scope here — read-only only.
  *
- * Handoff contract for whoever implements the real query logic:
- *
- * @param agentId - `agents.id` for the LINE user issuing this command.
- *   GUARANTEED by the router to be an already-linked, already-verified agent
- *   (line_accounts.agent_id resolved AND line_accounts.linked_at set) before
- *   this function is ever invoked — the router gates every non-link/verify
- *   command behind that check. Never trust any other agent-identifying value
- *   pulled directly from the raw LINE event payload — always use this
- *   parameter.
- * @param args - Raw text the user typed after the command keyword (e.g. a
- *   case id/number to list timeline entries for). NOT validated or
- *   sanitized by the router — validate/parametrize before using it in any
- *   query. Empty string if the user issued the command with no arguments.
- * @param replyToken - The LINE replyToken for this webhook event. Reply
- *   tokens are single-use and expire quickly (roughly 1 minute), so reply
- *   promptly. Use replyLineMessage(replyToken, text) from
- *   src/lib/line/reply.ts to send the response.
- *
- * Implementation notes for the real version:
- *   - Read-only: list existing timeline_entries for a case this agent can
- *     access (RLS-scoped, same authorization boundary as the case lookup
- *     command — see case.ts's notes). Do not add a write/add-entry path here,
- *     that is an explicitly separate, later feature.
- *   - Handle the empty-result case explicitly (e.g. "no timeline entries
- *     yet" vs. an actual error), matching the loading/error/empty-state
- *     requirement used everywhere else in this app.
+ * Authorization: same case_agents-membership check as case.ts (see
+ * src/lib/line/commands/shared.ts for the rationale and the reusable
+ * helper) — resolve+authorize the case first, then list timeline_entries
+ * scoped to that already-authorized case_id, excluding soft-deleted rows.
  */
 export async function handleTimelineListCommand(
   agentId: string,
   args: string,
   replyToken: string,
 ): Promise<void> {
-  void agentId;
-  void args;
-  await replyLineMessage(replyToken, NOT_YET_IMPLEMENTED);
+  const caseNumber = args.trim();
+  if (!caseNumber) {
+    console.log(`[line:timeline] empty-args agentId=${agentId}`);
+    await replyLineMessage(replyToken, TIMELINE_EMPTY_ARGS);
+    return;
+  }
+
+  const svc = createServiceClient();
+
+  const resolved = await findAuthorizedCaseByNumber(svc, agentId, caseNumber);
+  if (resolved.error) {
+    console.error(`[line:timeline] case-lookup-failed agentId=${agentId}`, resolved.error);
+    await replyLineMessage(replyToken, GENERIC_ERROR);
+    return;
+  }
+  if (!resolved.data) {
+    console.log(`[line:timeline] case-not-found-or-unauthorized agentId=${agentId}`);
+    await replyLineMessage(replyToken, CASE_NOT_FOUND);
+    return;
+  }
+
+  const caseRow = resolved.data;
+
+  const { count, error: countError } = await svc
+    .from("timeline_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("case_id", caseRow.id)
+    .is("deleted_at", null);
+
+  if (countError) {
+    console.error(
+      `[line:timeline] count-failed agentId=${agentId} caseId=${caseRow.id}`,
+      countError,
+    );
+    await replyLineMessage(replyToken, GENERIC_ERROR);
+    return;
+  }
+
+  const total = count ?? 0;
+  if (total === 0) {
+    console.log(`[line:timeline] no-entries agentId=${agentId} caseId=${caseRow.id}`);
+    await replyLineMessage(replyToken, TIMELINE_NO_ENTRIES);
+    return;
+  }
+
+  // Most-recent N first (index-friendly per timeline_case_idx / the 0048
+  // composite index on (case_id, entry_date, entry_time)), then reversed
+  // below so the reply reads oldest-to-newest, matching how the dashboard
+  // timeline is organized.
+  const { data: entries, error: entriesError } = await svc
+    .from("timeline_entries")
+    .select("entry_date, entry_time, entry, location")
+    .eq("case_id", caseRow.id)
+    .is("deleted_at", null)
+    .order("entry_date", { ascending: false })
+    .order("entry_time", { ascending: false })
+    .limit(TIMELINE_DISPLAY_LIMIT);
+
+  if (entriesError) {
+    console.error(
+      `[line:timeline] entries-fetch-failed agentId=${agentId} caseId=${caseRow.id}`,
+      entriesError,
+    );
+    await replyLineMessage(replyToken, GENERIC_ERROR);
+    return;
+  }
+
+  const chronological = [...(entries ?? [])].reverse();
+
+  console.log(
+    `[line:timeline] found agentId=${agentId} caseId=${caseRow.id} shown=${chronological.length} total=${total}`,
+  );
+  await replyLineMessage(
+    replyToken,
+    formatTimelineList(caseRow.case_number, chronological, total),
+  );
 }
