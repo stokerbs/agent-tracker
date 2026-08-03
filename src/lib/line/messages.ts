@@ -121,6 +121,38 @@ export function formatAddTimelineSuccess(caseNumber: string, time: string): stri
   return `✅ เพิ่มบันทึกไทม์ไลน์ให้เคส ${caseNumber} แล้ว เวลา ${time.slice(0, 5)}`;
 }
 
+// ── Attach photo/location (Round 3, stub wiring) command replies ───────────
+
+/**
+ * Shown when a photo/location message arrives but there is no open (or the
+ * window has expired) pending-attachment window for this agent — i.e.
+ * `line_accounts.pending_attachment_entry_id` is null or
+ * `pending_attachment_expires_at` is not in the future. This is a normal
+ * empty-state reply, not GENERIC_ERROR: nothing went wrong, there is simply
+ * nothing to attach to right now.
+ */
+export const NO_PENDING_ATTACHMENT =
+  "ไม่มีบันทึกไทม์ไลน์ที่รอแนบรูป/ตำแหน่งอยู่ กรุณาเพิ่มไทม์ไลน์ก่อนด้วยคำสั่ง เพิ่มไทม์ไลน์ ...";
+
+/**
+ * Temporary stub placeholder reply for a photo follow-up within a valid
+ * pending-attachment window. Replace once src/lib/line/commands/attach-photo.ts
+ * implements the real download/validate/upload flow (see that file's module
+ * doc for the handoff contract) — same stub-to-real transition pattern as
+ * Round 2's add-timeline command.
+ */
+export const ATTACH_PHOTO_STUB =
+  "ได้รับรูปภาพแล้ว ระบบกำลังพัฒนาการแนบรูปภาพนี้เข้ากับไทม์ไลน์ กรุณาลองใหม่อีกครั้งในเร็ว ๆ นี้";
+
+/**
+ * Temporary stub placeholder reply for a location follow-up within a valid
+ * pending-attachment window. Replace once
+ * src/lib/line/commands/attach-location.ts implements the real
+ * validate/save flow (see that file's module doc for the handoff contract).
+ */
+export const ATTACH_LOCATION_STUB =
+  "ได้รับตำแหน่งแล้ว ระบบกำลังพัฒนาการแนบตำแหน่งนี้เข้ากับไทม์ไลน์ กรุณาลองใหม่อีกครั้งในเร็ว ๆ นี้";
+
 const CASE_STATUS_LABEL: Record<string, string> = {
   new: "ใหม่",
   assigned: "มอบหมายแล้ว",

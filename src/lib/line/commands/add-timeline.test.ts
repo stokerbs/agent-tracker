@@ -53,25 +53,44 @@ function chainable(result: Result) {
 
 type Builder = ReturnType<typeof chainable>;
 
+/** Minimal chainable stand-in for the `line_accounts` pending-attachment
+ * window UPDATE (Round 3): `svc.from("line_accounts").update(vals).eq("agent_id", agentId)`. */
+function updateChainable(error: unknown) {
+  const b: { update: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn> } = {
+    update: vi.fn(),
+    eq: vi.fn(async () => ({ error })),
+  };
+  b.update.mockImplementation(() => b);
+  return b;
+}
+
+type UpdateBuilder = ReturnType<typeof updateChainable>;
+
 /** Queues a chainable result per successive `svc.from(table)` call, per table.
  * handleAddTimelineEntryCommand issues, at most: one `cases` query (case
- * resolution) then one `timeline_entries` query (the insert). Every builder
- * handed out is also collected (per table, in call order) so tests can
- * assert on the args each query's `.select()`/`.eq()`/`.insert()` calls were
- * made with — in particular the authorization filter and the inserted row's
- * `agent_id`. */
+ * resolution), one `timeline_entries` query (the insert), and (Round 3, on a
+ * successful insert) one `line_accounts` UPDATE opening the pending-
+ * attachment window. Every builder handed out is also collected (per table,
+ * in call order) so tests can assert on the args each query's
+ * `.select()`/`.eq()`/`.insert()`/`.update()` calls were made with — in
+ * particular the authorization filter, the inserted row's `agent_id`, and
+ * the pending-attachment window's update payload/key. */
 function makeSvc({
   caseResult,
   insertResult,
+  windowUpdateError = null,
 }: {
   caseResult: Result;
   insertResult?: Result;
+  windowUpdateError?: unknown;
 }) {
   const caseBuilders: Builder[] = [];
   const timelineBuilders: Builder[] = [];
+  const lineAccountBuilders: UpdateBuilder[] = [];
   return {
     caseBuilders,
     timelineBuilders,
+    lineAccountBuilders,
     from(table: string) {
       if (table === "cases") {
         const b = chainable(caseResult);
@@ -81,6 +100,11 @@ function makeSvc({
       if (table === "timeline_entries") {
         const b = chainable(insertResult ?? { data: { id: "entry-1" }, error: null });
         timelineBuilders.push(b);
+        return b;
+      }
+      if (table === "line_accounts") {
+        const b = updateChainable(windowUpdateError);
+        lineAccountBuilders.push(b);
         return b;
       }
       throw new Error(`unexpected table: ${table}`);
@@ -214,6 +238,65 @@ describe("handleAddTimelineEntryCommand", () => {
     expect(insertArg).not.toHaveProperty("video_url");
     expect(insertArg).not.toHaveProperty("lat");
     expect(insertArg).not.toHaveProperty("lng");
+  });
+
+  describe("pending-attachment window (Round 3)", () => {
+    it("opens the pending-attachment window keyed by agent_id (not line_user_id) with the new entry/case ids", async () => {
+      allowRateLimit();
+      const svc = makeSvc({ caseResult: { data: authorizedCaseRow(), error: null } });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      const before = Date.now();
+      await handleAddTimelineEntryCommand(AGENT_ID, CASE_NUMBER, "entry text", "rt1");
+
+      expect(svc.lineAccountBuilders.length).toBe(1);
+      const b = svc.lineAccountBuilders[0]!;
+      const updateArg = b.update.mock.calls[0]![0] as {
+        pending_attachment_entry_id: string;
+        pending_attachment_case_id: string;
+        pending_attachment_expires_at: string;
+      };
+      expect(updateArg.pending_attachment_entry_id).toBe("entry-1");
+      expect(updateArg.pending_attachment_case_id).toBe(CASE_ID);
+      expect(new Date(updateArg.pending_attachment_expires_at).getTime()).toBeGreaterThan(before);
+      expect(b.eq).toHaveBeenCalledWith("agent_id", AGENT_ID);
+    });
+
+    it("is best-effort: a window-update failure is logged but never surfaces as an error reply (entry already succeeded)", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        caseResult: { data: authorizedCaseRow(), error: null },
+        windowUpdateError: { message: "update failed" },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await handleAddTimelineEntryCommand(AGENT_ID, CASE_NUMBER, "entry text", "rt1");
+
+      // Success reply already went out — the window-open failure must not
+      // replace or follow it with an error reply.
+      expect(replyLineMessage).toHaveBeenCalledTimes(1);
+      const reply = lastReply();
+      expect(reply).not.toBe(msg.GENERIC_ERROR);
+      expect(reply).toContain(CASE_NUMBER);
+
+      const loggedArgs = errSpy.mock.calls.flat().map(String);
+      expect(loggedArgs.some((s) => s.includes("pending-attachment-window-open-failed"))).toBe(true);
+      errSpy.mockRestore();
+    });
+
+    it("does not attempt to open a window when the insert itself fails", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        caseResult: { data: authorizedCaseRow(), error: null },
+        insertResult: { data: null, error: { message: "insert failed" } },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await handleAddTimelineEntryCommand(AGENT_ID, CASE_NUMBER, "entry text", "rt1");
+      expect(svc.lineAccountBuilders.length).toBe(0);
+    });
   });
 
   it("calls notifyCaseParticipants (best-effort) with includeClient: false on success", async () => {

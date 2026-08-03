@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
-import { handleLineMessage } from "@/lib/line/router";
+import { handleLineMessage, handleLineMediaMessage } from "@/lib/line/router";
 
 // LINE Messaging API webhook for the Detective Pulse Official Account.
 //
@@ -11,13 +11,40 @@ import { handleLineMessage } from "@/lib/line/router";
 // src/lib/line/commands/*), and a help/link-prompt reply for everything
 // else. See router.ts's module doc for the full dispatch flow.
 //
+// Image and location message events (Round 3: photo/location follow-up
+// attachments to a just-added timeline entry) are routed to
+// handleLineMediaMessage() instead — see router.ts's module doc. Stickers
+// and any other message type remain silently ignored.
+//
 // Requires LINE_CHANNEL_SECRET (to verify) + LINE_CHANNEL_ACCESS_TOKEN (to reply).
 
+/**
+ * LINE webhook `message` event shapes this route understands. This repo does
+ * not depend on LINE's official SDK (not present in package.json, and this
+ * is the only call site parsing webhook payloads), so these are hand-typed
+ * to match LINE's documented Messaging API webhook event schema:
+ *   - text:     { type: "text", text: string }
+ *   - image:    { type: "image", id: string } — `id` is the LINE Content API
+ *               messageId used to download the raw bytes (see
+ *               src/lib/line/content.ts's downloadLineContent()).
+ *   - location: { type: "location", title?: string, address?: string,
+ *               latitude: number, longitude: number }
+ * Any other `type` (sticker, video, audio, file, ...) is left untyped here
+ * and simply ignored by the loop below.
+ */
 interface LineEvent {
   type: string;
   replyToken?: string;
   source?: { userId?: string };
-  message?: { type: string; text?: string };
+  message?: {
+    type: string;
+    text?: string;
+    id?: string;
+    title?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -55,12 +82,40 @@ export async function POST(request: NextRequest) {
   for (const ev of events) {
     const userId = ev.source?.userId;
     if (ev.type !== "message" || !ev.replyToken || !token || !userId) continue;
-    // Only plain-text messages carry a command; anything else (sticker,
-    // image, location, …) is silently ignored rather than routed.
-    if (ev.message?.type !== "text" || typeof ev.message.text !== "string") continue;
+
+    const message = ev.message;
+    if (!message) continue;
 
     try {
-      await handleLineMessage(userId, ev.message.text, ev.replyToken);
+      if (message.type === "text" && typeof message.text === "string") {
+        await handleLineMessage(userId, message.text, ev.replyToken);
+      } else if (message.type === "image" && typeof message.id === "string") {
+        // `message.id` is the LINE Content API messageId — the real bytes
+        // are fetched later by src/lib/line/commands/attach-photo.ts via
+        // src/lib/line/content.ts's downloadLineContent(), not here.
+        await handleLineMediaMessage(userId, { type: "image", messageId: message.id }, ev.replyToken);
+      } else if (
+        message.type === "location" &&
+        typeof message.latitude === "number" &&
+        typeof message.longitude === "number"
+      ) {
+        // Prefer LINE's `address` field; fall back to `title` (a
+        // user-supplied label, e.g. "Home") when address is absent. Both
+        // are optional per LINE's schema. Bounds/precision validation of
+        // lat/lng is deliberately NOT done here — that's
+        // attach-location.ts's job (see its module doc).
+        await handleLineMediaMessage(
+          userId,
+          {
+            type: "location",
+            latitude: message.latitude,
+            longitude: message.longitude,
+            address: message.address ?? message.title ?? null,
+          },
+          ev.replyToken,
+        );
+      }
+      // Anything else (sticker, video, audio, file, …) is silently ignored.
     } catch (e) {
       console.error("[line-webhook] dispatch failed:", e instanceof Error ? e.message : e);
     }

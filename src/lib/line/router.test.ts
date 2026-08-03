@@ -21,8 +21,10 @@ vi.mock("@/lib/line/reply", () => ({ replyLineMessage: vi.fn() }));
 vi.mock("@/lib/line/commands/case", () => ({ handleCaseLookupCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/timeline", () => ({ handleTimelineListCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/add-timeline", () => ({ handleAddTimelineEntryCommand: vi.fn() }));
+vi.mock("@/lib/line/commands/attach-photo", () => ({ handleAttachPhotoCommand: vi.fn() }));
+vi.mock("@/lib/line/commands/attach-location", () => ({ handleAttachLocationCommand: vi.fn() }));
 
-import { handleLineMessage, parseCommand } from "./router";
+import { handleLineMessage, handleLineMediaMessage, parseCommand } from "./router";
 import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendSms } from "@/lib/sms/twilio";
@@ -30,6 +32,8 @@ import { replyLineMessage } from "@/lib/line/reply";
 import { handleCaseLookupCommand } from "@/lib/line/commands/case";
 import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
 import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
+import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
+import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
 import { hashOtp, OTP_MAX_ATTEMPTS } from "./otp";
 import * as msg from "./messages";
 
@@ -46,6 +50,9 @@ type AccountRow = {
   otp_attempts: number;
   otp_requested_at: string | null;
   linked_at: string | null;
+  pending_attachment_entry_id?: string | null;
+  pending_attachment_case_id?: string | null;
+  pending_attachment_expires_at?: string | null;
 };
 
 function makeSvc({
@@ -563,5 +570,112 @@ describe("handleLineMessage — line_accounts lookup failure", () => {
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await handleLineMessage(LINE_USER_ID, "สวัสดี", "rt1");
     expect(lastReply()).toBe(msg.GENERIC_ERROR);
+  });
+});
+
+describe("handleLineMediaMessage (Round 3 — image/location dispatch)", () => {
+  const FUTURE = new Date(Date.now() + 5 * 60_000).toISOString();
+  const PAST = new Date(Date.now() - 5 * 60_000).toISOString();
+  const PENDING_ENTRY_ID = "entry-1";
+  const PENDING_CASE_ID = "case-1";
+
+  const linkedAccount = (overrides: Partial<AccountRow> = {}): AccountRow => ({
+    id: ACCOUNT_ID,
+    agent_id: AGENT_ID,
+    phone_at_link_time: "0812345678",
+    otp_code_hash: null,
+    otp_expires_at: null,
+    otp_attempts: 0,
+    otp_requested_at: null,
+    linked_at: "2026-01-01T00:00:00.000Z",
+    pending_attachment_entry_id: null,
+    pending_attachment_case_id: null,
+    pending_attachment_expires_at: null,
+    ...overrides,
+  });
+
+  it("gates behind linked status exactly like text commands — unlinked replies notLinkedHelp and never dispatches", async () => {
+    await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
+    expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
+    expect(handleAttachLocationCommand).not.toHaveBeenCalled();
+    expect(lastReply()).toBe(msg.notLinkedHelp(LINE_USER_ID));
+  });
+
+  it("replies GENERIC_ERROR when the line_accounts fetch errors", async () => {
+    const s = makeSvc({ fetchError: { message: "db down" } });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
+    expect(lastReply()).toBe(msg.GENERIC_ERROR);
+    expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
+  });
+
+  it("replies NO_PENDING_ATTACHMENT (empty-state, not GENERIC_ERROR) when no window is open", async () => {
+    const s = makeSvc({ accountRow: linkedAccount() });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
+    expect(lastReply()).toBe(msg.NO_PENDING_ATTACHMENT);
+    expect(lastReply()).not.toBe(msg.GENERIC_ERROR);
+    expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
+  });
+
+  it("replies NO_PENDING_ATTACHMENT when the window has already expired", async () => {
+    const s = makeSvc({
+      accountRow: linkedAccount({
+        pending_attachment_entry_id: PENDING_ENTRY_ID,
+        pending_attachment_case_id: PENDING_CASE_ID,
+        pending_attachment_expires_at: PAST,
+      }),
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
+    expect(lastReply()).toBe(msg.NO_PENDING_ATTACHMENT);
+    expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
+  });
+
+  it("dispatches an image message to handleAttachPhotoCommand with agentId/pendingCaseId/pendingEntryId/messageId when a valid window is open", async () => {
+    const s = makeSvc({
+      accountRow: linkedAccount({
+        pending_attachment_entry_id: PENDING_ENTRY_ID,
+        pending_attachment_case_id: PENDING_CASE_ID,
+        pending_attachment_expires_at: FUTURE,
+      }),
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
+    expect(handleAttachPhotoCommand).toHaveBeenCalledWith(
+      AGENT_ID,
+      PENDING_CASE_ID,
+      PENDING_ENTRY_ID,
+      "m1",
+      "rt1",
+    );
+    expect(handleAttachLocationCommand).not.toHaveBeenCalled();
+    expect(replyLineMessage).not.toHaveBeenCalled();
+  });
+
+  it("dispatches a location message to handleAttachLocationCommand with agentId/pendingCaseId/pendingEntryId/lat/lng/address when a valid window is open", async () => {
+    const s = makeSvc({
+      accountRow: linkedAccount({
+        pending_attachment_entry_id: PENDING_ENTRY_ID,
+        pending_attachment_case_id: PENDING_CASE_ID,
+        pending_attachment_expires_at: FUTURE,
+      }),
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMediaMessage(
+      LINE_USER_ID,
+      { type: "location", latitude: 13.75, longitude: 100.5, address: "123 Main St" },
+      "rt1",
+    );
+    expect(handleAttachLocationCommand).toHaveBeenCalledWith(
+      AGENT_ID,
+      PENDING_CASE_ID,
+      PENDING_ENTRY_ID,
+      13.75,
+      100.5,
+      "123 Main St",
+      "rt1",
+    );
+    expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
   });
 });

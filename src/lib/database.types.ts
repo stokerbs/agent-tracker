@@ -2395,6 +2395,9 @@ export type Database = {
           otp_code_hash: string | null
           otp_expires_at: string | null
           otp_requested_at: string | null
+          pending_attachment_case_id: string | null
+          pending_attachment_entry_id: string | null
+          pending_attachment_expires_at: string | null
           phone_at_link_time: string | null
           updated_at: string
         }
@@ -2408,6 +2411,9 @@ export type Database = {
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
           phone_at_link_time?: string | null
           updated_at?: string
         }
@@ -2421,6 +2427,9 @@ export type Database = {
           otp_code_hash?: string | null
           otp_expires_at?: string | null
           otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
           phone_at_link_time?: string | null
           updated_at?: string
         }
@@ -2430,6 +2439,20 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_case_id_fkey"
+            columns: ["pending_attachment_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_entry_id_fkey"
+            columns: ["pending_attachment_entry_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_entries"
             referencedColumns: ["id"]
           },
         ]

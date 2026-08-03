@@ -5,6 +5,7 @@ import { replyLineMessage } from "@/lib/line/reply";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyCaseParticipants } from "@/lib/notifications";
 import { bangkokDateKey } from "@/lib/utils";
+import { PENDING_ATTACHMENT_WINDOW_MS } from "@/lib/line/otp";
 import {
   ADD_TIMELINE_EMPTY_ARGS,
   ADD_TIMELINE_ENTRY_MAX_CHARS,
@@ -48,6 +49,17 @@ import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
  * Uses createServiceClient() for the same reason every other command in this
  * webhook does (see router.ts's module doc): no Supabase session exists
  * here. The service-role key never bypasses the authorization check above.
+ *
+ * Round 3 addition: on a successful insert, this also opens a short-lived
+ * "pending attachment" window on the caller's `line_accounts` row (see
+ * supabase/migrations/0110_line_pending_attachment.sql), so a follow-up
+ * photo/location message can attach to the entry just created — see
+ * src/lib/line/router.ts's handleLineMediaMessage() and
+ * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3
+ * stubs). That update is keyed by `agent_id` (not `line_user_id`, which
+ * this function doesn't have) and is best-effort: its failure is logged but
+ * never turned into a user-facing error, since the entry itself was already
+ * successfully created and acknowledged by the time it runs.
  */
 export async function handleAddTimelineEntryCommand(
   agentId: string,
@@ -128,6 +140,35 @@ export async function handleAddTimelineEntryCommand(
     `[line:add-timeline] inserted agentId=${agentId} caseId=${caseRow.id} entryId=${inserted.id}`,
   );
   await replyLineMessage(replyToken, formatAddTimelineSuccess(caseRow.case_number, entry_time));
+
+  // Open the Round-3 pending-attachment window (see
+  // supabase/migrations/0110_line_pending_attachment.sql and
+  // src/lib/line/router.ts's handleLineMediaMessage()) so a follow-up
+  // photo/location message from this agent can attach to the entry just
+  // created. Keyed by `agent_id` (unique-when-set on line_accounts) rather
+  // than `line_user_id` — this function's signature only has `agentId`, and
+  // `agent_id` alone already identifies the right row.
+  //
+  // Best-effort: the entry itself was already successfully inserted and its
+  // success reply already sent above, so a failure here must never surface
+  // as an error to the agent — it only means the photo/location follow-up
+  // convenience won't be available for this entry, not that the entry
+  // write failed.
+  const { error: windowError } = await svc
+    .from("line_accounts")
+    .update({
+      pending_attachment_entry_id: inserted.id,
+      pending_attachment_case_id: caseRow.id,
+      pending_attachment_expires_at: new Date(Date.now() + PENDING_ATTACHMENT_WINDOW_MS).toISOString(),
+    })
+    .eq("agent_id", agentId);
+
+  if (windowError) {
+    console.error(
+      `[line:add-timeline] pending-attachment-window-open-failed agentId=${agentId} entryId=${inserted.id}`,
+      windowError,
+    );
+  }
 
   // Best-effort notification to the rest of the case team, mirroring the
   // dashboard's addTimelineEntry() write path (src/app/(dashboard)/timeline/

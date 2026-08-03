@@ -20,14 +20,19 @@ import * as msg from "@/lib/line/messages";
 import { handleCaseLookupCommand } from "@/lib/line/commands/case";
 import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
 import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
+import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
+import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
  * account linking, plus a gate for the case/timeline commands implemented
  * elsewhere — see src/lib/line/commands/case.ts and
- * src/lib/line/commands/timeline.ts (read-only) and
- * src/lib/line/commands/add-timeline.ts (write, Round 2 — text-only case
- * timeline entries, see that file's module doc) for that extension point).
+ * src/lib/line/commands/timeline.ts (read-only), src/lib/line/commands/
+ * add-timeline.ts (write, Round 2 — text-only case timeline entries), and
+ * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3 STUBS
+ * — photo/location follow-up attachments to a just-added timeline entry,
+ * see handleLineMediaMessage() below and those files' module docs) for
+ * those extension points).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
@@ -40,6 +45,13 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
  *      yet). Every OTHER command is gated behind "is this LINE user linked" —
  *      unlinked users get a help/link-prompt message instead.
  *
+ * Every inbound image/location message instead flows through
+ * handleLineMediaMessage() (Round 3), which resolves the same
+ * lineUserId -> line_accounts row (via the shared resolveLineAccount()
+ * helper), applies the same linked-gate, and then dispatches to a
+ * pending-attachment STUB handler if (and only if) a pending-attachment
+ * window is open — see that function's doc for the full flow.
+ *
  * Uses the service-role Supabase client throughout: a LINE webhook request
  * carries no Supabase session/auth.uid(), so there is no user-scoped client
  * to use here (same rationale documented in
@@ -48,7 +60,8 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
  * upstream in route.ts; OTP possession proves phone ownership here).
  */
 
-/** Shape of the columns selected from line_accounts by handleLineMessage() below. */
+/** Shape of the columns selected from line_accounts by resolveLineAccount()
+ * below, shared by both handleLineMessage() and handleLineMediaMessage(). */
 type LineAccountLookup = {
   id: string;
   agent_id: string | null;
@@ -58,9 +71,19 @@ type LineAccountLookup = {
   otp_attempts: number;
   otp_requested_at: string | null;
   linked_at: string | null;
+  pending_attachment_entry_id: string | null;
+  pending_attachment_case_id: string | null;
+  pending_attachment_expires_at: string | null;
 };
 
 type AgentPhoneRow = { id: string; phone: string | null };
+
+/** Media (non-text) follow-up input handed to handleLineMediaMessage() by
+ * the webhook route — see that route's LineEvent interface for the raw LINE
+ * webhook shapes these are derived from. */
+export type MediaInput =
+  | { type: "image"; messageId: string }
+  | { type: "location"; latitude: number; longitude: number; address: string | null };
 
 // ── Command parsing ─────────────────────────────────────────────────────────
 
@@ -118,6 +141,30 @@ function redact(value: string): string {
   return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
+// ── line_accounts resolution (shared by text + media dispatch) ─────────────
+
+const LINE_ACCOUNT_COLUMNS =
+  "id, agent_id, phone_at_link_time, otp_code_hash, otp_expires_at, otp_attempts, otp_requested_at, linked_at, pending_attachment_entry_id, pending_attachment_case_id, pending_attachment_expires_at";
+
+/**
+ * Resolve a `lineUserId` (LINE webhook `source.userId`) to its
+ * `line_accounts` row, if any. Shared by handleLineMessage() (text) and
+ * handleLineMediaMessage() (image/location) so the lookup/column-set isn't
+ * duplicated — both need the same "is this LINE user linked" + (for media)
+ * pending-attachment-window fields.
+ */
+async function resolveLineAccount(
+  svc: ReturnType<typeof createServiceClient>,
+  lineUserId: string,
+): Promise<{ data: LineAccountLookup | null; error: unknown }> {
+  const { data, error } = await svc
+    .from("line_accounts")
+    .select(LINE_ACCOUNT_COLUMNS)
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+  return { data: (data as LineAccountLookup | null) ?? null, error };
+}
+
 // ── Main dispatcher ──────────────────────────────────────────────────────────
 
 /**
@@ -132,13 +179,7 @@ export async function handleLineMessage(
   const svc = createServiceClient();
   const command = parseCommand(text);
 
-  const { data: account, error: fetchError } = await svc
-    .from("line_accounts")
-    .select(
-      "id, agent_id, phone_at_link_time, otp_code_hash, otp_expires_at, otp_attempts, otp_requested_at, linked_at",
-    )
-    .eq("line_user_id", lineUserId)
-    .maybeSingle();
+  const { data: account, error: fetchError } = await resolveLineAccount(svc, lineUserId);
 
   if (fetchError) {
     console.error(`[line:router] line_accounts lookup failed userId=${redact(lineUserId)}`, fetchError);
@@ -183,6 +224,107 @@ export async function handleLineMessage(
     default:
       await replyLineMessage(replyToken, msg.LINKED_HELP);
   }
+}
+
+/**
+ * Handle one inbound LINE image or location message (Round 3 infra wiring).
+ * Called by the webhook route for `message` events with
+ * `message.type === "image"` or `message.type === "location"` — text stays
+ * on handleLineMessage() above, stickers/others stay ignored by the route.
+ *
+ * Flow:
+ *   1. Resolve `lineUserId -> line_accounts` via the same resolveLineAccount()
+ *      helper handleLineMessage() uses.
+ *   2. Gate behind "is this LINE user linked", identical to every non-link/
+ *      verify text command (unlinked -> notLinkedHelp()).
+ *   3. Once linked, check whether a pending-attachment window is open and
+ *      still valid (`pending_attachment_entry_id` set AND
+ *      `pending_attachment_case_id` set AND `pending_attachment_expires_at`
+ *      still in the future — opened by handleAddTimelineEntryCommand() in
+ *      src/lib/line/commands/add-timeline.ts). If not, this is a normal
+ *      empty-state, not an error: reply with NO_PENDING_ATTACHMENT.
+ *   4. If a valid window is open, dispatch to the appropriate STUB handler
+ *      (src/lib/line/commands/attach-photo.ts /
+ *      src/lib/line/commands/attach-location.ts — real implementations are
+ *      out of scope for this round), passing `agentId` +
+ *      `pendingCaseId`/`pendingEntryId` from the resolved row so those
+ *      handlers can re-verify `case_agents` authorization at attach time —
+ *      the pending window's case_id must NEVER be trusted alone (see those
+ *      files' module docs for the full TOCTOU rationale).
+ *
+ * Deliberately NOT single-use: a successful photo attach must NOT clear
+ * `pending_attachment_*` (an agent may send several photos for the same
+ * entry). A location attach naturally overwrites the entry's single
+ * `location` field on a second location message — expected, not a bug. The
+ * window is superseded only when add-timeline.ts opens a new one for a new
+ * entry. See attach-photo.ts/attach-location.ts's module docs for the full
+ * handoff contract to the next engineers who implement the real logic.
+ */
+export async function handleLineMediaMessage(
+  lineUserId: string,
+  media: MediaInput,
+  replyToken: string,
+): Promise<void> {
+  const svc = createServiceClient();
+
+  const { data: account, error: fetchError } = await resolveLineAccount(svc, lineUserId);
+
+  if (fetchError) {
+    console.error(
+      `[line:router] line_accounts lookup failed (media) userId=${redact(lineUserId)}`,
+      fetchError,
+    );
+    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
+    return;
+  }
+
+  const isLinked = Boolean(account?.agent_id && account?.linked_at);
+
+  console.log(
+    `[line:router] dispatch-media userId=${redact(lineUserId)} mediaType=${media.type} linked=${isLinked}`,
+  );
+
+  if (!isLinked) {
+    console.log(
+      `[line:router] blocked unlinked user media=${media.type} userId=${redact(lineUserId)}`,
+    );
+    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
+    return;
+  }
+
+  const agentId = account!.agent_id!;
+
+  const hasOpenWindow =
+    Boolean(account!.pending_attachment_entry_id) &&
+    Boolean(account!.pending_attachment_case_id) &&
+    Boolean(account!.pending_attachment_expires_at) &&
+    new Date(account!.pending_attachment_expires_at!).getTime() > Date.now();
+
+  if (!hasOpenWindow) {
+    console.log(
+      `[line:router] no-pending-attachment-window agentId=${agentId} mediaType=${media.type}`,
+    );
+    await replyLineMessage(replyToken, msg.NO_PENDING_ATTACHMENT);
+    return;
+  }
+
+  const pendingEntryId = account!.pending_attachment_entry_id!;
+  const pendingCaseId = account!.pending_attachment_case_id!;
+
+  if (media.type === "image") {
+    await handleAttachPhotoCommand(agentId, pendingCaseId, pendingEntryId, media.messageId, replyToken);
+    return;
+  }
+
+  await handleAttachLocationCommand(
+    agentId,
+    pendingCaseId,
+    pendingEntryId,
+    media.latitude,
+    media.longitude,
+    media.address,
+    replyToken,
+  );
 }
 
 // ── link command ──────────────────────────────────────────────────────────

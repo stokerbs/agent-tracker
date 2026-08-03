@@ -22,6 +22,17 @@ export const OTP_MAX_ATTEMPTS = 5;
 /** Minimum time between two OTP requests for the same LINE account. */
 export const OTP_RESEND_COOLDOWN_MS = 60_000; // 1 minute
 
+/**
+ * How long a "pending attachment" window stays open after a Round-2
+ * add-timeline-entry write, during which a follow-up photo/location message
+ * from the same agent may attach to the entry just created (see
+ * supabase/migrations/0110_line_pending_attachment.sql and
+ * src/lib/line/router.ts's handleLineMediaMessage()). Not OTP-related, but
+ * kept alongside the other LINE-bot time constants in this file for a single
+ * consistent home rather than a one-off constant scattered elsewhere.
+ */
+export const PENDING_ATTACHMENT_WINDOW_MS = 5 * 60_000; // 5 minutes
+
 /** Generate a random, zero-padded numeric OTP (e.g. "042817"). */
 export function generateOtp(): string {
   const max = 10 ** OTP_LENGTH;

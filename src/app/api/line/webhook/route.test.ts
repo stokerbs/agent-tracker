@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import crypto from "node:crypto";
 import type { NextRequest } from "next/server";
 
-vi.mock("@/lib/line/router", () => ({ handleLineMessage: vi.fn() }));
+vi.mock("@/lib/line/router", () => ({ handleLineMessage: vi.fn(), handleLineMediaMessage: vi.fn() }));
 
 import { POST } from "./route";
-import { handleLineMessage } from "@/lib/line/router";
+import { handleLineMessage, handleLineMediaMessage } from "@/lib/line/router";
 
 const OLD_ENV = { ...process.env };
 
@@ -73,7 +73,7 @@ describe("POST /api/line/webhook", () => {
     expect(handleLineMessage).not.toHaveBeenCalled();
   });
 
-  it("does not dispatch non-text message events (e.g. sticker/image/location)", async () => {
+  it("does not dispatch a sticker message event (still ignored)", async () => {
     const body = JSON.stringify({
       events: [
         { type: "message", replyToken: "rt1", source: { userId: "Uabc123" }, message: { type: "sticker" } },
@@ -82,6 +82,7 @@ describe("POST /api/line/webhook", () => {
     const res = await POST(req(body, sign("shhh", body)));
     expect(res.status).toBe(200);
     expect(handleLineMessage).not.toHaveBeenCalled();
+    expect(handleLineMediaMessage).not.toHaveBeenCalled();
   });
 
   it("200 and does not throw when the router dispatch itself rejects", async () => {
@@ -93,5 +94,132 @@ describe("POST /api/line/webhook", () => {
     });
     const res = await POST(req(body, sign("shhh", body)));
     expect(res.status).toBe(200);
+  });
+
+  describe("image/location message events (Round 3)", () => {
+    it("dispatches a valid signed image-message event to handleLineMediaMessage with { type: 'image', messageId }", async () => {
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "image", id: "msg-id-1" },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMessage).not.toHaveBeenCalled();
+      expect(handleLineMediaMessage).toHaveBeenCalledTimes(1);
+      expect(handleLineMediaMessage).toHaveBeenCalledWith(
+        "Uabc123",
+        { type: "image", messageId: "msg-id-1" },
+        "rt1",
+      );
+    });
+
+    it("does not dispatch an image-message event missing message.id", async () => {
+      const body = JSON.stringify({
+        events: [
+          { type: "message", replyToken: "rt1", source: { userId: "Uabc123" }, message: { type: "image" } },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMediaMessage).not.toHaveBeenCalled();
+    });
+
+    it("dispatches a valid signed location-message event to handleLineMediaMessage with lat/lng + address", async () => {
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "location", address: "123 Main St", latitude: 13.75, longitude: 100.5 },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMediaMessage).toHaveBeenCalledWith(
+        "Uabc123",
+        { type: "location", latitude: 13.75, longitude: 100.5, address: "123 Main St" },
+        "rt1",
+      );
+    });
+
+    it("falls back to title when address is absent on a location-message event", async () => {
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "location", title: "Home", latitude: 13.75, longitude: 100.5 },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMediaMessage).toHaveBeenCalledWith(
+        "Uabc123",
+        { type: "location", latitude: 13.75, longitude: 100.5, address: "Home" },
+        "rt1",
+      );
+    });
+
+    it("passes null address when neither address nor title is present on a location-message event", async () => {
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "location", latitude: 13.75, longitude: 100.5 },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMediaMessage).toHaveBeenCalledWith(
+        "Uabc123",
+        { type: "location", latitude: 13.75, longitude: 100.5, address: null },
+        "rt1",
+      );
+    });
+
+    it("does not dispatch a location-message event with a non-numeric latitude/longitude", async () => {
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "location", latitude: "13.75", longitude: 100.5 },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+      expect(handleLineMediaMessage).not.toHaveBeenCalled();
+    });
+
+    it("200 and does not throw when handleLineMediaMessage rejects", async () => {
+      vi.mocked(handleLineMediaMessage).mockRejectedValueOnce(new Error("boom"));
+      const body = JSON.stringify({
+        events: [
+          {
+            type: "message",
+            replyToken: "rt1",
+            source: { userId: "Uabc123" },
+            message: { type: "image", id: "msg-id-1" },
+          },
+        ],
+      });
+      const res = await POST(req(body, sign("shhh", body)));
+      expect(res.status).toBe(200);
+    });
   });
 });
