@@ -372,6 +372,13 @@ export type IntelLocationInput = {
    * mirrors src/app/(dashboard)/cases/[id]/intelligence-overview.tsx's own
    * `location_name ?? decrypt(address_enc)` fallback convention. */
   location_name: string | null;
+  /** Google Maps link for this location, already resolved by the caller
+   * (intel.ts): the staff-entered `maps_url` if set, else a link built from
+   * `lat`/`lng` (mirroring attach-location.ts's mapsLinkFromCoords() URL
+   * format), else `null` if neither is available — not every location has
+   * one, and that's fine. `maps_url`/`lat`/`lng` are plaintext columns, never
+   * decrypted. */
+  maps_link: string | null;
 };
 
 export type IntelRelationshipInput = {
@@ -444,7 +451,11 @@ function formatIntelLocationsSection(locations: IntelLocationInput[], total: num
   const lines = [`📍 สถานที่ (${total})`];
   for (const l of locations) {
     const typeLabel = INTEL_LOCATION_TYPE_LABEL[l.location_type] ?? l.location_type;
-    lines.push(`• ${typeLabel}${l.location_name ? `: ${l.location_name}` : ""}`);
+    const name = l.location_name ? `: ${l.location_name}` : "";
+    // Same "(Maps: <url>)" suffix convention as formatAttachLocationSuccess()
+    // — omitted entirely when neither maps_url nor lat/lng was available.
+    const mapsSuffix = l.maps_link ? ` (Maps: ${l.maps_link})` : "";
+    lines.push(`• ${typeLabel}${name}${mapsSuffix}`);
   }
   if (total > locations.length) {
     lines.push(`…และอีก ${total - locations.length} รายการ ดูเพิ่มเติมในแดชบอร์ด`);
