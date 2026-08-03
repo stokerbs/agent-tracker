@@ -82,6 +82,23 @@ export const RATE_LIMITS = {
    * during active surveillance.
    */
   line_add_timeline: { limit: 30, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "attach location" writes per hour per agent (agents.id) —
+   * mirrors line_add_timeline's rationale/limit. Coordinates are raw,
+   * client-supplied webhook data (see src/lib/line/commands/attach-location.ts's
+   * module doc), so this GPS-update ingestion path is rate-limited same as
+   * every other write command, per this repo's Maps coding standard.
+   */
+  line_attach_location: { limit: 30, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "attach photo" writes per hour per agent (agents.id) —
+   * mirrors line_add_timeline/line_attach_location's rationale/limit. Each
+   * request downloads from LINE's Content API and writes to Storage, a
+   * materially more expensive write than a plain text/location update, so
+   * it gets the same bound as the other write commands rather than being
+   * left unlimited.
+   */
+  line_attach_photo: { limit: 30, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

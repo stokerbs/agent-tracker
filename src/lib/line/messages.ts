@@ -153,6 +153,21 @@ export const ATTACH_PHOTO_STUB =
 export const ATTACH_LOCATION_STUB =
   "ได้รับตำแหน่งแล้ว ระบบกำลังพัฒนาการแนบตำแหน่งนี้เข้ากับไทม์ไลน์ กรุณาลองใหม่อีกครั้งในเร็ว ๆ นี้";
 
+/**
+ * Success reply for the real attach-location (Round 3) command. `locationText`
+ * is the exact value now stored on the entry's `timeline_entries.location`
+ * column (LINE's address, or a formatted coordinate fallback — see
+ * attach-location.ts). `mapsUrl` is a Google Maps link built directly from the
+ * raw lat/lng LINE reported (never a re-geocoded search off `locationText`),
+ * so the agent gets an immediately-precise confirmation link — see
+ * attach-location.ts's module doc for why this is intentionally a separate
+ * mechanism from the dashboard/report pipeline's own
+ * mapsSearchLink()-from-stored-text rendering (src/app/(dashboard)/timeline/actions.ts).
+ */
+export function formatAttachLocationSuccess(locationText: string, mapsUrl: string): string {
+  return `✅ บันทึกตำแหน่งลงไทม์ไลน์แล้ว: ${locationText}\n(Maps: ${mapsUrl})`;
+}
+
 const CASE_STATUS_LABEL: Record<string, string> = {
   new: "ใหม่",
   assigned: "มอบหมายแล้ว",
@@ -239,3 +254,60 @@ export function formatTimelineList(
 
   return `${header}\n\n${lines.join("\n")}${footer}`;
 }
+
+// ── Attach photo (Round 3, real implementation) command replies ────────────
+
+/**
+ * Shown when a photo follow-up arrives within an open pending-attachment
+ * window, but the re-authorization check (case_agents membership for
+ * (agentId, pendingCaseId) at attach time — see attach-photo.ts's module
+ * doc for the TOCTOU rationale) fails. Deliberately generic/non-enumerating,
+ * same principle as CASE_NOT_FOUND: an agent whose case_agents assignment
+ * changed between opening the window and sending the photo must not be able
+ * to distinguish "no longer assigned" from any other failure mode.
+ */
+export const ATTACH_PHOTO_UNAUTHORIZED =
+  "ไม่สามารถแนบรูปภาพนี้ได้ กรุณาตรวจสอบว่าคุณยังได้รับมอบหมายเคสนี้อยู่ หรือติดต่อผู้ดูแลระบบ";
+
+/** Shown when downloadLineContent() fails to retrieve the photo bytes from
+ * LINE's Content API (network/API failure, not a validation rejection). */
+export const ATTACH_PHOTO_DOWNLOAD_FAILED =
+  "ไม่สามารถดาวน์โหลดรูปภาพจาก LINE ได้ กรุณาลองส่งรูปภาพใหม่อีกครั้ง";
+
+/** Mirrors file-validation.ts's ALLOWED_IMAGE_TYPES — kept as prose here
+ * rather than interpolating the MIME list, since agents don't think in MIME
+ * types; the dashboard's own upload UI takes the same approach. */
+export const ATTACH_PHOTO_INVALID_TYPE =
+  "ไม่รองรับไฟล์นี้ กรุณาส่งเป็นรูปภาพ JPEG, PNG หรือ WebP เท่านั้น";
+
+/** `sizeMb` should be derived from file-validation.ts's MAX_IMAGE_SIZE
+ * constant by the caller, never a second hardcoded limit here. */
+export function formatAttachPhotoTooLarge(sizeMb: number): string {
+  return `ไฟล์รูปภาพมีขนาดใหญ่เกินไป (สูงสุด ${sizeMb}MB) กรุณาลองใหม่อีกครั้ง`;
+}
+
+/**
+ * Success reply for a real (non-stub) photo attach. Deliberately does NOT
+ * include the case number/entry details the way formatAddTimelineSuccess()
+ * includes the entry time: doing so would require an extra query to resolve
+ * `cases.case_number` from `pendingCaseId` purely for display, and an agent
+ * sending a follow-up photo already has that context from the "add timeline"
+ * confirmation they just received. Kept as a plain constant rather than a
+ * `format...()` function for the same reason — no dynamic content to inject.
+ */
+export const ATTACH_PHOTO_SUCCESS =
+  "✅ แนบรูปภาพเข้ากับบันทึกไทม์ไลน์เรียบร้อยแล้ว ส่งรูปเพิ่มเติมได้หากต้องการ";
+
+// ── Attach location (Round 3, real implementation) command replies ─────────
+
+/**
+ * Shown when a location follow-up arrives within an open pending-attachment
+ * window, but the re-authorization check (case_agents membership for
+ * (agentId, pendingCaseId) at attach time — see attach-location.ts's module
+ * doc for the TOCTOU rationale) fails. Deliberately mirrors
+ * ATTACH_PHOTO_UNAUTHORIZED's exact tone/structure (same non-enumeration
+ * principle as CASE_NOT_FOUND) rather than reusing that photo-worded string
+ * verbatim, since its text names "รูปภาพ" (photo) specifically.
+ */
+export const ATTACH_LOCATION_UNAUTHORIZED =
+  "ไม่สามารถแนบตำแหน่งนี้ได้ กรุณาตรวจสอบว่าคุณยังได้รับมอบหมายเคสนี้อยู่ หรือติดต่อผู้ดูแลระบบ";
