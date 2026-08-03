@@ -23,6 +23,7 @@ vi.mock("@/lib/line/commands/timeline", () => ({ handleTimelineListCommand: vi.f
 vi.mock("@/lib/line/commands/add-timeline", () => ({ handleAddTimelineEntryCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/attach-photo", () => ({ handleAttachPhotoCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/attach-location", () => ({ handleAttachLocationCommand: vi.fn() }));
+vi.mock("@/lib/line/commands/intel", () => ({ handleIntelCommand: vi.fn() }));
 
 import { handleLineMessage, handleLineMediaMessage, parseCommand } from "./router";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -34,6 +35,7 @@ import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
 import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
 import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
 import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
+import { handleIntelCommand } from "@/lib/line/commands/intel";
 import { hashOtp, OTP_MAX_ATTEMPTS } from "./otp";
 import * as msg from "./messages";
 
@@ -187,6 +189,47 @@ describe("parseCommand", () => {
 
     it("falls back to help when the add-timeline keyword is used with only a case number (no entry text)", () => {
       expect(parseCommand("เพิ่มไทม์ไลน์ CASE-001")).toEqual({ type: "help" });
+    });
+  });
+
+  describe("intel (Round 4) keyword", () => {
+    it("parses the Thai ข่าวกรอง keyword with a case number", () => {
+      expect(parseCommand("ข่าวกรอง CASE-2026-0042")).toEqual({
+        type: "intel",
+        caseNumber: "CASE-2026-0042",
+      });
+    });
+
+    it("parses the English intel keyword variant (case-insensitive)", () => {
+      expect(parseCommand("Intel CASE-2026-0042")).toEqual({
+        type: "intel",
+        caseNumber: "CASE-2026-0042",
+      });
+    });
+
+    it("trims surrounding whitespace from the case number", () => {
+      expect(parseCommand("intel   CASE-2026-0042  ")).toEqual({
+        type: "intel",
+        caseNumber: "CASE-2026-0042",
+      });
+    });
+
+    it("falls back to help when the intel keyword is used with no case number", () => {
+      expect(parseCommand("intel")).toEqual({ type: "help" });
+      expect(parseCommand("ข่าวกรอง")).toEqual({ type: "help" });
+    });
+
+    it("does not collide with the case-lookup or timeline commands", () => {
+      expect(parseCommand("case CASE-001").type).toBe("case");
+      expect(parseCommand("เคส CASE-001").type).toBe("case");
+      expect(parseCommand("timeline CASE-001").type).toBe("timeline");
+      expect(parseCommand("ไทม์ไลน์ CASE-001").type).toBe("timeline");
+      expect(parseCommand("เพิ่มไทม์ไลน์ CASE-001 ข้อความ").type).toBe("add_timeline");
+    });
+
+    it("the intel keyword never parses as case/timeline/add-timeline", () => {
+      const parsed = parseCommand("ข่าวกรอง CASE-2026-0042");
+      expect(parsed.type).toBe("intel");
     });
   });
 });
@@ -553,6 +596,20 @@ describe("handleLineMessage — linked-user commands", () => {
   it("gates the add-timeline command behind linked status same as other commands", async () => {
     await handleLineMessage(LINE_USER_ID, "เพิ่มไทม์ไลน์ CASE-001 พบเป้าหมายที่ห้างสรรพสินค้า", "rt1");
     expect(handleAddTimelineEntryCommand).not.toHaveBeenCalled();
+    expect(lastReply()).toBe(msg.notLinkedHelp(LINE_USER_ID));
+  });
+
+  it("dispatches an intel command to handleIntelCommand with the resolved agentId", async () => {
+    const s = makeSvc({ accountRow: linkedAccount });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "ข่าวกรอง CASE-2026-0042", "rt1");
+    expect(handleIntelCommand).toHaveBeenCalledWith(AGENT_ID, "CASE-2026-0042", "rt1");
+    expect(replyLineMessage).not.toHaveBeenCalled();
+  });
+
+  it("gates the intel command behind linked status same as other commands", async () => {
+    await handleLineMessage(LINE_USER_ID, "ข่าวกรอง CASE-2026-0042", "rt1");
+    expect(handleIntelCommand).not.toHaveBeenCalled();
     expect(lastReply()).toBe(msg.notLinkedHelp(LINE_USER_ID));
   });
 

@@ -22,17 +22,20 @@ import { handleTimelineListCommand } from "@/lib/line/commands/timeline";
 import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline";
 import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
 import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
+import { handleIntelCommand } from "@/lib/line/commands/intel";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
  * account linking, plus a gate for the case/timeline commands implemented
  * elsewhere — see src/lib/line/commands/case.ts and
  * src/lib/line/commands/timeline.ts (read-only), src/lib/line/commands/
- * add-timeline.ts (write, Round 2 — text-only case timeline entries), and
+ * add-timeline.ts (write, Round 2 — text-only case timeline entries),
  * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3 —
  * photo/location follow-up attachments to a just-added timeline entry, see
- * handleLineMediaMessage() below and those files' module docs) for those
- * extension points).
+ * handleLineMediaMessage() below and those files' module docs), and
+ * src/lib/line/commands/intel.ts (Round 4 — target-intelligence lookup, see
+ * that file's module doc for the full authorization/decryption/audit
+ * contract) for those extension points).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
@@ -93,6 +96,7 @@ type Command =
   | { type: "case"; args: string }
   | { type: "timeline"; args: string }
   | { type: "add_timeline"; caseNumber: string; text: string }
+  | { type: "intel"; caseNumber: string }
   | { type: "help" };
 
 const LINK_KEYWORDS = /^(?:link|ผูกบัญชี|ผูก|เชื่อมบัญชี|เชื่อมต่อบัญชี)\s+(.+)$/iu;
@@ -107,6 +111,18 @@ const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไ
 // tail is unanchored/greedy enough that any future edit narrowing its
 // keyword list could otherwise silently start swallowing this command.
 const ADD_TIMELINE_KEYWORDS = /^(?:add.?timeline|เพิ่มไทม์ไลน์|บันทึกไทม์ไลน์)\s+(\S+)\s+(.+)$/iu;
+// Target-intelligence lookup (Round 4 — see
+// src/lib/line/commands/intel.ts): "ข่าวกรอง <รหัสเคส>" / "intel <case>".
+// Single captured group is the case number, same shape as CASE_KEYWORDS.
+// Keyword prefixes ("intel" / "ข่าวกรอง") don't start with and are never a
+// prefix of any other command's keywords above ("case"/"เคส",
+// "timeline"/"ไทม์ไลน์"/"ไทม์ไลน", "link"/ผูก.../เชื่อม...,
+// "add-timeline"/เพิ่มไทม์ไลน์/บันทึกไทม์ไลน์) or vice versa, so ordering
+// relative to them doesn't matter the way ADD_TIMELINE_KEYWORDS's ordering
+// before TIMELINE_KEYWORDS does — still placed after the timeline commands
+// below purely to keep this file's command-parsing order matching the
+// Command union's declared order above.
+const INTEL_KEYWORDS = /^(?:intel|ข่าวกรอง)\s+(.+)$/iu;
 const OTP_PATTERN = /^\d{6}$/;
 
 /** Forgiving text-command parser — see module doc for the design rationale. */
@@ -129,6 +145,9 @@ export function parseCommand(raw: string): Command {
 
   const timeline = text.match(TIMELINE_KEYWORDS);
   if (timeline) return { type: "timeline", args: timeline[1]!.trim() };
+
+  const intel = text.match(INTEL_KEYWORDS);
+  if (intel) return { type: "intel", caseNumber: intel[1]!.trim() };
 
   return { type: "help" };
 }
@@ -220,6 +239,9 @@ export async function handleLineMessage(
       return;
     case "add_timeline":
       await handleAddTimelineEntryCommand(agentId, command.caseNumber, command.text, replyToken);
+      return;
+    case "intel":
+      await handleIntelCommand(agentId, command.caseNumber, replyToken);
       return;
     default:
       await replyLineMessage(replyToken, msg.LINKED_HELP);

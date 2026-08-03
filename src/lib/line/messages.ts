@@ -292,3 +292,197 @@ export const ATTACH_PHOTO_SUCCESS =
  */
 export const ATTACH_LOCATION_UNAUTHORIZED =
   "ไม่สามารถแนบตำแหน่งนี้ได้ กรุณาตรวจสอบว่าคุณยังได้รับมอบหมายเคสนี้อยู่ หรือติดต่อผู้ดูแลระบบ";
+
+// ── Target intelligence (Round 4, real implementation) command replies ─────
+
+/** Shown when the "ข่าวกรอง <รหัสเคส>" / "intel <case>" command is recognized
+ * but no case number was supplied. Mirrors TIMELINE_EMPTY_ARGS's wording
+ * (case-number-only, unlike CASE_LOOKUP_EMPTY_ARGS which also accepts a
+ * free-text search term) — this command only ever resolves by exact
+ * case_number, never a loose target/client-name search. */
+export const INTEL_EMPTY_ARGS =
+  "กรุณาระบุรหัสเคส เช่น: ข่าวกรอง CASE-2026-0042";
+
+/** Shown (as the body under the case-summary header) when an authorized case
+ * has no target-profile fields, vehicles, locations, or relationships on
+ * record at all — the command's empty state, distinct from CASE_NOT_FOUND
+ * (which means the case itself couldn't be resolved/authorized). */
+export const INTEL_NO_DATA =
+  "ยังไม่มีข้อมูลข่าวกรองเป้าหมายสำหรับเคสนี้ กรุณาเพิ่มข้อมูลผ่านเว็บแดชบอร์ด";
+
+const INTEL_GENDER_LABEL: Record<string, string> = {
+  male: "ชาย",
+  female: "หญิง",
+  other: "อื่นๆ",
+};
+
+/** Mirrors src/lib/types.ts's LocationType union; falls back to the raw
+ * value for any future type not yet mapped here rather than dropping it. */
+const INTEL_LOCATION_TYPE_LABEL: Record<string, string> = {
+  home: "บ้าน",
+  workplace: "ที่ทำงาน",
+  school: "โรงเรียน",
+  gym: "ฟิตเนส/ยิม",
+  other: "อื่นๆ",
+};
+
+/** Mirrors src/lib/types.ts's RelationKind union (see also
+ * src/components/intelligence/relationships-section.tsx's RELATION_BADGE for
+ * the equivalent dashboard-side set), falls back to the raw value otherwise. */
+const INTEL_RELATION_LABEL: Record<string, string> = {
+  spouse: "คู่สมรส",
+  partner: "คู่รัก",
+  friend: "เพื่อน",
+  associate: "คนรู้จัก",
+  family: "ครอบครัว",
+  other: "อื่นๆ",
+};
+
+const INTEL_NOTES_MAX_CHARS = 300;
+
+export type IntelProfileInput = {
+  target_name: string | null;
+  target_alias: string | null;
+  /** Raw `cases.target_gender` value — plaintext, low-sensitivity column. */
+  target_gender: string | null;
+  target_age: number | null;
+  target_nationality: string | null;
+  target_occupation: string | null;
+  /** Best-effort decrypted plaintext; null if absent or decryption failed. */
+  target_phone: string | null;
+  target_address: string | null;
+  target_notes: string | null;
+  /** Already-decrypted-and-parsed social handles (see src/lib/socials.ts's
+   * parseSocials()) — empty array if absent or malformed. */
+  target_socials: { platform: string; handle: string }[];
+};
+
+export type IntelVehicleInput = {
+  make: string | null;
+  model: string | null;
+  color: string | null;
+  /** Best-effort decrypted plaintext; null if absent or decryption failed. */
+  license_plate: string | null;
+  is_primary: boolean;
+};
+
+export type IntelLocationInput = {
+  location_type: string;
+  /** `location_name` if set, else the best-effort decrypted `address_enc` —
+   * mirrors src/app/(dashboard)/cases/[id]/intelligence-overview.tsx's own
+   * `location_name ?? decrypt(address_enc)` fallback convention. */
+  location_name: string | null;
+};
+
+export type IntelRelationshipInput = {
+  /** Best-effort decrypted plaintext; null if absent or decryption failed. */
+  name: string | null;
+  relation: string;
+};
+
+export interface IntelSummaryInput {
+  caseNumber: string;
+  profile: IntelProfileInput;
+  /** Already capped to the display limit by the caller. */
+  vehicles: IntelVehicleInput[];
+  /** Full authorized count (not capped) — used to render "+N more". */
+  vehiclesTotal: number;
+  locations: IntelLocationInput[];
+  locationsTotal: number;
+  relationships: IntelRelationshipInput[];
+  relationshipsTotal: number;
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function formatIntelProfileSection(p: IntelProfileInput): string[] {
+  const lines: string[] = [];
+  if (p.target_name) lines.push(`ชื่อ: ${p.target_name}`);
+  if (p.target_alias) lines.push(`ชื่อเล่น/นามแฝง: ${p.target_alias}`);
+
+  const demographics = [
+    p.target_gender ? (INTEL_GENDER_LABEL[p.target_gender] ?? p.target_gender) : null,
+    p.target_age != null ? `${p.target_age} ปี` : null,
+    p.target_nationality,
+    p.target_occupation,
+  ].filter((v): v is string => Boolean(v));
+  if (demographics.length) lines.push(demographics.join(" · "));
+
+  if (p.target_phone) lines.push(`โทร: ${p.target_phone}`);
+  if (p.target_address) lines.push(`ที่อยู่: ${p.target_address}`);
+  if (p.target_socials.length) {
+    lines.push(`โซเชียล: ${p.target_socials.map((s) => `${s.platform}: ${s.handle}`).join(", ")}`);
+  }
+  if (p.target_notes) lines.push(`บันทึกเพิ่มเติม: ${truncate(p.target_notes, INTEL_NOTES_MAX_CHARS)}`);
+
+  return lines;
+}
+
+/** Every list-section formatter below returns `[]` (the whole section is
+ * omitted from the reply) when `total` is 0 — keeping the reply scannable
+ * rather than printing an empty-list header for every intel category a case
+ * happens not to have any rows for yet. */
+function formatIntelVehiclesSection(vehicles: IntelVehicleInput[], total: number): string[] {
+  if (total === 0) return [];
+  const lines = [`🚗 ยานพาหนะ (${total})`];
+  for (const v of vehicles) {
+    const desc = [v.color, v.make, v.model].filter(Boolean).join(" ") || "(ไม่มีรายละเอียด)";
+    const plate = v.license_plate ? ` ทะเบียน ${v.license_plate}` : "";
+    const prefix = v.is_primary ? "[หลัก] " : "";
+    lines.push(`• ${prefix}${desc}${plate}`);
+  }
+  if (total > vehicles.length) {
+    lines.push(`…และอีก ${total - vehicles.length} รายการ ดูเพิ่มเติมในแดชบอร์ด`);
+  }
+  return lines;
+}
+
+function formatIntelLocationsSection(locations: IntelLocationInput[], total: number): string[] {
+  if (total === 0) return [];
+  const lines = [`📍 สถานที่ (${total})`];
+  for (const l of locations) {
+    const typeLabel = INTEL_LOCATION_TYPE_LABEL[l.location_type] ?? l.location_type;
+    lines.push(`• ${typeLabel}${l.location_name ? `: ${l.location_name}` : ""}`);
+  }
+  if (total > locations.length) {
+    lines.push(`…และอีก ${total - locations.length} รายการ ดูเพิ่มเติมในแดชบอร์ด`);
+  }
+  return lines;
+}
+
+function formatIntelRelationshipsSection(relationships: IntelRelationshipInput[], total: number): string[] {
+  if (total === 0) return [];
+  const lines = [`👥 ความสัมพันธ์ (${total})`];
+  for (const r of relationships) {
+    const relLabel = INTEL_RELATION_LABEL[r.relation] ?? r.relation;
+    lines.push(`• ${r.name ?? "(ไม่ทราบชื่อ)"} (${relLabel})`);
+  }
+  if (total > relationships.length) {
+    lines.push(`…และอีก ${total - relationships.length} รายการ ดูเพิ่มเติมในแดชบอร์ด`);
+  }
+  return lines;
+}
+
+/**
+ * Full text-summary reply for the target-intelligence command — one of up to
+ * 5 messages in the same LINE reply (see intel.ts's module doc), alongside
+ * at most 4 photo messages. Every field/section is individually omitted when
+ * absent (see formatIntelProfileSection()/formatIntel*Section()) rather than
+ * printing "N/A"/empty headers, so a sparsely-populated case still reads as a
+ * short, scannable message instead of a wall of placeholders.
+ */
+export function formatIntelSummary(input: IntelSummaryInput): string {
+  const sections = [
+    formatIntelProfileSection(input.profile),
+    formatIntelVehiclesSection(input.vehicles, input.vehiclesTotal),
+    formatIntelLocationsSection(input.locations, input.locationsTotal),
+    formatIntelRelationshipsSection(input.relationships, input.relationshipsTotal),
+  ].filter((section) => section.length > 0);
+
+  const header = `🕵️ ข่าวกรองเป้าหมาย เคส ${input.caseNumber}`;
+  if (sections.length === 0) return `${header}\n\n${INTEL_NO_DATA}`;
+
+  return `${header}\n\n${sections.map((section) => section.join("\n")).join("\n\n")}`;
+}
