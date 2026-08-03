@@ -70,11 +70,13 @@ import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
  *
  * ── Scope ──────────────────────────────────────────────────────────────
  * Curated staff-entered data only: the case's target-profile fields,
- * `target_vehicles`, `target_locations`, `target_relationships`, and a
- * primary photo (target + primary vehicle). OSINT `image_analysis` /
- * `contact_analysis` / any AI-generated report content is explicitly OUT OF
- * SCOPE — lower-confidence, less-vetted AI output that is a separate,
- * deliberate product decision to ever surface via LINE.
+ * `target_vehicles`, `target_locations`, `target_relationships`, and a target
+ * photo + a vehicle photo (primary preferred; falls back to the most
+ * recent/any-available photo when nothing is explicitly marked primary yet —
+ * see "Photos" below). OSINT `image_analysis` / `contact_analysis` / any
+ * AI-generated report content is explicitly OUT OF SCOPE — lower-confidence,
+ * less-vetted AI output that is a separate, deliberate product decision to
+ * ever surface via LINE.
  *
  * ── Photos ─────────────────────────────────────────────────────────────
  * Signed URLs (short TTL — this reply is consumed immediately by LINE, not
@@ -84,6 +86,22 @@ import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
  * MAX_PHOTOS (4) so `1 text message + N photos` never exceeds LINE's
  * 5-message-per-reply limit. A signed-URL failure for one photo just skips
  * that photo (logged), never the whole reply.
+ *
+ * Photo SELECTION (target + vehicle, at most one candidate each — see the
+ * "Photos: target photo ... + a vehicle photo" comment further down): staff
+ * mark a `target_photos`/`vehicle_photos` row `is_primary` via a separate,
+ * explicit dashboard action (intelligence-actions.ts's setPrimaryPhoto()/
+ * setPrimaryVehiclePhoto()) — every upload defaults `is_primary: false`, so a
+ * case can easily have real uploaded photos where none happens to be marked
+ * primary yet. Rather than showing zero photos in that case, this command
+ * prefers the primary when present but gracefully falls back: the target
+ * photo query orders `is_primary DESC, created_at DESC` and takes the top
+ * row (primary if any, else most recently uploaded); the vehicle photo falls
+ * back to any vehicle in the already-fetched `vehicleRows` that has a
+ * `photo_url` set (that column is kept synced to each vehicle's own current
+ * primary photo by addVehiclePhoto()/setPrimaryVehiclePhoto() in
+ * intelligence-actions.ts, so no second `vehicle_photos` query is needed
+ * here).
  *
  * ── Logging discipline ─────────────────────────────────────────────────
  * NEVER log decrypted target PII (name/phone/address/notes/socials/plate/
@@ -127,6 +145,18 @@ const PHOTO_SIGNED_URL_TTL_SECONDS = 10 * 60;
  * back to a generic/untyped error type. */
 const INTEL_PROFILE_SELECT =
   "target_name_enc, target_alias_enc, target_gender, target_age, target_nationality, target_occupation, target_phone_enc, target_address_enc, target_notes_enc, target_socials_enc";
+
+/**
+ * Mirrors mapsLinkFromCoords() in ./attach-location.ts exactly (same URL
+ * shape) — duplicated as a local one-liner rather than imported, since that
+ * function isn't exported from attach-location.ts and this fix is scoped to
+ * not modify that file. Built from the raw, plaintext `lat`/`lng` columns on
+ * `target_locations` (never decrypted — these are not `_enc` fields), used
+ * only when staff didn't enter a `maps_url` for the location.
+ */
+function mapsLinkFromCoords(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
 
 export async function handleIntelCommand(
   agentId: string,
@@ -217,7 +247,7 @@ export async function handleIntelCommand(
         .limit(DISPLAY_CAP),
       svc
         .from("target_locations")
-        .select("location_type, location_name, address_enc", { count: "exact" })
+        .select("location_type, location_name, address_enc, lat, lng, maps_url", { count: "exact" })
         .eq("case_id", caseRow.id)
         .order("created_at", { ascending: true })
         .limit(DISPLAY_CAP),
@@ -227,11 +257,18 @@ export async function handleIntelCommand(
         .eq("case_id", caseRow.id)
         .order("created_at", { ascending: true })
         .limit(DISPLAY_CAP),
+      // Prefer the row explicitly marked primary; if none exists, fall back
+      // to the most recently uploaded target photo for this case (see the
+      // "Photos" module doc above) — `is_primary DESC, created_at DESC` +
+      // `limit(1)` puts a primary row first when one exists, else the newest
+      // row, in a single query.
       svc
         .from("target_photos")
         .select("storage_path")
         .eq("case_id", caseRow.id)
-        .eq("is_primary", true)
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle(),
       // Best-effort resolve for the audit trail below — audit_logs.actor_id
       // FKs to profiles(id), not agents(id), so agentId itself can never be
@@ -300,6 +337,10 @@ export async function handleIntelCommand(
   const locations: IntelLocationInput[] = locationRows.map((l) => ({
     location_type: l.location_type,
     location_name: l.location_name ?? safeDecrypt(l.address_enc, "location.address"),
+    // Prefer the staff-entered maps_url; otherwise build one from lat/lng
+    // (same URL format as attach-location.ts's mapsLinkFromCoords()). Neither
+    // maps_url nor lat/lng is encrypted — never run through safeDecrypt().
+    maps_link: l.maps_url ?? (l.lat != null && l.lng != null ? mapsLinkFromCoords(l.lat, l.lng) : null),
   }));
   const locationsTotal = locationsResult.count ?? locations.length;
 
@@ -310,11 +351,16 @@ export async function handleIntelCommand(
   }));
   const relationshipsTotal = relationshipsResult.count ?? relationships.length;
 
-  // ── Photos: primary target photo + primary vehicle's photo (if set) ────
+  // ── Photos: target photo (primary, else most recent) + a vehicle photo
+  // (the primary vehicle's photo_url, else any vehicle in vehicleRows that
+  // has one set) — see the "Photos" module doc above for the fallback
+  // rationale. `primaryPhotoResult` is already ordered/limited (see its
+  // query above) so its single row (if any) is the correct candidate.
   const photoPaths: string[] = [];
   if (primaryPhotoResult.data?.storage_path) photoPaths.push(primaryPhotoResult.data.storage_path);
-  const primaryVehiclePhotoPath = vehicleRows.find((v) => v.is_primary && v.photo_url)?.photo_url;
-  if (primaryVehiclePhotoPath) photoPaths.push(primaryVehiclePhotoPath);
+  const primaryVehicle = vehicleRows.find((v) => v.is_primary);
+  const vehiclePhotoPath = primaryVehicle?.photo_url ?? vehicleRows.find((v) => v.photo_url)?.photo_url;
+  if (vehiclePhotoPath) photoPaths.push(vehiclePhotoPath);
 
   const cappedPhotoPaths = photoPaths.slice(0, MAX_PHOTOS);
   const imageMessages: LineOutboundMessage[] = [];

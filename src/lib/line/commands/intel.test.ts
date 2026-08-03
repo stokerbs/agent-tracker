@@ -495,6 +495,114 @@ describe("handleIntelCommand", () => {
       expect(text).not.toContain("enc:กข-1234");
     });
 
+    it("scopes the target_locations query to include lat, lng, maps_url (regression guard for the Maps-link fix)", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      const locationBuilder = svc.locationBuilders[0]!;
+      expect(locationBuilder.select).toHaveBeenCalledWith(
+        expect.stringContaining("lat"),
+        expect.anything(),
+      );
+      const selectArg = locationBuilder.select.mock.calls[0]![0] as string;
+      expect(selectArg).toContain("lng");
+      expect(selectArg).toContain("maps_url");
+    });
+
+    it("appends a (Maps: <url>) suffix using the staff-entered maps_url when present", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        locationsResult: {
+          data: [
+            {
+              location_type: "home",
+              location_name: "บ้านพักอาศัย",
+              address_enc: null,
+              lat: 13.7,
+              lng: 100.5,
+              maps_url: "https://maps.app.goo.gl/staff-entered-link",
+            },
+          ],
+          error: null,
+          count: 1,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+      const text = lastText();
+
+      expect(text).toContain("(Maps: https://maps.app.goo.gl/staff-entered-link)");
+      // The staff-entered link is preferred over a coordinate-built one.
+      expect(text).not.toContain("maps/search/?api=1");
+    });
+
+    it("builds a Maps link from lat/lng (matching attach-location.ts's URL format) when maps_url is absent", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        locationsResult: {
+          data: [
+            {
+              location_type: "workplace",
+              location_name: "ออฟฟิศ",
+              address_enc: null,
+              lat: 13.756331,
+              lng: 100.501765,
+              maps_url: null,
+            },
+          ],
+          error: null,
+          count: 1,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+      const text = lastText();
+
+      const expectedUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("13.756331,100.501765")}`;
+      expect(text).toContain(`(Maps: ${expectedUrl})`);
+    });
+
+    it("omits the Maps suffix (no crash) when neither maps_url nor lat/lng is present", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        locationsResult: {
+          data: [
+            {
+              location_type: "other",
+              location_name: "ที่จอดรถ",
+              address_enc: null,
+              lat: null,
+              lng: null,
+              maps_url: null,
+            },
+          ],
+          error: null,
+          count: 1,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await expect(handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1")).resolves.not.toThrow();
+      const text = lastText();
+
+      expect(text).toContain("ที่จอดรถ");
+      expect(text).not.toContain("(Maps:");
+    });
+
     it("caps the vehicles list at the display limit with a '+N more' note when more exist", async () => {
       allowRateLimit();
       const fiveVehicles = Array.from({ length: 5 }, (_, i) => ({
@@ -579,6 +687,123 @@ describe("handleIntelCommand", () => {
         "https://signed.example/vehicle.jpg",
       ]);
       expect(images.every((m) => m.originalContentUrl === m.previewImageUrl)).toBe(true);
+    });
+
+    it("target photo query no longer filters on is_primary=true (so it can fall back to the most recent row)", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        // No target_photos row happens to be marked primary — the query
+        // itself must not filter is_primary=true, so this non-primary/most-
+        // recent row is still returned and used.
+        primaryPhotoResult: { data: { storage_path: "case-1/photos/newest-non-primary.jpg" }, error: null },
+        signedUrlsResult: {
+          data: [{ signedUrl: "https://signed.example/newest.jpg", path: "case-1/photos/newest-non-primary.jpg" }],
+          error: null,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      const photoBuilder = svc.photoBuilders[0]!;
+      expect(photoBuilder.eq).not.toHaveBeenCalledWith("is_primary", true);
+      expect(photoBuilder.order).toHaveBeenCalledWith("is_primary", { ascending: false });
+      expect(photoBuilder.order).toHaveBeenCalledWith("created_at", { ascending: false });
+      expect(photoBuilder.limit).toHaveBeenCalledWith(1);
+
+      expect(svc.createSignedUrls).toHaveBeenCalledWith(
+        ["case-1/photos/newest-non-primary.jpg"],
+        expect.any(Number),
+      );
+      const messages = lastMessages() as Array<{ type: string; originalContentUrl?: string }>;
+      expect(messages.some((m) => m.type === "image" && m.originalContentUrl === "https://signed.example/newest.jpg")).toBe(
+        true,
+      );
+    });
+
+    it("falls back to any vehicle with a photo_url set when no vehicle is marked primary", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        vehiclesResult: {
+          data: [
+            { make: "Toyota", model: "Camry", color: null, license_plate_enc: null, is_primary: false, photo_url: null },
+            { make: "Honda", model: "Civic", color: null, license_plate_enc: null, is_primary: false, photo_url: "case-1/vehicles/v2/photo.jpg" },
+          ],
+          error: null,
+          count: 2,
+        },
+        signedUrlsResult: {
+          data: [{ signedUrl: "https://signed.example/honda.jpg", path: "case-1/vehicles/v2/photo.jpg" }],
+          error: null,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      expect(svc.createSignedUrls).toHaveBeenCalledWith(["case-1/vehicles/v2/photo.jpg"], expect.any(Number));
+      const messages = lastMessages() as Array<{ type: string; originalContentUrl?: string }>;
+      expect(messages.some((m) => m.type === "image" && m.originalContentUrl === "https://signed.example/honda.jpg")).toBe(
+        true,
+      );
+    });
+
+    it("falls back to another vehicle's photo_url when the primary vehicle has none set", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        vehiclesResult: {
+          data: [
+            { make: "Toyota", model: "Camry", color: null, license_plate_enc: null, is_primary: true, photo_url: null },
+            { make: "Honda", model: "Civic", color: null, license_plate_enc: null, is_primary: false, photo_url: "case-1/vehicles/v2/photo.jpg" },
+          ],
+          error: null,
+          count: 2,
+        },
+        signedUrlsResult: {
+          data: [{ signedUrl: "https://signed.example/honda.jpg", path: "case-1/vehicles/v2/photo.jpg" }],
+          error: null,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      expect(svc.createSignedUrls).toHaveBeenCalledWith(["case-1/vehicles/v2/photo.jpg"], expect.any(Number));
+      const messages = lastMessages() as Array<{ type: string; originalContentUrl?: string }>;
+      expect(messages.some((m) => m.type === "image" && m.originalContentUrl === "https://signed.example/honda.jpg")).toBe(
+        true,
+      );
+    });
+
+    it("still prefers the primary vehicle's photo_url over another vehicle's when the primary one has a photo set (no regression)", async () => {
+      allowRateLimit();
+      const svc = makeSvc({
+        authCaseResult: { data: authorizedCaseRow(), error: null },
+        profileResult: { data: fullProfileRow(), error: null },
+        vehiclesResult: {
+          data: [
+            { make: "Toyota", model: "Camry", color: null, license_plate_enc: null, is_primary: true, photo_url: "case-1/vehicles/v1/photo.jpg" },
+            { make: "Honda", model: "Civic", color: null, license_plate_enc: null, is_primary: false, photo_url: "case-1/vehicles/v2/photo.jpg" },
+          ],
+          error: null,
+          count: 2,
+        },
+        signedUrlsResult: {
+          data: [{ signedUrl: "https://signed.example/toyota.jpg", path: "case-1/vehicles/v1/photo.jpg" }],
+          error: null,
+        },
+      });
+      vi.mocked(createServiceClient).mockReturnValue(svc as never);
+
+      await handleIntelCommand(AGENT_ID, CASE_NUMBER, "rt1");
+
+      expect(svc.createSignedUrls).toHaveBeenCalledWith(["case-1/vehicles/v1/photo.jpg"], expect.any(Number));
     });
 
     it("skips a photo whose signed-URL generation failed, without failing the whole reply", async () => {
