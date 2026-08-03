@@ -292,3 +292,15 @@ export const ATTACH_PHOTO_SUCCESS =
  */
 export const ATTACH_LOCATION_UNAUTHORIZED =
   "ไม่สามารถแนบตำแหน่งนี้ได้ กรุณาตรวจสอบว่าคุณยังได้รับมอบหมายเคสนี้อยู่ หรือติดต่อผู้ดูแลระบบ";
+
+// ── Target intelligence (Round 4, stub wiring only) command replies ────────
+
+/**
+ * Temporary placeholder reply for the "ข่าวกรอง <รหัสเคส>" / "intel <case>"
+ * command while it is still a stub (src/lib/line/commands/intel.ts) — see
+ * that file's module doc for the handoff contract the real implementation
+ * must follow. Replace once the real target-intelligence query/decrypt/
+ * photo-fetching logic lands.
+ */
+export const INTEL_COMMAND_STUB =
+  "🔒 คำสั่งข่าวกรองเป้าหมายกำลังอยู่ระหว่างการพัฒนา ยังไม่พร้อมใช้งานในขณะนี้";
