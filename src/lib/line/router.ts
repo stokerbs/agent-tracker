@@ -29,10 +29,10 @@ import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location
  * elsewhere — see src/lib/line/commands/case.ts and
  * src/lib/line/commands/timeline.ts (read-only), src/lib/line/commands/
  * add-timeline.ts (write, Round 2 — text-only case timeline entries), and
- * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3 STUBS
- * — photo/location follow-up attachments to a just-added timeline entry,
- * see handleLineMediaMessage() below and those files' module docs) for
- * those extension points).
+ * src/lib/line/commands/attach-photo.ts / attach-location.ts (Round 3 —
+ * photo/location follow-up attachments to a just-added timeline entry, see
+ * handleLineMediaMessage() below and those files' module docs) for those
+ * extension points).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
@@ -49,7 +49,7 @@ import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location
  * handleLineMediaMessage() (Round 3), which resolves the same
  * lineUserId -> line_accounts row (via the shared resolveLineAccount()
  * helper), applies the same linked-gate, and then dispatches to a
- * pending-attachment STUB handler if (and only if) a pending-attachment
+ * pending-attachment handler if (and only if) a pending-attachment
  * window is open — see that function's doc for the full flow.
  *
  * Uses the service-role Supabase client throughout: a LINE webhook request
@@ -243,10 +243,9 @@ export async function handleLineMessage(
  *      still in the future — opened by handleAddTimelineEntryCommand() in
  *      src/lib/line/commands/add-timeline.ts). If not, this is a normal
  *      empty-state, not an error: reply with NO_PENDING_ATTACHMENT.
- *   4. If a valid window is open, dispatch to the appropriate STUB handler
+ *   4. If a valid window is open, dispatch to the appropriate handler
  *      (src/lib/line/commands/attach-photo.ts /
- *      src/lib/line/commands/attach-location.ts — real implementations are
- *      out of scope for this round), passing `agentId` +
+ *      src/lib/line/commands/attach-location.ts), passing `agentId` +
  *      `pendingCaseId`/`pendingEntryId` from the resolved row so those
  *      handlers can re-verify `case_agents` authorization at attach time —
  *      the pending window's case_id must NEVER be trusted alone (see those
