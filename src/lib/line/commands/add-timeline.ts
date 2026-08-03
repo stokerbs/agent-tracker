@@ -1,7 +1,20 @@
 import "server-only";
 
+import { createServiceClient } from "@/lib/supabase/server";
 import { replyLineMessage } from "@/lib/line/reply";
-import { ADD_TIMELINE_EMPTY_ARGS, ADD_TIMELINE_NOT_YET_IMPLEMENTED } from "@/lib/line/messages";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { notifyCaseParticipants } from "@/lib/notifications";
+import { bangkokDateKey } from "@/lib/utils";
+import {
+  ADD_TIMELINE_EMPTY_ARGS,
+  ADD_TIMELINE_ENTRY_MAX_CHARS,
+  ADD_TIMELINE_TOO_LONG,
+  CASE_NOT_FOUND,
+  GENERIC_ERROR,
+  RATE_LIMITED,
+  formatAddTimelineSuccess,
+} from "@/lib/line/messages";
+import { findAuthorizedCaseByNumber } from "@/lib/line/commands/shared";
 
 /**
  * Handles the write "add timeline entry" LINE-bot command (Round 2), e.g.
@@ -12,54 +25,29 @@ import { ADD_TIMELINE_EMPTY_ARGS, ADD_TIMELINE_NOT_YET_IMPLEMENTED } from "@/lib
  * LINE payload or from any other source; it is the only trusted input here.
  *
  * ROUND 2 SCOPE IS TEXT-ONLY. No photo_url/video_url/lat/lng handling of any
- * kind belongs in this command. Those columns exist on `timeline_entries`
- * but are legacy/unused by the dashboard write path too — see
+ * kind belongs in this command — those columns exist on `timeline_entries`
+ * but are legacy/unused by the dashboard write path too (see
  * src/app/(dashboard)/timeline/actions.ts's addTimelineEntry(), which never
- * sets them. Photos in this app go through the separate `evidence` table,
- * which is entirely out of scope here. A photo/location-via-LINE fast-follow
- * is planned separately later; do not anticipate it in this file.
+ * sets them), and `location` is intentionally left null this round (no
+ * location capture via LINE yet).
  *
- * ── STUB — NOT YET IMPLEMENTED ──────────────────────────────────────────
- * This is a parsing/dispatch-only handoff stub (mirrors how case.ts and
- * timeline.ts started in Round 1): it exists so router.ts has a real, gated
- * command to dispatch to. The next engineer (evidence-engineer) replaces
- * this entire function body with the real DB write. Handoff contract:
- *
- *   - `caseNumber` and `text` are RAW, UNVALIDATED user input straight off
- *     the LINE message (see router.ts's add-timeline regex) — validate,
- *     sanitize, and length-cap BOTH before they ever reach a DB write.
- *     Never trust client-derived text as-is (see Golden Rule #1 / the
- *     Backend coding standard: never trust client-side/user input).
- *   - Authorization: there is no Supabase Auth session in this webhook
- *     context (no auth.uid()), so RLS cannot enforce anything for this
- *     write. Resolve+authorize the case FIRST — reuse
- *     findAuthorizedCaseByNumber() from ./shared.ts (the same helper
- *     case.ts/timeline.ts already use for reads), which checks
- *     case_agents membership in-query. An agent must never be able to add a
- *     timeline entry to a case they are not assigned to.
- *   - Self-attribution: the inserted row's `agent_id` column MUST ALWAYS be
- *     this function's `agentId` parameter — never anything else, and never
- *     anything derived from `caseNumber`/`text`/the LINE payload. This
- *     replicates in application code the guarantee the RLS
- *     `timeline_case_member_insert` policy (`agent_id = my_agent_id()`)
- *     would normally enforce on an authenticated request; since there's no
- *     RLS session here, the equivalent check has to be done explicitly
- *     (same rationale documented in shared.ts's module doc for the read
- *     commands).
- *   - Use createServiceClient() for the write, same as every other command
- *     in this webhook (see router.ts's module doc for why: no Supabase
- *     session exists in this context). Never expose the service-role key
- *     outside server-only modules, and never let it bypass the
- *     authorization check above just because it technically could.
- *   - Reply states to cover: success; GENERIC_ERROR on DB failure; and the
- *     existing CASE_NOT_FOUND message (shared with case.ts/timeline.ts) for
- *     BOTH "no such case" and "case exists but this agent isn't assigned"
- *     — never a distinguishable reply between those two outcomes, same
- *     enumeration-resistance reasoning as the read commands.
- *   - Consider rate-limiting this command (checkRateLimit) and audit
- *     logging the insert per the security playbook — the read commands are
- *     currently unlimited, but a write endpoint is a materially better
- *     candidate for abuse and should not necessarily inherit that.
+ * Authorization: there is no Supabase Auth session in this webhook context
+ * (no auth.uid()), so RLS's `timeline_case_member_insert` policy can't run
+ * for this write. It is replicated here in application code instead:
+ *   - Resolve+authorize the case FIRST via findAuthorizedCaseByNumber()
+ *     (src/lib/line/commands/shared.ts) — the same case_agents-membership
+ *     check case.ts/timeline.ts already use for reads. "No such case" and
+ *     "case exists but this agent isn't assigned" both fall through to the
+ *     identical CASE_NOT_FOUND reply (enumeration-resistance, same as the
+ *     read commands).
+ *   - Self-attribution: the inserted row's `agent_id` is ALWAYS this
+ *     function's `agentId` parameter — never anything derived from
+ *     `caseNumber`/`text`. This replicates in code the RLS policy's
+ *     `agent_id = my_agent_id()` guarantee, which would normally be enforced
+ *     by Postgres for an authenticated request.
+ * Uses createServiceClient() for the same reason every other command in this
+ * webhook does (see router.ts's module doc): no Supabase session exists
+ * here. The service-role key never bypasses the authorization check above.
  */
 export async function handleAddTimelineEntryCommand(
   agentId: string,
@@ -75,9 +63,112 @@ export async function handleAddTimelineEntryCommand(
     return;
   }
 
-  // TODO(evidence-engineer): replace this stub body with the real
-  // authorized insert — see the handoff contract in the module doc above.
-  // Do NOT insert into timeline_entries from this stub as-is.
-  console.log(`[line:add-timeline] stub-not-yet-implemented agentId=${agentId}`);
-  await replyLineMessage(replyToken, ADD_TIMELINE_NOT_YET_IMPLEMENTED);
+  if (trimmedText.length > ADD_TIMELINE_ENTRY_MAX_CHARS) {
+    // Never log the entry text itself here — case notes can carry sensitive
+    // surveillance details; a length-only reference is enough to debug.
+    console.log(
+      `[line:add-timeline] entry-too-long agentId=${agentId} length=${trimmedText.length}`,
+    );
+    await replyLineMessage(replyToken, ADD_TIMELINE_TOO_LONG);
+    return;
+  }
+
+  const rl = await checkRateLimit("line_add_timeline", agentId);
+  if (!rl.allowed) {
+    console.warn(`[line:add-timeline] rate-limited agentId=${agentId}`);
+    await replyLineMessage(replyToken, RATE_LIMITED);
+    return;
+  }
+
+  const svc = createServiceClient();
+
+  const resolved = await findAuthorizedCaseByNumber(svc, agentId, trimmedCaseNumber);
+  if (resolved.error) {
+    console.error(`[line:add-timeline] case-lookup-failed agentId=${agentId}`, resolved.error);
+    await replyLineMessage(replyToken, GENERIC_ERROR);
+    return;
+  }
+  if (!resolved.data) {
+    console.log(`[line:add-timeline] case-not-found-or-unauthorized agentId=${agentId}`);
+    await replyLineMessage(replyToken, CASE_NOT_FOUND);
+    return;
+  }
+
+  const caseRow = resolved.data;
+  const { entry_date, entry_time } = bangkokNow();
+
+  const { data: inserted, error: insertError } = await svc
+    .from("timeline_entries")
+    .insert({
+      case_id: caseRow.id,
+      // Self-attribution guarantee: ALWAYS the verified agentId parameter,
+      // never anything derived from caseNumber/text/the LINE payload.
+      agent_id: agentId,
+      entry_date,
+      entry_time,
+      entry: trimmedText,
+      location: null,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !inserted) {
+    // Length-only reference to the entry text, never its content (PII-
+    // adjacent — surveillance notes) — matches this codebase's existing
+    // logging-discipline pattern (see router.ts's redact()).
+    console.error(
+      `[line:add-timeline] insert-failed agentId=${agentId} caseId=${caseRow.id} entryLength=${trimmedText.length}`,
+      insertError,
+    );
+    await replyLineMessage(replyToken, GENERIC_ERROR);
+    return;
+  }
+
+  console.log(
+    `[line:add-timeline] inserted agentId=${agentId} caseId=${caseRow.id} entryId=${inserted.id}`,
+  );
+  await replyLineMessage(replyToken, formatAddTimelineSuccess(caseRow.case_number, entry_time));
+
+  // Best-effort notification to the rest of the case team, mirroring the
+  // dashboard's addTimelineEntry() write path (src/app/(dashboard)/timeline/
+  // actions.ts). Deliberately NOT excluding the actor: that dashboard call
+  // excludes `profile.id` (a login profile id), but this webhook only has
+  // `agentId` (agents.id) — resolving profile_id would need an extra query
+  // for a minor UX nit (the LINE-authoring agent also getting notified about
+  // their own entry), so it's skipped. notifyCaseParticipants() never
+  // includes the client here (includeClient: false), same as the dashboard.
+  // No revalidatePath() call: that's a Next.js route-cache API tied to a
+  // server-rendered page tree and doesn't apply to this webhook context.
+  await notifyCaseParticipants(caseRow.id, {
+    type: "case",
+    title: "New timeline entry",
+    body: trimmedText.slice(0, 140),
+    includeClient: false,
+  });
+}
+
+/**
+ * Returns the Bangkok-local `entry_date` (`YYYY-MM-DD`, via bangkokDateKey())
+ * and `entry_time` (`HH:MM:SS`, matching the `time` column type) for the
+ * given instant. Defaults to "now" — a LINE message has no client-side date/
+ * time picker the way the dashboard's timeline form does, so "now in
+ * Bangkok" is the only sensible default. Pure/testable: pass an explicit
+ * `date` in tests rather than mocking the global Date/Intl.
+ */
+export function bangkokNow(date: Date = new Date()): { entry_date: string; entry_time: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  // Some ICU builds render hour12:false midnight as "24" rather than "00" —
+  // normalize defensively so entry_time is always a valid `time` literal.
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return {
+    entry_date: bangkokDateKey(date),
+    entry_time: `${hour}:${get("minute")}:${get("second")}`,
+  };
 }

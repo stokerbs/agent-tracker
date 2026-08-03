@@ -100,13 +100,26 @@ export const ADD_TIMELINE_EMPTY_ARGS =
   "กรุณาระบุรหัสเคสและข้อความ เช่น: เพิ่มไทม์ไลน์ CASE-2026-0042 พบเป้าหมายที่ห้างสรรพสินค้า";
 
 /**
- * Round-2 handoff-stub placeholder reply — src/lib/line/commands/add-timeline.ts
- * doesn't implement the real DB write yet (see that file's module doc). This
- * is intentionally temporary; the next engineer replaces both the handler
- * body and, likely, this message with a real success/error reply.
+ * Chat-authored timeline entries are capped well below the `entry` column's
+ * unconstrained `text` type (see supabase/migrations/0001_initial_schema.sql)
+ * — long enough for a genuine field note dictated over LINE, short enough to
+ * keep chat replies/DB rows sane and discourage pasting an entire report
+ * into a single entry. Exported so add-timeline.ts enforces the same value
+ * this message advertises, rather than two constants drifting apart.
  */
-export const ADD_TIMELINE_NOT_YET_IMPLEMENTED =
-  "ขออภัยครับ คำสั่งเพิ่มไทม์ไลน์ผ่าน LINE ยังไม่เปิดใช้งานในขณะนี้ กรุณาเพิ่มรายการไทม์ไลน์ผ่านเว็บแอประบบไปก่อน";
+export const ADD_TIMELINE_ENTRY_MAX_CHARS = 2000;
+
+export const ADD_TIMELINE_TOO_LONG =
+  `ข้อความยาวเกินไป (สูงสุด ${ADD_TIMELINE_ENTRY_MAX_CHARS} ตัวอักษร) กรุณาย่อข้อความแล้วลองใหม่อีกครั้ง`;
+
+/**
+ * Success reply for the add-timeline (write) command. `time` is the stored
+ * `entry_time` value (`HH:MM:SS`, Bangkok local) — trimmed to `HH:MM` for
+ * display, matching how formatTimelineList() shows times below.
+ */
+export function formatAddTimelineSuccess(caseNumber: string, time: string): string {
+  return `✅ เพิ่มบันทึกไทม์ไลน์ให้เคส ${caseNumber} แล้ว เวลา ${time.slice(0, 5)}`;
+}
 
 const CASE_STATUS_LABEL: Record<string, string> = {
   new: "ใหม่",

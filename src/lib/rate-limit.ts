@@ -74,6 +74,14 @@ export const RATE_LIMITS = {
    * agent to retry a few times if they fat-finger the flow.
    */
   line_otp_request_target: { limit: 4, windowMs: 3_600_000 },
+  /**
+   * 30 LINE-bot "add timeline entry" writes per hour per agent (agents.id).
+   * A write command is a materially better abuse/cost target than the
+   * read-only case/timeline commands (currently unlimited) — this bounds it
+   * while staying generous enough for legitimate rapid-fire field note-taking
+   * during active surveillance.
+   */
+  line_add_timeline: { limit: 30, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;
