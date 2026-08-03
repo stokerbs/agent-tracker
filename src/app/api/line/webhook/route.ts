@@ -24,18 +24,25 @@ export async function POST(request: NextRequest) {
   const secret = process.env.LINE_CHANNEL_SECRET;
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
+  // Fail CLOSED: an unconfigured LINE_CHANNEL_SECRET must never be treated as
+  // "skip verification" — this feature now gates OTP-triggering SMS sends and
+  // case/timeline PII reads behind this webhook, so an unverified request
+  // must be rejected exactly like a bad signature, not silently processed.
+  if (!secret) {
+    console.error("[line-webhook] LINE_CHANNEL_SECRET is not configured — rejecting request");
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   // Read the raw body FIRST — signature is computed over the exact bytes.
   const raw = await request.text();
 
   // Verify the request genuinely came from LINE (HMAC-SHA256, base64).
-  if (secret) {
-    const expected = crypto.createHmac("sha256", secret).update(raw).digest("base64");
-    const got = request.headers.get("x-line-signature") ?? "";
-    const a = Buffer.from(expected);
-    const b = Buffer.from(got);
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      return NextResponse.json({ ok: false }, { status: 401 });
-    }
+  const expected = crypto.createHmac("sha256", secret).update(raw).digest("base64");
+  const got = request.headers.get("x-line-signature") ?? "";
+  const a = Buffer.from(expected);
+  const b = Buffer.from(got);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   let events: LineEvent[] = [];

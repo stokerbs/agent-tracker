@@ -61,6 +61,19 @@ export const RATE_LIMITS = {
   line_otp_request: { limit: 3, windowMs: 10 * 60_000 },
   /** 5 LINE-bot OTP verification attempts per 10 minutes per LINE user — coarse defense-in-depth alongside the per-account otp_attempts lockout stored on line_accounts. */
   line_otp_verify: { limit: 5, windowMs: 10 * 60_000 },
+  /**
+   * 4 LINE-bot OTP link requests per hour per RESOLVED TARGET AGENT (keyed on
+   * agents.id, not the requesting LINE identity). `line_otp_request` above is
+   * keyed on lineUserId, which is free for an attacker to mint an unlimited
+   * number of — so it does nothing to stop many distinct LINE identities from
+   * each requesting an OTP for the SAME victim phone number (SMS-bombing /
+   * cost-DoS on a real agent who never asked for any of it). This bucket
+   * closes that gap: it caps how many OTP SMS a single agent can receive in
+   * an hour, no matter how many different LINE accounts are asking. Small
+   * enough to make bombing impractical, generous enough for a legitimate
+   * agent to retry a few times if they fat-finger the flow.
+   */
+  line_otp_request_target: { limit: 4, windowMs: 3_600_000 },
 } as const;
 
 type Bucket = keyof typeof RATE_LIMITS;

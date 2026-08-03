@@ -39,6 +39,21 @@ describe("POST /api/line/webhook", () => {
     expect(handleLineMessage).not.toHaveBeenCalled();
   });
 
+  it("401 (fails CLOSED) when LINE_CHANNEL_SECRET is not configured — even with a well-formed body/signature-shaped header", async () => {
+    delete process.env.LINE_CHANNEL_SECRET;
+    // An unconfigured secret must be rejected outright, never treated as
+    // "skip verification" — this gates OTP-triggering SMS sends and
+    // case/timeline PII reads.
+    const body = JSON.stringify({
+      events: [
+        { type: "message", replyToken: "rt1", source: { userId: "Uabc123" }, message: { type: "text", text: "hello" } },
+      ],
+    });
+    const res = await POST(req(body, "anything"));
+    expect(res.status).toBe(401);
+    expect(handleLineMessage).not.toHaveBeenCalled();
+  });
+
   it("dispatches a valid signed text-message event to the router with userId/text/replyToken", async () => {
     const body = JSON.stringify({
       events: [

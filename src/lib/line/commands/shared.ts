@@ -86,9 +86,13 @@ function mapCaseRow(row: CaseRawRow): AuthorizedCase {
 }
 
 /** Escape SQL ILIKE wildcards (`%`, `_`) so free-text user input behaves as
- * a literal match/substring rather than an unintended wildcard pattern. */
+ * a literal match/substring rather than an unintended wildcard pattern.
+ * Escapes a literal backslash FIRST — otherwise `a\%` would become `a\\%`,
+ * which Postgres still parses as an escaped-backslash followed by an
+ * unescaped (wildcard) `%`, letting a `\` in user input reintroduce a
+ * wildcard this function was meant to neutralize. */
 export function escapeIlikeTerm(term: string): string {
-  return term.replace(/[%_]/g, (c) => `\\${c}`);
+  return term.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
 }
 
 /**

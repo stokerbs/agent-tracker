@@ -1,5 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// handleLinkCommand defers its match-only work (OTP upsert + Twilio send) to
+// next/server's after() so the user-facing reply doesn't wait on it (see the
+// enumeration-resistance note in router.ts). Collect scheduled callbacks
+// instead of letting the mock fire-and-forget them (as the lead/careers route
+// tests do) — the assertions below need to await their completion
+// deterministically.
+const hoisted = vi.hoisted(() => ({ afterCallbacks: [] as Array<() => unknown> }));
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (fn: () => unknown) => {
+    hoisted.afterCallbacks.push(fn);
+  },
+}));
+
 vi.mock("@/lib/supabase/server", () => ({ createServiceClient: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn() }));
 vi.mock("@/lib/sms/twilio", () => ({ sendSms: vi.fn() }));
@@ -83,12 +97,25 @@ function lastReply(): string {
   return calls[calls.length - 1]?.[1] ?? "";
 }
 
+/** Run + await every callback handleLinkCommand handed to after(), draining
+ * them (and anything they in turn schedule) before assertions run. */
+async function flushDeferredWork(): Promise<void> {
+  while (hoisted.afterCallbacks.length > 0) {
+    const cbs = hoisted.afterCallbacks.splice(0, hoisted.afterCallbacks.length);
+    await Promise.all(cbs.map((fn) => fn()));
+  }
+}
+
 beforeEach(() => {
+  hoisted.afterCallbacks.length = 0;
   vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 10, retryAfterMs: 0 });
   vi.mocked(sendSms).mockResolvedValue({ ok: true });
   vi.mocked(createServiceClient).mockReturnValue(makeSvc().client as never);
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  hoisted.afterCallbacks.length = 0;
+  vi.clearAllMocks();
+});
 
 describe("parseCommand", () => {
   it("parses a 6-digit message as a verify command", () => {
@@ -127,15 +154,18 @@ describe("handleLineMessage — unlinked, non link/verify command", () => {
 });
 
 describe("handleLineMessage — link command", () => {
-  it("replies NO_MATCH and does not upsert when zero agents match the phone (non-enumerating)", async () => {
+  it("replies LINK_REQUEST_ACK and does not upsert when zero agents match the phone (non-enumerating)", async () => {
     const s = makeSvc({ agentsRows: [] });
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
-    expect(lastReply()).toBe(msg.NO_MATCH);
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
     expect(s.upsertedWith).toBeUndefined();
+    expect(sendSms).not.toHaveBeenCalled();
+    // Nothing deferred either — the no-match path never schedules after() work.
+    expect(hoisted.afterCallbacks).toHaveLength(0);
   });
 
-  it("replies NO_MATCH (same text) when the phone matches more than one agent", async () => {
+  it("replies LINK_REQUEST_ACK (same text) when the phone matches more than one agent", async () => {
     const s = makeSvc({
       agentsRows: [
         { id: "a1", phone: "081-234-5678" },
@@ -144,14 +174,30 @@ describe("handleLineMessage — link command", () => {
     });
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
-    expect(lastReply()).toBe(msg.NO_MATCH);
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    expect(sendSms).not.toHaveBeenCalled();
   });
 
-  it("on a unique match: upserts line_accounts, sends the OTP by SMS, and replies OTP_SENT", async () => {
+  it("on a unique match: replies LINK_REQUEST_ACK BEFORE the OTP upsert/SMS work runs (latency parity with the no-match path)", async () => {
     const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
 
     await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
+
+    // Reply has already gone out, identical to the no-match reply...
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    // ...and the slow, match-only work has only been *scheduled*, not run yet.
+    expect(sendSms).not.toHaveBeenCalled();
+    expect(s.upsertedWith).toBeUndefined();
+    expect(hoisted.afterCallbacks).toHaveLength(1);
+  });
+
+  it("on a unique match, once deferred work runs: upserts line_accounts and sends the OTP by SMS", async () => {
+    const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+
+    await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
+    await flushDeferredWork();
 
     expect(sendSms).toHaveBeenCalledTimes(1);
     const [, smsBody] = vi.mocked(sendSms).mock.calls[0]!;
@@ -169,15 +215,48 @@ describe("handleLineMessage — link command", () => {
     expect(upserted).not.toHaveProperty("agent_id");
     expect(upserted).not.toHaveProperty("linked_at");
 
-    expect(lastReply()).toBe(msg.OTP_SENT);
+    // The reply was already sent (and unaffected) before this deferred work ran.
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    expect(replyLineMessage).toHaveBeenCalledTimes(1);
   });
 
-  it("replies SMS_FAILED (but has already upserted the OTP) when Twilio fails", async () => {
+  it("checks the target-scoped rate limit (line_otp_request_target) keyed on the resolved agent id, not the LINE user id", async () => {
+    const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
+    await flushDeferredWork();
+    expect(checkRateLimit).toHaveBeenCalledWith("line_otp_request_target", AGENT_ID);
+  });
+
+  it("when the target-scoped rate limit is exhausted: skips the SMS/upsert entirely but still replies with the SAME LINK_REQUEST_ACK (no distinguishable oracle)", async () => {
+    vi.mocked(checkRateLimit).mockImplementation(async (bucket) => {
+      if (bucket === "line_otp_request_target") {
+        return { allowed: false, remaining: 0, retryAfterMs: 60_000 };
+      }
+      return { allowed: true, remaining: 10, retryAfterMs: 0 };
+    });
+    const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+
+    await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+
+    await flushDeferredWork();
+    expect(sendSms).not.toHaveBeenCalled();
+    expect(s.upsertedWith).toBeUndefined();
+    // Still exactly one reply — the rate-limited outcome never produces a
+    // second, distinguishable message.
+    expect(replyLineMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("silently swallows a Twilio failure — no distinct user-facing reply (would be a match/no-match oracle)", async () => {
     vi.mocked(sendSms).mockResolvedValue({ ok: false, error: "http_400" });
     const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
-    expect(lastReply()).toBe(msg.SMS_FAILED);
+    await flushDeferredWork();
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    expect(replyLineMessage).toHaveBeenCalledTimes(1);
   });
 
   it("replies ALREADY_LINKED and skips OTP issuance for an already-linked account", async () => {

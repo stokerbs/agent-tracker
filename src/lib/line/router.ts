@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizePhone } from "@/lib/security/encryption";
@@ -180,6 +181,49 @@ async function findUniqueAgentByPhone(
   return { ok: true, agent: matches[0]! };
 }
 
+/**
+ * Enumeration-resistance design note (security review Finding 2, and its
+ * Finding 1 rate-limit companion):
+ *
+ * Every outcome below whose existence depends on whether `rawPhone` matched
+ * a real agent (unique match / zero match / ambiguous match / target rate-
+ * limited) MUST reply with the exact same text (msg.LINK_REQUEST_ACK) and in
+ * roughly the same latency — otherwise the reply content or its timing
+ * becomes an oracle an unauthenticated LINE user can use to test whether an
+ * arbitrary phone number belongs to a registered agent (agents.phone is
+ * sensitive PII).
+ *
+ * To hold that invariant we:
+ *   1. Resolve the match (one DB round-trip either way — same cost whether
+ *      it matches or not).
+ *   2. Reply with the generic ack IMMEDIATELY once the outcome is decided —
+ *      before doing any of the slow, match-only work (OTP upsert, target
+ *      rate-limit check, Twilio SMS call). That slow work can no longer make
+ *      the match path visibly slower than the no-match path, because the
+ *      user-visible reply no longer waits on it.
+ *   3. Defer the match-only work to next/server's after() (same pattern as
+ *      src/app/api/agents/location/route.ts and
+ *      src/app/api/marketing/lead/route.ts — verified to flush reliably in
+ *      Vercel Route Handlers after the response is sent, unlike a bare
+ *      un-awaited promise which risks being frozen mid-flight). Any failure
+ *      in there (upsert error, target rate-limit hit, Twilio failure) is
+ *      logged server-side only — it can never become a second, distinct
+ *      user-facing reply, since that would itself be a match/no-match
+ *      oracle (a distinct "SMS failed" reply can only ever fire on the
+ *      branch that got as far as calling Twilio, i.e. only on a real
+ *      match).
+ *
+ * Two replies stay intentionally distinct and are NOT covered by the above:
+ *   - RATE_LIMITED (the per-LINE-identity `line_otp_request` bucket): fires
+ *     before rawPhone is even parsed, so it can't depend on — and doesn't
+ *     leak anything about — the phone's match status.
+ *   - OTP_COOLDOWN: fires off `account.otp_requested_at`, which reflects a
+ *     PRIOR link attempt by this same LINE identity, checked before the
+ *     CURRENT rawPhone is normalized/matched at all. It says nothing about
+ *     whether the phone in *this* message matches anything.
+ *   - ALREADY_LINKED / INVALID_PHONE: depend only on this LINE identity's
+ *     own state or on input format, never on another phone's match status.
+ */
 async function handleLinkCommand(
   svc: ReturnType<typeof createServiceClient>,
   lineUserId: string,
@@ -215,58 +259,79 @@ async function handleLinkCommand(
 
   const match = await findUniqueAgentByPhone(svc, normalizedInput);
   if (!match.ok) {
-    // Deliberately identical reply whether 0 or >1 agents matched — never
-    // leak how many candidates a phone number resolved to.
+    // Deliberately identical reply/timing to the matched path below — never
+    // leak whether 0 or >1 agents matched, or that a match happened at all.
     console.log(`[line:link] no-unique-agent-match count=${match.count} userId=${redact(lineUserId)}`);
-    await replyLineMessage(replyToken, msg.NO_MATCH);
+    await replyLineMessage(replyToken, msg.LINK_REQUEST_ACK);
     return;
   }
 
-  const otp = generateOtp();
-  const otpHash = hashOtp(otp);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + OTP_TTL_MS).toISOString();
+  // Reply now — identical text/timing to the no-match path — BEFORE doing
+  // any of the match-only work below, so neither the message nor the
+  // latency reveals that a match occurred.
+  await replyLineMessage(replyToken, msg.LINK_REQUEST_ACK);
 
-  // Upsert by line_user_id. Deliberately does NOT include agent_id/linked_at
-  // — those are only ever set by a successful verify, never here, so a
-  // repeated/failed link attempt can never silently link an account.
-  const { data: upserted, error: upsertError } = await svc
-    .from("line_accounts")
-    .upsert(
-      {
-        line_user_id: lineUserId,
-        phone_at_link_time: rawPhone.trim(),
-        otp_code_hash: otpHash,
-        otp_expires_at: expiresAt,
-        otp_attempts: 0,
-        otp_requested_at: now.toISOString(),
-      },
-      { onConflict: "line_user_id" },
-    )
-    .select("id")
-    .single();
+  const agentId = match.agent.id;
+  const agentPhone = match.agent.phone;
 
-  if (upsertError || !upserted) {
-    console.error("[line:link] upsert failed", upsertError);
-    await replyLineMessage(replyToken, msg.GENERIC_ERROR);
-    return;
-  }
+  after(async () => {
+    // Second rate limit, scoped to the RESOLVED TARGET agent rather than the
+    // requesting LINE identity (Finding 1) — a fresh LINE identity is free
+    // to create, so line_otp_request alone can't stop many distinct
+    // identities from each requesting an OTP for the same victim phone.
+    // This bounds how many OTP SMS a single agent can receive per hour no
+    // matter how many LINE identities are asking. Deliberately checked here
+    // (post-reply), not before replying, so it doesn't affect the ack's
+    // content or timing (see the SMS-bombing target user's DoS risk).
+    const targetRl = await checkRateLimit("line_otp_request_target", agentId);
+    if (!targetRl.allowed) {
+      console.warn(`[line:link] target-rate-limited agentId=${agentId}`);
+      return;
+    }
 
-  const phoneInfo = parsePhone(match.agent.phone ?? "", "TH");
-  const smsTarget = phoneInfo.e164 ?? match.agent.phone!;
-  const smsResult = await sendSms(
-    smsTarget,
-    `รหัส OTP ยืนยันบัญชี Detective Pulse ของคุณคือ ${otp} (หมดอายุใน 10 นาที) กรุณาอย่าเปิดเผยรหัสนี้กับผู้อื่น`,
-  );
+    const otp = generateOtp();
+    const otpHash = hashOtp(otp);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + OTP_TTL_MS).toISOString();
 
-  if (!smsResult.ok) {
-    console.error(`[line:link] sms-send-failed lineAccountId=${upserted.id} reason=${smsResult.error}`);
-    await replyLineMessage(replyToken, msg.SMS_FAILED);
-    return;
-  }
+    // Upsert by line_user_id. Deliberately does NOT include agent_id/linked_at
+    // — those are only ever set by a successful verify, never here, so a
+    // repeated/failed link attempt can never silently link an account.
+    const { data: upserted, error: upsertError } = await svc
+      .from("line_accounts")
+      .upsert(
+        {
+          line_user_id: lineUserId,
+          phone_at_link_time: rawPhone.trim(),
+          otp_code_hash: otpHash,
+          otp_expires_at: expiresAt,
+          otp_attempts: 0,
+          otp_requested_at: now.toISOString(),
+        },
+        { onConflict: "line_user_id" },
+      )
+      .select("id")
+      .single();
 
-  console.log(`[line:link] otp-sent lineAccountId=${upserted.id}`);
-  await replyLineMessage(replyToken, msg.OTP_SENT);
+    if (upsertError || !upserted) {
+      console.error("[line:link] upsert failed", upsertError);
+      return;
+    }
+
+    const phoneInfo = parsePhone(agentPhone ?? "", "TH");
+    const smsTarget = phoneInfo.e164 ?? agentPhone!;
+    const smsResult = await sendSms(
+      smsTarget,
+      `รหัส OTP ยืนยันบัญชี Detective Pulse ของคุณคือ ${otp} (หมดอายุใน 10 นาที) กรุณาอย่าเปิดเผยรหัสนี้กับผู้อื่น`,
+    );
+
+    if (!smsResult.ok) {
+      console.error(`[line:link] sms-send-failed lineAccountId=${upserted.id} reason=${smsResult.error}`);
+      return;
+    }
+
+    console.log(`[line:link] otp-sent lineAccountId=${upserted.id}`);
+  });
 }
 
 // ── verify command ────────────────────────────────────────────────────────

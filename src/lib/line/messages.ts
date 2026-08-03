@@ -26,20 +26,26 @@ export const LINKED_HELP =
 export const INVALID_PHONE =
   `รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาพิมพ์ใหม่ เช่น: ${LINK_EXAMPLE}`;
 
-export const NO_MATCH =
-  "ไม่พบข้อมูล หรือไม่สามารถยืนยันตัวตนได้ กรุณาตรวจสอบเบอร์โทรศัพท์อีกครั้ง หรือติดต่อผู้ดูแลระบบ";
-
-export const OTP_SENT =
-  "ส่งรหัส OTP ไปยังเบอร์โทรศัพท์ของคุณทาง SMS แล้ว กรุณาพิมพ์รหัส 6 หลักเพื่อยืนยัน (รหัสหมดอายุใน 10 นาที)";
+/**
+ * Deliberately IDENTICAL reply for every terminal outcome of a "link <phone>"
+ * submission whose meaning depends on whether that phone matched a real
+ * agent: a unique match (OTP actually sent), zero/ambiguous matches, AND a
+ * target-scoped rate-limit hit (OTP withheld — see line_otp_request_target
+ * in src/lib/rate-limit.ts). `agents.phone` is sensitive PII; if any of
+ * these produced a distinguishable reply, anyone could probe phone numbers
+ * against the system with zero authentication. Never reintroduce a
+ * match-dependent reply here — see the enumeration-resistance note in
+ * handleLinkCommand (src/lib/line/router.ts) for the full reasoning,
+ * including why reply latency is also normalized across these outcomes.
+ */
+export const LINK_REQUEST_ACK =
+  "หากเบอร์นี้ลงทะเบียนในระบบ เราจะส่งรหัส OTP ไปให้ทาง SMS กรุณารอรับ SMS แล้วพิมพ์รหัส 6 หลักเพื่อยืนยัน (รหัสหมดอายุใน 10 นาที)";
 
 export const OTP_COOLDOWN =
   "คุณเพิ่งขอรหัส OTP ไปแล้ว กรุณารอสักครู่ก่อนขอรหัสใหม่";
 
 export const RATE_LIMITED =
   "คุณส่งคำขอบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง";
-
-export const SMS_FAILED =
-  "ไม่สามารถส่งรหัส OTP ทาง SMS ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ";
 
 export const ALREADY_LINKED =
   "บัญชี LINE นี้เชื่อมต่อกับ Detective Pulse อยู่แล้วครับ";
