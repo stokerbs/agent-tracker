@@ -8,8 +8,8 @@ import { handleLineMessage } from "@/lib/line/router";
 // every text message through src/lib/line/router.ts's command dispatcher:
 // phone+OTP account linking ("link"/"verify"), gated read-only commands for
 // already-linked agents (case lookup / timeline list — implemented in
-// src/lib/line/commands/*, stubbed for now), and a help/link-prompt reply for
-// everything else. See router.ts's module doc for the full dispatch flow.
+// src/lib/line/commands/*), and a help/link-prompt reply for everything
+// else. See router.ts's module doc for the full dispatch flow.
 //
 // Requires LINE_CHANNEL_SECRET (to verify) + LINE_CHANNEL_ACCESS_TOKEN (to reply).
 

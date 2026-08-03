@@ -308,6 +308,31 @@ describe("handleLineMessage — link command", () => {
     await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 123", "rt1");
     expect(lastReply()).toBe(msg.INVALID_PHONE);
   });
+
+  it("matches across local-vs-international format differences: agent stored E.164, user types local format", async () => {
+    const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "+66812345678" }] });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "ผูกบัญชี 0812345678", "rt1");
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    // A unique match schedules deferred OTP work (same signal used by the
+    // other unique-match tests above) — proves the cross-format phones
+    // were recognized as the same number rather than falling into the
+    // ambiguous/no-match branch, which is indistinguishable by reply text
+    // alone (enumeration-resistance).
+    expect(hoisted.afterCallbacks).toHaveLength(1);
+    await flushDeferredWork();
+    expect(sendSms).toHaveBeenCalledTimes(1);
+  });
+
+  it("matches across local-vs-international format differences: agent stored local format, user types E.164", async () => {
+    const s = makeSvc({ agentsRows: [{ id: AGENT_ID, phone: "0812345678" }] });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "ผูกบัญชี +66812345678", "rt1");
+    expect(lastReply()).toBe(msg.LINK_REQUEST_ACK);
+    expect(hoisted.afterCallbacks).toHaveLength(1);
+    await flushDeferredWork();
+    expect(sendSms).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("handleLineMessage — verify command", () => {
@@ -402,6 +427,28 @@ describe("handleLineMessage — verify command", () => {
     await handleLineMessage(LINE_USER_ID, "123456", "rt1");
     expect(lastReply()).toBe(msg.GENERIC_ERROR);
     expect(s.updateCalls).toEqual([]);
+  });
+
+  it("replies AGENT_ALREADY_LINKED when the final link update hits a unique-violation (23505) race", async () => {
+    const s = makeSvc({
+      accountRow: pendingAccount(),
+      agentsRows: [{ id: AGENT_ID, phone: "0812345678" }],
+      updateError: { code: "23505", message: "duplicate key value violates unique constraint" },
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "123456", "rt1");
+    expect(lastReply()).toBe(msg.AGENT_ALREADY_LINKED);
+  });
+
+  it("replies GENERIC_ERROR when the final link update fails for a non-unique-violation reason", async () => {
+    const s = makeSvc({
+      accountRow: pendingAccount(),
+      agentsRows: [{ id: AGENT_ID, phone: "0812345678" }],
+      updateError: { code: "08006", message: "connection failure" },
+    });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    await handleLineMessage(LINE_USER_ID, "123456", "rt1");
+    expect(lastReply()).toBe(msg.GENERIC_ERROR);
   });
 
   it("replies ALREADY_LINKED when the account is already linked (idempotent re-verify)", async () => {

@@ -71,9 +71,6 @@ export const LINK_SUCCESS =
 export const GENERIC_ERROR =
   "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้งในภายหลัง";
 
-export const NOT_YET_IMPLEMENTED =
-  "ฟีเจอร์นี้กำลังจะมาเร็วๆ นี้ ขออภัยในความไม่สะดวกครับ";
-
 // ── Case lookup / timeline list (read-only) command replies ────────────────
 
 export const CASE_LOOKUP_EMPTY_ARGS =

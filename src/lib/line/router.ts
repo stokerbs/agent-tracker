@@ -165,9 +165,27 @@ export async function handleLineMessage(
 
 // ── link command ──────────────────────────────────────────────────────────
 
+/**
+ * Compares two phone values for equality, canonicalizing local-vs-
+ * international format differences via parsePhone()'s TH-region E.164 output
+ * when BOTH sides parse to a possible number (e.g. "0812345678" and
+ * "+66 81 234 5678" are the same number but normalizePhone()'s naive
+ * digit-strip alone ("0812345678" vs "66812345678") would never say so).
+ * Falls back to the plain digit-only compare when either side fails to
+ * parse — agents.phone is free-text and not guaranteed to be a valid TH
+ * number, so an unparseable stored value must not newly become a non-match
+ * for everything; it just loses the format-canonicalization benefit.
+ */
+function phoneMatches(a: string, b: string): boolean {
+  const pa = parsePhone(a, "TH");
+  const pb = parsePhone(b, "TH");
+  if (pa.e164 && pb.e164) return pa.e164 === pb.e164;
+  return normalizePhone(a) === normalizePhone(b);
+}
+
 async function findUniqueAgentByPhone(
   svc: ReturnType<typeof createServiceClient>,
-  normalizedPhone: string,
+  rawPhone: string,
 ): Promise<{ ok: true; agent: AgentPhoneRow } | { ok: false; count: number }> {
   const { data, error } = await svc.from("agents").select("id, phone").not("phone", "is", null);
   if (error) {
@@ -175,7 +193,7 @@ async function findUniqueAgentByPhone(
     return { ok: false, count: 0 };
   }
   const matches = ((data ?? []) as AgentPhoneRow[]).filter(
-    (a) => a.phone && normalizePhone(a.phone) === normalizedPhone,
+    (a) => a.phone && phoneMatches(a.phone, rawPhone),
   );
   if (matches.length !== 1) return { ok: false, count: matches.length };
   return { ok: true, agent: matches[0]! };
@@ -257,7 +275,7 @@ async function handleLinkCommand(
     return;
   }
 
-  const match = await findUniqueAgentByPhone(svc, normalizedInput);
+  const match = await findUniqueAgentByPhone(svc, rawPhone);
   if (!match.ok) {
     // Deliberately identical reply/timing to the matched path below — never
     // leak whether 0 or >1 agents matched, or that a match happened at all.
@@ -401,8 +419,7 @@ async function handleVerifyCommand(
   // Re-resolve the candidate agent at verify time too (not just at link
   // time) — defense-in-depth against the matching phone having changed/
   // become ambiguous in the interim between the link and verify messages.
-  const normalizedPhone = normalizePhone(account.phone_at_link_time);
-  const match = await findUniqueAgentByPhone(svc, normalizedPhone);
+  const match = await findUniqueAgentByPhone(svc, account.phone_at_link_time);
   if (!match.ok) {
     console.error(
       `[line:verify] candidate-agent-no-longer-unique count=${match.count} lineAccountId=${account.id}`,
