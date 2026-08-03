@@ -26,9 +26,8 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
  * account linking, plus a gate for the case/timeline commands implemented
  * elsewhere — see src/lib/line/commands/case.ts and
  * src/lib/line/commands/timeline.ts (read-only) and
- * src/lib/line/commands/add-timeline.ts (write, Round 2 — currently a
- * parsing/dispatch stub, see that file's module doc) for that extension
- * point).
+ * src/lib/line/commands/add-timeline.ts (write, Round 2 — text-only case
+ * timeline entries, see that file's module doc) for that extension point).
  *
  * Every inbound text message flows through handleLineMessage(), which:
  *   1. Resolves the LINE user (source.userId) -> line_accounts row -> agent_id.
