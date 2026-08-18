@@ -1,7 +1,8 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import { generateArticle, KEYWORD_TOPICS } from "@/lib/marketing/article-gen";
+import { generateArticle } from "@/lib/marketing/article-gen";
+import { pickTopic } from "@/lib/marketing/topic-picker";
 import { getUsedTopicsAndSlugs, insertDraft } from "@/lib/marketing/articles-db";
 import { pushLineNotify } from "@/lib/line/notify";
 import { notifyRole } from "@/lib/notifications";
@@ -21,18 +22,27 @@ export interface GenerationResult {
  * admin "generate now" button. Never publishes — approval happens in /review.
  */
 export async function runArticleGeneration(): Promise<GenerationResult> {
-  // Pick the highest-priority keyword topic not generated before. KEYWORD_TOPICS
-  // is ordered by proven intent (real Google Search Console winners first), so
-  // take the first unused rather than a random one — that way the near-page-1
-  // keywords get their article next. Fall back to random only once every topic
-  // has been covered, to keep the back-catalogue varied.
-  const { topics, slugs } = await getUsedTopicsAndSlugs();
-  const fresh = KEYWORD_TOPICS.filter((t) => !topics.has(t.th));
-  const seed = fresh.length
-    ? fresh[0]!
-    : KEYWORD_TOPICS[Math.floor(Math.random() * KEYWORD_TOPICS.length)]!;
+  // Pick the next keyword AND the shape of the article (see topic-picker):
+  // highest-priority unused keyword, skipping ahead when the last few articles
+  // came from the same category, with a rotating format so nothing reads like
+  // the previous piece. The newest titles go into the prompt as "already
+  // covered" so the model doesn't re-tell them.
+  const { topics, slugs, recent = [] } = await getUsedTopicsAndSlugs();
+  const { seed, format, topicKey, isRevisit } = pickTopic(
+    topics,
+    recent.map((r) => r.topic),
+  );
+  console.info(
+    `[article-gen] seed="${seed.th}" category=${seed.category} format=${format.key} revisit=${isRevisit}`,
+  );
 
-  const article = await generateArticle(seed);
+  const article = await generateArticle(seed, {
+    format,
+    recentTitles: recent.map((r) => r.title),
+  });
+  // Store the picker's key (keyword, or "keyword · format" on a revisit) — it
+  // is what dedupes future picks.
+  article.topic = topicKey;
 
   // Avoid slug collisions with earlier AI articles.
   let n = 1;
@@ -57,5 +67,5 @@ export async function runArticleGeneration(): Promise<GenerationResult> {
     priority: "normal",
   });
 
-  return { id: draft?.id ?? "", reviewUrl, title: article.thTitle, topic: seed.th };
+  return { id: draft?.id ?? "", reviewUrl, title: article.thTitle, topic: topicKey };
 }

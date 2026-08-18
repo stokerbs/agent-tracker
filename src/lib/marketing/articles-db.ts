@@ -68,19 +68,48 @@ export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en" 
   return (data as DbArticle | null) ?? null;
 }
 
-/** Topics + slugs already used, so the generator avoids repeats/collisions. */
-export async function getUsedTopicsAndSlugs(): Promise<{ topics: Set<string>; slugs: Set<string> }> {
+/** How many of the newest articles the generator sees, to avoid echoing them. */
+const RECENT_LIMIT = 6;
+
+export interface RecentArticle {
+  /** Stored dedupe key (`keyword` or `keyword · format`). */
+  topic: string;
+  title: string;
+}
+
+/**
+ * Topics + slugs already used, so the generator avoids repeats/collisions, plus
+ * the newest few (topic key + Thai title) which drive category/format spacing
+ * and the "don't rewrite these" list in the prompt.
+ */
+export async function getUsedTopicsAndSlugs(): Promise<{
+  topics: Set<string>;
+  slugs: Set<string>;
+  recent: RecentArticle[];
+}> {
   const svc = createServiceClient();
-  const { data } = await svc.from("marketing_articles").select("topic, th_slug, en_slug, zh_slug");
+  const { data } = await svc
+    .from("marketing_articles")
+    .select("topic, th_title, th_slug, en_slug, zh_slug, created_at")
+    .order("created_at", { ascending: false });
+  const rows =
+    (data as Array<{
+      topic: string;
+      th_title: string;
+      th_slug: string;
+      en_slug: string;
+      zh_slug: string | null;
+    }>) ?? [];
   const topics = new Set<string>();
   const slugs = new Set<string>();
-  for (const r of (data as Array<{ topic: string; th_slug: string; en_slug: string; zh_slug: string | null }>) ?? []) {
+  for (const r of rows) {
     topics.add(r.topic);
     slugs.add(r.th_slug);
     slugs.add(r.en_slug);
     if (r.zh_slug) slugs.add(r.zh_slug);
   }
-  return { topics, slugs };
+  const recent = rows.slice(0, RECENT_LIMIT).map((r) => ({ topic: r.topic, title: r.th_title }));
+  return { topics, slugs, recent };
 }
 
 /** Insert a generated article as a draft with its one-time approve token. */

@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { KEYWORD_TOPICS } from "@/lib/marketing/article-gen";
+import { ARTICLE_FORMATS, parseTopicKey } from "@/lib/marketing/topic-picker";
 import { generateArticleNow } from "./actions";
 import { GenerateButton } from "./generate-button";
 
@@ -39,12 +41,27 @@ export default async function MarketingArticlesPage() {
     .limit(200);
   const rows = (data as Row[]) ?? [];
 
+  // Keyword coverage — how much of the topic pool already has an article. The
+  // generator walks the pool before revisiting anything, so this is the honest
+  // answer to "are we running out of things to write about?".
+  const { data: topicRows } = await supabase.from("marketing_articles").select("topic");
+  const covered = new Set(
+    ((topicRows as Array<{ topic: string }> | null) ?? []).map((r) => parseTopicKey(r.topic).base),
+  );
+  const coveredCount = KEYWORD_TOPICS.filter((t) => covered.has(t.th)).length;
+
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
         title="บทความ AI"
         description="สร้างบทความอัตโนมัติด้วย AI (เจาะคีย์เวิร์ดจากแอด) — ระบบจะร่างให้ แล้วส่งลิงก์อนุมัติเข้า LINE · ปกติรันอัตโนมัติ อังคาร & ศุกร์"
       />
+
+      <p className="mb-4 text-xs text-muted-foreground">
+        คลังหัวข้อ: เขียนแล้ว {coveredCount} จาก {KEYWORD_TOPICS.length} คีย์เวิร์ด · รูปแบบบทความ{" "}
+        {ARTICLE_FORMATS.length} แบบ (คู่มือ / เช็คลิสต์ / ถาม-ตอบ / ค่าใช้จ่าย ฯลฯ) หมุนเวียนอัตโนมัติ
+        เพื่อไม่ให้บทความซ้ำแนวกัน
+      </p>
 
       <form action={generateArticleNow} className="mb-6">
         <GenerateButton />

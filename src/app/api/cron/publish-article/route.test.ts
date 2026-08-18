@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server";
 
 vi.mock("@/lib/marketing/article-gen", () => ({
   KEYWORD_TOPICS: [
-    { th: "topic-a", en: "en-a", angle: "x" },
-    { th: "topic-b", en: "en-b", angle: "y" },
+    { th: "topic-a", en: "en-a", zh: "zh-a", category: "hire", angle: "x" },
+    { th: "topic-b", en: "en-b", zh: "zh-b", category: "legal", angle: "y" },
   ],
   generateArticle: vi.fn(),
 }));
@@ -38,7 +38,7 @@ const OLD = { ...process.env };
 beforeEach(() => {
   vi.restoreAllMocks();
   process.env.CRON_SECRET = "secret";
-  vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({ topics: new Set(), slugs: new Set() });
+  vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({ topics: new Set(), slugs: new Set(), recent: [] });
   vi.mocked(generateArticle).mockResolvedValue({ ...article });
   vi.mocked(insertDraft).mockResolvedValue({ id: "id-1" });
 });
@@ -70,11 +70,36 @@ describe("GET /api/cron/publish-article", () => {
   });
 
   it("appends a suffix when the generated slug already exists", async () => {
-    vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({ topics: new Set(), slugs: new Set(["s"]) });
+    vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({ topics: new Set(), slugs: new Set(["s"]), recent: [] });
     await GET(req("Bearer secret"));
     const inserted = vi.mocked(insertDraft).mock.calls[0]![0];
     expect(inserted.thSlug).toBe("s-2");
     expect(inserted.enSlug).toBe("s-2");
+  });
+
+  it("picks an unused topic and hands the model a format + the recent titles", async () => {
+    vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({
+      topics: new Set(["topic-a"]),
+      slugs: new Set(),
+      recent: [{ topic: "topic-a", title: "บทความเก่า" }],
+    });
+    await GET(req("Bearer secret"));
+    const [seed, opts] = vi.mocked(generateArticle).mock.calls[0]!;
+    expect(seed.th).toBe("topic-b"); // topic-a already has an article
+    expect(opts?.format?.key).toBeTruthy();
+    expect(opts?.recentTitles).toEqual(["บทความเก่า"]);
+    expect(vi.mocked(insertDraft).mock.calls[0]![0].topic).toBe("topic-b");
+  });
+
+  it("revisits a covered keyword under a new format once the pool is exhausted", async () => {
+    vi.mocked(getUsedTopicsAndSlugs).mockResolvedValue({
+      topics: new Set(["topic-a", "topic-b"]),
+      slugs: new Set(),
+      recent: [{ topic: "topic-b", title: "บทความเก่า" }],
+    });
+    await GET(req("Bearer secret"));
+    // stored topic becomes "<keyword> · <format>" so the pair dedupes next time
+    expect(vi.mocked(insertDraft).mock.calls[0]![0].topic).toMatch(/^topic-[ab] · [a-z0-9-]+$/);
   });
 
   it("500 when generation fails", async () => {
