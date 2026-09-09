@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
   settings: { approval_rules: { require_privacy_safe: true, allow_override: true }, privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } },
   privacyResult: { status: "safe", findings: [] as unknown[], summary: "ok", suggestions: [] as string[], checked_by: "deterministic", model: null as string | null },
   audit: [] as { action: string }[],
+  privacyThrows: false,
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -30,7 +31,12 @@ vi.mock("@/lib/studio/auth", () => ({
 }));
 vi.mock("@/lib/studio/settings", () => ({ getStudioSettings: vi.fn(async () => h.settings) }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(async (e: { action: string }) => void h.audit.push(e)) }));
-vi.mock("@/lib/studio/ai", () => ({ runPrivacyCheck: vi.fn(async () => h.privacyResult) }));
+vi.mock("@/lib/studio/ai", () => ({
+  runPrivacyCheck: vi.fn(async () => {
+    if (h.privacyThrows) throw new Error("studio settings unavailable: boom");
+    return h.privacyResult;
+  }),
+}));
 
 /** Chainable PostgREST-ish mock: rows per table, records inserts/updates/deletes. */
 function builder(table: string) {
@@ -91,6 +97,7 @@ async function load() {
 
 beforeEach(() => {
   h.profile = { id: "admin-1", role: "admin" };
+  h.privacyThrows = false;
   h.rows = {
     studio_content_masters: [{ id: MASTER, title: "Test", status: "review", scheduled_at: null, hook: "h", script: "s", caption: "c", cta: "x" }],
     studio_privacy_checks: [],
@@ -241,6 +248,16 @@ describe("approveContent — privacy gate", () => {
       // The message must tell the owner WHY the safe re-scan didn't clear it.
       expect(second.error).toContain("AI");
     }
+    expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
+  });
+
+  it("refuses gracefully (no throw, no status change) on a privacy settings outage", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
+    h.privacyThrows = true;
+    const { approveContent } = await load();
+    const res = await approveContent({ masterId: MASTER });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("กฎความเป็นส่วนตัว");
     expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
   });
 

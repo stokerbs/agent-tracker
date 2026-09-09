@@ -69,12 +69,21 @@ export async function runAndStorePrivacyCheck(
   }
   if (!master) return { ok: false, error: "ไม่พบคอนเทนต์" };
 
-  const result = await runPrivacyCheck({
-    fields: collectPrivacyFields(master, variants ?? []),
-    useAi: opts.useAi,
-    userId: opts.userId,
-    masterId,
-  });
+  let result: Awaited<ReturnType<typeof runPrivacyCheck>>;
+  try {
+    result = await runPrivacyCheck({
+      fields: collectPrivacyFields(master, variants ?? []),
+      useAi: opts.useAi,
+      userId: opts.userId,
+      masterId,
+    });
+  } catch (e) {
+    // Fail closed AND gracefully: the strict settings loader throws on an
+    // outage; every caller (approve/submit/schedule/publish) then refuses with
+    // a toast instead of crashing to the error boundary.
+    console.error("[studio:content] privacy check unavailable:", e instanceof Error ? e.message : e);
+    return { ok: false, error: "โหลดกฎความเป็นส่วนตัวไม่สำเร็จ — ตรวจสอบไม่ได้ ลองใหม่อีกครั้ง" };
+  }
 
   const { data: inserted, error: insErr } = await rls
     .from("studio_privacy_checks")

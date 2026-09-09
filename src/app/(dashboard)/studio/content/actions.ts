@@ -486,8 +486,9 @@ export async function applyGeneratedScript(input: unknown): Promise<ActionResult
     if (insSrc) console.error("[studio:content] sources insert failed:", insSrc.message);
   }
 
-  const check = await runAndStorePrivacyCheck(rls, d.masterId, { useAi: false, userId: profile.id });
+  // Demote first: regenerated text must never stay approved, even if the scan below fails.
   await reopenIfApproved(rls, d.masterId, profile.id, "script_regenerated");
+  const check = await runAndStorePrivacyCheck(rls, d.masterId, { useAi: false, userId: profile.id });
   console.info(`[studio:content] apply generated script master=${d.masterId} claims=${d.claims.length} sources=+${fresh.length}`);
   revalidateContentPaths(d.masterId);
   return { ok: true, data: { privacyStatus: check.ok ? check.check.status : "unknown", estimatedDurationSec: estimated } };
