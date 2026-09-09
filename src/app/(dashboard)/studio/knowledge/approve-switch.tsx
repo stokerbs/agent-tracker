@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/studio/types";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 
 /**
  * Inline "approved for AI content" toggle. Generic over the server action so
@@ -32,12 +33,12 @@ export function ApproveSwitch({
 }) {
   const router = useRouter();
   const [checked, setChecked] = useState(approved);
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
 
   function onChange(next: boolean) {
     const prev = checked;
     setChecked(next);
-    start(async () => {
+    safe(async () => {
       const res = await action(id, next);
       if (!res.ok) {
         setChecked(prev);

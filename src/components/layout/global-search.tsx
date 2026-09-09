@@ -71,7 +71,8 @@ export function GlobalSearch({ role }: { role: UserRole }) {
       }
 
       const supabase = createClient();
-      const like = `%${q}%`;
+      // Strip PostgREST filter syntax so user input can't break/extend .or() clauses.
+      const like = `%${q.replace(/[,()%\\"']/g, " ").trim()}%`;
 
       startSearch(async () => {
         const [casesRes, clientsRes, agentsRes, reportsRes, sContentRes, sIdeasRes, sKnowledgeRes, sCasesRes] = await Promise.all([

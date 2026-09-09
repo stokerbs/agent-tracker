@@ -14,7 +14,7 @@ interface Tile {
 }
 
 const TILES: Tile[] = [
-  { key: "ideas", label: "ไอเดีย", hint: "ใหม่ + บันทึกไว้", href: "/studio/ideas", icon: <Lightbulb className="h-4 w-4" />, dot: "bg-sky-400" },
+  { key: "ideas", label: "ไอเดีย", hint: "ใหม่ + บันทึกไว้ (ยังไม่ได้สร้างคอนเทนต์)", href: "/studio/ideas", icon: <Lightbulb className="h-4 w-4" />, dot: "bg-sky-400" },
   { key: "draft", label: CONTENT_STATUS_META.draft.label, href: "/studio/content?status=draft", icon: <FileText className="h-4 w-4" />, dot: CONTENT_STATUS_META.draft.dot! },
   { key: "review", label: CONTENT_STATUS_META.review.label, href: "/studio/content?status=review", icon: <Eye className="h-4 w-4" />, dot: CONTENT_STATUS_META.review.dot! },
   { key: "approved", label: "พร้อมเผยแพร่", hint: "อนุมัติแล้ว รอตั้งเวลา", href: "/studio/content?status=approved", icon: <CheckCircle2 className="h-4 w-4" />, dot: CONTENT_STATUS_META.approved.dot! },

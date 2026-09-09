@@ -181,7 +181,7 @@ export type PrivacyRulesInput = z.input<typeof privacyRulesSchema>;
 export async function findInvalidPattern(patterns: string[]): Promise<string | null> {
   for (const p of patterns) {
     try {
-      new RegExp(p, "u");
+      new RegExp(p, "giu"); // identical flags to the scanner (lib/studio/privacy/scrub.ts)
     } catch {
       return p;
     }

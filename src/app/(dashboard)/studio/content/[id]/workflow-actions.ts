@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudioAdmin } from "@/lib/studio/auth";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { logAudit } from "@/lib/audit";
-import type { ActionResult, ContentStatus } from "@/lib/studio/types";
+import type { ActionResult, ContentStatus, PrivacyStatus } from "@/lib/studio/types";
 import { getLatestPrivacyCheck, revalidateContentPaths, runAndStorePrivacyCheck } from "./privacy-check";
 
 /**
@@ -49,6 +49,11 @@ function statusLabel(s: string): string {
   return map[s] ?? s;
 }
 
+const PRIVACY_RANK: Record<PrivacyStatus, number> = { safe: 0, review_required: 1, blocked: 2 };
+function worstPrivacy(a: PrivacyStatus, b: PrivacyStatus): PrivacyStatus {
+  return PRIVACY_RANK[a] >= PRIVACY_RANK[b] ? a : b;
+}
+
 function transitionError(from: string, allowed: ContentStatus[]): string {
   return `ทำรายการนี้ไม่ได้จากสถานะ "${statusLabel(from)}" (ต้องเป็น ${allowed.map(statusLabel).join(" / ")})`;
 }
@@ -89,11 +94,10 @@ export async function submitForReview(input: unknown): Promise<ActionResult> {
   if (!master) return { ok: false, error: error ?? "ไม่พบคอนเทนต์" };
   if (master.status !== "draft") return { ok: false, error: transitionError(master.status, ["draft"]) };
 
-  const latest = await getLatestPrivacyCheck(rls, masterId);
-  if (!latest) {
-    const check = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId: profile.id });
-    if (!check.ok) return check;
-  }
+  // Always re-scan at submit time so the reviewer sees the state of the text
+  // as it is now, not as it was when an earlier check ran.
+  const check = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId: profile.id });
+  if (!check.ok) return check;
 
   const err = await setStatus(rls, masterId, { status: "review" });
   if (err) return { ok: false, error: err };
@@ -126,29 +130,41 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
 
   const settings = await getStudioSettings();
 
-  // 1. Privacy gate — the latest check decides; create one if none exists.
-  let latest = await getLatestPrivacyCheck(rls, masterId);
-  if (!latest) {
-    const check = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId: profile.id });
-    if (!check.ok) return check;
-    latest = { id: check.check.id ?? "", status: check.check.status, created_at: new Date().toISOString() };
-  }
+  // 1. Privacy gate. The text may have been edited after the last check, so a
+  //    fresh deterministic scan ALWAYS runs at decision time and the gate uses
+  //    the WORST of (latest stored check — possibly a stricter AI review) and
+  //    (fresh scan). Re-running the check from the panel refreshes "latest".
+  const previous = await getLatestPrivacyCheck(rls, masterId);
+  const fresh = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId: profile.id });
+  if (!fresh.ok) return fresh;
+  const freshStatus = fresh.check.status;
+  const gateStatus = previous ? worstPrivacy(previous.status, freshStatus) : freshStatus;
+  const latest = { id: fresh.check.id ?? previous?.id ?? "", status: gateStatus, previousStatus: previous?.status ?? null, freshStatus };
 
   if (latest.status === "blocked") {
     console.warn(`[studio:workflow] approve refused (blocked) master=${masterId}`);
     return { ok: false, error: "ไม่สามารถอนุมัติได้: Privacy Check เป็น BLOCKED — แก้เนื้อหาให้ทั่วไปขึ้นแล้วตรวจอีกครั้ง" };
   }
 
+  // review_required ALWAYS leaves an override trail. With require_privacy_safe
+  // on, the owner must tick the override explicitly; with it off, the override
+  // is recorded automatically (still a review row + audit entry).
   let overrode = false;
-  if (latest.status === "review_required" && settings.approval_rules.require_privacy_safe) {
-    if (!settings.approval_rules.allow_override) {
-      return { ok: false, error: "Privacy Check เป็น \"ต้องตรวจสอบ\" และตั้งค่าสตูดิโอไม่อนุญาตให้ override — แก้เนื้อหาแล้วตรวจอีกครั้ง" };
-    }
-    if (overridePrivacy !== true) {
-      return {
-        ok: false,
-        error: "Privacy Check เป็น \"ต้องตรวจสอบ\" — ติ๊กช่องยืนยันว่าคุณตรวจสอบแล้วและไม่มีข้อมูลระบุตัวตน (override) ก่อนอนุมัติ",
-      };
+  let overrideNote: string | null = null;
+  if (latest.status === "review_required") {
+    if (settings.approval_rules.require_privacy_safe) {
+      if (!settings.approval_rules.allow_override) {
+        return { ok: false, error: "Privacy Check เป็น \"ต้องตรวจสอบ\" และตั้งค่าสตูดิโอไม่อนุญาตให้ override — แก้เนื้อหาแล้วตรวจอีกครั้ง" };
+      }
+      if (overridePrivacy !== true) {
+        return {
+          ok: false,
+          error: "Privacy Check เป็น \"ต้องตรวจสอบ\" — ติ๊กช่องยืนยันว่าคุณตรวจสอบแล้วและไม่มีข้อมูลระบุตัวตน (override) ก่อนอนุมัติ",
+        };
+      }
+      overrideNote = note ?? "ยืนยันว่าตรวจสอบแล้ว ไม่มีข้อมูลระบุตัวตน";
+    } else {
+      overrideNote = `อนุมัติขณะ Privacy Check = ต้องตรวจสอบ (require_privacy_safe ปิดอยู่)${note ? ` · ${note}` : ""}`;
     }
     overrode = true;
   }
@@ -169,13 +185,13 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
 
   // 3. Record decisions, then flip the status.
   if (overrode) {
-    await insertReview(rls, masterId, profile.id, "override_privacy", note ?? "ยืนยันว่าตรวจสอบแล้ว ไม่มีข้อมูลระบุตัวตน");
+    await insertReview(rls, masterId, profile.id, "override_privacy", overrideNote);
     await logAudit({
       actorId: profile.id,
       action: "STUDIO_PRIVACY_OVERRIDE",
       entity: "studio_content_masters",
       entityId: masterId,
-      metadata: { privacy_check_id: latest.id, note },
+      metadata: { privacy_check_id: latest.id, note: overrideNote, explicit: settings.approval_rules.require_privacy_safe },
     });
   }
 
@@ -190,7 +206,7 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
     action: "STUDIO_CONTENT_APPROVE",
     entity: "studio_content_masters",
     entityId: masterId,
-    metadata: { privacy_status: latest.status, privacy_check_id: latest.id, override: overrode, unsupported_claims: unsupported, from_status: master.status },
+    metadata: { privacy_status: latest.status, previous_check_status: latest.previousStatus, fresh_check_status: latest.freshStatus, privacy_check_id: latest.id, override: overrode, unsupported_claims: unsupported, from_status: master.status },
   });
   console.info(`[studio:workflow] approve master=${masterId} by=${profile.id} privacy=${latest.status} override=${overrode}`);
   revalidateContentPaths(masterId);
@@ -263,6 +279,7 @@ export async function scheduleContent(input: unknown): Promise<ActionResult<{ sc
 
   const err = await setStatus(rls, masterId, { status: "scheduled", scheduled_at: scheduledAt });
   if (err) return { ok: false, error: err };
+  await logAudit({ actorId: profile.id, action: "STUDIO_CONTENT_SCHEDULE", entity: "studio_content_masters", entityId: masterId, metadata: { scheduled_at: scheduledAt, from_status: master.status } });
   console.info(`[studio:workflow] schedule master=${masterId} at=${scheduledAt}`);
   revalidateContentPaths(masterId);
   return { ok: true, data: { scheduledAt } };
@@ -281,6 +298,8 @@ export async function unscheduleContent(input: unknown): Promise<ActionResult> {
 
   const err = await setStatus(rls, masterId, { status: "approved", scheduled_at: null });
   if (err) return { ok: false, error: err };
+  await logAudit({ actorId: profile.id, action: "STUDIO_CONTENT_UNSCHEDULE", entity: "studio_content_masters", entityId: masterId, metadata: { previous_scheduled_at: master.scheduled_at } });
+  console.info(`[studio:workflow] unschedule master=${masterId} by=${profile.id}`);
   revalidateContentPaths(masterId);
   return { ok: true };
 }
@@ -288,7 +307,14 @@ export async function unscheduleContent(input: unknown): Promise<ActionResult> {
 // ─── markPublished ───────────────────────────────────────────────────────────
 const publishSchema = z.object({
   masterId: idSchema,
-  publishedUrl: z.string().trim().url("ลิงก์ไม่ถูกต้อง").max(500).optional().or(z.literal("")),
+  publishedUrl: z
+    .string()
+    .trim()
+    .url("ลิงก์ไม่ถูกต้อง")
+    .max(500)
+    .refine((u) => /^https?:\/\//i.test(u), "ลิงก์ต้องเริ่มด้วย http:// หรือ https://")
+    .optional()
+    .or(z.literal("")),
 });
 
 export async function markPublished(input: unknown): Promise<ActionResult> {
@@ -333,6 +359,8 @@ export async function archiveContent(input: unknown): Promise<ActionResult> {
 
   const err = await setStatus(rls, masterId, { status: "archived", scheduled_at: null });
   if (err) return { ok: false, error: err };
+  await logAudit({ actorId: profile.id, action: "STUDIO_CONTENT_ARCHIVE", entity: "studio_content_masters", entityId: masterId, metadata: { from_status: master.status } });
+  console.info(`[studio:workflow] archive master=${masterId} by=${profile.id}`);
   revalidateContentPaths(masterId);
   return { ok: true };
 }
@@ -352,6 +380,8 @@ export async function unarchiveContent(input: unknown): Promise<ActionResult> {
 
   const err = await setStatus(rls, masterId, { status: "draft", approved_by: null, approved_at: null });
   if (err) return { ok: false, error: err };
+  await logAudit({ actorId: profile.id, action: "STUDIO_CONTENT_UNARCHIVE", entity: "studio_content_masters", entityId: masterId, metadata: { from_status: master.status } });
+  console.info(`[studio:workflow] unarchive master=${masterId} by=${profile.id}`);
   revalidateContentPaths(masterId);
   return { ok: true };
 }

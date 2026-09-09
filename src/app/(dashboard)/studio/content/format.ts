@@ -1,4 +1,5 @@
 import { formatDate } from "@/lib/utils";
+import { buildBangkokISO, isDayKey, isTimeString } from "../calendar/date-utils";
 
 /** "HH:mm" in Asia/Bangkok (app convention for times). */
 export function formatTimeBkk(date: string | Date | null | undefined): string {
@@ -30,11 +31,17 @@ export function toBangkokLocalInput(date: string | Date | null | undefined): str
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-/** datetime-local (interpreted as Asia/Bangkok, UTC+7) → ISO string. */
+/** datetime-local (interpreted as Asia/Bangkok, UTC+7) → ISO string. Single
+ *  source of truth is calendar/date-utils.buildBangkokISO so the editor's
+ *  schedule dialog and the calendar can never drift. */
 export function bangkokLocalInputToIso(value: string): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   if (!m) return null;
-  const [, y, mo, d, h, mi] = m;
-  const utc = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h) - 7, Number(mi));
-  return Number.isNaN(utc) ? null : new Date(utc).toISOString();
+  const [, day, time] = m;
+  if (!isDayKey(day) || !isTimeString(time)) return null;
+  try {
+    return buildBangkokISO(day, time);
+  } catch {
+    return null;
+  }
 }

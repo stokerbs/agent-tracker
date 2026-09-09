@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, Plus, Search } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { handleDbError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, cn } from "@/lib/utils";
 import { isAiAvailable } from "@/lib/studio/ai";
@@ -59,13 +60,13 @@ export default async function KnowledgePage({ searchParams }: Props) {
       query = query.or(`title.ilike.${like},content.ilike.${like}`);
     }
     const { data, error } = await query;
-    if (error) throw new Error(`โหลดคลังความรู้ไม่สำเร็จ: ${error.message}`);
+    if (error) throw new Error(handleDbError(error, "studio:knowledge:list"));
     knowledge = (data ?? []) as KnowledgeSource[];
   } else {
     let query = supabase.from("studio_customer_questions").select("*").order("frequency", { ascending: false }).order("updated_at", { ascending: false }).limit(300);
     if (q) query = query.ilike("question", likeTerm(q));
     const { data, error } = await query;
-    if (error) throw new Error(`โหลดคำถามลูกค้าไม่สำเร็จ: ${error.message}`);
+    if (error) throw new Error(handleDbError(error, "studio:knowledge:questions"));
     questions = (data ?? []) as CustomerQuestion[];
   }
 

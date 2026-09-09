@@ -163,6 +163,7 @@ export function WorkflowBar({ master, approvedByName, latestPrivacy, claims, app
         onConfirm={(note) => run("reject", () => rejectContent({ masterId: master.id, note }), "ทำเครื่องหมายว่าไม่ผ่านแล้ว")}
       />
       <ScheduleDialog
+        key={`${master.scheduled_at ?? "none"}-${dialog === "schedule"}`}
         open={dialog === "schedule"}
         onOpenChange={(v) => !v && setDialog(null)}
         current={master.scheduled_at}

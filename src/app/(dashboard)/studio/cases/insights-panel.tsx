@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lightbulb, Loader2, Pencil, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,16 +21,17 @@ import type { CaseInsight, Pillar, PrivacyStatus } from "@/lib/studio/types";
 import { formatDate } from "@/lib/utils";
 import { ApproveSwitch } from "../knowledge/approve-switch";
 import { createIdeaFromInsight, deleteInsight, extractInsightsForCase, setInsightApproved, updateInsight, type InsightInput } from "./actions";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 
 const NONE = "__none__";
 
 export function InsightsPanel({ caseId, insights, aiAvailable }: { caseId: string; insights: CaseInsight[]; aiAvailable: boolean }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const approvedCount = insights.filter((i) => i.approved_for_content).length;
 
   function extract() {
-    start(async () => {
+    safe(async () => {
       const res = await extractInsightsForCase(caseId);
       if (!res.ok) { toast.error(res.error); return; }
       toast.success(`AI สกัดบทเรียนได้ ${res.data.inserted} ข้อ${res.data.anonymizedUpdated ? " และร่างเวอร์ชันไม่ระบุตัวตนให้แล้ว" : ""} — ตรวจและอนุมัติทีละข้อ`);
@@ -86,13 +87,13 @@ export function InsightsPanel({ caseId, insights, aiAvailable }: { caseId: strin
 
 function InsightCard({ insight }: { insight: CaseInsight }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const blocked = insight.privacy_status === "blocked";
 
   function makeIdea() {
-    start(async () => {
+    safe(async () => {
       const res = await createIdeaFromInsight(insight.id);
       if (!res.ok) { toast.error(res.error); return; }
       toast.success("สร้างไอเดียใน Idea Bank แล้ว");
@@ -173,7 +174,7 @@ function InsightCard({ insight }: { insight: CaseInsight }) {
 
 function EditInsightDialog({ insight, open, onOpenChange }: { insight: CaseInsight; open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [title, setTitle] = useState(insight.title);
   const [body, setBody] = useState(insight.insight);
   const [lesson, setLesson] = useState(insight.lesson ?? "");
@@ -191,7 +192,7 @@ function EditInsightDialog({ insight, open, onOpenChange }: { insight: CaseInsig
       pillar: pillar === NONE ? null : (pillar as Pillar),
       privacy_status: privacy,
     };
-    start(async () => {
+    safe(async () => {
       const res = await updateInsight(insight.id, payload);
       if (!res.ok) { toast.error(res.error); return; }
       if (res.data.privacy_status === "blocked" && privacy !== "blocked") {

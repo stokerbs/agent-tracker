@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { KNOWLEDGE_CATEGORIES, KNOWLEDGE_CATEGORY_META, SENSITIVITY_META } from "@/lib/studio/constants";
 import type { KnowledgeSource, Sensitivity } from "@/lib/studio/types";
 import { createKnowledge, updateKnowledge, type KnowledgeInput } from "./actions";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   case: "เคส",
@@ -38,7 +39,7 @@ function parseTags(raw: string): string[] {
 
 export function KnowledgeForm({ initial }: { initial?: KnowledgeSource }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [content, setContent] = useState(initial?.content ?? "");
   const [summary, setSummary] = useState(initial?.summary ?? "");
@@ -62,7 +63,7 @@ export function KnowledgeForm({ initial }: { initial?: KnowledgeSource }) {
       approved_for_content: approved,
       origin_ref: originRef || null,
     };
-    start(async () => {
+    safe(async () => {
       if (initial) {
         const res = await updateKnowledge(initial.id, payload);
         if (!res.ok) { toast.error(res.error); return; }

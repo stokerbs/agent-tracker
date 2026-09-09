@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PLATFORM_META, PLATFORMS } from "@/lib/studio/constants";
 import { recordMetrics } from "./actions";
+import { bangkokLocalInputToIso, toBangkokLocalInput } from "../content/format";
 
 type NumericField =
   | "views"
@@ -60,16 +61,9 @@ const FIELD_GROUPS: { title: string; fields: { key: NumericField; label: string;
 
 type FormState = Record<NumericField, string> & { platform: string; recorded_at: string; note: string };
 
-/** Local "YYYY-MM-DDTHH:mm" for <input type="datetime-local"> defaults. */
-function localNow(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function emptyForm(platform: string): FormState {
   const base = Object.fromEntries(FIELD_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, ""]))) as Record<NumericField, string>;
-  return { ...base, platform, recorded_at: localNow(), note: "" };
+  return { ...base, platform, recorded_at: toBangkokLocalInput(new Date()), note: "" };
 }
 
 /** Parent should pass `key={master.id}` so the form resets per content piece. */
@@ -96,7 +90,7 @@ export function MetricsDialog({
         const res = await recordMetrics({
           master_id: master.id,
           platform: form.platform,
-          recorded_at: new Date(form.recorded_at).toISOString(),
+          recorded_at: bangkokLocalInputToIso(form.recorded_at) ?? new Date().toISOString(),
           note: form.note,
           ...Object.fromEntries(FIELD_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, form[f.key] === "" ? null : form[f.key]]))),
         });

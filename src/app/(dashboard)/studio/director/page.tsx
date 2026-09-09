@@ -56,7 +56,7 @@ export default async function CreativeDirectorPage({ searchParams }: { searchPar
   const aiAvailable = isAiAvailable(provider);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-6">
       <PageHeader
         title="Creative Director"
         description="พิมพ์บรีฟสั้น ๆ แล้วให้ระบบเสนอแคมเปญทั้งชุด — ตีความบรีฟ จัดสัดส่วนเสาหลัก และร่างไอเดียจากคลังความรู้ของ Detective Pulse"

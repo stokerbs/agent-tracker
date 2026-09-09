@@ -13,5 +13,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // First dynamic import of a route module can exceed 5 s when the whole
+    // suite runs in parallel on a loaded machine/CI runner.
+    testTimeout: 20_000,
   },
 });

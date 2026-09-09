@@ -7,8 +7,8 @@ export default function StudioAnalyticsLoading() {
         <Skeleton className="h-7 w-56" />
         <Skeleton className="h-4 w-96 max-w-full" />
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        {Array.from({ length: 7 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-20 rounded-lg" />
         ))}
       </div>

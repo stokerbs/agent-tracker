@@ -88,7 +88,7 @@ export async function rescheduleMaster(id: string, newISO: string): Promise<Acti
   if (!admin) return { ok: false, error: UNAUTHORIZED };
   const parsed = z.object({ id: uuidSchema, newISO: isoSchema }).safeParse({ id, newISO });
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  return applySchedule(parsed.data.id, new Date(parsed.data.newISO).toISOString(), admin.id, "studio.content.reschedule");
+  return applySchedule(parsed.data.id, new Date(parsed.data.newISO).toISOString(), admin.id, "STUDIO_CONTENT_RESCHEDULE");
 }
 
 /** Drag from the unscheduled list / "create on this day" picker onto a day. */
@@ -97,7 +97,7 @@ export async function scheduleMasterToDay(id: string, day: string, time: string 
   if (!admin) return { ok: false, error: UNAUTHORIZED };
   const parsed = z.object({ id: uuidSchema, day: dayKeySchema, time: timeSchema }).safeParse({ id, day, time });
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  return applySchedule(parsed.data.id, buildBangkokISO(parsed.data.day, parsed.data.time), admin.id, "studio.content.schedule");
+  return applySchedule(parsed.data.id, buildBangkokISO(parsed.data.day, parsed.data.time), admin.id, "STUDIO_CONTENT_SCHEDULE");
 }
 
 /** Drop onto another day keeping the original Bangkok time-of-day. */
@@ -111,7 +111,7 @@ export async function moveMasterToDay(id: string, day: string): Promise<ActionRe
   if (!master) return { ok: false, error: error ?? "ไม่พบคอนเทนต์นี้" };
   if (!SCHEDULABLE.includes(master.status)) return { ok: false, error: refuseStatus(master.status) };
   const target = master.scheduled_at ? shiftToDay(master.scheduled_at, parsed.data.day) : buildBangkokISO(parsed.data.day);
-  return applySchedule(parsed.data.id, target, admin.id, "studio.content.reschedule");
+  return applySchedule(parsed.data.id, target, admin.id, "STUDIO_CONTENT_RESCHEDULE");
 }
 
 /** Take a scheduled master off the calendar: back to approved, no date. */
@@ -139,7 +139,7 @@ export async function unscheduleMaster(id: string): Promise<ActionResult<{ id: s
 
   await logAudit({
     actorId: admin.id,
-    action: "studio.content.unschedule",
+    action: "STUDIO_CONTENT_UNSCHEDULE",
     entity: "studio_content_masters",
     entityId: parsed.data,
     metadata: { from: master.scheduled_at },

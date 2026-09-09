@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Archive, Bookmark, Clapperboard, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
@@ -13,16 +13,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { duplicateIdea, setIdeaStatus } from "./actions";
 import { GenerateContentDialog } from "./generate-dialog";
 import { IdeaFormDialog } from "./idea-form-dialog";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 
 type StatusTarget = "new" | "saved" | "rejected" | "archived";
 
 export function IdeaCard({ idea, aiAvailable, campaignTitle }: { idea: Idea; aiAvailable: boolean; campaignTitle?: string | null }) {
   const [editOpen, setEditOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
 
   function changeStatus(status: StatusTarget, label: string) {
-    start(async () => {
+    safe(async () => {
       const res = await setIdeaStatus({ id: idea.id, status });
       if (!res.ok) {
         toast.error(res.error);
@@ -33,7 +34,7 @@ export function IdeaCard({ idea, aiAvailable, campaignTitle }: { idea: Idea; aiA
   }
 
   function duplicate() {
-    start(async () => {
+    safe(async () => {
       const res = await duplicateIdea({ id: idea.id });
       if (!res.ok) {
         toast.error(res.error);

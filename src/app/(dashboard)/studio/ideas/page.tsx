@@ -86,7 +86,7 @@ export default async function IdeaBankPage({ searchParams }: { searchParams: Pro
   const activeCampaign = filters.campaign ? campaignTitle.get(filters.campaign) : null;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-6">
       <PageHeader
         title="Idea Bank"
         description={activeCampaign ? `ไอเดียในแคมเปญ “${activeCampaign}”` : "รวมไอเดียคอนเทนต์จาก Creative Director, AI, และประสบการณ์ของคุณ — เลือก บันทึก แล้วสร้างคอนเทนต์"}

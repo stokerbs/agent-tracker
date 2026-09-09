@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lightbulb, Loader2, MessageSquareText, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { AiUnavailableBanner } from "@/components/studio/ai-status";
 import { formatDate } from "@/lib/utils";
 import type { CustomerQuestion, QuestionSource } from "@/lib/studio/types";
 import { ApproveSwitch } from "./approve-switch";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 import {
   createIdeaFromQuestion,
   createQuestion,
@@ -76,7 +77,7 @@ export function QuestionsPanel({ questions, aiAvailable, query }: { questions: C
 
 function AddQuestionForm() {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [question, setQuestion] = useState("");
   const [hint, setHint] = useState("");
   const [source, setSource] = useState<QuestionSource>("manual");
@@ -84,7 +85,7 @@ function AddQuestionForm() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const payload: QuestionInput = { question, answer_hint: hint || null, source, frequency: 1, tags: [], approved_for_content: false };
-    start(async () => {
+    safe(async () => {
       const res = await createQuestion(payload);
       if (!res.ok) { toast.error(res.error); return; }
       toast.success("เพิ่มคำถามแล้ว");
@@ -127,7 +128,7 @@ function AddQuestionForm() {
 function ImportDialogCard({ aiAvailable }: { aiAvailable: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [text, setText] = useState("");
   const [source, setSource] = useState<QuestionSource>("line_oa");
   const [candidates, setCandidates] = useState<ExtractedQuestion[] | null>(null);
@@ -140,7 +141,7 @@ function ImportDialogCard({ aiAvailable }: { aiAvailable: boolean }) {
   }
 
   function extract() {
-    start(async () => {
+    safe(async () => {
       const res = await extractQuestionsFromText({ text, source });
       if (!res.ok) { toast.error(res.error); return; }
       if (res.data.questions.length === 0) {
@@ -155,7 +156,7 @@ function ImportDialogCard({ aiAvailable }: { aiAvailable: boolean }) {
   function save() {
     if (!candidates) return;
     const chosen = candidates.filter((_, i) => ticked.has(i)).map((c) => ({ question: c.question, answer_hint: c.answer_hint, frequency: c.frequency, tags: c.tags }));
-    start(async () => {
+    safe(async () => {
       const res = await saveExtractedQuestions({ source, questions: chosen });
       if (!res.ok) { toast.error(res.error); return; }
       toast.success(`บันทึก ${res.data.inserted} คำถามแล้ว (ยังไม่อนุมัติให้ AI ใช้)`);
@@ -282,12 +283,12 @@ function ImportDialogCard({ aiAvailable }: { aiAvailable: boolean }) {
 
 function QuestionCard({ q }: { q: CustomerQuestion }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   function makeIdea() {
-    start(async () => {
+    safe(async () => {
       const res = await createIdeaFromQuestion(q.id);
       if (!res.ok) { toast.error(res.error); return; }
       toast.success("สร้างไอเดียใน Idea Bank แล้ว");
@@ -347,7 +348,7 @@ function QuestionCard({ q }: { q: CustomerQuestion }) {
 
 function EditQuestionDialog({ q, open, onOpenChange }: { q: CustomerQuestion; open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [question, setQuestion] = useState(q.question);
   const [hint, setHint] = useState(q.answer_hint ?? "");
   const [frequency, setFrequency] = useState(String(q.frequency));
@@ -364,7 +365,7 @@ function EditQuestionDialog({ q, open, onOpenChange }: { q: CustomerQuestion; op
       tags: parseTags(tags),
       approved_for_content: q.approved_for_content,
     };
-    start(async () => {
+    safe(async () => {
       const res = await updateQuestion(q.id, payload);
       if (!res.ok) { toast.error(res.error); return; }
       toast.success("บันทึกคำถามแล้ว");

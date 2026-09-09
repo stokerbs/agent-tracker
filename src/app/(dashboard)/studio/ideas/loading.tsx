@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function IdeaBankLoading() {
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-7 w-40" />

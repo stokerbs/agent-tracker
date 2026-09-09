@@ -28,14 +28,14 @@ export function GenerateContentDialog({ open, onOpenChange, idea, aiAvailable }:
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  const firstOption = options[0] ?? "tiktok";
   useEffect(() => {
     if (open) {
-      setPlatform(options[0] ?? "tiktok");
+      setPlatform(firstOption);
       setSeconds(45);
       setError(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, idea.id]);
+  }, [open, idea.id, firstOption]);
 
   const isVideo = VIDEO_PLATFORMS.includes(platform);
 

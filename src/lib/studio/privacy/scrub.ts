@@ -79,7 +79,7 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   }
   for (const pattern of rules?.custom_patterns ?? []) {
     try {
-      const re = new RegExp(pattern, "gi");
+      const re = new RegExp(pattern, "giu");
       for (const m of text.matchAll(re)) push("other", m[0], `ตรงกับรูปแบบที่กำหนดเอง: ${pattern}`, "medium");
     } catch {
       // invalid regex from settings — ignore silently (validated on save)

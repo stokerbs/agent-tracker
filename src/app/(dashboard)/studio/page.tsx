@@ -89,7 +89,7 @@ export default async function StudioDashboardPage() {
                   {data.aiIdeas.map((idea) => (
                     <Link
                       key={idea.id}
-                      href="/studio/ideas"
+                      href={`/studio/ideas?q=${encodeURIComponent(idea.title)}`}
                       className="group flex flex-col rounded-xl border border-border/60 bg-background/40 p-4 transition-all hover:border-border hover:bg-accent/40"
                     >
                       <PillarBadge pillar={idea.pillar} className="self-start" />

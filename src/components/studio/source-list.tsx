@@ -19,7 +19,7 @@ export function sourceHref(item: SourceListItem): string | null {
     case "case_insight":
       return item.case_id ? `/studio/cases/${item.case_id}#insight-${item.id}` : null;
     case "customer_question":
-      return `/studio/knowledge?tab=questions&q=${encodeURIComponent(item.label.slice(0, 40))}`;
+      return `/studio/knowledge?tab=questions&q=${encodeURIComponent(String(item.label ?? "").slice(0, 40))}`;
     default:
       return null;
   }
@@ -30,9 +30,11 @@ export function sourceHref(item: SourceListItem): string | null {
  * record, and shouts when a piece leans on general AI knowledge.
  */
 export function SourceList({ items, className, emptyText = "ยังไม่มีการอ้างอิงแหล่งข้อมูล" }: { items: SourceListItem[]; className?: string; emptyText?: string }) {
-  if (!items.length) return <p className={cn("text-xs text-muted-foreground", className)}>{emptyText}</p>;
-  const general = items.filter((i) => i.kind === "ai_general");
-  const real = items.filter((i) => i.kind !== "ai_general");
+  // jsonb-sourced refs may be malformed — never let a bad row crash the page.
+  const safe = (Array.isArray(items) ? items : []).filter((i): i is SourceListItem => !!i && typeof i === "object" && typeof i.kind === "string");
+  if (!safe.length) return <p className={cn("text-xs text-muted-foreground", className)}>{emptyText}</p>;
+  const general = safe.filter((i) => i.kind === "ai_general");
+  const real = safe.filter((i) => i.kind !== "ai_general");
   return (
     <div className={cn("space-y-2", className)}>
       {real.map((s, i) => {
@@ -40,7 +42,7 @@ export function SourceList({ items, className, emptyText = "ยังไม่�
         const body = (
           <>
             <SourceKindBadge kind={s.kind} />
-            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.label}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{String(s.label ?? "")}</span>
             {href && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
           </>
         );

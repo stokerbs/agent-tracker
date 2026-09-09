@@ -439,7 +439,7 @@ function TableView({ rows }: { rows: ContentListRow[] }) {
         </TableHeader>
         <TableBody>
           {sorted.map((r) => (
-            <TableRow key={r.id} className="cursor-pointer">
+            <TableRow key={r.id}>
               <TableCell className="font-medium">
                 <Link href={`/studio/content/${r.id}`} className="hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {r.title}

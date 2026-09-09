@@ -117,7 +117,7 @@ describe("happy paths", () => {
     const res = await rescheduleMaster(ID, "2026-09-12T12:00:00.000Z");
     expect(res).toEqual({ ok: true, data: { id: ID, scheduled_at: "2026-09-12T12:00:00.000Z", status: "scheduled" } });
     expect(h.updates).toEqual([{ scheduled_at: "2026-09-12T12:00:00.000Z", status: "scheduled" }]);
-    expect(h.audits[0]).toMatchObject({ action: "studio.content.reschedule", entityId: ID, actorId: "admin-1" });
+    expect(h.audits[0]).toMatchObject({ action: "STUDIO_CONTENT_RESCHEDULE", entityId: ID, actorId: "admin-1" });
   });
 
   it("schedules an approved master to a Bangkok day/time and flips it to scheduled", async () => {

@@ -100,6 +100,7 @@ export async function searchKnowledge(query: string, opts: SearchOptions = {}): 
           .from("studio_knowledge_sources")
           .select("id, title, content, summary, tags")
           .eq("approved_for_content", true)
+          .neq("sensitivity", "restricted") // defence-in-depth: restricted never reaches prompts
           .limit(40);
         const f = orFilter(["title", "content"]);
         if (f) q = q.or(f);

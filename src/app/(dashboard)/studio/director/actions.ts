@@ -25,6 +25,7 @@ import {
   type GeneratedIdea,
 } from "@/lib/studio/ai";
 import { TONE_INSTRUCTIONS, TONE_KEYS } from "./tone";
+import { handleDbError } from "@/lib/errors";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 const PILLAR_ENUM = z.enum(PILLARS as [Pillar, ...Pillar[]]);
@@ -240,7 +241,7 @@ export async function createCampaign(input: unknown): Promise<ActionResult<{ id:
   const { error: iErr } = await supabase.from("studio_ideas").insert(rows);
   if (iErr) {
     console.error("[studio:director] ideas insert failed:", iErr.message);
-    return { ok: false, error: `สร้างแคมเปญแล้ว แต่บันทึกไอเดียไม่สำเร็จ (${iErr.message}) — เปิดแคมเปญใน Idea Bank แล้วเพิ่มไอเดียใหม่ได้` };
+    return { ok: false, error: `สร้างแคมเปญแล้ว แต่บันทึกไอเดียไม่สำเร็จ (${handleDbError(iErr, "studio:director:createCampaign")}) — เปิดแคมเปญใน Idea Bank แล้วเพิ่มไอเดียใหม่ได้` };
   }
 
   await logAudit({

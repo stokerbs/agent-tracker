@@ -154,13 +154,13 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Plan doc, migration 0109 (applied to prod 2026-09-09), types, nav section, `/studio` shell, i18n, GlobalSearch groups | ✅ |
-| 2 | Knowledge Base CRUD, Case Insights CRUD, customer questions, seed loader | ⬜ |
-| 3 | AI provider layer + prompts + 12 AI functions (✅ live smoke-tested with claude-opus-5), Idea Bank, Creative Director | 🟡 UI in progress |
-| 4 | Content Master + Editor + variants + creative plan | ⬜ |
-| 5 | Privacy check (deterministic scrub ✅ + AI review ✅), source traceability (SourceList ✅), fact claims | 🟡 editor wiring in progress |
-| 6 | Calendar (drag-drop) + approval workflow | ⬜ |
-| 7 | Polish: responsive, empty/loading/error states, animations, seed data | ⬜ |
-| 8 | Tests, security review, QA review, PR | ⬜ |
+| 2 | Knowledge Base CRUD, Case Insights CRUD (+ AI extract, privacy gating), customer questions (+ paste-import mining), seed loader in Settings | ✅ |
+| 3 | AI provider layer + prompts + 12 AI functions (live smoke-tested with claude-opus-5), Idea Bank, Creative Director (propose → refine → create campaign) | ✅ |
+| 4 | Content Master + two-pane Editor (autosave) + platform variants (repurpose) + creative plan (shot list) | ✅ |
+| 5 | Privacy check (deterministic + AI), source traceability, fact claims with support status | ✅ |
+| 6 | Calendar (month/week, HTML5 drag-drop, Asia/Bangkok) + approval workflow with privacy/claim gates | ✅ |
+| 7 | Responsive layouts, loading/empty/error/AI-unavailable states, seed data | ✅ (browser pass pending) |
+| 8 | 894 unit tests green, tsc/eslint clean; security + QA review gates | 🟡 in review |
 
 ### Honest limitations in V1
 - 🚫 No social publishing / OAuth — "Publish" = mark as published + optional URL.

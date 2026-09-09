@@ -184,6 +184,38 @@ describe("approveContent — privacy gate", () => {
     expect(h.updates.studio_content_masters).toBeUndefined();
   });
 
+  it("re-scans at approval time: a stale SAFE check does not pass new PII (H1)", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
+    h.rows.studio_privacy_checks = [{ id: "pc-old", status: "safe", created_at: "2026-01-01T00:00:00Z" }];
+    h.privacyResult = { ...h.privacyResult, status: "blocked", findings: [{ kind: "phone", excerpt: "081-234-5678", reason: "x", severity: "high", field: "script", source: "deterministic" }] };
+    const { approveContent } = await load();
+    const res = await approveContent({ masterId: MASTER });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("BLOCKED");
+    expect(h.inserts.studio_privacy_checks?.length).toBe(1);
+    expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
+  });
+
+  it("keeps a stricter previous (AI) verdict even when the fresh scan is safe", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
+    h.rows.studio_privacy_checks = [{ id: "pc-ai", status: "review_required", created_at: "2026-01-01T00:00:00Z" }];
+    const { approveContent } = await load();
+    const res = await approveContent({ masterId: MASTER });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("override");
+  });
+
+  it("records an override trail automatically when require_privacy_safe is off (M1)", async () => {
+    h.settings = { ...h.settings, approval_rules: { require_privacy_safe: false, allow_override: true } };
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
+    h.rows.studio_privacy_checks = [{ id: "pc-1", status: "review_required", created_at: "2026-01-01T00:00:00Z" }];
+    const { approveContent } = await load();
+    const res = await approveContent({ masterId: MASTER });
+    expect(res.ok).toBe(true);
+    expect((h.inserts.studio_content_reviews ?? []).map((r) => r.decision)).toEqual(["override_privacy", "approve"]);
+    expect(h.audit.map((a) => a.action)).toContain("STUDIO_PRIVACY_OVERRIDE");
+  });
+
   it("requires acknowledgement of unsupported claims", async () => {
     h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z" }];
     h.rows.studio_content_claims = [{ id: "c1", support_status: "unsupported" }, { id: "c2", support_status: "supported" }];

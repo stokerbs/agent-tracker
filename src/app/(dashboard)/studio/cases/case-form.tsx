@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Loader2, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import type { PrivacyFinding, PrivacyRules, Sensitivity, StudioCase } from "@/li
 import { cn } from "@/lib/utils";
 import { createCase, updateCase, type CaseInput } from "./actions";
 import { CASE_FIELD_LABELS, CASE_TEXT_FIELDS, CASE_TYPES, CASE_TYPE_META, POTENTIAL_META, PRIVACY_NOTE, type CaseTextField } from "./case-types";
+import { useSafeTransition } from "@/components/studio/use-safe-transition";
 
 const SENSITIVITIES = Object.keys(SENSITIVITY_META) as Sensitivity[];
 
@@ -37,7 +38,7 @@ const TEXTAREAS: { key: Exclude<CaseTextField, "title">; rows: number; hint: str
 
 export function CaseForm({ initial, privacyRules }: { initial?: StudioCase; privacyRules: Partial<PrivacyRules> | null }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, safe] = useSafeTransition();
   const [caseCode, setCaseCode] = useState(initial?.case_code ?? "");
   const [caseType, setCaseType] = useState(initial?.case_type ?? "other");
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -86,7 +87,7 @@ export function CaseForm({ initial, privacyRules }: { initial?: StudioCase; priv
       tags: parseTags(tags),
       linked_case_id: linkedCaseId.trim() || null,
     };
-    start(async () => {
+    safe(async () => {
       const res = initial ? await updateCase(initial.id, payload) : await createCase(payload);
       if (!res.ok) { toast.error(res.error); return; }
       if (res.data.approvalDowngraded) toast.warning("บันทึกแล้ว แต่ยังอนุมัติให้ AI ใช้ไม่ได้ — พบข้อมูลระบุตัวตนระดับสูง");
