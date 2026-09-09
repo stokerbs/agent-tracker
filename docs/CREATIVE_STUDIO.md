@@ -200,3 +200,17 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 7. `/studio/analytics` → **บันทึกผล** on a published piece.
 
 Not verified in a browser by the build session (no authenticated session available to automation); every route is covered by unit tests, typecheck, lint, and `next build`, and all pages render loading/empty/error/AI-unavailable states by code review.
+
+## 11. Bulk import of LINE OA chat history (offline)
+
+Export chats from LINE Official Account Manager (CSV per chat: `ประเภทผู้ส่ง,ชื่อผู้ส่ง,วันส่ง,เวลาส่ง,ข้อความ`), put them in one folder, then on the Mac:
+
+```bash
+set -a; source .env.local; set +a
+npx tsx --tsconfig tsconfig.scripts.json scripts/studio-import-line-history.ts ~/Downloads/line-history --dry-run   # parse + count only
+npx tsx --tsconfig tsconfig.scripts.json scripts/studio-import-line-history.ts ~/Downloads/line-history --model claude-sonnet-5 --user <your profile uuid>
+```
+
+What it does per file: PII redaction per message (studio denylist + customer display names in the file, Thai digits normalised) → AI windows (~12k chars, `ลูกค้า:`/`นักสืบ:`) → `extractChatKnowledge` → writes **unapproved** rows: investigator knowledge (`tags: line-import, จากแชทจริง|ต้องยืนยัน`), case lessons (`category cases`, sensitivity confidential), service facts, and customer questions (`source import`). Customer claims are discarded; anything still carrying a high-severity identifier is dropped. Idempotent per file + window (`origin_ref = line-import:<sha1>:<n>`). Raw transcripts are never stored; the JSON report (counts only) is written next to the inputs. Review in `/studio/knowledge` (filter tag `line-import`) and approve what should feed AI content.
+
+Sizing from the 13 exports already in ~/Downloads (Jun 2026): 17.8k messages → 78 windows ≈ US$5–8 on Claude Opus 5, ≈ US$2–3 on Sonnet 5. Overlapping exports of the same chat (e.g. two Kimlank files) will produce near-duplicate knowledge — import only the longest export per chat.
