@@ -1,4 +1,4 @@
--- Migration 0109 — LINE bot account linking (Round 1: read-only case/timeline lookup)
+-- Migration 0111 (renumbered from 0109 — collided with 0109_creative_studio) — LINE bot account linking (Round 1: read-only case/timeline lookup)
 --
 -- Adds `line_accounts`, which maps a LINE Messaging API user ID to an
 -- `agents` row once the agent has verified ownership of their phone number
