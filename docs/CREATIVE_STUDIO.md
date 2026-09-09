@@ -159,8 +159,8 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 | 4 | Content Master + two-pane Editor (autosave) + platform variants (repurpose) + creative plan (shot list) | ✅ |
 | 5 | Privacy check (deterministic + AI), source traceability, fact claims with support status | ✅ |
 | 6 | Calendar (month/week, HTML5 drag-drop, Asia/Bangkok) + approval workflow with privacy/claim gates | ✅ |
-| 7 | Responsive layouts, loading/empty/error/AI-unavailable states, seed data | ✅ (browser pass pending) |
-| 8 | 894 unit tests green, tsc/eslint clean; security + QA review gates | 🟡 in review |
+| 7 | Responsive layouts, loading/empty/error/AI-unavailable states, seed data | ✅ (code-reviewed; owner browser pass still recommended — see §10) |
+| 8 | 911 unit tests green, tsc/eslint clean, `next build` passes; security review FAIL→fixed (H1 stale privacy check, M1, M2, L1–L6), QA CHANGES REQUIRED→fixed; re-review in progress | 🟡 re-review |
 
 ### Honest limitations in V1
 - 🚫 No social publishing / OAuth — "Publish" = mark as published + optional URL.
@@ -184,3 +184,17 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 - **States.** Every page: loading (`loading.tsx` or Skeleton), empty (`EmptyState`), error (`error.tsx`), AI-unavailable, privacy-review-required where relevant.
 - **Tests.** Co-locate `*.test.ts` for pure helpers and for server actions (mock `@/lib/supabase/server` + `@/lib/studio/auth`, see `settings/security-actions.test.ts` for the pattern).
 - **Do not edit** `src/lib/studio/types.ts`, `constants.ts`, `components/studio/badges.tsx`, `nav-config.ts`, `messages/*.json` without coordinating — other modules depend on them.
+
+---
+
+## 10. How to try it (owner checklist)
+
+1. Deploy the branch (or run `npm run dev`) — migrations 0109 + 0110 are already applied on the linked Supabase project; `ANTHROPIC_API_KEY` must be set (Vercel already has it). Optional: `STUDIO_AI_MODEL`.
+2. Log in as admin → sidebar section **ครีเอทีฟสตูดิโอ**.
+3. `/studio/settings` → **โหลดข้อมูลตัวอย่าง (DEMO)** — inserts the real public FAQ as knowledge, DEMO-001…006 cases with insights, 8 customer questions, 5 ideas, 3 content pieces (one scheduled next Monday 19:00, one draft, one published with sample metrics). Remove with **ลบข้อมูลตัวอย่าง**.
+4. `/studio` → type "อาทิตย์หน้าขอ 5 คลิปเรื่องนอกใจ TikTok กับ IG" → Creative Director proposes a campaign (20–60 s, Claude Opus 5) → tick ideas → **สร้างแคมเปญ**.
+5. `/studio/ideas` → **สร้างคอนเทนต์** on an idea → lands in the editor with script/caption/CTA/claims/sources and a deterministic privacy check.
+6. Editor → AI actions (rewrite/hooks/CTA/variants/creative plan), **ตรวจด้วย AI**, then **ส่งตรวจ → อนุมัติ** (refused while BLOCKED) → **ตั้งเวลาโพสต์** → appears in `/studio/calendar` (drag to move).
+7. `/studio/analytics` → **บันทึกผล** on a published piece.
+
+Not verified in a browser by the build session (no authenticated session available to automation); every route is covered by unit tests, typecheck, lint, and `next build`, and all pages render loading/empty/error/AI-unavailable states by code review.
