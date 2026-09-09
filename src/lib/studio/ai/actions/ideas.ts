@@ -56,13 +56,15 @@ export interface GenerateIdeasInput {
   pillar?: Pillar | null;
   platforms?: Platform[];
   tone?: string | null;
+  /** Extra titles (e.g. the proposal currently on screen) to exclude from duplicates. */
+  excludeTitles?: string[];
   userId: string | null;
 }
 
 export async function generateIdeas(input: GenerateIdeasInput): Promise<RunResult<{ ideas: GeneratedIdea[]; knowledge_gaps: string[] }>> {
   const count = Math.min(10, Math.max(1, input.count ?? 5));
   const ctx = await buildContext(input.brief, { limit: 10, pillar: input.pillar ?? null });
-  const titles = await existingTitles();
+  const titles = Array.from(new Set([...(await existingTitles()), ...(input.excludeTitles ?? [])]));
   const res = await runStructured({
     purpose: "ideas",
     schema: IdeasResponseSchema,
