@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ inserted: [] as Record<string, unknown>[], insertError: null as { message: string } | null }));
+const h = vi.hoisted(() => ({
+  inserted: [] as Record<string, unknown>[],
+  insertError: null as { message: string } | null,
+  allowed: true,
+  denylist: [] as string[],
+}));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(async () => ({ allowed: h.allowed, remaining: 1, retryAfterMs: 0 })) }));
+vi.mock("@/lib/studio/settings", () => ({ getStudioSettings: vi.fn(async () => ({ privacy_rules: { denylist: h.denylist, custom_patterns: [], strict_mode: false } })) }));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: () => ({ insert: async (row: Record<string, unknown>) => (h.inserted.push(row), { error: h.insertError }) }),
@@ -10,6 +17,8 @@ vi.mock("@/lib/supabase/server", () => ({
 beforeEach(() => {
   h.inserted = [];
   h.insertError = null;
+  h.allowed = true;
+  h.denylist = [];
   process.env.BIDX_KEY = "b".repeat(64);
 });
 
@@ -29,9 +38,20 @@ describe("redactForInbox", () => {
     expect(redactForInbox("ติดต่อ 096-846-1406 ได้ไหม")).toContain("096-846-1406");
   });
   it("collapses whitespace and caps length", async () => {
-    const { redactForInbox } = await import("./line-inbox");
+    const { redactForInbox, MAX_LEN } = await import("./line-inbox");
     expect(redactForInbox("  a \n\n b  ")).toBe("a b");
-    expect(redactForInbox("x".repeat(5000)).length).toBeLessThanOrEqual(4000);
+    expect(redactForInbox("x".repeat(5000)).length).toBeLessThanOrEqual(MAX_LEN);
+  });
+  it("catches Thai-digit phone numbers and untitled names", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    const out = redactForInbox("โทร ๐๘๑๒๓๔๕๖๗๘ แฟนชื่อสมชาย อายุ 34 ปี");
+    expect(out).not.toMatch(/0812345678|๐๘๑/);
+    expect(out).not.toContain("สมชาย");
+    expect(out).toContain("[เบอร์โทร]");
+  });
+  it("applies the owner denylist", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("เคสของ Pimchanok", { denylist: ["pimchanok"], custom_patterns: [], strict_mode: false })).not.toContain("Pimchanok");
   });
 });
 
@@ -72,6 +92,18 @@ describe("captureCustomerMessage", () => {
     expect(await captureCustomerMessage({ lineUserId: "U1", text: "ผูกบัญชี 0812345678", isLinkedAgent: false })).toBe(false);
     expect(await captureCustomerMessage({ lineUserId: "U1", text: "ก", isLinkedAgent: false })).toBe(false);
     expect(h.inserted).toHaveLength(0);
+  });
+  it("drops messages once the per-sender rate limit is hit", async () => {
+    h.allowed = false;
+    const { captureCustomerMessage } = await import("./line-inbox");
+    expect(await captureCustomerMessage({ lineUserId: "U1", text: "ราคาเท่าไหร่ครับ", isLinkedAgent: false })).toBe(false);
+    expect(h.inserted).toHaveLength(0);
+  });
+  it("uses the owner denylist from settings", async () => {
+    h.denylist = ["Pimchanok"];
+    const { captureCustomerMessage } = await import("./line-inbox");
+    await captureCustomerMessage({ lineUserId: "U1", text: "อยากสืบ Pimchanok ค่ะ", isLinkedAgent: false });
+    expect(String(h.inserted[0].text_redacted)).not.toContain("Pimchanok");
   });
   it("never throws on DB errors", async () => {
     h.insertError = { message: "boom" };

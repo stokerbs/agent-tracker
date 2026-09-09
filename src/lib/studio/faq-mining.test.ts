@@ -87,6 +87,23 @@ describe("mineLineInbox", () => {
     expect(upd).toMatchObject({ frequency: 7 });
     expect(upd?.tags).toEqual(expect.arrayContaining(["เดิม", "gps"]));
   });
+  it("drops mined questions that still carry an identifier", async () => {
+    h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));
+    h.ai = { ok: true, generationId: "g2", model: "m", data: { questions: [{ question: "คุณสมชาย 081-234-5678 ตามได้ไหม", answer_hint: null, frequency: 1, tags: [], content_idea: "" }] } };
+    const { mineLineInbox } = await import("./faq-mining");
+    const r = await mineLineInbox({ userId: null });
+    expect(r.ok).toBe(true);
+    expect(r.dropped).toBe(1);
+    expect(h.inserts.filter((i) => i.table === "studio_customer_questions")).toHaveLength(0);
+  });
+  it("only marks the messages that fit the prompt window as processed", async () => {
+    const { mineLineInbox, MAX_PROMPT_CHARS } = await import("./faq-mining");
+    const big = "ก".repeat(Math.floor(MAX_PROMPT_CHARS * 0.6));
+    h.inbox = [ { ...msg(1, "a"), text_redacted: big }, { ...msg(2, "b"), text_redacted: big }, msg(3, "c"), msg(4, "d"), msg(5, "e") ];
+    const r = await mineLineInbox({ userId: null });
+    expect(r.ok).toBe(true);
+    expect(r.messages).toBeLessThan(5);
+  });
   it("returns the AI error without marking messages processed", async () => {
     h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));
     h.ai = { ok: false, error: "AI ล้มเหลว", code: "failed", generationId: null };

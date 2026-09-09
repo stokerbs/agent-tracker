@@ -362,7 +362,7 @@ export async function mineLineInboxNow(): Promise<ActionResult<MineResult>> {
     actorId: profile.id,
     action: "STUDIO_FAQ_MINE",
     entity: "studio_customer_questions",
-    metadata: { messages: result.messages, inserted: result.inserted, merged: result.merged, purged: result.purged, generation_id: result.generationId },
+    metadata: { trigger: "manual", messages: result.messages, inserted: result.inserted, merged: result.merged, dropped: result.dropped, purged: result.purged, generation_id: result.generationId },
   });
   console.info(`[studio:questions] manual mine by ${profile.id}: ${result.messages} msgs → +${result.inserted} / merged ${result.merged}`);
   revalidatePath(KNOWLEDGE_PATH);

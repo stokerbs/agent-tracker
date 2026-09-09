@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { mineLineInbox } from "@/lib/studio/faq-mining";
 import { pushLineNotify } from "@/lib/line/notify";
 import { reportError } from "@/lib/errors";
+import { logAudit } from "@/lib/audit";
 
 // Weekly (Mon 01:30 Asia/Bangkok): mine recurring customer questions from the
 // redacted LINE OA inbox into studio_customer_questions, purge processed rows
@@ -23,6 +24,12 @@ export async function GET(request: NextRequest) {
       console.error("[cron:studio-faq-mine] failed:", result.error);
       return NextResponse.json({ ok: false, error: "mine_failed", detail: result.error }, { status: 500 });
     }
+    await logAudit({
+      actorId: null,
+      action: "STUDIO_FAQ_MINE",
+      entity: "studio_customer_questions",
+      metadata: { trigger: "cron", messages: result.messages, inserted: result.inserted, merged: result.merged, dropped: result.dropped, purged: result.purged, generation_id: result.generationId },
+    });
     if (result.inserted > 0 || result.merged > 0) {
       await pushLineNotify(
         `🧠 Creative Studio: ขุดคำถามลูกค้าจาก LINE แล้ว\n` +

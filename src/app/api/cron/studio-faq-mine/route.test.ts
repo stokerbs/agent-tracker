@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
 vi.mock("@/lib/studio/faq-mining", () => ({ mineLineInbox: vi.fn(async () => h.result) }));
 vi.mock("@/lib/line/notify", () => ({ pushLineNotify: vi.fn() }));
 vi.mock("@/lib/errors", () => ({ reportError: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
 import { GET } from "./route";
 import { pushLineNotify } from "@/lib/line/notify";

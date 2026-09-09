@@ -168,6 +168,7 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 - 🚫 No video/image/voice generation — creative plan is text (shot list, B-roll, overlays, thumbnail concept).
 - 🚫 No embeddings — `embedding` columns exist but stay NULL; search is keyword (trigram).
 - 🟡 LINE OA import — inbound messages from non-agent senders are captured PII-redacted (`studio_line_inbox`, migration 0113) and mined weekly (`/api/cron/studio-faq-mine`, Mon 01:30 Bangkok) or on demand into `studio_customer_questions` (unapproved until the owner reviews). Paste-import still available.
+  - Data-protection notes for the inbox: text is pseudonymous personal data (HMAC sender under a purpose-specific subkey; redaction is best-effort, Thai digits normalised, owner denylist applied, per-sender 20 msgs/hour cap); processed rows purge after 30 days and ANY row after 90 days; mined output is re-scrubbed and dropped if it still carries an identifier; Anthropic acts as processor for the redacted batch. ⚠️ Open owner decision: the field-agent LINE bot currently auto-replies "ผูกบัญชี <เบอร์>" to every unlinked sender (real customers) — recommend replying only to command-like text.
 - 🟡 Analytics = manual entry.
 - 🟡 OpenAI provider = interface present, throws "not configured" (no fake success).
 

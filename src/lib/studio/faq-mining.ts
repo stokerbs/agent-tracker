@@ -2,6 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { extractCustomerFAQs } from "@/lib/studio/ai/actions/knowledge";
+import { scrubText } from "@/lib/studio/privacy/scrub";
 
 /**
  * FAQ mining: studio_line_inbox (redacted customer messages) → AI → canonical
@@ -10,11 +11,19 @@ import { extractCustomerFAQs } from "@/lib/studio/ai/actions/knowledge";
  * Runs from the weekly cron and from the "ขุดตอนนี้" button in Knowledge →
  * คำถามลูกค้า. Mined questions arrive with approved_for_content = false; the
  * owner reviews and approves them like any other knowledge.
+ *
+ * Retention (PDPA storage limitation): processed rows are deleted
+ * INBOX_RETENTION_DAYS after processing; ANY row older than
+ * INBOX_HARD_RETENTION_DAYS is deleted regardless of processing state, so a
+ * broken AI key or a quiet inbox can never keep customer text forever.
  */
 
 export const MIN_MESSAGES_TO_MINE = 5;
 export const MAX_MESSAGES_PER_BATCH = 300;
+/** Keep the prompt within extractCustomerFAQs' 20k-char window; only messages actually sent are marked processed. */
+export const MAX_PROMPT_CHARS = 18_000;
 export const INBOX_RETENTION_DAYS = 30;
+export const INBOX_HARD_RETENTION_DAYS = 90;
 
 /** Canonical form used to dedupe questions: lowercase, no punctuation/space, no trailing particles. */
 export function normalizeQuestionKey(q: string): string {
@@ -25,20 +34,32 @@ export function normalizeQuestionKey(q: string): string {
     .slice(0, 200);
 }
 
+/** True when AI output still carries a high-severity identifier — such a question is dropped, never stored. */
+export function outputCarriesPii(question: string, answerHint: string | null | undefined): boolean {
+  return scrubText({ fields: { question, answer_hint: answerHint ?? "" } }).some((f) => f.severity === "high");
+}
+
 export interface MineResult {
   ok: boolean;
   error?: string;
   messages: number;
   inserted: number;
   merged: number;
+  dropped: number;
   purged: number;
   generationId: string | null;
   skipped?: "too_few";
 }
 
+type Svc = ReturnType<typeof createServiceClient>;
+
 export async function mineLineInbox(opts: { userId: string | null; minMessages?: number }): Promise<MineResult> {
   const svc = createServiceClient();
   const min = opts.minMessages ?? MIN_MESSAGES_TO_MINE;
+  const base = { inserted: 0, merged: 0, dropped: 0, generationId: null as string | null };
+
+  // Retention runs first and unconditionally.
+  const purged = await purgeExpired(svc);
 
   const { data: rows, error } = await svc
     .from("studio_line_inbox")
@@ -48,44 +69,69 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
     .limit(MAX_MESSAGES_PER_BATCH);
   if (error) {
     console.error("[studio:faq-mining] inbox load failed:", error.message);
-    return { ok: false, error: "โหลดข้อความ LINE ไม่สำเร็จ", messages: 0, inserted: 0, merged: 0, purged: 0, generationId: null };
+    return { ok: false, error: "โหลดข้อความ LINE ไม่สำเร็จ", messages: 0, purged, ...base };
   }
-  const messages = rows ?? [];
-  const purged = await purgeOldProcessed(svc);
-  if (messages.length < min) {
-    return { ok: true, messages: messages.length, inserted: 0, merged: 0, purged, generationId: null, skipped: "too_few" };
-  }
+  const all = rows ?? [];
+  if (all.length < min) return { ok: true, messages: all.length, purged, skipped: "too_few", ...base };
 
-  // Group by sender so the model sees conversations, not a flat list.
-  const bySender = new Map<string, string[]>();
-  for (const m of messages) (bySender.get(m.sender_hash) ?? bySender.set(m.sender_hash, []).get(m.sender_hash)!).push(m.text_redacted);
-  const pasted = Array.from(bySender.values())
-    .map((msgs, i) => `--- ลูกค้า #${i + 1} ---\n${msgs.map((t) => `• ${t}`).join("\n")}`)
-    .join("\n\n");
+  // Group by sender (the model sees conversations) and stop before the prompt window overflows.
+  const bySender = new Map<string, { ids: string[]; texts: string[] }>();
+  for (const m of all) {
+    const g = bySender.get(m.sender_hash) ?? { ids: [], texts: [] };
+    g.ids.push(m.id);
+    g.texts.push(m.text_redacted);
+    bySender.set(m.sender_hash, g);
+  }
+  const blocks: string[] = [];
+  const includedIds: string[] = [];
+  let chars = 0;
+  let i = 0;
+  for (const g of bySender.values()) {
+    const block = `--- ลูกค้า #${++i} ---\n${g.texts.map((t) => `• ${t}`).join("\n")}`;
+    if (chars + block.length > MAX_PROMPT_CHARS && includedIds.length > 0) break;
+    blocks.push(block);
+    includedIds.push(...g.ids);
+    chars += block.length + 2;
+  }
+  const pasted = blocks.join("\n\n").slice(0, MAX_PROMPT_CHARS);
 
   const res = await extractCustomerFAQs({ pastedText: pasted, source: "line_oa", userId: opts.userId });
   if (!res.ok) {
     console.error("[studio:faq-mining] extraction failed:", res.error);
-    return { ok: false, error: res.error, messages: messages.length, inserted: 0, merged: 0, purged, generationId: res.generationId };
+    return { ok: false, error: res.error, messages: includedIds.length, purged, ...base, generationId: res.generationId };
   }
 
   let inserted = 0;
   let merged = 0;
+  let dropped = 0;
   const now = new Date().toISOString();
   for (const q of res.data.questions) {
-    const question = q.question.trim();
+    const question = q.question.trim().slice(0, 500);
+    const answerHint = q.answer_hint?.trim().slice(0, 1000) || null;
     if (!question) continue;
     const key = normalizeQuestionKey(question);
+    if (!key) continue;
+    // The model was told not to copy identifiers; enforce it anyway.
+    if (outputCarriesPii(question, answerHint)) {
+      dropped += 1;
+      console.warn("[studio:faq-mining] dropped a mined question carrying an identifier");
+      continue;
+    }
     const freq = Math.max(1, Math.round(q.frequency || 1));
     const tags = Array.from(new Set((q.tags ?? []).map((t) => t.trim()).filter(Boolean))).slice(0, 8);
 
     // Match on normalized key first, then exact text (legacy rows without a key).
-    const { data: existing } = await svc
+    // `key` is [\p{L}\p{M}\p{N}]+ only and `question` is JSON-quoted, so neither can break the PostgREST filter.
+    const { data: existing, error: fErr } = await svc
       .from("studio_customer_questions")
       .select("id, frequency, tags, answer_hint")
-      .or(`normalized_key.eq.${key.replace(/[,()]/g, "")},question.eq.${JSON.stringify(question)}`)
+      .or(`normalized_key.eq.${key},question.eq.${JSON.stringify(question)}`)
       .limit(1)
       .maybeSingle();
+    if (fErr) {
+      console.error("[studio:faq-mining] lookup failed:", fErr.message);
+      continue;
+    }
 
     if (existing) {
       const { error: uErr } = await svc
@@ -93,7 +139,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
         .update({
           frequency: (existing.frequency ?? 1) + freq,
           tags: Array.from(new Set([...(existing.tags ?? []), ...tags])).slice(0, 12),
-          answer_hint: existing.answer_hint?.trim() ? existing.answer_hint : q.answer_hint?.trim() || null,
+          answer_hint: existing.answer_hint?.trim() ? existing.answer_hint : answerHint,
           last_seen_at: now,
           normalized_key: key,
         })
@@ -103,7 +149,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
     } else {
       const { error: iErr } = await svc.from("studio_customer_questions").insert({
         question,
-        answer_hint: q.answer_hint?.trim() || null,
+        answer_hint: answerHint,
         frequency: freq,
         source: "line_oa",
         tags,
@@ -121,21 +167,25 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
   const { error: pErr } = await svc
     .from("studio_line_inbox")
     .update({ processed_at: now, batch_id: res.generationId })
-    .in("id", messages.map((m) => m.id));
+    .in("id", includedIds);
   if (pErr) console.error("[studio:faq-mining] mark processed failed:", pErr.message);
 
-  console.info(`[studio:faq-mining] messages=${messages.length} inserted=${inserted} merged=${merged} purged=${purged} gen=${res.generationId}`);
-  return { ok: true, messages: messages.length, inserted, merged, purged, generationId: res.generationId };
+  console.info(`[studio:faq-mining] messages=${includedIds.length}/${all.length} inserted=${inserted} merged=${merged} dropped=${dropped} purged=${purged} gen=${res.generationId}`);
+  return { ok: true, messages: includedIds.length, inserted, merged, dropped, purged, generationId: res.generationId };
 }
 
-async function purgeOldProcessed(svc: ReturnType<typeof createServiceClient>): Promise<number> {
-  const cutoff = new Date(Date.now() - INBOX_RETENTION_DAYS * 86400_000).toISOString();
-  const { data, error } = await svc.from("studio_line_inbox").delete().lt("processed_at", cutoff).select("id");
-  if (error) {
-    console.error("[studio:faq-mining] purge failed:", error.message);
-    return 0;
-  }
-  return data?.length ?? 0;
+/** Soft purge (processed > 30 d) + hard purge (anything > 90 d). */
+async function purgeExpired(svc: Svc): Promise<number> {
+  const soft = new Date(Date.now() - INBOX_RETENTION_DAYS * 86400_000).toISOString();
+  const hard = new Date(Date.now() - INBOX_HARD_RETENTION_DAYS * 86400_000).toISOString();
+  let n = 0;
+  const a = await svc.from("studio_line_inbox").delete().lt("processed_at", soft).select("id");
+  if (a.error) console.error("[studio:faq-mining] soft purge failed:", a.error.message);
+  else n += a.data?.length ?? 0;
+  const b = await svc.from("studio_line_inbox").delete().lt("received_at", hard).select("id");
+  if (b.error) console.error("[studio:faq-mining] hard purge failed:", b.error.message);
+  else n += b.data?.length ?? 0;
+  return n;
 }
 
 export interface InboxStats {
