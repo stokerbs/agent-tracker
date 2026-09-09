@@ -45,8 +45,8 @@ export function chatKnowledgeSystemAddendum(): string {
   return `You are now extracting REUSABLE KNOWLEDGE from historical LINE chat transcripts between Detective Pulse (labelled "นักสืบ") and prospective customers ("ลูกค้า"). The transcript is already PII-redacted with tokens like [เบอร์โทร], [ชื่อ]. Your output feeds an internal knowledge base that a human reviews before anything becomes public content.`;
 }
 
-export function chatKnowledgeUserPrompt(input: { transcript: string; windowLabel: string }): string {
-  return `TRANSCRIPT WINDOW ${input.windowLabel}
+export function chatKnowledgeUserPrompt(input: { transcript: string }): string {
+  return `TRANSCRIPT WINDOW
 ${input.transcript}
 
 EXTRACT (Thai output):

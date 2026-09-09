@@ -37,8 +37,8 @@ describe("buildTranscriptWindows", () => {
     const ex = parseLineOaCsv(SAMPLE);
     const w = buildTranscriptWindows(ex.messages, (t) => t.replace(/081-234-5678/g, "[เบอร์โทร]"));
     expect(w).toHaveLength(1);
-    expect(w[0].text).toContain("ลูกค้า (2026-06-02): อยากสืบแฟนค่ะ โทร [เบอร์โทร]");
-    expect(w[0].text).toContain("นักสืบ (2026-06-02): ปกติ 3-5 วันครับ");
+    expect(w[0].text).toContain("ลูกค้า (2026-06): อยากสืบแฟนค่ะ โทร [เบอร์โทร]");
+    expect(w[0].text).toContain("นักสืบ (2026-06): ปกติ 3-5 วันครับ");
     expect(w[0].text).not.toContain("สวัสดีครับ");
     expect(w[0]).toMatchObject({ userCount: 1, accountCount: 1 });
   });

@@ -160,8 +160,8 @@ export function buildTranscriptWindows(
     if (m.isAutoReply || isPlaceholderMessage(m.text)) continue;
     const clean = redact(m.text).replace(/\s+/g, " ").trim();
     if (clean.length < 2) continue;
-    const day = m.at.slice(0, 10);
-    const line = `${m.side === "user" ? "ลูกค้า" : "นักสืบ"} (${day}): ${clean}`;
+    const month = m.at.slice(0, 7); // YYYY-MM — coarse on purpose (exact dates are identifying)
+    const line = `${m.side === "user" ? "ลูกค้า" : "นักสืบ"} (${month}): ${clean}`;
     if (chars + line.length > maxChars && lines.length) flush();
     if (!lines.length) from = m.at;
     to = m.at;

@@ -11,6 +11,7 @@ import { runStructured, type RunResult } from "../run";
  */
 export async function extractChatKnowledge(input: {
   transcript: string;
+  /** Opaque, non-identifying reference (e.g. `line-import:<hash>:<n>`) — never a filename. */
   windowLabel: string;
   userId: string | null;
   model?: string;
@@ -21,7 +22,8 @@ export async function extractChatKnowledge(input: {
     schema: ChatKnowledgeSchema,
     system: `${brandSystemPrompt(settings.brand_voice)}\n\n${chatKnowledgeSystemAddendum()}`,
     user: chatKnowledgeUserPrompt(input),
-    inputRefs: { window: input.windowLabel, chars: input.transcript.length },
+    inputRefs: { ref: input.windowLabel, chars: input.transcript.length },
+    storeOutput: false,
     userId: input.userId,
     effort: "medium",
     maxTokens: 8000,

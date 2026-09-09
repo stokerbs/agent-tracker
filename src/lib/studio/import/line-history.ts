@@ -29,6 +29,8 @@ export interface ImportOptions {
   model?: string;
   userId?: string | null;
   maxWindowChars?: number;
+  /** Skip chats with fewer customer messages than this (greeting-only chats carry no knowledge). Default 2. */
+  minUserMessages?: number;
   /** Progress callback for the CLI. */
   onProgress?: (msg: string) => void;
 }
@@ -50,12 +52,29 @@ export interface ImportFileResult {
   outputTokens: number;
 }
 
-export function fileHashOf(content: string): string {
-  return crypto.createHash("sha1").update(content).digest("hex").slice(0, 16);
+/** Hash of the MESSAGE rows only — re-exporting the same chat later (new download header) keeps the same hash. */
+let rulesCache: { at: number; rules: PrivacyRules | null } | null = null;
+/** Settings rarely change mid-import; one lookup per minute instead of per file. */
+async function cachedPrivacyRules(): Promise<PrivacyRules | null> {
+  if (rulesCache && Date.now() - rulesCache.at < 60_000) return rulesCache.rules;
+  let rules: PrivacyRules | null = null;
+  try {
+    rules = (await getStudioSettings()).privacy_rules;
+  } catch {
+    rules = null;
+  }
+  rulesCache = { at: Date.now(), rules };
+  return rules;
 }
 
-/** Build the per-file redactor: studio denylist + customer display names + name fragments. */
-export function makeRedactor(rules: PrivacyRules | null, customerNames: string[]): (t: string) => string {
+export function fileHashOf(content: string): string {
+  const parsed = parseLineOaCsv(content);
+  const canonical = parsed.messages.map((m) => `${m.side}|${m.at}|${m.text}`).join("\n");
+  return crypto.createHash("sha1").update(canonical || content).digest("hex").slice(0, 16);
+}
+
+/** Build the per-file redactor: studio denylist + customer display names + name fragments. Also returns the merged rules for the second (output) scrub. */
+export function makeRedactor(rules: PrivacyRules | null, customerNames: string[]): { redact: (t: string) => string; rules: PrivacyRules } {
   const extra = customerNames
     .flatMap((n) => [n, ...n.split(/[\s.·•|]+/)])
     .map((s) => s.replace(/[^\p{L}\p{M}\p{N}]/gu, "").trim())
@@ -65,12 +84,18 @@ export function makeRedactor(rules: PrivacyRules | null, customerNames: string[]
     custom_patterns: rules?.custom_patterns ?? [],
     strict_mode: rules?.strict_mode ?? false,
   };
-  return (t: string) => redactForInbox(t, merged);
+  return { redact: (t: string) => redactForInbox(t, merged), rules: merged };
 }
 
-function carriesPii(rules: PrivacyRules | null, ...fields: string[]): boolean {
-  return scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules }).some((f) => f.severity === "high");
+type Verdict = "ok" | "flag" | "drop";
+/** Second scrub on model output: high → drop; name/denylist → drop; other medium/low → keep but flag for review. */
+function judge(rules: PrivacyRules | null, ...fields: string[]): Verdict {
+  const findings = scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules });
+  if (!findings.length) return "ok";
+  if (findings.some((f) => f.severity === "high" || f.kind === "name" || f.kind === "denylist")) return "drop";
+  return "flag";
 }
+const REVIEW_TAG = "ต้องตรวจ privacy";
 
 export async function importLineHistoryFile(fileName: string, content: string, opts: ImportOptions = {}): Promise<ImportFileResult> {
   const svc = createServiceClient();
@@ -100,22 +125,32 @@ export async function importLineHistoryFile(fileName: string, content: string, o
     return result;
   }
 
-  let rules: PrivacyRules | null = null;
-  try {
-    rules = (await getStudioSettings()).privacy_rules;
-  } catch {
-    rules = null;
+  const userMessages = parsed.messages.filter((m) => m.side === "user").length;
+  if (userMessages < (opts.minUserMessages ?? 2)) {
+    result.errors.push(`skipped: only ${userMessages} customer message(s)`);
+    return result;
   }
-  const redact = makeRedactor(rules, parsed.customerNames);
+
+  const rules = await cachedPrivacyRules();
+  const { redact, rules: mergedRules } = makeRedactor(rules, parsed.customerNames);
   const windows = buildTranscriptWindows(parsed.messages, redact, opts.maxWindowChars ?? 12_000).filter((w) => w.userCount > 0);
   result.windows = windows.length;
+  if (opts.dryRun) {
+    for (const w of windows) log(`  window ${w.index + 1}/${windows.length} (${w.messageCount} msgs, ${w.text.length} chars)`);
+    return result;
+  }
 
-  // Windows already imported (idempotency).
-  const { data: done } = await svc
-    .from("studio_knowledge_sources")
-    .select("origin_ref")
-    .like("origin_ref", `line-import:${fileHash}:%`);
-  const doneRefs = new Set((done ?? []).map((r) => r.origin_ref));
+  // Idempotency: a window is done if it produced knowledge rows OR a successful
+  // generation was logged for it (windows that yielded only questions / nothing
+  // must not be re-billed or re-counted).
+  const [{ data: doneK }, { data: doneG }] = await Promise.all([
+    svc.from("studio_knowledge_sources").select("origin_ref").like("origin_ref", `line-import:${fileHash}:%`),
+    svc.from("studio_ai_generations").select("input_refs").eq("purpose", "chat_knowledge").eq("status", "ok").filter("input_refs->>ref", "like", `line-import:${fileHash}:%`),
+  ]);
+  const doneRefs = new Set<string>([
+    ...((doneK ?? []).map((r) => r.origin_ref).filter((x): x is string => !!x)),
+    ...((doneG ?? []).map((r) => (r.input_refs as { ref?: string } | null)?.ref).filter((x): x is string => !!x)),
+  ]);
 
   for (const w of windows) {
     const ref = `line-import:${fileHash}:${w.index}`;
@@ -126,12 +161,13 @@ export async function importLineHistoryFile(fileName: string, content: string, o
     log(`  window ${w.index + 1}/${windows.length} (${w.messageCount} msgs, ${w.text.length} chars)`);
     if (opts.dryRun) continue;
 
-    const res = await extractChatKnowledge({ transcript: w.text, windowLabel: `${fileName} #${w.index + 1} (${w.from.slice(0, 10)}…${w.to.slice(0, 10)})`, userId: opts.userId ?? null, model: opts.model });
+    // The label is the opaque ref — never the filename (it carries the customer's display name).
+    const res = await extractChatKnowledge({ transcript: w.text, windowLabel: ref, userId: opts.userId ?? null, model: opts.model });
     if (!res.ok) {
       result.errors.push(`window ${w.index + 1}: ${res.error}`);
       continue;
     }
-    await persistWindow(svc, res.data, ref, w, opts.userId ?? null, result, rules);
+    await persistWindow(svc, res.data, ref, w, opts.userId ?? null, result, mergedRules);
   }
   return result;
 }
@@ -148,7 +184,8 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
     const content = k.content.trim();
     if (!title || content.length < 20) continue;
     if (k.evidence === "customer_claim") continue; // not our expertise
-    if (carriesPii(rules, title, content)) {
+    const v = judge(rules, title, content);
+    if (v === "drop") {
       result.dropped += 1;
       continue;
     }
@@ -158,7 +195,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       summary: null,
       source_type: k.category === "services" ? "service" : k.category === "owner_experience" ? "owner_experience" : "investigator_knowledge",
       category: k.category,
-      tags: Array.from(new Set([...(k.tags ?? []).slice(0, 6), "line-import", k.evidence === "implied" ? "ต้องยืนยัน" : "จากแชทจริง"])),
+      tags: Array.from(new Set([...(k.tags ?? []).slice(0, 6), "line-import", k.evidence === "implied" ? "ต้องยืนยัน" : "จากแชทจริง", ...(v === "flag" ? [REVIEW_TAG] : [])])),
       sensitivity: "internal",
       approved_for_content: false,
       origin_ref: ref,
@@ -172,7 +209,8 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       continue;
     }
     const content = `สถานการณ์: ${c.situation.trim()}\n\nบทเรียน: ${c.lesson.trim()}`;
-    if (carriesPii(rules, c.title, content)) {
+    const cv = judge(rules, c.title, content);
+    if (cv === "drop") {
       result.dropped += 1;
       continue;
     }
@@ -182,7 +220,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       summary: c.lesson.trim().slice(0, 300),
       source_type: "case",
       category: "cases",
-      tags: ["line-import", "case-lesson", c.pillar, c.privacy_status === "review_required" ? "ต้องตรวจ privacy" : "safe"],
+      tags: Array.from(new Set(["line-import", "case-lesson", c.pillar, c.privacy_status === "review_required" || cv === "flag" ? REVIEW_TAG : "safe"])),
       sensitivity: "confidential",
       approved_for_content: false,
       origin_ref: ref,
@@ -190,7 +228,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       created_by: userId,
     });
   }
-  const facts = out.service_facts.map((f) => f.fact.trim()).filter((f) => f.length >= 10 && !carriesPii(rules, f));
+  const facts = out.service_facts.map((f) => f.fact.trim()).filter((f) => f.length >= 10 && judge(rules, f) !== "drop");
   if (facts.length) {
     rows.push({
       title: `ข้อเท็จจริงด้านบริการจากแชท (${period})`,
@@ -222,12 +260,13 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
     const hint = q.answer_hint?.trim().slice(0, 1000) || null;
     const key = normalizeQuestionKey(question);
     if (!question || !key) continue;
-    if (outputCarriesPii(question, hint, rules)) {
+    const qv = judge(rules, question, hint ?? "");
+    if (qv === "drop" || outputCarriesPii(question, hint, rules)) {
       result.dropped += 1;
       continue;
     }
     const freq = Math.max(1, Math.round(q.frequency || 1));
-    const tags = Array.from(new Set([...(q.tags ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 6), "line-import"]));
+    const tags = Array.from(new Set([...(q.tags ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 6), "line-import", ...(qv === "flag" ? [REVIEW_TAG] : [])]));
     const { data: existing, error: fErr } = await svc
       .from("studio_customer_questions")
       .select("id, frequency, tags, answer_hint")

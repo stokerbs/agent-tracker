@@ -19,9 +19,14 @@ async function main() {
   const model = modelIdx >= 0 ? args[modelIdx + 1] : undefined;
   const userIdx = args.indexOf("--user");
   const userId = userIdx >= 0 ? args[userIdx + 1] : null;
-  const paths = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--model" && args[i - 1] !== "--user");
+  const concIdx = args.indexOf("--concurrency");
+  const concurrency = Math.max(1, Math.min(8, concIdx >= 0 ? Number(args[concIdx + 1]) || 1 : 3));
+  const minIdx = args.indexOf("--min-user-messages");
+  const minUserMessages = minIdx >= 0 ? Number(args[minIdx + 1]) || 2 : 2;
+  const VALUE_FLAGS = new Set(["--model", "--user", "--concurrency", "--min-user-messages"]);
+  const paths = args.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(args[i - 1] ?? ""));
   if (!paths.length) {
-    console.error("usage: studio-import-line-history.ts <dir-or-files…> [--dry-run] [--model <id>] [--user <uuid>]");
+    console.error("usage: studio-import-line-history.ts <dir-or-files…> [--dry-run] [--model <id>] [--user <uuid>] [--concurrency 1-8] [--min-user-messages N]");
     process.exit(1);
   }
   for (const k of ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "BIDX_KEY"]) {
@@ -43,22 +48,34 @@ async function main() {
     } else files.push(abs);
   }
   files.sort();
-  console.log(`${files.length} file(s) · ${dryRun ? "DRY RUN (parse + window only, no AI, no writes)" : `model=${model ?? "(studio setting)"}`}`);
+  console.log(`${files.length} file(s) · ${dryRun ? "DRY RUN (parse + window only, no AI, no writes)" : `model=${model ?? "(studio setting)"} concurrency=${concurrency}`} · minUserMessages=${minUserMessages}`);
 
   const { importLineHistoryFile } = await import("../src/lib/studio/import/line-history");
   type FileResult = Awaited<ReturnType<typeof importLineHistoryFile>>;
   const results: FileResult[] = [];
   const started = Date.now();
-  for (const [i, f] of files.entries()) {
-    const content = readFileSync(f, "utf8");
-    console.log(`\n[${i + 1}/${files.length}] ${basename(f)} (${(content.length / 1024).toFixed(0)} KB)`);
-    const r = await importLineHistoryFile(basename(f), content, { dryRun, model, userId, onProgress: (m) => console.log(m) });
-    console.log(
-      `  → msgs=${r.messages} windows=${r.windows} skipped=${r.windowsSkipped} knowledge=+${r.knowledgeInserted} caseLessons=+${r.caseLessonsInserted} facts=+${r.serviceFactsInserted} questions=+${r.questionsInserted}/~${r.questionsMerged} dropped=${r.dropped}${r.errors.length ? ` errors=${r.errors.length}` : ""}`,
-    );
-    for (const e of r.errors) console.log(`  ! ${e}`);
-    results.push(r);
-  }
+  let next = 0;
+  let skippedTiny = 0;
+  const quiet = files.length > 50; // per-window progress is noise at this scale
+  const worker = async () => {
+    while (next < files.length) {
+      const i = next++;
+      const f = files[i];
+      const content = readFileSync(f, "utf8");
+      const r = await importLineHistoryFile(basename(f), content, { dryRun, model, userId, minUserMessages, onProgress: quiet ? undefined : (m) => console.log(m) });
+      results[i] = r;
+      if (r.errors.length === 1 && r.errors[0].startsWith("skipped:")) {
+        skippedTiny += 1;
+        continue;
+      }
+      console.log(
+        `[${i + 1}/${files.length}] msgs=${r.messages} windows=${r.windows} skipped=${r.windowsSkipped} knowledge=+${r.knowledgeInserted} caseLessons=+${r.caseLessonsInserted} facts=+${r.serviceFactsInserted} questions=+${r.questionsInserted}/~${r.questionsMerged} dropped=${r.dropped}${r.errors.length ? ` errors=${r.errors.length}` : ""}`,
+      );
+      for (const e of r.errors) console.log(`  ! ${e}`);
+    }
+  };
+  await Promise.all(Array.from({ length: dryRun ? 1 : concurrency }, worker));
+  console.log(`\nskipped ${skippedTiny} chat(s) with < ${minUserMessages} customer messages`);
   const sum = (k: keyof FileResult) => results.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : Number(r[k]) || 0), 0);
   console.log(
     `\nDONE in ${((Date.now() - started) / 1000).toFixed(0)}s · files=${results.length} windows=${sum("windows")} (skipped ${sum("windowsSkipped")}) knowledge=+${sum("knowledgeInserted")} caseLessons=+${sum("caseLessonsInserted")} facts=+${sum("serviceFactsInserted")} questions=+${sum("questionsInserted")}/~${sum("questionsMerged")} dropped=${sum("dropped")} errors=${sum("errors")}`,

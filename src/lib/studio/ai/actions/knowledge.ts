@@ -50,5 +50,7 @@ export async function extractCustomerFAQs(input: { pastedText: string; source: s
     userId: input.userId,
     effort: "medium",
     maxTokens: 6000,
+    // Raw output may echo customer text before faq-mining's second scrub.
+    storeOutput: false,
   });
 }
