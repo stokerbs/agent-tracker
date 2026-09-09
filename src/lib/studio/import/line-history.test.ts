@@ -220,3 +220,15 @@ describe("persist failure", () => {
     expect(gen).toMatchObject({ status: "error" });
   });
 });
+
+describe("category normalisation", () => {
+  it("maps near-miss model labels onto the allowed set instead of failing the window", async () => {
+    const { normalizeKnowledgeCategory } = await import("@/lib/studio/ai/prompts/chat-knowledge");
+    expect(normalizeKnowledgeCategory("Surveillance Tactics")).toBe("surveillance");
+    expect(normalizeKnowledgeCategory("GPS tracking")).toBe("gps");
+    expect(normalizeKnowledgeCategory("pricing")).toBe("services");
+    expect(normalizeKnowledgeCategory("investigation_knowledge")).toBe("investigator_knowledge");
+    expect(normalizeKnowledgeCategory("misc")).toBe("other");
+    expect(normalizeKnowledgeCategory("osint")).toBe("osint");
+  });
+});
