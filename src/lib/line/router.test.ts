@@ -149,6 +149,8 @@ describe("parseCommand", () => {
 
   it("parses Thai timeline keyword", () => {
     expect(parseCommand("ไทม์ไลน์ CASE-001")).toEqual({ type: "timeline", args: "CASE-001" });
+    expect(parseCommand("ไทม์ไลน์")).toEqual({ type: "timeline", args: "" });
+    expect(parseCommand("ไทม์ไลน์การทำงานเป็นอย่างไร")).toEqual({ type: "help" });
   });
 
   it("falls back to help for anything unrecognized", () => {
@@ -243,6 +245,20 @@ describe("handleLineMessage — unlinked, non link/verify command", () => {
   it("stays SILENT for plain customer text (humans reply in the OA chat)", async () => {
     await handleLineMessage(LINE_USER_ID, "สวัสดี", "rt1");
     expect(replyLineMessage).not.toHaveBeenCalled();
+  });
+
+  it("stays silent for conversational words that merely resemble bot keywords", async () => {
+    for (const t of ["ยืนยัน นัดพรุ่งนี้นะคะ", "ยืนยัน", "?", "ไทม์ไลน์การทำงานเป็นอย่างไร", "เคสนี้ราคาเท่าไหร่", "150000"]) {
+      vi.mocked(replyLineMessage).mockClear();
+      await handleLineMessage(LINE_USER_ID, t, "rt1");
+      if (t === "150000") continue; // 6 digits still parses as an OTP verify attempt (pre-existing behaviour)
+      expect(replyLineMessage, t).not.toHaveBeenCalled();
+    }
+  });
+
+  it("prompts to link for a bare bot keyword with no arguments", async () => {
+    await handleLineMessage(LINE_USER_ID, "เคส", "rt1");
+    expect(replyLineMessage).toHaveBeenCalledWith("rt1", msg.notLinkedHelp(LINE_USER_ID));
   });
 
   it("replies with the not-linked help prompt when the sender explicitly asks the bot for help", async () => {

@@ -23,7 +23,7 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
 import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
 import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
 import { handleIntelCommand } from "@/lib/line/commands/intel";
-import { captureCustomerMessage, looksLikeBotCommand } from "@/lib/studio/line-inbox";
+import { captureCustomerMessage } from "@/lib/studio/line-inbox";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
@@ -47,7 +47,8 @@ import { captureCustomerMessage, looksLikeBotCommand } from "@/lib/studio/line-i
  *   3. "link" and "verify" are always handled regardless of link state (you
  *      have to be able to link/verify precisely because you aren't linked
  *      yet). Every OTHER command is gated behind "is this LINE user linked" —
- *      unlinked users get a help/link-prompt message instead.
+ *      unlinked users get the link prompt ONLY for command/help attempts; plain
+ *      customer text is captured for Creative Studio and gets no bot reply.
  *
  * Every inbound image/location message instead flows through
  * handleLineMediaMessage() (Round 3), which resolves the same
@@ -102,7 +103,9 @@ type Command =
 
 const LINK_KEYWORDS = /^(?:link|ผูกบัญชี|ผูก|เชื่อมบัญชี|เชื่อมต่อบัญชี)\s+(.+)$/iu;
 const CASE_KEYWORDS = /^(?:case|เคส)\s+(.+)$/iu;
-const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)\s*(.*)$/iu;
+// Requires whitespace (or end of text) after the keyword: "ไทม์ไลน์ CASE-1" is a
+// command, "ไทม์ไลน์การทำงานเป็นอย่างไร" is a customer sentence.
+const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)(?:\s+(.*))?$/iu;
 // Write command (Round 2): "เพิ่มไทม์ไลน์ <รหัสเคส> <ข้อความ>" / "บันทึกไทม์ไลน์ <รหัสเคส> <ข้อความ>".
 // First captured group is the case number, second is the entry text. Its
 // keyword prefixes ("เพิ่มไทม์ไลน์"/"บันทึกไทม์ไลน์") never start with, and so
@@ -145,7 +148,7 @@ export function parseCommand(raw: string): Command {
   }
 
   const timeline = text.match(TIMELINE_KEYWORDS);
-  if (timeline) return { type: "timeline", args: timeline[1]!.trim() };
+  if (timeline) return { type: "timeline", args: (timeline[1] ?? "").trim() };
 
   const intel = text.match(INTEL_KEYWORDS);
   if (intel) return { type: "intel", caseNumber: intel[1]!.trim() };
@@ -153,11 +156,17 @@ export function parseCommand(raw: string): Command {
   return { type: "help" };
 }
 
-/** "help", "คำสั่ง", "เมนู", a bare bot keyword, or a typo'd link attempt — the sender wants the bot, not a human. */
+/**
+ * The sender wants the BOT (not a human): an explicit help/menu word, or a bare
+ * bot keyword with no arguments ("เคส", "ไทม์ไลน์", "link"). Deliberately NOT
+ * "ยืนยัน"/"verify"/"?" — customers use those in normal conversation
+ * ("ยืนยัน นัดพรุ่งนี้นะคะ"). Commands WITH arguments are already parsed by
+ * parseCommand() and never reach this function.
+ */
 function looksLikeBotHelpRequest(text: string): boolean {
   const t = text.trim();
-  if (/^(?:help|\?|คำสั่ง|เมนู|menu|ช่วยเหลือ|วิธีใช้)$/iu.test(t)) return true;
-  return looksLikeBotCommand(t);
+  if (/^(?:help|คำสั่ง|เมนู|menu|ช่วยเหลือ|วิธีใช้)$/iu.test(t)) return true;
+  return /^(?:link|ผูกบัญชี|เชื่อมบัญชี|เชื่อมต่อบัญชี|case|เคส|timeline|ไทม์ไลน์|intel|ข่าวกรอง)$/iu.test(t);
 }
 
 // ── Logging helpers ──────────────────────────────────────────────────────────
@@ -278,8 +287,8 @@ export async function handleLineMessage(
  * Flow:
  *   1. Resolve `lineUserId -> line_accounts` via the same resolveLineAccount()
  *      helper handleLineMessage() uses.
- *   2. Gate behind "is this LINE user linked", identical to every non-link/
- *      verify text command (unlinked -> notLinkedHelp()).
+ *   2. Gate behind "is this LINE user linked" — unlinked media is ignored
+ *      silently (a customer photo is not a bot command).
  *   3. Once linked, check whether a pending-attachment window is open and
  *      still valid (`pending_attachment_entry_id` set AND
  *      `pending_attachment_case_id` set AND `pending_attachment_expires_at`
