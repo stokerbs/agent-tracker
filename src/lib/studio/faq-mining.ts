@@ -3,6 +3,8 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { extractCustomerFAQs } from "@/lib/studio/ai/actions/knowledge";
 import { scrubText } from "@/lib/studio/privacy/scrub";
+import { getStudioSettings } from "@/lib/studio/settings";
+import type { PrivacyRules } from "@/lib/studio/types";
 
 /**
  * FAQ mining: studio_line_inbox (redacted customer messages) → AI → canonical
@@ -35,9 +37,12 @@ export function normalizeQuestionKey(q: string): string {
 }
 
 /** True when AI output still carries a high-severity identifier — such a question is dropped, never stored. */
-export function outputCarriesPii(question: string, answerHint: string | null | undefined): boolean {
-  return scrubText({ fields: { question, answer_hint: answerHint ?? "" } }).some((f) => f.severity === "high");
+export function outputCarriesPii(question: string, answerHint: string | null | undefined, rules?: Partial<PrivacyRules> | null): boolean {
+  return scrubText({ fields: { question, answer_hint: answerHint ?? "" }, rules: rules ?? null }).some((f) => f.severity === "high");
 }
+
+/** A single sender can't monopolise a batch (flood guard is 20/hour, so a week can still be thousands). */
+export const MAX_MESSAGES_PER_SENDER = 40;
 
 export interface MineResult {
   ok: boolean;
@@ -78,9 +83,16 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
   const bySender = new Map<string, { ids: string[]; texts: string[] }>();
   for (const m of all) {
     const g = bySender.get(m.sender_hash) ?? { ids: [], texts: [] };
+    if (g.texts.length >= MAX_MESSAGES_PER_SENDER) continue; // left unprocessed for a later batch
     g.ids.push(m.id);
     g.texts.push(m.text_redacted);
     bySender.set(m.sender_hash, g);
+  }
+  let rules: PrivacyRules | null = null;
+  try {
+    rules = (await getStudioSettings()).privacy_rules;
+  } catch {
+    rules = null;
   }
   const blocks: string[] = [];
   const includedIds: string[] = [];
@@ -112,7 +124,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
     const key = normalizeQuestionKey(question);
     if (!key) continue;
     // The model was told not to copy identifiers; enforce it anyway.
-    if (outputCarriesPii(question, answerHint)) {
+    if (outputCarriesPii(question, answerHint, rules)) {
       dropped += 1;
       console.warn("[studio:faq-mining] dropped a mined question carrying an identifier");
       continue;
