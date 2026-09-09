@@ -354,7 +354,11 @@
       "cases": "Cases",
       "clients": "Clients",
       "agents": "Agents",
-      "reports": "Reports"
+      "reports": "Reports",
+      "studioContent": "Studio content",
+      "studioIdeas": "Ideas",
+      "studioKnowledge": "Knowledge",
+      "studioCases": "Case insights"
     },
     "hints": {
       "navigate": "to select",

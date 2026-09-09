@@ -348,13 +348,17 @@
   },
   "search": {
     "title": "ค้นหาทั่วไป",
-    "placeholder": "ค้นหาคดี, ลูกค้า, เจ้าหน้าที่, รายงาน…",
+    "placeholder": "ค้นหาคดี, ลูกค้า, เจ้าหน้าที่, รายงาน, คอนเทนต์…",
     "noResults": "ไม่พบผลลัพธ์",
     "groups": {
       "cases": "คดี",
       "clients": "ลูกค้า",
       "agents": "เจ้าหน้าที่",
-      "reports": "รายงาน"
+      "reports": "รายงาน",
+      "studioContent": "คอนเทนต์ (สตูดิโอ)",
+      "studioIdeas": "ไอเดีย",
+      "studioKnowledge": "คลังความรู้",
+      "studioCases": "บทเรียนจากเคส"
     },
     "hints": {
       "navigate": "เพื่อเลือก",

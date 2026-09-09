@@ -4,8 +4,12 @@ import { useEffect, useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  BookOpen,
   Briefcase,
+  Clapperboard,
   FileText,
+  FolderSearch,
+  Lightbulb,
   Loader2,
   Search,
   UserCircle,
@@ -29,7 +33,7 @@ interface Result {
   title: string;
   subtitle: string;
   href: string;
-  group: "cases" | "clients" | "agents" | "reports";
+  group: "cases" | "clients" | "agents" | "reports" | "studioContent" | "studioIdeas" | "studioKnowledge" | "studioCases";
 }
 
 const MIN_CHARS = 2;
@@ -70,7 +74,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
       const like = `%${q}%`;
 
       startSearch(async () => {
-        const [casesRes, clientsRes, agentsRes, reportsRes] = await Promise.all([
+        const [casesRes, clientsRes, agentsRes, reportsRes, sContentRes, sIdeasRes, sKnowledgeRes, sCasesRes] = await Promise.all([
           supabase
             .from("cases")
             .select("id, case_number, client_name, case_type, status")
@@ -95,6 +99,35 @@ export function GlobalSearch({ role }: { role: UserRole }) {
                 .from("reports")
                 .select("id, title, status, case_id")
                 .ilike("title", like)
+                .limit(5)
+            : Promise.resolve({ data: null }),
+          // Creative Studio (admin-only tables — RLS returns nothing for other roles anyway)
+          isAdmin
+            ? supabase
+                .from("studio_content_masters")
+                .select("id, title, status, pillar")
+                .or(`title.ilike.${like},hook.ilike.${like}`)
+                .limit(5)
+            : Promise.resolve({ data: null }),
+          isAdmin
+            ? supabase
+                .from("studio_ideas")
+                .select("id, title, pillar, status")
+                .or(`title.ilike.${like},hook.ilike.${like}`)
+                .limit(5)
+            : Promise.resolve({ data: null }),
+          isAdmin
+            ? supabase
+                .from("studio_knowledge_sources")
+                .select("id, title, category")
+                .or(`title.ilike.${like},content.ilike.${like}`)
+                .limit(5)
+            : Promise.resolve({ data: null }),
+          isAdmin
+            ? supabase
+                .from("studio_cases")
+                .select("id, title, case_code, case_type")
+                .or(`title.ilike.${like},case_code.ilike.${like}`)
                 .limit(5)
             : Promise.resolve({ data: null }),
         ]);
@@ -131,7 +164,45 @@ export function GlobalSearch({ role }: { role: UserRole }) {
           group: "reports",
         }));
 
-        setResults([...caseResults, ...clientResults, ...agentResults, ...reportResults]);
+        const studioContentResults: Result[] = (sContentRes.data ?? []).map((m) => ({
+          id: m.id,
+          title: m.title,
+          subtitle: `${m.status} · ${m.pillar}`,
+          href: `/studio/content/${m.id}`,
+          group: "studioContent",
+        }));
+        const studioIdeaResults: Result[] = (sIdeasRes.data ?? []).map((m) => ({
+          id: m.id,
+          title: m.title,
+          subtitle: `${m.status} · ${m.pillar}`,
+          href: `/studio/ideas?q=${encodeURIComponent(m.title)}`,
+          group: "studioIdeas",
+        }));
+        const studioKnowledgeResults: Result[] = (sKnowledgeRes.data ?? []).map((m) => ({
+          id: m.id,
+          title: m.title,
+          subtitle: m.category,
+          href: `/studio/knowledge/${m.id}`,
+          group: "studioKnowledge",
+        }));
+        const studioCaseResults: Result[] = (sCasesRes.data ?? []).map((m) => ({
+          id: m.id,
+          title: `${m.case_code} · ${m.title}`,
+          subtitle: m.case_type,
+          href: `/studio/cases/${m.id}`,
+          group: "studioCases",
+        }));
+
+        setResults([
+          ...caseResults,
+          ...clientResults,
+          ...agentResults,
+          ...reportResults,
+          ...studioContentResults,
+          ...studioIdeaResults,
+          ...studioKnowledgeResults,
+          ...studioCaseResults,
+        ]);
       });
     },
     [isStaff, isAdmin, isOpsStaff],
@@ -148,18 +219,18 @@ export function GlobalSearch({ role }: { role: UserRole }) {
     router.push(href);
   }
 
-  const byGroup = {
-    cases:   results.filter((r) => r.group === "cases"),
-    clients: results.filter((r) => r.group === "clients"),
-    agents:  results.filter((r) => r.group === "agents"),
-    reports: results.filter((r) => r.group === "reports"),
-  };
+  const GROUPS = ["cases", "clients", "agents", "reports", "studioContent", "studioIdeas", "studioKnowledge", "studioCases"] as const;
+  const byGroup = Object.fromEntries(GROUPS.map((g) => [g, results.filter((r) => r.group === g)])) as Record<Result["group"], Result[]>;
 
-  const ICONS = {
+  const ICONS: Record<Result["group"], React.ReactNode> = {
     cases:   <Briefcase className="h-4 w-4 text-primary" />,
     clients: <UserCircle className="h-4 w-4 text-violet-400" />,
     agents:  <Users className="h-4 w-4 text-emerald-400" />,
     reports: <FileText className="h-4 w-4 text-amber-400" />,
+    studioContent:   <Clapperboard className="h-4 w-4 text-sky-400" />,
+    studioIdeas:     <Lightbulb className="h-4 w-4 text-amber-400" />,
+    studioKnowledge: <BookOpen className="h-4 w-4 text-violet-400" />,
+    studioCases:     <FolderSearch className="h-4 w-4 text-emerald-400" />,
   };
 
   return (
@@ -220,7 +291,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
             </CommandEmpty>
           )}
 
-          {(["cases", "clients", "agents", "reports"] as const).map((group, i) => {
+          {GROUPS.map((group, i) => {
             const items = byGroup[group];
             if (items.length === 0) return null;
             return (

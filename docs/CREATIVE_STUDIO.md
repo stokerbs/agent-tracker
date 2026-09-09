@@ -153,11 +153,11 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Plan doc, migration 0109, types, nav section, `/studio` shell + dashboard, i18n | 🟡 in progress |
+| 1 | Plan doc, migration 0109 (applied to prod 2026-09-09), types, nav section, `/studio` shell, i18n, GlobalSearch groups | ✅ |
 | 2 | Knowledge Base CRUD, Case Insights CRUD, customer questions, seed loader | ⬜ |
-| 3 | AI provider layer, prompts, Idea Bank, Creative Director | ⬜ |
+| 3 | AI provider layer + prompts + 12 AI functions (✅ live smoke-tested with claude-opus-5), Idea Bank, Creative Director | 🟡 UI in progress |
 | 4 | Content Master + Editor + variants + creative plan | ⬜ |
-| 5 | Privacy check, source traceability, fact claims | ⬜ |
+| 5 | Privacy check (deterministic scrub ✅ + AI review ✅), source traceability (SourceList ✅), fact claims | 🟡 editor wiring in progress |
 | 6 | Calendar (drag-drop) + approval workflow | ⬜ |
 | 7 | Polish: responsive, empty/loading/error states, animations, seed data | ⬜ |
 | 8 | Tests, security review, QA review, PR | ⬜ |
