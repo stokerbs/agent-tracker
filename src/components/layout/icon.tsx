@@ -25,6 +25,14 @@ import {
   UserPlus,
   Sparkles,
   Contact,
+  Clapperboard,
+  Wand2,
+  Lightbulb,
+  CalendarDays,
+  BookOpen,
+  FolderSearch,
+  LineChart,
+  SlidersHorizontal,
   type LucideProps,
 } from "lucide-react";
 
@@ -53,6 +61,14 @@ const ICONS = {
   UserPlus,
   Sparkles,
   Contact,
+  Clapperboard,
+  Wand2,
+  Lightbulb,
+  CalendarDays,
+  BookOpen,
+  FolderSearch,
+  LineChart,
+  SlidersHorizontal,
 } as const;
 
 export type IconName = keyof typeof ICONS;

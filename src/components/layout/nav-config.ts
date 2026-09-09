@@ -53,6 +53,20 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    sectionKey: "creativeStudio",
+    items: [
+      { labelKey: "studio",          href: "/studio",           icon: "Clapperboard", roles: ["admin"] },
+      { labelKey: "studioDirector",  href: "/studio/director",  icon: "Wand2",        roles: ["admin"] },
+      { labelKey: "studioIdeas",     href: "/studio/ideas",     icon: "Lightbulb",    roles: ["admin"] },
+      { labelKey: "studioContent",   href: "/studio/content",   icon: "FileText",     roles: ["admin"] },
+      { labelKey: "studioCalendar",  href: "/studio/calendar",  icon: "CalendarDays", roles: ["admin"] },
+      { labelKey: "studioKnowledge", href: "/studio/knowledge", icon: "BookOpen",     roles: ["admin"] },
+      { labelKey: "studioCases",     href: "/studio/cases",     icon: "FolderSearch", roles: ["admin"] },
+      { labelKey: "studioAnalytics", href: "/studio/analytics", icon: "LineChart",    roles: ["admin"] },
+      { labelKey: "studioSettings",  href: "/studio/settings",  icon: "SlidersHorizontal", roles: ["admin"] },
+    ],
+  },
+  {
     sectionKey: "administration",
     items: [
       { labelKey: "leads", href: "/leads", icon: "Inbox", roles: ["admin"] },

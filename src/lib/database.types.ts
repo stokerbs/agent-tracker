@@ -2384,6 +2384,79 @@ export type Database = {
           },
         ]
       }
+      line_accounts: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          id: string
+          line_user_id: string
+          linked_at: string | null
+          otp_attempts: number
+          otp_code_hash: string | null
+          otp_expires_at: string | null
+          otp_requested_at: string | null
+          pending_attachment_case_id: string | null
+          pending_attachment_entry_id: string | null
+          pending_attachment_expires_at: string | null
+          phone_at_link_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          line_user_id: string
+          linked_at?: string | null
+          otp_attempts?: number
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
+          phone_at_link_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          line_user_id?: string
+          linked_at?: string | null
+          otp_attempts?: number
+          otp_code_hash?: string | null
+          otp_expires_at?: string | null
+          otp_requested_at?: string | null
+          pending_attachment_case_id?: string | null
+          pending_attachment_entry_id?: string | null
+          pending_attachment_expires_at?: string | null
+          phone_at_link_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_accounts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_case_id_fkey"
+            columns: ["pending_attachment_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_accounts_pending_attachment_entry_id_fkey"
+            columns: ["pending_attachment_entry_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_articles: {
         Row: {
           approve_token: string
@@ -2622,6 +2695,1060 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: []
+      }
+      studio_ai_generations: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          input_refs: Json
+          input_tokens: number | null
+          model: string
+          output: Json | null
+          output_tokens: number | null
+          provider: string
+          purpose: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_refs?: Json
+          input_tokens?: number | null
+          model: string
+          output?: Json | null
+          output_tokens?: number | null
+          provider: string
+          purpose: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_refs?: Json
+          input_tokens?: number | null
+          model?: string
+          output?: Json | null
+          output_tokens?: number | null
+          provider?: string
+          purpose?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_ai_generations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_analytics: {
+        Row: {
+          avg_watch_sec: number | null
+          comments: number | null
+          completion_rate: number | null
+          conversions: number | null
+          created_at: string
+          created_by: string | null
+          dms: number | null
+          id: string
+          leads: number | null
+          likes: number | null
+          master_id: string
+          note: string | null
+          platform: string
+          profile_visits: number | null
+          qualified_leads: number | null
+          reach: number | null
+          recorded_at: string
+          saves: number | null
+          shares: number | null
+          source: string
+          variant_id: string | null
+          views: number | null
+        }
+        Insert: {
+          avg_watch_sec?: number | null
+          comments?: number | null
+          completion_rate?: number | null
+          conversions?: number | null
+          created_at?: string
+          created_by?: string | null
+          dms?: number | null
+          id?: string
+          leads?: number | null
+          likes?: number | null
+          master_id: string
+          note?: string | null
+          platform: string
+          profile_visits?: number | null
+          qualified_leads?: number | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          source?: string
+          variant_id?: string | null
+          views?: number | null
+        }
+        Update: {
+          avg_watch_sec?: number | null
+          comments?: number | null
+          completion_rate?: number | null
+          conversions?: number | null
+          created_at?: string
+          created_by?: string | null
+          dms?: number | null
+          id?: string
+          leads?: number | null
+          likes?: number | null
+          master_id?: string
+          note?: string | null
+          platform?: string
+          profile_visits?: number | null
+          qualified_leads?: number | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          source?: string
+          variant_id?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_analytics_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_analytics_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_analytics_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_campaigns: {
+        Row: {
+          audience: string | null
+          brief: Json
+          created_at: string
+          created_by: string | null
+          cta: string | null
+          id: string
+          objective: string | null
+          pillar: string | null
+          platforms: string[]
+          post_count: number | null
+          status: string
+          title: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          audience?: string | null
+          brief?: Json
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          id?: string
+          objective?: string | null
+          pillar?: string | null
+          platforms?: string[]
+          post_count?: number | null
+          status?: string
+          title: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audience?: string | null
+          brief?: Json
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          id?: string
+          objective?: string | null
+          pillar?: string | null
+          platforms?: string[]
+          post_count?: number | null
+          status?: string
+          title?: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_case_insights: {
+        Row: {
+          approved_for_content: boolean
+          case_id: string
+          content_angle: string | null
+          created_at: string
+          created_by: string | null
+          generated_by: string
+          generation_id: string | null
+          id: string
+          insight: string
+          lesson: string | null
+          pillar: string | null
+          privacy_status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_for_content?: boolean
+          case_id: string
+          content_angle?: string | null
+          created_at?: string
+          created_by?: string | null
+          generated_by?: string
+          generation_id?: string | null
+          id?: string
+          insight: string
+          lesson?: string | null
+          pillar?: string | null
+          privacy_status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_for_content?: boolean
+          case_id?: string
+          content_angle?: string | null
+          created_at?: string
+          created_by?: string | null
+          generated_by?: string
+          generation_id?: string | null
+          id?: string
+          insight?: string
+          lesson?: string | null
+          pillar?: string | null
+          privacy_status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_case_insights_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "studio_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_case_insights_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_cases: {
+        Row: {
+          anonymized_version: string | null
+          approved_for_content: boolean
+          case_code: string
+          case_type: string
+          content_potential: string
+          created_at: string
+          created_by: string | null
+          id: string
+          interesting_insight: string | null
+          is_demo: boolean
+          lessons: string | null
+          linked_case_id: string | null
+          method: string | null
+          objective: string | null
+          observations: string | null
+          outcome: string | null
+          sensitivity: string
+          situation: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          anonymized_version?: string | null
+          approved_for_content?: boolean
+          case_code: string
+          case_type?: string
+          content_potential?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interesting_insight?: string | null
+          is_demo?: boolean
+          lessons?: string | null
+          linked_case_id?: string | null
+          method?: string | null
+          objective?: string | null
+          observations?: string | null
+          outcome?: string | null
+          sensitivity?: string
+          situation?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          anonymized_version?: string | null
+          approved_for_content?: boolean
+          case_code?: string
+          case_type?: string
+          content_potential?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interesting_insight?: string | null
+          is_demo?: boolean
+          lessons?: string | null
+          linked_case_id?: string | null
+          method?: string | null
+          objective?: string | null
+          observations?: string | null
+          outcome?: string | null
+          sensitivity?: string
+          situation?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_cases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_cases_linked_case_id_fkey"
+            columns: ["linked_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_content_claims: {
+        Row: {
+          claim: string
+          created_at: string
+          id: string
+          master_id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_id: string | null
+          source_kind: string | null
+          support_status: string
+          updated_at: string
+        }
+        Insert: {
+          claim: string
+          created_at?: string
+          id?: string
+          master_id: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_kind?: string | null
+          support_status?: string
+          updated_at?: string
+        }
+        Update: {
+          claim?: string
+          created_at?: string
+          id?: string
+          master_id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_kind?: string | null
+          support_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_claims_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_content_claims_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_content_masters: {
+        Row: {
+          ai_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          campaign_id: string | null
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          creative_plan: Json | null
+          cta: string | null
+          estimated_duration_sec: number | null
+          hook: string | null
+          id: string
+          idea_id: string | null
+          notes: string | null
+          pillar: string
+          primary_platform: string | null
+          published_at: string | null
+          published_url: string | null
+          scheduled_at: string | null
+          script: string | null
+          status: string
+          tags: string[]
+          target_duration_sec: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_id?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          creative_plan?: Json | null
+          cta?: string | null
+          estimated_duration_sec?: number | null
+          hook?: string | null
+          id?: string
+          idea_id?: string | null
+          notes?: string | null
+          pillar?: string
+          primary_platform?: string | null
+          published_at?: string | null
+          published_url?: string | null
+          scheduled_at?: string | null
+          script?: string | null
+          status?: string
+          tags?: string[]
+          target_duration_sec?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ai_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_id?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          creative_plan?: Json | null
+          cta?: string | null
+          estimated_duration_sec?: number | null
+          hook?: string | null
+          id?: string
+          idea_id?: string | null
+          notes?: string | null
+          pillar?: string
+          primary_platform?: string | null
+          published_at?: string | null
+          published_url?: string | null
+          scheduled_at?: string | null
+          script?: string | null
+          status?: string
+          tags?: string[]
+          target_duration_sec?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_masters_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_content_masters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "studio_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_content_masters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_content_masters_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_content_reviews: {
+        Row: {
+          created_at: string
+          decision: string
+          id: string
+          master_id: string
+          note: string | null
+          reviewer_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          id?: string
+          master_id: string
+          note?: string | null
+          reviewer_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          id?: string
+          master_id?: string
+          note?: string | null
+          reviewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_reviews_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_content_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_content_sources: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          master_id: string
+          note: string | null
+          source_id: string | null
+          source_kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          master_id: string
+          note?: string | null
+          source_id?: string | null
+          source_kind: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          master_id?: string
+          note?: string | null
+          source_id?: string | null
+          source_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_sources_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_content_variants: {
+        Row: {
+          caption: string | null
+          char_count: number | null
+          created_at: string
+          creative_plan: Json | null
+          cta: string | null
+          format: string
+          generation_id: string | null
+          hook: string | null
+          id: string
+          master_id: string
+          platform: string
+          script: string | null
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          char_count?: number | null
+          created_at?: string
+          creative_plan?: Json | null
+          cta?: string | null
+          format?: string
+          generation_id?: string | null
+          hook?: string | null
+          id?: string
+          master_id: string
+          platform: string
+          script?: string | null
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          char_count?: number | null
+          created_at?: string
+          creative_plan?: Json | null
+          cta?: string | null
+          format?: string
+          generation_id?: string | null
+          hook?: string | null
+          id?: string
+          master_id?: string
+          platform?: string
+          script?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_variants_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_creative_assets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          external_url: string | null
+          id: string
+          kind: string
+          master_id: string
+          meta: Json
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          external_url?: string | null
+          id?: string
+          kind?: string
+          master_id: string
+          meta?: Json
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          external_url?: string | null
+          id?: string
+          kind?: string
+          master_id?: string
+          meta?: Json
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_creative_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_creative_assets_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_customer_questions: {
+        Row: {
+          answer_hint: string | null
+          approved_for_content: boolean
+          created_at: string
+          created_by: string | null
+          frequency: number
+          id: string
+          is_demo: boolean
+          question: string
+          source: string
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          answer_hint?: string | null
+          approved_for_content?: boolean
+          created_at?: string
+          created_by?: string | null
+          frequency?: number
+          id?: string
+          is_demo?: boolean
+          question: string
+          source?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          answer_hint?: string | null
+          approved_for_content?: boolean
+          created_at?: string
+          created_by?: string | null
+          frequency?: number
+          id?: string
+          is_demo?: boolean
+          question?: string
+          source?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_customer_questions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_ideas: {
+        Row: {
+          ai_scores: Json | null
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          format: string | null
+          generation_id: string | null
+          hook: string | null
+          id: string
+          origin: string
+          pillar: string
+          platforms: string[]
+          source_refs: Json
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_scores?: Json | null
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          format?: string | null
+          generation_id?: string | null
+          hook?: string | null
+          id?: string
+          origin?: string
+          pillar?: string
+          platforms?: string[]
+          source_refs?: Json
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ai_scores?: Json | null
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          format?: string | null
+          generation_id?: string | null
+          hook?: string | null
+          id?: string
+          origin?: string
+          pillar?: string
+          platforms?: string[]
+          source_refs?: Json
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_ideas_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "studio_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_ideas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          source_id: string
+          token_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          source_id: string
+          token_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          source_id?: string
+          token_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_knowledge_chunks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "studio_knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_knowledge_sources: {
+        Row: {
+          approved_for_content: boolean
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_demo: boolean
+          origin_ref: string | null
+          sensitivity: string
+          source_type: string
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_for_content?: boolean
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_demo?: boolean
+          origin_ref?: string | null
+          sensitivity?: string
+          source_type?: string
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_for_content?: boolean
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_demo?: boolean
+          origin_ref?: string | null
+          sensitivity?: string
+          source_type?: string
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_knowledge_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_privacy_checks: {
+        Row: {
+          checked_by: string
+          created_at: string
+          created_by: string | null
+          findings: Json
+          id: string
+          master_id: string
+          model: string | null
+          status: string
+        }
+        Insert: {
+          checked_by?: string
+          created_at?: string
+          created_by?: string | null
+          findings?: Json
+          id?: string
+          master_id: string
+          model?: string | null
+          status: string
+        }
+        Update: {
+          checked_by?: string
+          created_at?: string
+          created_by?: string | null
+          findings?: Json
+          id?: string
+          master_id?: string
+          model?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_privacy_checks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_privacy_checks_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_settings: {
+        Row: {
+          ai_model: string | null
+          ai_provider: string
+          approval_rules: Json
+          brand_voice: Json
+          created_at: string
+          default_language: string
+          default_platforms: string[]
+          id: string
+          knowledge_prefs: Json
+          pillars: Json
+          privacy_rules: Json
+          social_connections: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_provider?: string
+          approval_rules?: Json
+          brand_voice?: Json
+          created_at?: string
+          default_language?: string
+          default_platforms?: string[]
+          id?: string
+          knowledge_prefs?: Json
+          pillars?: Json
+          privacy_rules?: Json
+          social_connections?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ai_model?: string | null
+          ai_provider?: string
+          approval_rules?: Json
+          brand_voice?: Json
+          created_at?: string
+          default_language?: string
+          default_platforms?: string[]
+          id?: string
+          knowledge_prefs?: Json
+          pillars?: Json
+          privacy_rules?: Json
+          social_connections?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       target_locations: {
         Row: {
@@ -3099,12 +4226,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3128,11 +4255,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3153,11 +4280,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3178,11 +4305,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3195,11 +4322,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
