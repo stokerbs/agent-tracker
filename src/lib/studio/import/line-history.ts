@@ -9,6 +9,7 @@ import { scrubText } from "@/lib/studio/privacy/scrub";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 import { buildTranscriptWindows, parseLineOaCsv, type TranscriptWindow } from "./line-csv";
+import { normalizeKnowledgeCategory } from "@/lib/studio/ai/prompts/chat-knowledge";
 
 /**
  * Offline bulk import: LINE OA chat-history CSV → Studio knowledge base.
@@ -202,12 +203,13 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       result.dropped += 1;
       continue;
     }
+    const category = normalizeKnowledgeCategory(k.category);
     rows.push({
       title,
       content,
       summary: null,
-      source_type: k.category === "services" ? "service" : k.category === "owner_experience" ? "owner_experience" : "investigator_knowledge",
-      category: k.category,
+      source_type: category === "services" ? "service" : category === "owner_experience" ? "owner_experience" : "investigator_knowledge",
+      category,
       tags: Array.from(new Set([...(k.tags ?? []).slice(0, 6), "line-import", k.evidence === "implied" ? "ต้องยืนยัน" : "จากแชทจริง", ...(v === "flag" ? [REVIEW_TAG] : [])])),
       sensitivity: "internal",
       approved_for_content: false,

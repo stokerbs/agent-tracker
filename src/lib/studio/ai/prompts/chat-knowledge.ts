@@ -21,7 +21,9 @@ export const ChatKnowledgeSchema = z.object({
     z.object({
       title: z.string().describe("Short Thai title of the reusable insight (≤ 80 chars)"),
       content: z.string().describe("The investigator's real explanation/experience, rewritten as standalone knowledge (Thai, 2–8 sentences). No names, places, dates, plates, numbers that identify."),
-      category: z.enum(["investigator_knowledge", "owner_experience", "services", "surveillance", "gps", "osint", "technology", "other"]),
+      // Kept as a free string: models occasionally emit a near-miss label and a
+      // strict enum makes the SDK reject the WHOLE window. Normalised in code.
+      category: z.string().describe("One of: investigator_knowledge, owner_experience, services, surveillance, gps, osint, technology, other"),
       tags: z.array(z.string()),
       evidence: z.enum(["stated_by_investigator", "implied", "customer_claim"]).describe("stated_by_investigator = the นักสืบ side said it explicitly"),
     }),
@@ -40,6 +42,23 @@ export const ChatKnowledgeSchema = z.object({
   ),
 });
 export type ChatKnowledgeOutput = z.infer<typeof ChatKnowledgeSchema>;
+
+export const KNOWLEDGE_CATEGORIES_ALLOWED = ["investigator_knowledge", "owner_experience", "services", "surveillance", "gps", "osint", "technology", "other"] as const;
+export type KnowledgeCategoryOut = (typeof KNOWLEDGE_CATEGORIES_ALLOWED)[number];
+
+/** Map a model-emitted category label onto the DB CHECK-constraint set. */
+export function normalizeKnowledgeCategory(raw: string): KnowledgeCategoryOut {
+  const v = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if ((KNOWLEDGE_CATEGORIES_ALLOWED as readonly string[]).includes(v)) return v as KnowledgeCategoryOut;
+  if (/surveil|เฝ้า|ติดตาม|stakeout/.test(v)) return "surveillance";
+  if (/gps|tracker/.test(v)) return "gps";
+  if (/osint|online|social|digital|cyber/.test(v)) return "osint";
+  if (/service|pricing|payment|process|ราคา|บริการ/.test(v)) return "services";
+  if (/owner|experience|business|lesson/.test(v)) return "owner_experience";
+  if (/tech|tool|equipment|camera/.test(v)) return "technology";
+  if (/investigat|evidence|legal|law|knowledge|case/.test(v)) return "investigator_knowledge";
+  return "other";
+}
 
 export function chatKnowledgeSystemAddendum(): string {
   return `You are now extracting REUSABLE KNOWLEDGE from historical LINE chat transcripts between Detective Pulse (labelled "นักสืบ") and prospective customers ("ลูกค้า"). The transcript is already PII-redacted with tokens like [เบอร์โทร], [ชื่อ]. Your output feeds an internal knowledge base that a human reviews before anything becomes public content.`;
