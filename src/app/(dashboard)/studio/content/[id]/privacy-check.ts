@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { runPrivacyCheck, type PrivacyCheckResult } from "@/lib/studio/ai";
 import type { PrivacyStatus } from "@/lib/studio/types";
+import { logAudit } from "@/lib/audit";
 
 /**
  * Shared helpers for the Content module's server actions (not a "use server"
@@ -96,14 +97,17 @@ export async function runAndStorePrivacyCheck(
 }
 
 /** Latest privacy check row for a master (null when none). */
-export async function getLatestPrivacyCheck(rls: Rls, masterId: string): Promise<{ id: string; status: PrivacyStatus; created_at: string } | null> {
-  const { data, error } = await rls
+export async function getLatestPrivacyCheck(
+  rls: Rls,
+  masterId: string,
+  opts: { checkedBy?: Array<"deterministic" | "ai" | "human"> } = {},
+): Promise<{ id: string; status: PrivacyStatus; created_at: string } | null> {
+  let q = rls
     .from("studio_privacy_checks")
     .select("id, status, created_at")
-    .eq("master_id", masterId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("master_id", masterId);
+  if (opts.checkedBy?.length) q = q.in("checked_by", opts.checkedBy);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) {
     console.error("[studio:content] latest privacy check failed:", error.message);
     return null;
@@ -117,4 +121,32 @@ export function revalidateContentPaths(masterId?: string | null): void {
   if (masterId) revalidatePath(`/studio/content/${masterId}`);
   revalidatePath("/studio/calendar");
   revalidatePath("/studio");
+}
+
+/**
+ * Text edits after approval invalidate the approval: demote approved/scheduled
+ * content back to draft (clearing approval + schedule) so it must pass the
+ * privacy gate again. Returns true when a demotion happened.
+ */
+export async function reopenIfApproved(rls: Rls, masterId: string, actorId: string | null, reason: string): Promise<boolean> {
+  const { data, error } = await rls.from("studio_content_masters").select("status, scheduled_at").eq("id", masterId).maybeSingle();
+  if (error || !data) return false;
+  if (data.status !== "approved" && data.status !== "scheduled") return false;
+  const { error: uErr } = await rls
+    .from("studio_content_masters")
+    .update({ status: "draft", approved_by: null, approved_at: null, scheduled_at: null } as never)
+    .eq("id", masterId);
+  if (uErr) {
+    console.error("[studio:content] reopen failed:", uErr.message);
+    return false;
+  }
+  await logAudit({
+    actorId,
+    action: "STUDIO_CONTENT_REOPEN",
+    entity: "studio_content_masters",
+    entityId: masterId,
+    metadata: { from_status: data.status, had_schedule: !!data.scheduled_at, reason },
+  });
+  console.info(`[studio:content] reopened master=${masterId} from=${data.status} reason=${reason}`);
+  return true;
 }

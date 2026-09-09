@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Clock, Loader2, Save, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ const FIT_CLASS = { on_target: "text-emerald-600 dark:text-emerald-400", short: 
 
 export function ContentEditor({ data, aiAvailable, aiReason, approvalRules }: ContentEditorProps) {
   const { master } = data;
+  const router = useRouter();
   const editable = !["published"].includes(master.status);
 
   // Text fields are owned locally (the owner may be mid-sentence when the
@@ -85,11 +87,15 @@ export function ContentEditor({ data, aiAvailable, aiReason, approvalRules }: Co
         return;
       }
       setSave((s) => (dirtyRef.current ? s : { status: "saved", at: res.data.savedAt }));
+      if (res.data.reopened) {
+        toast.info("เนื้อหาถูกแก้หลังอนุมัติ — สถานะกลับเป็น “ร่าง” ต้องตรวจและอนุมัติใหม่");
+        router.refresh();
+      }
     })();
     inflightRef.current = run;
     await run;
     inflightRef.current = null;
-  }, [master.id, master.title]);
+  }, [master.id, master.title, router]);
 
   const schedule = useCallback(() => {
     dirtyRef.current = true;

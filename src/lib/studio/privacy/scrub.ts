@@ -82,7 +82,9 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
       const re = new RegExp(pattern, "giu");
       for (const m of text.matchAll(re)) push("other", m[0], `ตรงกับรูปแบบที่กำหนดเอง: ${pattern}`, "medium");
     } catch {
-      // invalid regex from settings — ignore silently (validated on save)
+      // Invalid under the "giu" flags (validated on save with the same flags);
+      // patterns saved by older versions may need re-saving in Settings.
+      console.warn("[studio:privacy] skipping invalid custom pattern:", pattern);
     }
   }
 }

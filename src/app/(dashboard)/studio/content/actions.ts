@@ -6,7 +6,7 @@ import { getStudioAdmin } from "@/lib/studio/auth";
 import { estimateSpokenSeconds } from "@/lib/studio/duration";
 import { PILLARS, PLATFORMS } from "@/lib/studio/constants";
 import { TARGET_DURATIONS, type ActionResult, type CreativePlan, type Platform, type SourceKind, type SupportStatus } from "@/lib/studio/types";
-import { revalidateContentPaths, runAndStorePrivacyCheck } from "./[id]/privacy-check";
+import { revalidateContentPaths, runAndStorePrivacyCheck, reopenIfApproved } from "./[id]/privacy-check";
 
 /**
  * Non-AI mutations for the Content module: create, autosave, variants,
@@ -79,7 +79,7 @@ const saveSchema = z.object({
   aiNotes: text(10000),
 });
 
-export async function saveMasterFields(input: unknown): Promise<ActionResult<{ savedAt: string; estimatedDurationSec: number | null }>> {
+export async function saveMasterFields(input: unknown): Promise<ActionResult<{ savedAt: string; estimatedDurationSec: number | null; reopened?: boolean }>> {
   const profile = await getStudioAdmin();
   if (!profile) return { ok: false, error: UNAUTHORIZED };
   const parsed = saveSchema.safeParse(input);
@@ -110,8 +110,11 @@ export async function saveMasterFields(input: unknown): Promise<ActionResult<{ s
     console.error("[studio:content] save failed:", error.message);
     return { ok: false, error: "บันทึกไม่สำเร็จ — ลองใหม่อีกครั้ง" };
   }
+  // Published copy changed after approval → approval no longer describes it.
+  const textChanged = ["hook", "script", "caption", "cta"].some((k) => k in patch);
+  const reopened = textChanged ? await reopenIfApproved(rls, d.id, profile.id, "master_text_edit") : false;
   revalidateContentPaths(d.id);
-  return { ok: true, data: { savedAt: new Date().toISOString(), estimatedDurationSec: estimated } };
+  return { ok: true, data: { savedAt: new Date().toISOString(), estimatedDurationSec: estimated, reopened } };
 }
 
 // ─── creative plan ──────────────────────────────────────────────────────────
@@ -193,6 +196,7 @@ export async function saveVariant(input: unknown): Promise<ActionResult<{ savedA
     console.error("[studio:content] variant save failed:", error.message);
     return { ok: false, error: "บันทึกเวอร์ชันไม่สำเร็จ" };
   }
+  await reopenIfApproved(rls, d.masterId, profile.id, "variant_text_edit");
   revalidateContentPaths(d.masterId);
   return { ok: true, data: { savedAt: new Date().toISOString() } };
 }
@@ -264,6 +268,7 @@ export async function upsertVariants(input: unknown): Promise<ActionResult<{ cou
     return { ok: false, error: "บันทึกเวอร์ชันไม่สำเร็จ" };
   }
   console.info(`[studio:content] variants upsert master=${masterId} platforms=${platforms.join(",")}`);
+  await reopenIfApproved(rls, masterId, profile.id, "variants_regenerated");
   revalidateContentPaths(masterId);
   return { ok: true, data: { count: variants.length } };
 }
@@ -482,6 +487,7 @@ export async function applyGeneratedScript(input: unknown): Promise<ActionResult
   }
 
   const check = await runAndStorePrivacyCheck(rls, d.masterId, { useAi: false, userId: profile.id });
+  await reopenIfApproved(rls, d.masterId, profile.id, "script_regenerated");
   console.info(`[studio:content] apply generated script master=${d.masterId} claims=${d.claims.length} sources=+${fresh.length}`);
   revalidateContentPaths(d.masterId);
   return { ok: true, data: { privacyStatus: check.ok ? check.check.status : "unknown", estimatedDurationSec: estimated } };

@@ -187,3 +187,25 @@ describe("applyGeneratedScript", () => {
     expect(h.inserts.studio_privacy_checks?.[0]).toMatchObject({ master_id: MASTER, checked_by: "deterministic" });
   });
 });
+
+describe("saveMasterFields — post-approval edits", () => {
+  it("reopens approved content back to draft when text changes (and reports it)", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "approved", scheduled_at: "2026-09-14T12:00:00.000Z" }];
+    const { saveMasterFields } = await import("./actions");
+    const res = await saveMasterFields({ id: MASTER, script: "สคริปต์ใหม่ที่แก้หลังอนุมัติ" });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.reopened).toBe(true);
+    const demote = (h.updates.studio_content_masters ?? []).find((u) => u.status === "draft");
+    expect(demote).toMatchObject({ status: "draft", approved_by: null, approved_at: null, scheduled_at: null });
+  });
+  it("does not reopen when only notes/meta change or when still a draft", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "approved", scheduled_at: null }];
+    const { saveMasterFields } = await import("./actions");
+    const meta = await saveMasterFields({ id: MASTER, notes: "โน้ต" });
+    expect(meta.ok && meta.data.reopened).toBe(false);
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "draft", scheduled_at: null }];
+    const draft = await saveMasterFields({ id: MASTER, script: "x" });
+    expect(draft.ok && draft.data.reopened).toBe(false);
+    expect((h.updates.studio_content_masters ?? []).some((u) => u.status === "draft")).toBe(false);
+  });
+});

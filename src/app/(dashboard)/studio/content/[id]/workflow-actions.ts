@@ -54,6 +54,21 @@ function worstPrivacy(a: PrivacyStatus, b: PrivacyStatus): PrivacyStatus {
   return PRIVACY_RANK[a] >= PRIVACY_RANK[b] ? a : b;
 }
 
+/** Fresh deterministic scan; returns an error result when the copy is BLOCKED. */
+async function gateBlocked(
+  rls: Awaited<ReturnType<typeof createClient>>,
+  masterId: string,
+  userId: string,
+): Promise<{ ok: false; error: string } | null> {
+  const fresh = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId });
+  if (!fresh.ok) return fresh;
+  if (fresh.check.status === "blocked") {
+    console.warn(`[studio:workflow] transition refused (blocked) master=${masterId}`);
+    return { ok: false, error: "Privacy Check เป็น BLOCKED — พบข้อมูลระบุตัวตนในเนื้อหาปัจจุบัน แก้ให้ทั่วไปขึ้นแล้วอนุมัติใหม่" };
+  }
+  return null;
+}
+
 function transitionError(from: string, allowed: ContentStatus[]): string {
   return `ทำรายการนี้ไม่ได้จากสถานะ "${statusLabel(from)}" (ต้องเป็น ${allowed.map(statusLabel).join(" / ")})`;
 }
@@ -132,14 +147,25 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
 
   // 1. Privacy gate. The text may have been edited after the last check, so a
   //    fresh deterministic scan ALWAYS runs at decision time and the gate uses
-  //    the WORST of (latest stored check — possibly a stricter AI review) and
-  //    (fresh scan). Re-running the check from the panel refreshes "latest".
-  const previous = await getLatestPrivacyCheck(rls, masterId);
+  //    the WORST of (latest AI/human verdict) and (fresh scan). Only AI/human
+  //    rows count as "previous" — otherwise the deterministic row this very
+  //    action inserts would become "latest" and a second click would erase a
+  //    stricter AI verdict. To clear an AI verdict the owner re-runs the AI
+  //    check (new AI row) or records an explicit override.
+  const previous = await getLatestPrivacyCheck(rls, masterId, { checkedBy: ["ai", "human"] });
   const fresh = await runAndStorePrivacyCheck(rls, masterId, { useAi: false, userId: profile.id });
   if (!fresh.ok) return fresh;
   const freshStatus = fresh.check.status;
   const gateStatus = previous ? worstPrivacy(previous.status, freshStatus) : freshStatus;
-  const latest = { id: fresh.check.id ?? previous?.id ?? "", status: gateStatus, previousStatus: previous?.status ?? null, freshStatus };
+  const latest = {
+    // Point the audit at the row that produced the verdict.
+    id: previous && gateStatus === previous.status && gateStatus !== freshStatus ? previous.id : fresh.check.id ?? "",
+    status: gateStatus,
+    previousStatus: previous?.status ?? null,
+    previousId: previous?.id ?? null,
+    freshStatus,
+    freshId: fresh.check.id ?? null,
+  };
 
   if (latest.status === "blocked") {
     console.warn(`[studio:workflow] approve refused (blocked) master=${masterId}`);
@@ -206,7 +232,7 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
     action: "STUDIO_CONTENT_APPROVE",
     entity: "studio_content_masters",
     entityId: masterId,
-    metadata: { privacy_status: latest.status, previous_check_status: latest.previousStatus, fresh_check_status: latest.freshStatus, privacy_check_id: latest.id, override: overrode, unsupported_claims: unsupported, from_status: master.status },
+    metadata: { privacy_status: latest.status, previous_check_status: latest.previousStatus, previous_check_id: latest.previousId, fresh_check_status: latest.freshStatus, fresh_check_id: latest.freshId, privacy_check_id: latest.id, override: overrode, unsupported_claims: unsupported, from_status: master.status },
   });
   console.info(`[studio:workflow] approve master=${masterId} by=${profile.id} privacy=${latest.status} override=${overrode}`);
   revalidateContentPaths(masterId);
@@ -230,6 +256,7 @@ export async function requestChanges(input: unknown): Promise<ActionResult> {
   const err = await setStatus(rls, masterId, { status: "draft" });
   if (err) return { ok: false, error: err };
   await insertReview(rls, masterId, profile.id, "request_changes", note);
+  await logAudit({ actorId: profile.id, action: "STUDIO_CONTENT_REQUEST_CHANGES", entity: "studio_content_masters", entityId: masterId, metadata: { note } });
   console.info(`[studio:workflow] request_changes master=${masterId} by=${profile.id}`);
   revalidateContentPaths(masterId);
   return { ok: true };
@@ -276,6 +303,9 @@ export async function scheduleContent(input: unknown): Promise<ActionResult<{ sc
   if (master.status !== "approved" && master.status !== "scheduled") {
     return { ok: false, error: transitionError(master.status, ["approved"]) };
   }
+
+  const gate = await gateBlocked(rls, masterId, profile.id);
+  if (gate) return gate;
 
   const err = await setStatus(rls, masterId, { status: "scheduled", scheduled_at: scheduledAt });
   if (err) return { ok: false, error: err };
@@ -330,6 +360,10 @@ export async function markPublished(input: unknown): Promise<ActionResult> {
   if (master.status !== "scheduled" && master.status !== "approved") {
     return { ok: false, error: transitionError(master.status, ["approved", "scheduled"]) };
   }
+
+  // Defence-in-depth: the copy that goes public must still pass the scrub.
+  const gate = await gateBlocked(rls, masterId, profile.id);
+  if (gate) return gate;
 
   const err = await setStatus(rls, masterId, { status: "published", published_at: new Date().toISOString(), published_url: publishedUrl });
   if (err) return { ok: false, error: err };

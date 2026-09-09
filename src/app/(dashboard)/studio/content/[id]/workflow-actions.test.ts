@@ -36,7 +36,16 @@ vi.mock("@/lib/studio/ai", () => ({ runPrivacyCheck: vi.fn(async () => h.privacy
 function builder(table: string) {
   const state = { op: "select" as "select" | "insert" | "update" | "delete", single: false };
   const b: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "neq", "in", "order", "limit", "gte", "lte", "ilike", "or"]) b[m] = () => b;
+  const filters: Array<(r: Row) => boolean> = [];
+  for (const m of ["select", "neq", "order", "limit", "gte", "lte", "ilike", "or"]) b[m] = () => b;
+  b.eq = (col: string, v: unknown) => {
+    if (col !== "id" && col !== "master_id") filters.push((r) => r[col] === v);
+    return b;
+  };
+  b.in = (col: string, vals: unknown[]) => {
+    filters.push((r) => vals.includes(r[col]));
+    return b;
+  };
   b.insert = (payload: Row | Row[]) => {
     state.op = "insert";
     (h.inserts[table] ??= []).push(...(Array.isArray(payload) ? payload : [payload]));
@@ -59,7 +68,7 @@ function builder(table: string) {
   b.single = b.maybeSingle;
   b.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
     const error = h.errors[table] ?? null;
-    const rows = h.rows[table] ?? [];
+    const rows = (h.rows[table] ?? []).filter((r) => filters.every((f) => f(r)));
     let data: unknown = null;
     if (!error) {
       if (state.op === "select") data = state.single ? (rows[0] ?? null) : rows;
@@ -118,7 +127,7 @@ describe("authorization", () => {
 
 describe("approveContent — privacy gate", () => {
   it("refuses when the latest privacy check is blocked", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "blocked", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "blocked", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER, overridePrivacy: true });
     expect(res.ok).toBe(false);
@@ -128,7 +137,7 @@ describe("approveContent — privacy gate", () => {
   });
 
   it("requires an explicit override when review_required", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER });
     expect(res.ok).toBe(false);
@@ -137,7 +146,7 @@ describe("approveContent — privacy gate", () => {
   });
 
   it("refuses override when settings disallow it", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     h.settings = { ...h.settings, approval_rules: { require_privacy_safe: true, allow_override: false } };
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER, overridePrivacy: true });
@@ -146,7 +155,7 @@ describe("approveContent — privacy gate", () => {
   });
 
   it("approves review_required with override and records both review rows + audit", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "review_required", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER, overridePrivacy: true, note: "checked" });
     expect(res).toMatchObject({ ok: true, data: { status: "approved" } });
@@ -157,7 +166,7 @@ describe("approveContent — privacy gate", () => {
   });
 
   it("approves when the latest check is safe", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER });
     expect(res).toMatchObject({ ok: true });
@@ -186,7 +195,7 @@ describe("approveContent — privacy gate", () => {
 
   it("re-scans at approval time: a stale SAFE check does not pass new PII (H1)", async () => {
     h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
-    h.rows.studio_privacy_checks = [{ id: "pc-old", status: "safe", created_at: "2026-01-01T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc-old", status: "safe", created_at: "2026-01-01T00:00:00Z", checked_by: "ai" }];
     h.privacyResult = { ...h.privacyResult, status: "blocked", findings: [{ kind: "phone", excerpt: "081-234-5678", reason: "x", severity: "high", field: "script", source: "deterministic" }] };
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER });
@@ -198,7 +207,7 @@ describe("approveContent — privacy gate", () => {
 
   it("keeps a stricter previous (AI) verdict even when the fresh scan is safe", async () => {
     h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
-    h.rows.studio_privacy_checks = [{ id: "pc-ai", status: "review_required", created_at: "2026-01-01T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc-ai", status: "review_required", created_at: "2026-01-01T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER });
     expect(res.ok).toBe(false);
@@ -208,7 +217,7 @@ describe("approveContent — privacy gate", () => {
   it("records an override trail automatically when require_privacy_safe is off (M1)", async () => {
     h.settings = { ...h.settings, approval_rules: { require_privacy_safe: false, allow_override: true } };
     h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
-    h.rows.studio_privacy_checks = [{ id: "pc-1", status: "review_required", created_at: "2026-01-01T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc-1", status: "review_required", created_at: "2026-01-01T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     const res = await approveContent({ masterId: MASTER });
     expect(res.ok).toBe(true);
@@ -216,8 +225,23 @@ describe("approveContent — privacy gate", () => {
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_PRIVACY_OVERRIDE");
   });
 
+  it("does not let a second approve click erase a stricter AI verdict (retry bypass)", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "review", scheduled_at: null }];
+    // Only the AI row exists in the store; the deterministic row approve inserts must not count as "previous".
+    h.rows.studio_privacy_checks = [{ id: "pc-ai", status: "review_required", created_at: "2026-01-01T00:00:00Z", checked_by: "ai" }];
+    const { approveContent } = await load();
+    const first = await approveContent({ masterId: MASTER });
+    expect(first.ok).toBe(false);
+    // Simulate the store now also holding the deterministic row the first click inserted (newest).
+    h.rows.studio_privacy_checks = [{ id: "pc-det", status: "safe", created_at: "2026-01-02T00:00:00Z", checked_by: "deterministic" }, ...h.rows.studio_privacy_checks];
+    const second = await approveContent({ masterId: MASTER });
+    expect(second.ok).toBe(false);
+    if (!second.ok) expect(second.error).toContain("override");
+    expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
+  });
+
   it("requires acknowledgement of unsupported claims", async () => {
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     h.rows.studio_content_claims = [{ id: "c1", support_status: "unsupported" }, { id: "c2", support_status: "supported" }];
     const { approveContent } = await load();
     expect(await approveContent({ masterId: MASTER })).toMatchObject({ ok: false });
@@ -229,7 +253,7 @@ describe("approveContent — privacy gate", () => {
 
   it("only approves from review/draft", async () => {
     h.rows.studio_content_masters[0].status = "published";
-    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z" }];
+    h.rows.studio_privacy_checks = [{ id: "pc1", status: "safe", created_at: "2026-09-09T00:00:00Z", checked_by: "ai" }];
     const { approveContent } = await load();
     expect(await approveContent({ masterId: MASTER })).toMatchObject({ ok: false });
   });
@@ -266,6 +290,30 @@ describe("other transitions", () => {
     expect(await submitForReview(MASTER)).toMatchObject({ ok: true });
     expect(h.inserts.studio_privacy_checks?.length).toBe(1);
     expect(h.updates.studio_content_masters?.[0]).toMatchObject({ status: "review" });
+  });
+
+  it("markPublished refuses when the current copy is BLOCKED", async () => {
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "approved", scheduled_at: null }];
+    h.privacyResult = { ...h.privacyResult, status: "blocked" };
+    const { markPublished } = await load();
+    const res = await markPublished({ masterId: MASTER });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("BLOCKED");
+    expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
+  });
+
+  it("schedule/unschedule/archive/unarchive write audit rows", async () => {
+    const { scheduleContent, unscheduleContent, archiveContent, unarchiveContent } = await load();
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "approved", scheduled_at: null }];
+    expect((await scheduleContent({ masterId: MASTER, scheduledAt: "2026-09-14T12:00:00.000Z" })).ok).toBe(true);
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "scheduled", scheduled_at: "2026-09-14T12:00:00.000Z" }];
+    expect((await unscheduleContent(MASTER)).ok).toBe(true);
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "approved", scheduled_at: null }];
+    expect((await archiveContent(MASTER)).ok).toBe(true);
+    h.rows.studio_content_masters = [{ id: MASTER, title: "t", status: "archived", scheduled_at: null }];
+    expect((await unarchiveContent(MASTER)).ok).toBe(true);
+    const actions = h.audit.map((a) => a.action);
+    for (const a of ["STUDIO_CONTENT_SCHEDULE", "STUDIO_CONTENT_UNSCHEDULE", "STUDIO_CONTENT_ARCHIVE", "STUDIO_CONTENT_UNARCHIVE"]) expect(actions).toContain(a);
   });
 
   it("markPublished only from approved/scheduled and audits", async () => {
