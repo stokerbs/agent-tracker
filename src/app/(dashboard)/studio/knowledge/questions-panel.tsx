@@ -20,6 +20,8 @@ import { AiUnavailableBanner } from "@/components/studio/ai-status";
 import { formatDate } from "@/lib/utils";
 import type { CustomerQuestion, QuestionSource } from "@/lib/studio/types";
 import { ApproveSwitch } from "./approve-switch";
+import { LineInboxCard } from "./line-inbox-card";
+import type { InboxStats } from "@/lib/studio/faq-mining";
 import { useSafeTransition } from "@/components/studio/use-safe-transition";
 import {
   createIdeaFromQuestion,
@@ -46,14 +48,17 @@ function parseTags(raw: string): string[] {
   return Array.from(new Set(raw.split(/[,\n]/).map((t) => t.trim()).filter(Boolean))).slice(0, 20);
 }
 
-export function QuestionsPanel({ questions, aiAvailable, query }: { questions: CustomerQuestion[]; aiAvailable: boolean; query: string }) {
+export function QuestionsPanel({ questions, aiAvailable, query, inboxStats }: { questions: CustomerQuestion[]; aiAvailable: boolean; query: string; inboxStats: InboxStats | null }) {
   return (
     <div className="space-y-5">
       {!aiAvailable && <AiUnavailableBanner reason="การนำเข้าคำถามด้วย AI ปิดอยู่ — เพิ่มคำถามด้วยตนเองได้ตามปกติ" />}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <AddQuestionForm />
-        <ImportDialogCard aiAvailable={aiAvailable} />
+        <div className="space-y-4">
+          <LineInboxCard stats={inboxStats} aiAvailable={aiAvailable} />
+          <ImportDialogCard aiAvailable={aiAvailable} />
+        </div>
       </div>
 
       {questions.length === 0 ? (

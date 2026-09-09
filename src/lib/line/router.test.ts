@@ -24,6 +24,7 @@ vi.mock("@/lib/line/commands/add-timeline", () => ({ handleAddTimelineEntryComma
 vi.mock("@/lib/line/commands/attach-photo", () => ({ handleAttachPhotoCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/attach-location", () => ({ handleAttachLocationCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/intel", () => ({ handleIntelCommand: vi.fn() }));
+vi.mock("@/lib/studio/line-inbox", () => ({ captureCustomerMessage: vi.fn(async () => true) }));
 
 import { handleLineMessage, handleLineMediaMessage, parseCommand } from "./router";
 import { createServiceClient } from "@/lib/supabase/server";

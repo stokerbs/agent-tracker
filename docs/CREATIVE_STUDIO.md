@@ -86,7 +86,8 @@ All tables: `uuid` PK `gen_random_uuid()`, `created_at`, `updated_at` (+`set_upd
 | `studio_knowledge_chunks` | RAG-ready chunks | `source_id, chunk_index, content, embedding vector(1536) NULL, token_count` |
 | `studio_cases` | anonymized case knowledge (NOT ops cases) | `case_code (DEMO-001…), case_type, situation, objective, method, observations, outcome, lessons, interesting_insight, content_potential (low/medium/high), sensitivity, anonymized_version, approved_for_content, linked_case_id → cases NULL, is_demo` |
 | `studio_case_insights` | content-safe extracted insights | `case_id, title, insight, lesson, content_angle, privacy_status, approved_for_content, generated_by (ai/human)` |
-| `studio_customer_questions` | FAQ mining | `question, answer_hint, frequency int, source (line_oa/phone/web/manual/import), tags, approved_for_content, is_demo` |
+| `studio_customer_questions` | FAQ mining | `question, answer_hint, frequency int, source (line_oa/phone/web/manual/import), tags, approved_for_content, is_demo, normalized_key, last_seen_at` |
+| `studio_line_inbox` (0113) | redacted LINE OA messages queued for mining | `sender_hash (HMAC of LINE userId), text_redacted, received_at, processed_at, batch_id → studio_ai_generations`; purged 30 days after processing |
 | `studio_campaigns` | Creative Director briefs | `title, objective, audience, platforms text[], pillar, tone, post_count, cta, brief jsonb, status (proposed/active/completed/archived)` |
 | `studio_ideas` | Idea Bank | `title, hook, pillar, platforms text[], format, origin (ai/owner/knowledge/case/question/repurpose), source_refs jsonb, ai_scores jsonb (labelled estimates), status (new/saved/rejected/generated/archived), tags, campaign_id` |
 | `studio_content_masters` | one per piece | `idea_id, campaign_id, title, pillar, status (idea/draft/review/approved/scheduled/published/archived/rejected), hook, script, caption, cta, target_duration_sec, estimated_duration_sec, primary_platform, creative_plan jsonb, notes, scheduled_at, published_at, published_url, approved_by, approved_at` |
@@ -166,7 +167,7 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 - 🚫 No social publishing / OAuth — "Publish" = mark as published + optional URL.
 - 🚫 No video/image/voice generation — creative plan is text (shot list, B-roll, overlays, thumbnail concept).
 - 🚫 No embeddings — `embedding` columns exist but stay NULL; search is keyword (trigram).
-- 🚫 LINE OA import — customer questions are manual/CSV-paste only.
+- 🟡 LINE OA import — inbound messages from non-agent senders are captured PII-redacted (`studio_line_inbox`, migration 0113) and mined weekly (`/api/cron/studio-faq-mine`, Mon 01:30 Bangkok) or on demand into `studio_customer_questions` (unapproved until the owner reviews). Paste-import still available.
 - 🟡 Analytics = manual entry.
 - 🟡 OpenAI provider = interface present, throws "not configured" (no fake success).
 

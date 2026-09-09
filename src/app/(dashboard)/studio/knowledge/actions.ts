@@ -7,6 +7,7 @@ import { requireStudioAdmin } from "@/lib/studio/auth";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
 import { extractCustomerFAQs, isAiAvailable } from "@/lib/studio/ai";
+import { mineLineInbox, type MineResult } from "@/lib/studio/faq-mining";
 import { KNOWLEDGE_CATEGORIES } from "@/lib/studio/constants";
 import type { ActionResult, SourceRef } from "@/lib/studio/types";
 
@@ -345,4 +346,25 @@ export async function createIdeaFromQuestion(questionId: string): Promise<Action
   revalidatePath("/studio/ideas");
   revalidatePath(KNOWLEDGE_PATH);
   return { ok: true, data: { ideaId: data.id } };
+}
+
+/**
+ * Owner-triggered FAQ mining of the redacted LINE OA inbox (same job as the
+ * weekly cron). Admin-gated; the AI call runs server-side and every mined
+ * question lands unapproved for review.
+ */
+export async function mineLineInboxNow(): Promise<ActionResult<MineResult>> {
+  const profile = await requireStudioAdmin();
+  if (!isAiAvailable()) return { ok: false, error: "AI ยังใช้งานไม่ได้ — ตั้งค่า ANTHROPIC_API_KEY ก่อน" };
+  const result = await mineLineInbox({ userId: profile.id, minMessages: 1 });
+  if (!result.ok) return { ok: false, error: result.error ?? "ขุดคำถามไม่สำเร็จ" };
+  await logAudit({
+    actorId: profile.id,
+    action: "STUDIO_FAQ_MINE",
+    entity: "studio_customer_questions",
+    metadata: { messages: result.messages, inserted: result.inserted, merged: result.merged, purged: result.purged, generation_id: result.generationId },
+  });
+  console.info(`[studio:questions] manual mine by ${profile.id}: ${result.messages} msgs → +${result.inserted} / merged ${result.merged}`);
+  revalidatePath(KNOWLEDGE_PATH);
+  return { ok: true, data: result };
 }

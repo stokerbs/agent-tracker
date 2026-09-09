@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ApprovedBadge, Pill, SensitivityBadge } from "@/components/studio/badges";
 import { ApproveSwitch } from "./approve-switch";
 import { QuestionsPanel } from "./questions-panel";
+import { getInboxStats, type InboxStats } from "@/lib/studio/faq-mining";
 import { setKnowledgeApproved } from "./actions";
 
 export const metadata: Metadata = { title: "คลังความรู้ · Creative Studio" };
@@ -68,6 +69,14 @@ export default async function KnowledgePage({ searchParams }: Props) {
     const { data, error } = await query;
     if (error) throw new Error(handleDbError(error, "studio:knowledge:questions"));
     questions = (data ?? []) as CustomerQuestion[];
+  }
+  let inboxStats: InboxStats | null = null;
+  if (tab === "questions") {
+    try {
+      inboxStats = await getInboxStats();
+    } catch (e) {
+      console.warn("[studio:knowledge] inbox stats failed:", e instanceof Error ? e.message : e);
+    }
   }
 
   const tabHref = (t: "knowledge" | "questions") => (t === "knowledge" ? "/studio/knowledge" : "/studio/knowledge?tab=questions");
@@ -183,7 +192,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
           )}
         </>
       ) : (
-        <QuestionsPanel questions={questions} aiAvailable={aiAvailable} query={q} />
+        <QuestionsPanel questions={questions} aiAvailable={aiAvailable} query={q} inboxStats={inboxStats} />
       )}
     </div>
   );

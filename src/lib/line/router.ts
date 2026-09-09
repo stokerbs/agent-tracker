@@ -23,6 +23,7 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
 import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
 import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
 import { handleIntelCommand } from "@/lib/line/commands/intel";
+import { captureCustomerMessage } from "@/lib/studio/line-inbox";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
@@ -225,6 +226,12 @@ export async function handleLineMessage(
   // Every other command is gated behind "is this LINE user linked".
   if (!isLinked) {
     console.log(`[line:router] blocked unlinked user command=${command.type} userId=${redact(lineUserId)}`);
+    // Unlinked senders are (mostly) prospective customers writing to the OA.
+    // Capture a PII-redacted copy for Creative Studio FAQ mining — never
+    // throws, never blocks the reply. See src/lib/studio/line-inbox.ts.
+    if (command.type === "help") {
+      await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
+    }
     await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
     return;
   }
