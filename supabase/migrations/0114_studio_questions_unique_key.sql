@@ -20,7 +20,7 @@ tagset AS (
 )
 UPDATE public.studio_customer_questions q
 SET frequency = q.frequency + f.extra_freq,
-    tags = (SELECT array_agg(DISTINCT x) FROM unnest(q.tags || coalesce(ts.extra_tags, '{}')) AS x)
+    tags = coalesce((SELECT array_agg(DISTINCT x) FROM unnest(q.tags || coalesce(ts.extra_tags, '{}')) AS x), '{}')
 FROM freq f LEFT JOIN tagset ts ON ts.keep_id = f.keep_id
 WHERE q.id = f.keep_id;
 

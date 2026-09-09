@@ -39,6 +39,11 @@ describe("scrubText", () => {
     expect(scan("คุณควรเตรียมรูปถ่ายและตารางชีวิตของเป้าหมาย").some((f) => f.kind === "name")).toBe(false);
     expect(scan("คุณสมชาย ขับรถออกจากบ้าน").find((f) => f.kind === "name")?.excerpt).toBe("คุณสมชาย");
     expect(scan("ขอบคุณค่ะ").some((f) => f.kind === "name")).toBe(false);
+    expect(scan("ขอบคุณมาก ครับ").some((f) => f.kind === "name")).toBe(false);
+    expect(scan("คุณพ่อ ทำงานที่บ้าน").some((f) => f.kind === "name")).toBe(false);
+    for (const t of ["ขอบคุณนะคะ", "ขอบคุณจ้า", "ขอบคุณมากๆ", "ขอบพระคุณมาก ครับ", "อยากสืบคุณสามี ว่าไปไหน", "คุณภาพ ดีไหม", "คุณค่า ของงาน", "คุณลูก ไปโรงเรียน"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
     expect(scan("แฟนชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
     expect(scan("บริษัทมีชื่อเสียงดี").some((f) => f.kind === "name")).toBe(false);
   });

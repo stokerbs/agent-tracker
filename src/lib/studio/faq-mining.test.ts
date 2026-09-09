@@ -8,12 +8,18 @@ const h = vi.hoisted(() => ({
   updates: [] as Row[],
   deleted: [] as Row[],
   insertError: null as null | { code: string; message: string },
+  settingsDown: false,
   raceWinner: null as Row | null,
   ai: null as null | { ok: true; data: { questions: Row[] }; generationId: string; model: string } | { ok: false; error: string; code: string; generationId: null },
 }));
 
 vi.mock("@/lib/studio/ai/actions/knowledge", () => ({ extractCustomerFAQs: vi.fn(async () => h.ai) }));
-vi.mock("@/lib/studio/settings", () => ({ getStudioSettingsStrict: vi.fn(async () => ({ privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } })) }));
+vi.mock("@/lib/studio/settings", () => ({
+  getStudioSettingsStrict: vi.fn(async () => {
+    if (h.settingsDown) throw new Error("studio settings unavailable");
+    return { privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } };
+  }),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: (table: string) => {
@@ -50,6 +56,7 @@ beforeEach(() => {
   h.deleted = [];
   h.insertError = null;
   h.raceWinner = null;
+  h.settingsDown = false;
   h.ai = { ok: true, data: { questions: [] }, generationId: "g1", model: "m" };
 });
 
@@ -131,6 +138,14 @@ describe("mineLineInbox", () => {
     expect(r.ok).toBe(true);
     expect(r.messages).toBeGreaterThan(0);
     expect(r.messages).toBeLessThan(6);
+  });
+  it("does not mine when the privacy settings cannot be loaded", async () => {
+    h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));
+    h.settingsDown = true;
+    const { mineLineInbox } = await import("./faq-mining");
+    const r = await mineLineInbox({ userId: null });
+    expect(r.ok).toBe(false);
+    expect(h.updates.some((u) => u.table === "studio_line_inbox")).toBe(false);
   });
   it("returns the AI error without marking messages processed", async () => {
     h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));

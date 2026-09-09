@@ -5,9 +5,15 @@ const h = vi.hoisted(() => ({
   insertError: null as { message: string } | null,
   allowed: true,
   denylist: [] as string[],
+  settingsDown: false,
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(async () => ({ allowed: h.allowed, remaining: 1, retryAfterMs: 0 })) }));
-vi.mock("@/lib/studio/settings", () => ({ getStudioSettingsStrict: vi.fn(async () => ({ privacy_rules: { denylist: h.denylist, custom_patterns: [], strict_mode: false } })) }));
+vi.mock("@/lib/studio/settings", () => ({
+  getStudioSettingsStrict: vi.fn(async () => {
+    if (h.settingsDown) throw new Error("studio settings unavailable");
+    return { privacy_rules: { denylist: h.denylist, custom_patterns: [], strict_mode: false } };
+  }),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: () => ({ insert: async (row: Record<string, unknown>) => (h.inserted.push(row), { error: h.insertError }) }),
@@ -19,6 +25,7 @@ beforeEach(() => {
   h.insertError = null;
   h.allowed = true;
   h.denylist = [];
+  h.settingsDown = false;
   process.env.BIDX_KEY = "b".repeat(64);
 });
 
@@ -111,6 +118,12 @@ describe("captureCustomerMessage", () => {
     const { captureCustomerMessage } = await import("./line-inbox");
     await captureCustomerMessage({ lineUserId: "U1", text: "อยากสืบ Pimchanok ค่ะ", isLinkedAgent: false });
     expect(String(h.inserted[0].text_redacted)).not.toContain("Pimchanok");
+  });
+  it("fails closed when the privacy settings cannot be loaded", async () => {
+    h.settingsDown = true;
+    const { captureCustomerMessage } = await import("./line-inbox");
+    expect(await captureCustomerMessage({ lineUserId: "U1", text: "สนใจสืบทรัพย์สิน", isLinkedAgent: false })).toBe(false);
+    expect(h.inserted).toHaveLength(0);
   });
   it("never throws on DB errors", async () => {
     h.insertError = { message: "boom" };

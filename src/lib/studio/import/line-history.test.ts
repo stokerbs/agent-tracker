@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
   labels: [] as string[],
   doneGenerationRefs: [] as string[],
   settingsDown: false,
+  knowledgeInsertError: null as null | { message: string },
 }));
 
 vi.mock("@/lib/studio/ai/actions/chat-knowledge", () => ({
@@ -34,9 +35,11 @@ vi.mock("@/lib/supabase/server", () => ({
       for (const m of ["select", "like", "or", "limit", "eq", "order", "is", "in", "filter"]) b[m] = () => b;
       b.maybeSingle = () => ((st.single = true), b);
       b.insert = (rows: Row | Row[]) => ((st.op = "insert"), h.inserts.push(...(Array.isArray(rows) ? rows : [rows]).map((r) => ({ table, ...r }))), b);
+      b.eq = (col: string, v: unknown) => ((st as { eqId?: unknown }).eqId = col === "id" ? v : (st as { eqId?: unknown }).eqId, b);
       b.update = (row: Row) => ((st.op = "update"), h.updates.push({ table, ...row }), b);
       b.then = (resolve: (v: unknown) => unknown) => {
         let data: unknown = null;
+        if (st.op === "insert" && table === "studio_knowledge_sources" && h.knowledgeInsertError) return Promise.resolve(resolve({ data: null, error: h.knowledgeInsertError }));
         if (st.op === "select") {
           if (table === "studio_knowledge_sources") data = h.doneRefs.map((origin_ref) => ({ origin_ref }));
           if (table === "studio_ai_generations") data = h.doneGenerationRefs.map((ref) => ({ input_refs: { ref } }));
@@ -73,6 +76,7 @@ beforeEach(() => {
   h.labels = [];
   h.doneGenerationRefs = [];
   h.settingsDown = false;
+  h.knowledgeInsertError = null;
   h.ai = { ok: true, data: goodOutput, generationId: "g1", model: "m" };
 });
 
@@ -202,5 +206,17 @@ describe("settings outage", () => {
     expect(r.errors[0]).toMatch(/^aborted:/);
     expect(h.aiCalls).toBe(0);
     expect(h.inserts).toHaveLength(0);
+  });
+});
+
+describe("persist failure", () => {
+  it("marks the generation as error when persisting fails so the window is retried next run", async () => {
+    h.knowledgeInsertError = { message: "insert boom" };
+    vi.resetModules();
+    const { importLineHistoryFile } = await import("./line-history");
+    const r = await importLineHistoryFile("a.csv", CSV, { minUserMessages: 1 });
+    expect(r.errors.some((e) => e.includes("insert boom"))).toBe(true);
+    const gen = h.updates.find((u) => u.table === "studio_ai_generations");
+    expect(gen).toMatchObject({ status: "error" });
   });
 });
