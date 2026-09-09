@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   aiCalls: 0,
   labels: [] as string[],
   doneGenerationRefs: [] as string[],
+  settingsDown: false,
 }));
 
 vi.mock("@/lib/studio/ai/actions/chat-knowledge", () => ({
@@ -19,7 +20,12 @@ vi.mock("@/lib/studio/ai/actions/chat-knowledge", () => ({
     return h.ai;
   }),
 }));
-vi.mock("@/lib/studio/settings", () => ({ getStudioSettings: vi.fn(async () => ({ privacy_rules: { denylist: ["Pimchanok"], custom_patterns: [], strict_mode: false } })) }));
+vi.mock("@/lib/studio/settings", () => ({
+  getStudioSettingsStrict: vi.fn(async () => {
+    if (h.settingsDown) throw new Error("studio settings unavailable: boom");
+    return { privacy_rules: { denylist: ["Pimchanok"], custom_patterns: [], strict_mode: false } };
+  }),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: (table: string) => {
@@ -66,6 +72,7 @@ beforeEach(() => {
   h.aiCalls = 0;
   h.labels = [];
   h.doneGenerationRefs = [];
+  h.settingsDown = false;
   h.ai = { ok: true, data: goodOutput, generationId: "g1", model: "m" };
 });
 
@@ -183,5 +190,17 @@ describe("tiny-chat skip", () => {
     const r = await importLineHistoryFile("a.csv", CSV, {});
     expect(r.errors[0]).toMatch(/^skipped:/);
     expect(h.aiCalls).toBe(0);
+  });
+});
+
+describe("settings outage", () => {
+  it("aborts a real import (no AI calls, no writes) when the privacy rules cannot be loaded", async () => {
+    h.settingsDown = true;
+    vi.resetModules();
+    const { importLineHistoryFile } = await import("./line-history");
+    const r = await importLineHistoryFile("a.csv", CSV, { minUserMessages: 1 });
+    expect(r.errors[0]).toMatch(/^aborted:/);
+    expect(h.aiCalls).toBe(0);
+    expect(h.inserts).toHaveLength(0);
   });
 });

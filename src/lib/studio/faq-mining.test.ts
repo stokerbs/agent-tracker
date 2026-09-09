@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/studio/ai/actions/knowledge", () => ({ extractCustomerFAQs: vi.fn(async () => h.ai) }));
-vi.mock("@/lib/studio/settings", () => ({ getStudioSettings: vi.fn(async () => ({ privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } })) }));
+vi.mock("@/lib/studio/settings", () => ({ getStudioSettingsStrict: vi.fn(async () => ({ privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } })) }));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: (table: string) => {

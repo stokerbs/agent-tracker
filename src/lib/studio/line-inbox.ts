@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { scrubText } from "@/lib/studio/privacy/scrub";
-import { getStudioSettings } from "@/lib/studio/settings";
+import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 
 /**
@@ -42,7 +42,8 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   for (const ex of excerpts) {
     const kind = findings.find((f) => f.excerpt === ex)?.kind ?? "other";
     // A "name" longer than a real Thai name is a clause the heuristic grabbed — keep the text.
-    if (kind === "name" && ex.length > 20) continue;
+    // Measure the name portion only (strip cue words/titles) so "ชื่อเล่นว่าคุณ…" is still redacted.
+    if (kind === "name" && ex.replace(/^(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ|นางสาว|นาย|นาง|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*/u, "").length > 12) continue;
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
     // Case-insensitive: denylist excerpts are the configured term, not the text's casing.
     out = out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), token);
@@ -106,12 +107,13 @@ export async function captureCustomerMessage(input: CaptureInput): Promise<boole
       console.warn(`[studio:line-inbox] rate-limited sender=${sender.slice(0, 6)}…`);
       return false;
     }
-    // Owner denylist (client/target/staff names) applies to the inbox too.
-    let rules: PrivacyRules | null = null;
+    // Owner denylist (client/target/staff names) applies to the inbox too — fail closed if unavailable.
+    let rules: PrivacyRules;
     try {
-      rules = (await getStudioSettings()).privacy_rules;
-    } catch {
-      rules = null;
+      rules = (await getStudioSettingsStrict()).privacy_rules;
+    } catch (e) {
+      console.warn("[studio:line-inbox] settings unavailable — message not captured:", e instanceof Error ? e.message : e);
+      return false;
     }
     const redacted = redactForInbox(raw, rules);
     if (redacted.length < MIN_LEN) return false;

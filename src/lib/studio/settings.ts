@@ -36,9 +36,25 @@ export const DEFAULT_APPROVAL_RULES: ApprovalRules = { require_privacy_safe: tru
  * columns onto typed defaults so callers never null-check individual fields.
  */
 export async function getStudioSettings(): Promise<StudioSettingsRow> {
+  return loadSettings(false);
+}
+
+/**
+ * Fail-closed variant for privacy-critical paths (LINE inbox capture, offline
+ * import): a DB/RLS error THROWS instead of silently returning the default
+ * (empty) denylist.
+ */
+export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
+  return loadSettings(true);
+}
+
+async function loadSettings(strict: boolean): Promise<StudioSettingsRow> {
   const svc = createServiceClient();
   const { data, error } = await svc.from("studio_settings").select("*").eq("id", STUDIO_SETTINGS_ID).maybeSingle();
-  if (error) console.error("[studio:settings] load failed:", error.message);
+  if (error) {
+    console.error("[studio:settings] load failed:", error.message);
+    if (strict) throw new Error(`studio settings unavailable: ${error.message}`);
+  }
   const row = data ?? null;
   return {
     id: STUDIO_SETTINGS_ID,

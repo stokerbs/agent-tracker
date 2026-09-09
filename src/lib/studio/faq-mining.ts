@@ -3,7 +3,7 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { extractCustomerFAQs } from "@/lib/studio/ai/actions/knowledge";
 import { scrubText } from "@/lib/studio/privacy/scrub";
-import { getStudioSettings } from "@/lib/studio/settings";
+import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 
 /**
@@ -88,11 +88,12 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
     g.texts.push(m.text_redacted);
     bySender.set(m.sender_hash, g);
   }
-  let rules: PrivacyRules | null = null;
+  let rules: PrivacyRules;
   try {
-    rules = (await getStudioSettings()).privacy_rules;
-  } catch {
-    rules = null;
+    rules = (await getStudioSettingsStrict()).privacy_rules;
+  } catch (e) {
+    console.error("[studio:faq-mining] settings unavailable — not mining:", e instanceof Error ? e.message : e);
+    return { ok: false, error: "โหลดกฎ privacy ของสตูดิโอไม่สำเร็จ — ยังไม่ขุดเพื่อความปลอดภัย", messages: 0, purged, ...base };
   }
   const blocks: string[] = [];
   const includedIds: string[] = [];
@@ -187,7 +188,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
       if (!iErr) inserted += 1;
       else if (iErr.code === "23505") {
         // Lost a race on the unique normalized_key (0114) → merge into the winner.
-        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).limit(1).maybeSingle();
+        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).eq("is_demo", false).limit(1).maybeSingle();
         if (race) {
           const { error: mErr } = await svc
             .from("studio_customer_questions")

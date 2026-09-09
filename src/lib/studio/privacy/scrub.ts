@@ -34,6 +34,10 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
 // with a bounded name length so a false positive costs a few characters, not a sentence.
 const NAME_TITLE_RE = /(?:นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,10}/g;
+// "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
+// ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
+const KHUN_NAME_RE = /คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
+const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่วย", "รับ", "มี", "ทำ", "ว่า", "จะ", "ได้", "ไหม", "ต้อง", "เป็น", "อยู่", "ไป", "มา", "คิด", "เอง", "ล่ะ", "นะ", "เห็น", "รู้", "บอก", "ถาม", "ลอง", "ดู", "ก็", "แล้ว", "ยัง", "เคย", "อยาก", "ควร", "ขอ", "ใช้", "เอา", "ให้", "พอ", "ลูกค้า", "ผู้ชาย", "ผู้หญิง", "ตำรวจ", "ทนาย", "หมอ", "ครู"]);
 // Untitled names after cue words in chat: "แฟนชื่อสมชาย", "ชื่อเล่นว่าเอ", "เรียกว่าพี่บี"
 // Compounds like ชื่อเสียง/ชื่อดัง/ชื่อบัญชี/ชื่อร้าน are not names — excluded; name length bounded.
 const NAME_CUE_RE = /(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
@@ -79,6 +83,9 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium");
+  for (const m of text.matchAll(KHUN_NAME_RE)) {
+    if (!KHUN_STOPLIST.has(m[1])) push("name", m[0], "พบ “คุณ” ตามด้วยชื่อสั้น ๆ — อาจเป็นชื่อบุคคลจริง", "medium");
+  }
   for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium");
   for (const m of text.matchAll(AGE_RE)) push("other", m[0], "พบอายุระบุชัด — ร่วมกับรายละเอียดอื่นอาจระบุตัวตนได้", "low");
 

@@ -6,7 +6,7 @@ import { extractChatKnowledge } from "@/lib/studio/ai/actions/chat-knowledge";
 import { normalizeQuestionKey, outputCarriesPii } from "@/lib/studio/faq-mining";
 import { redactForInbox } from "@/lib/studio/line-inbox";
 import { scrubText } from "@/lib/studio/privacy/scrub";
-import { getStudioSettings } from "@/lib/studio/settings";
+import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 import { buildTranscriptWindows, parseLineOaCsv, type TranscriptWindow } from "./line-csv";
 
@@ -59,9 +59,11 @@ async function cachedPrivacyRules(): Promise<PrivacyRules | null> {
   if (rulesCache && Date.now() - rulesCache.at < 60_000) return rulesCache.rules;
   let rules: PrivacyRules | null = null;
   try {
-    rules = (await getStudioSettings()).privacy_rules;
-  } catch {
-    rules = null;
+    rules = (await getStudioSettingsStrict()).privacy_rules;
+  } catch (e) {
+    console.error("[studio:import] settings unavailable — import will abort:", e instanceof Error ? e.message : e);
+    rules = null; // not cached: retry on the next file
+    return null;
   }
   rulesCache = { at: Date.now(), rules };
   return rules;
@@ -318,7 +320,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       if (!error) result.questionsInserted += 1;
       else if (error.code === "23505") {
         // Another worker inserted the same normalized_key first (unique index, 0114) → merge instead.
-        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).limit(1).maybeSingle();
+        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).eq("is_demo", false).limit(1).maybeSingle();
         if (race) {
           const { error: mErr } = await svc
             .from("studio_customer_questions")

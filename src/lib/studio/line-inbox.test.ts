@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({
   denylist: [] as string[],
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(async () => ({ allowed: h.allowed, remaining: 1, retryAfterMs: 0 })) }));
-vi.mock("@/lib/studio/settings", () => ({ getStudioSettings: vi.fn(async () => ({ privacy_rules: { denylist: h.denylist, custom_patterns: [], strict_mode: false } })) }));
+vi.mock("@/lib/studio/settings", () => ({ getStudioSettingsStrict: vi.fn(async () => ({ privacy_rules: { denylist: h.denylist, custom_patterns: [], strict_mode: false } })) }));
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: () => ({ insert: async (row: Record<string, unknown>) => (h.inserted.push(row), { error: h.insertError }) }),

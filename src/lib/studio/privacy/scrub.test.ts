@@ -36,6 +36,9 @@ describe("scrubText", () => {
   it("flags formally titled names but not the pronoun คุณ", () => {
     expect(scan("นายสมชาย ขับรถออกจากบ้าน").some((f) => f.kind === "name")).toBe(true);
     expect(scan("คุณรับงานต่างจังหวัดไหม").some((f) => f.kind === "name")).toBe(false);
+    expect(scan("คุณควรเตรียมรูปถ่ายและตารางชีวิตของเป้าหมาย").some((f) => f.kind === "name")).toBe(false);
+    expect(scan("คุณสมชาย ขับรถออกจากบ้าน").find((f) => f.kind === "name")?.excerpt).toBe("คุณสมชาย");
+    expect(scan("ขอบคุณค่ะ").some((f) => f.kind === "name")).toBe(false);
     expect(scan("แฟนชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
     expect(scan("บริษัทมีชื่อเสียงดี").some((f) => f.kind === "name")).toBe(false);
   });
