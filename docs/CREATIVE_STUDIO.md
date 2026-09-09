@@ -50,7 +50,7 @@ Key decisions
 - **Admin-only V1.** RLS = `is_admin()` on every `studio_*` table. Supervisors/agents see nothing. Revisit when a content team exists.
 - **One Content Master, many Variants.** Platform copies hang off a master; the calendar shows masters (with platform chips) by `scheduled_at`.
 - **Sources are first-class rows** (`studio_content_sources`) pointing at knowledge / case-insight / customer-question / external / `ai_general`. The UI answers "AI เอาข้อมูลนี้มาจากไหน?" in one click.
-- **Privacy gate before approval.** Deterministic scrub always runs; AI review adds nuance. `approve` is refused while the latest check is `blocked`; `review_required` needs an explicit human override recorded in `studio_content_reviews`.
+- **Privacy gate before approval.** Deterministic scrub always runs at decision time; AI review adds nuance. Gate rule (`lib/studio/privacy/gate.ts`, shared by server and editor UI) = worst of (fresh scan, latest AI/human verdict). `approve` is refused while `blocked`; `review_required` needs an explicit human override recorded in `studio_content_reviews` (auto-recorded when `require_privacy_safe` is off). Text edits after approval demote the piece back to draft (`STUDIO_CONTENT_REOPEN`); schedule/publish re-scan and refuse `blocked`.
 - **Minimum-context generation.** Only `approved_for_content` knowledge and `studio_case_insights` (already anonymized) reach prompts; never `studio_cases.situation/observations` raw and never ops `cases`.
 - **No fake integrations.** Publishing, social APIs, video/image generation are 🚫 in V1 — the UI says so; the schema has the hooks (`published_url`, `studio_creative_assets`, `studio_analytics.source`).
 
@@ -160,7 +160,7 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 | 5 | Privacy check (deterministic + AI), source traceability, fact claims with support status | ✅ |
 | 6 | Calendar (month/week, HTML5 drag-drop, Asia/Bangkok) + approval workflow with privacy/claim gates | ✅ |
 | 7 | Responsive layouts, loading/empty/error/AI-unavailable states, seed data | ✅ (code-reviewed; owner browser pass still recommended — see §10) |
-| 8 | 911 unit tests green, tsc/eslint clean, `next build` passes; security review FAIL→fixed (H1 stale privacy check, M1, M2, L1–L6), QA CHANGES REQUIRED→fixed; re-review in progress | 🟡 re-review |
+| 8 | 922 unit tests green, tsc/eslint clean, `next build` passes, CI green. Security gate PASS (H1 stale check, M1, M2, L1–L6 + post-approval reopen all fixed). QA: three rounds — timeout flake, stale gate, retry bypass, UI/server gate-rule mismatch all fixed; final confirmation recorded on PR #237 | ✅ pending final QA stamp |
 
 ### Honest limitations in V1
 - 🚫 No social publishing / OAuth — "Publish" = mark as published + optional URL.
