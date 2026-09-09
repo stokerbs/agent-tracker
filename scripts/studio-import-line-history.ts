@@ -41,11 +41,18 @@ async function main() {
   }
 
   const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const f of readdirSync(dir, { withFileTypes: true })) {
+      if (f.name.startsWith("._") || f.name === "__MACOSX") continue;
+      const full = join(dir, f.name);
+      if (f.isDirectory()) walk(full);
+      else if (f.name.toLowerCase().endsWith(".csv")) files.push(full);
+    }
+  };
   for (const p of paths) {
     const abs = resolve(p);
-    if (statSync(abs).isDirectory()) {
-      for (const f of readdirSync(abs)) if (f.toLowerCase().endsWith(".csv") && !f.startsWith("._")) files.push(join(abs, f));
-    } else files.push(abs);
+    if (statSync(abs).isDirectory()) walk(abs);
+    else files.push(abs);
   }
   files.sort();
   console.log(`${files.length} file(s) · ${dryRun ? "DRY RUN (parse + window only, no AI, no writes)" : `model=${model ?? "(studio setting)"} concurrency=${concurrency}`} · minUserMessages=${minUserMessages}`);

@@ -127,6 +127,24 @@ describe("importLineHistoryFile", () => {
     const reExport = CSV.replace("2026/06/13 02:24", "2026/09/01 10:00");
     expect(fileHashOf(reExport)).toBe(fileHashOf(CSV));
   });
+  it("drops LINE handles and flagged service facts", async () => {
+    h.ai = {
+      ok: true, generationId: "g4", model: "m",
+      data: {
+        questions: [],
+        knowledge: [{ title: "ติดต่อผ่านไลน์ @somchai_k", content: "ลูกค้าติดต่อผ่าน LINE @somchai_k เพื่อขอคำปรึกษาเบื้องต้นก่อนตัดสินใจจ้างงานสืบ", category: "services", tags: [], evidence: "stated_by_investigator" }],
+        case_lessons: [],
+        service_facts: [{ fact: "นัดส่งรายงานวันที่ 12/03/2568 ที่ร้านกาแฟ", confidence: "stated" }, { fact: "ชำระมัดจำ 50% ก่อนเริ่มงานทุกครั้ง", confidence: "stated" }],
+      },
+    };
+    const { importLineHistoryFile } = await import("./line-history");
+    const r = await importLineHistoryFile("a.csv", CSV, { minUserMessages: 1 });
+    const rows = h.inserts.filter((i) => i.table === "studio_knowledge_sources");
+    expect(rows).toHaveLength(1); // only the service-facts row
+    expect(String(rows[0].content)).not.toContain("12/03/2568");
+    expect(String(rows[0].content)).toContain("มัดจำ 50%");
+    expect(r.dropped).toBe(1);
+  });
   it("flags (not drops) medium findings and drops names in model output", async () => {
     h.ai = {
       ok: true, generationId: "g3", model: "m",

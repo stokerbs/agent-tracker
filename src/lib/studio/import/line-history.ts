@@ -53,8 +53,8 @@ export interface ImportFileResult {
 }
 
 /** Hash of the MESSAGE rows only — re-exporting the same chat later (new download header) keeps the same hash. */
-let rulesCache: { at: number; rules: PrivacyRules | null } | null = null;
 /** Settings rarely change mid-import; one lookup per minute instead of per file. */
+let rulesCache: { at: number; rules: PrivacyRules | null } | null = null;
 async function cachedPrivacyRules(): Promise<PrivacyRules | null> {
   if (rulesCache && Date.now() - rulesCache.at < 60_000) return rulesCache.rules;
   let rules: PrivacyRules | null = null;
@@ -67,6 +67,7 @@ async function cachedPrivacyRules(): Promise<PrivacyRules | null> {
   return rules;
 }
 
+/** Hash of the MESSAGE rows only — re-exporting the same chat later (new download header) keeps the same hash. */
 export function fileHashOf(content: string): string {
   const parsed = parseLineOaCsv(content);
   const canonical = parsed.messages.map((m) => `${m.side}|${m.at}|${m.text}`).join("\n");
@@ -92,7 +93,7 @@ type Verdict = "ok" | "flag" | "drop";
 function judge(rules: PrivacyRules | null, ...fields: string[]): Verdict {
   const findings = scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules });
   if (!findings.length) return "ok";
-  if (findings.some((f) => f.severity === "high" || f.kind === "name" || f.kind === "denylist")) return "drop";
+  if (findings.some((f) => f.severity === "high" || f.kind === "name" || f.kind === "denylist" || f.kind === "line_id")) return "drop";
   return "flag";
 }
 const REVIEW_TAG = "ต้องตรวจ privacy";
@@ -159,7 +160,6 @@ export async function importLineHistoryFile(fileName: string, content: string, o
       continue;
     }
     log(`  window ${w.index + 1}/${windows.length} (${w.messageCount} msgs, ${w.text.length} chars)`);
-    if (opts.dryRun) continue;
 
     // The label is the opaque ref — never the filename (it carries the customer's display name).
     const res = await extractChatKnowledge({ transcript: w.text, windowLabel: ref, userId: opts.userId ?? null, model: opts.model });
@@ -228,7 +228,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
       created_by: userId,
     });
   }
-  const facts = out.service_facts.map((f) => f.fact.trim()).filter((f) => f.length >= 10 && judge(rules, f) !== "drop");
+  const facts = out.service_facts.map((f) => f.fact.trim()).filter((f) => f.length >= 10 && judge(rules, f) === "ok");
   if (facts.length) {
     rows.push({
       title: `ข้อเท็จจริงด้านบริการจากแชท (${period})`,
@@ -304,7 +304,18 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
         created_by: userId,
       });
       if (!error) result.questionsInserted += 1;
-      else result.errors.push(`question insert: ${error.message}`);
+      else if (error.code === "23505") {
+        // Another worker inserted the same normalized_key first (unique index, 0114) → merge instead.
+        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).limit(1).maybeSingle();
+        if (race) {
+          const { error: mErr } = await svc
+            .from("studio_customer_questions")
+            .update({ frequency: (race.frequency ?? 1) + freq, tags: Array.from(new Set([...(race.tags ?? []), ...tags])).slice(0, 12), last_seen_at: now })
+            .eq("id", race.id);
+          if (!mErr) result.questionsMerged += 1;
+          else result.errors.push(`question merge (race): ${mErr.message}`);
+        }
+      } else result.errors.push(`question insert: ${error.message}`);
     }
   }
 }
