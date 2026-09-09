@@ -236,7 +236,11 @@ describe("approveContent — privacy gate", () => {
     h.rows.studio_privacy_checks = [{ id: "pc-det", status: "safe", created_at: "2026-01-02T00:00:00Z", checked_by: "deterministic" }, ...h.rows.studio_privacy_checks];
     const second = await approveContent({ masterId: MASTER });
     expect(second.ok).toBe(false);
-    if (!second.ok) expect(second.error).toContain("override");
+    if (!second.ok) {
+      expect(second.error).toContain("override");
+      // The message must tell the owner WHY the safe re-scan didn't clear it.
+      expect(second.error).toContain("AI");
+    }
     expect(h.updates.studio_content_masters ?? []).toHaveLength(0);
   });
 

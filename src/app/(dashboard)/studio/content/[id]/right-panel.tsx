@@ -41,6 +41,7 @@ import { formatDateTimeBkk } from "../format";
 import type { MasterWithRelations } from "../queries";
 import { aiGenerateCTA, aiGenerateHooks, aiGenerateScript, aiRewrite, runContentPrivacyCheck, type PrivacyCheckActionResult } from "./ai-actions";
 import { AiPreviewDialog, type AiPreviewState } from "./ai-preview-dialog";
+import { effectivePrivacy } from "@/lib/studio/privacy/gate";
 
 export type EditableField = "hook" | "script" | "caption" | "cta";
 
@@ -305,6 +306,7 @@ function AddSourceDialog({ open, onOpenChange, masterId }: { open: boolean; onOp
 function PrivacySection({ data, aiAvailable, flush }: { data: MasterWithRelations; aiAvailable: boolean; flush: () => Promise<void> }) {
   const router = useRouter();
   const latest = data.privacyChecks[0] ?? null;
+  const gate = effectivePrivacy(data.privacyChecks);
   const [last, setLast] = useState<PrivacyCheckActionResult | null>(null);
   const [running, setRunning] = useState<"fast" | "ai" | null>(null);
   const [, start] = useTransition();
@@ -331,6 +333,11 @@ function PrivacySection({ data, aiAvailable, flush }: { data: MasterWithRelation
     <Section id="privacy" icon={<ShieldCheck className="h-3.5 w-3.5" />} title="Privacy Check">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PrivacyBadge status={latest?.status ?? null} size="md" />
+        {gate.verdictGoverns && (
+          <span className="text-[11px] text-amber-600 dark:text-amber-400">
+            ผล AI ล่าสุด “{gate.verdict?.status === "blocked" ? "บล็อก" : "ต้องตรวจสอบ"}” ยังมีผลต่อการอนุมัติ — รันตรวจด้วย AI ใหม่ หรือ override ตอนอนุมัติ
+          </span>
+        )}
         {latest && (
           <span className="text-[11px] text-muted-foreground">
             {formatDateTimeBkk(latest.created_at)} · {latest.checked_by === "ai" ? `AI${latest.model ? ` (${latest.model})` : ""}` : latest.checked_by === "human" ? "คน" : "อัตโนมัติ"}

@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudioAdmin } from "@/lib/studio/auth";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { logAudit } from "@/lib/audit";
-import type { ActionResult, ContentStatus, PrivacyStatus } from "@/lib/studio/types";
+import type { ActionResult, ContentStatus } from "@/lib/studio/types";
+import { worstPrivacy } from "@/lib/studio/privacy/gate";
 import { getLatestPrivacyCheck, revalidateContentPaths, runAndStorePrivacyCheck } from "./privacy-check";
 
 /**
@@ -47,11 +48,6 @@ function statusLabel(s: string): string {
     idea: "ไอเดีย",
   };
   return map[s] ?? s;
-}
-
-const PRIVACY_RANK: Record<PrivacyStatus, number> = { safe: 0, review_required: 1, blocked: 2 };
-function worstPrivacy(a: PrivacyStatus, b: PrivacyStatus): PrivacyStatus {
-  return PRIVACY_RANK[a] >= PRIVACY_RANK[b] ? a : b;
 }
 
 /** Fresh deterministic scan; returns an error result when the copy is BLOCKED. */
@@ -183,9 +179,12 @@ export async function approveContent(input: unknown): Promise<ActionResult<{ sta
         return { ok: false, error: "Privacy Check เป็น \"ต้องตรวจสอบ\" และตั้งค่าสตูดิโอไม่อนุญาตให้ override — แก้เนื้อหาแล้วตรวจอีกครั้ง" };
       }
       if (overridePrivacy !== true) {
+        const fromAi = latest.previousStatus === "review_required" && latest.freshStatus !== "review_required";
         return {
           ok: false,
-          error: "Privacy Check เป็น \"ต้องตรวจสอบ\" — ติ๊กช่องยืนยันว่าคุณตรวจสอบแล้วและไม่มีข้อมูลระบุตัวตน (override) ก่อนอนุมัติ",
+          error: fromAi
+            ? "ผลตรวจด้วย AI ล่าสุดยังเป็น \"ต้องตรวจสอบ\" (การสแกนแบบเร็วล้างผลนี้ไม่ได้) — รัน \"ตรวจด้วย AI\" ใหม่ หรือติ๊กช่องยืนยัน override ก่อนอนุมัติ"
+            : "Privacy Check เป็น \"ต้องตรวจสอบ\" — ติ๊กช่องยืนยันว่าคุณตรวจสอบแล้วและไม่มีข้อมูลระบุตัวตน (override) ก่อนอนุมัติ",
         };
       }
       overrideNote = note ?? "ยืนยันว่าตรวจสอบแล้ว ไม่มีข้อมูลระบุตัวตน";

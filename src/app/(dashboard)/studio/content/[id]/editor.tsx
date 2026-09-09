@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ContentStatusBadge, PillarBadge, PrivacyBadge } from "@/components/studio/badges";
 import { PILLAR_META, PILLARS, PLATFORM_META, PLATFORMS, VIDEO_PLATFORMS } from "@/lib/studio/constants";
 import { durationFit, estimateSpokenSeconds, formatDuration } from "@/lib/studio/duration";
+import { effectivePrivacy } from "@/lib/studio/privacy/gate";
 import { TARGET_DURATIONS, type ApprovalRules, type Pillar, type Platform, type PrivacyStatus } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
 import { saveMasterFields } from "../actions";
@@ -154,7 +155,10 @@ export function ContentEditor({ data, aiAvailable, aiReason, approvalRules }: Co
   const fit = durationFit(estimated, meta.targetDurationSec);
   const isVideo = !meta.primaryPlatform || VIDEO_PLATFORMS.includes(meta.primaryPlatform);
   const maxCaption = meta.primaryPlatform ? PLATFORM_META[meta.primaryPlatform]?.maxCaption : undefined;
-  const latestPrivacy = (data.privacyChecks[0]?.status as PrivacyStatus | undefined) ?? null;
+  // Same rule as the server gate (lib/studio/privacy/gate.ts): a stricter AI
+  // verdict governs until a new AI check or an explicit override.
+  const privacyGate = effectivePrivacy(data.privacyChecks);
+  const latestPrivacy: PrivacyStatus | null = privacyGate.status;
 
   return (
     <div className="space-y-5">
