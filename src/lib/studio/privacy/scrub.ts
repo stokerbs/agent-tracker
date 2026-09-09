@@ -30,7 +30,19 @@ const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 // Titles that usually precede a real name in Thai copy
-const NAME_TITLE_RE = /(?:คุณ|นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,}(?:\s[ก-๙]{2,})?/g;
+// "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
+// (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
+// with a bounded name length so a false positive costs a few characters, not a sentence.
+const NAME_TITLE_RE = /(?:นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,10}/g;
+// "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
+// ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
+const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
+const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่วย", "รับ", "มี", "ทำ", "ว่า", "จะ", "ได้", "ไหม", "ต้อง", "เป็น", "อยู่", "ไป", "มา", "คิด", "เอง", "ล่ะ", "นะ", "เห็น", "รู้", "บอก", "ถาม", "ลอง", "ดู", "ก็", "แล้ว", "ยัง", "เคย", "อยาก", "ควร", "ขอ", "ใช้", "เอา", "ให้", "พอ", "ลูกค้า", "ผู้ชาย", "ผู้หญิง", "ตำรวจ", "ทนาย", "หมอ", "ครู", "มาก", "มากๆ", "พ่อ", "แม่", "ตา", "ยาย", "ปู่", "ย่า", "ลุง", "ป้า", "น้า", "อา", "พี่", "น้อง", "แฟน", "สามี", "ภรรยา", "ลูก", "ภาพ", "ค่า", "จ้า", "นะ", "นะคะ", "นะครับ", "หมอ", "ครู", "ด้วย", "เลย", "ก่อน", "แน่", "ไว้", "หน่อย", "ล่ะ"]);
+// Untitled names after cue words in chat: "แฟนชื่อสมชาย", "ชื่อเล่นว่าเอ", "เรียกว่าพี่บี"
+// Compounds like ชื่อเสียง/ชื่อดัง/ชื่อบัญชี/ชื่อร้าน are not names — excluded; name length bounded.
+const NAME_CUE_RE = /(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
+// Ages: "อายุ 34", "34 ปี", "5 ขวบ"
+const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.
 const ALLOWLIST = new Set(["@detectivepluse", "detectivepluse@gmail.com", "096-846-1406", "0968461406", "096 846 1406"]);
 const ALLOWLIST_URL_HOSTS = ["detectivepulse.com", "lin.ee", "line.me"];
@@ -71,6 +83,11 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium");
+  for (const m of text.matchAll(KHUN_NAME_RE)) {
+    if (!KHUN_STOPLIST.has(m[1])) push("name", m[0], "พบ “คุณ” ตามด้วยชื่อสั้น ๆ — อาจเป็นชื่อบุคคลจริง", "medium");
+  }
+  for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium");
+  for (const m of text.matchAll(AGE_RE)) push("other", m[0], "พบอายุระบุชัด — ร่วมกับรายละเอียดอื่นอาจระบุตัวตนได้", "low");
 
   for (const term of rules?.denylist ?? []) {
     const t = term.trim();

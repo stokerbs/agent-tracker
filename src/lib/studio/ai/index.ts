@@ -9,6 +9,7 @@ export type { GeneratedScript, GeneratedClaim } from "./actions/script";
 export { repurposeContent, generateCreativePlan } from "./actions/repurpose";
 export type { GeneratedVariant } from "./actions/repurpose";
 export { extractCaseInsights, extractCustomerFAQs } from "./actions/knowledge";
+export { extractChatKnowledge } from "./actions/chat-knowledge";
 export { runPrivacyCheck } from "./actions/privacy";
 export type { PrivacyCheckResult } from "./actions/privacy";
 export { recommendContentMix, computeMixFlags } from "./actions/mix";

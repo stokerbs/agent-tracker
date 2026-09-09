@@ -10,7 +10,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/studio/settings", () => ({
-  getStudioSettings: async () => ({
+  getStudioSettingsStrict: async () => ({
     brand_voice: { language: "th", style: [], avoid: [], cta_default: "", custom_notes: "" },
     privacy_rules: { denylist: ["Pimchanok"], custom_patterns: [], strict_mode: h.strict },
   }),

@@ -2972,6 +2972,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "studio_case_insights_generation_fk"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ai_generations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       studio_cases: {
@@ -3359,6 +3366,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "studio_content_variants_generation_fk"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ai_generations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "studio_content_variants_master_id_fkey"
             columns: ["master_id"]
             isOneToOne: false
@@ -3427,6 +3441,8 @@ export type Database = {
           frequency: number
           id: string
           is_demo: boolean
+          last_seen_at: string | null
+          normalized_key: string | null
           question: string
           source: string
           tags: string[]
@@ -3440,6 +3456,8 @@ export type Database = {
           frequency?: number
           id?: string
           is_demo?: boolean
+          last_seen_at?: string | null
+          normalized_key?: string | null
           question: string
           source?: string
           tags?: string[]
@@ -3453,6 +3471,8 @@ export type Database = {
           frequency?: number
           id?: string
           is_demo?: boolean
+          last_seen_at?: string | null
+          normalized_key?: string | null
           question?: string
           source?: string
           tags?: string[]
@@ -3539,6 +3559,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_ideas_generation_fk"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ai_generations"
             referencedColumns: ["id"]
           },
         ]
@@ -3639,6 +3666,44 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_line_inbox: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          id: string
+          processed_at: string | null
+          received_at: string
+          sender_hash: string
+          text_redacted: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          received_at?: string
+          sender_hash: string
+          text_redacted: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          received_at?: string
+          sender_hash?: string
+          text_redacted?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_line_inbox_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ai_generations"
             referencedColumns: ["id"]
           },
         ]

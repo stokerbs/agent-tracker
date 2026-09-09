@@ -16,13 +16,14 @@ import { Input } from "@/components/ui/input";
 import { ApprovedBadge, Pill, SensitivityBadge } from "@/components/studio/badges";
 import { ApproveSwitch } from "./approve-switch";
 import { QuestionsPanel } from "./questions-panel";
+import { getInboxStats, type InboxStats } from "@/lib/studio/faq-mining";
 import { setKnowledgeApproved } from "./actions";
 
 export const metadata: Metadata = { title: "คลังความรู้ · Creative Studio" };
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: Promise<{ tab?: string; q?: string; category?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; category?: string; tag?: string }>;
 }
 
 /** PostgREST `or()` filter is comma/paren delimited — strip those from user input. */
@@ -36,6 +37,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
   const tab = sp.tab === "questions" ? "questions" : "knowledge";
   const q = (sp.q ?? "").trim().slice(0, 100);
   const category = KNOWLEDGE_CATEGORIES.includes(sp.category as KnowledgeCategory) ? (sp.category as KnowledgeCategory) : null;
+  const tag = (sp.tag ?? "").trim().slice(0, 40).replace(/[,()"']/g, "") || null;
 
   const supabase = await createClient();
   const aiAvailable = isAiAvailable();
@@ -55,6 +57,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
   if (tab === "knowledge") {
     let query = supabase.from("studio_knowledge_sources").select("*").order("updated_at", { ascending: false }).limit(200);
     if (category) query = query.eq("category", category);
+    if (tag) query = query.contains("tags", [tag]);
     if (q) {
       const like = likeTerm(q);
       query = query.or(`title.ilike.${like},content.ilike.${like}`);
@@ -69,15 +72,31 @@ export default async function KnowledgePage({ searchParams }: Props) {
     if (error) throw new Error(handleDbError(error, "studio:knowledge:questions"));
     questions = (data ?? []) as CustomerQuestion[];
   }
+  let inboxStats: InboxStats | null = null;
+  if (tab === "questions") {
+    try {
+      inboxStats = await getInboxStats();
+    } catch (e) {
+      console.warn("[studio:knowledge] inbox stats failed:", e instanceof Error ? e.message : e);
+    }
+  }
 
   const tabHref = (t: "knowledge" | "questions") => (t === "knowledge" ? "/studio/knowledge" : "/studio/knowledge?tab=questions");
-  const filterHref = (c: KnowledgeCategory | null) => {
+  const filterHref = (c: KnowledgeCategory | null, t: string | null = tag) => {
     const params = new URLSearchParams();
     if (c) params.set("category", c);
+    if (t) params.set("tag", t);
     if (q) params.set("q", q);
     const s = params.toString();
     return `/studio/knowledge${s ? `?${s}` : ""}`;
   };
+  // Review shortcuts for imported knowledge (see docs §11).
+  const REVIEW_TAGS: { tag: string; label: string }[] = [
+    { tag: "line-import", label: "จากแชท LINE" },
+    { tag: "ต้องตรวจ privacy", label: "ต้องตรวจ privacy" },
+    { tag: "case-lesson", label: "บทเรียนจากเคส" },
+    { tag: "ต้องยืนยัน", label: "ต้องยืนยัน" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -135,6 +154,16 @@ export default async function KnowledgePage({ searchParams }: Props) {
 
       {tab === "knowledge" ? (
         <>
+          {/* Review-tag chips (imported knowledge) */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="mr-1">แท็ก:</span>
+            {REVIEW_TAGS.map((t) => (
+              <Link key={t.tag} href={filterHref(category, tag === t.tag ? null : t.tag)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", tag === t.tag ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border text-muted-foreground hover:bg-accent")}>
+                {t.label}
+              </Link>
+            ))}
+            {tag && !REVIEW_TAGS.some((t) => t.tag === tag) && <span className="rounded-full border border-amber-500 bg-amber-500/10 px-3 py-1 text-amber-700 dark:text-amber-300">#{tag}</span>}
+          </div>
           {/* Category chips */}
           <div className="flex flex-wrap gap-1.5">
             <Link href={filterHref(null)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", !category ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-accent")}>
@@ -183,7 +212,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
           )}
         </>
       ) : (
-        <QuestionsPanel questions={questions} aiAvailable={aiAvailable} query={q} />
+        <QuestionsPanel questions={questions} aiAvailable={aiAvailable} query={q} inboxStats={inboxStats} />
       )}
     </div>
   );

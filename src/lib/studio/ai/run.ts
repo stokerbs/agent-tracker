@@ -21,6 +21,14 @@ export interface RunOptions<T> {
   maxTokens?: number;
   effort?: Effort;
   model?: string;
+  /**
+   * Set false for purposes whose raw output may still carry personal data
+   * before the caller's own filtering (chat mining/import). The log then keeps
+   * a marker + token counts only; the caller persists what survived filtering.
+   */
+  storeOutput?: boolean;
+  /** Per-call HTTP timeout (default 120 s); long transcript windows need more. */
+  timeoutMs?: number;
 }
 
 export type RunErrorCode = "not_configured" | "refused" | "failed";
@@ -47,13 +55,14 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
       maxTokens: opts.maxTokens,
       effort: opts.effort,
       model: opts.model,
+      timeoutMs: opts.timeoutMs,
     });
     const generationId = await record({
       purpose: opts.purpose,
       provider: result.provider,
       model: result.model,
       input_refs: opts.inputRefs,
-      output: result.data as unknown as Record<string, unknown>,
+      output: opts.storeOutput === false ? { _omitted: "privacy", reason: "raw output not retained; see persisted rows" } : (result.data as unknown as Record<string, unknown>),
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
       duration_ms: result.durationMs,

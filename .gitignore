@@ -40,3 +40,8 @@ supabase/.temp/
 
 # tesseract.js language data (downloaded at runtime, never commit)
 *.traineddata
+
+# Creative Studio offline imports — never commit chat exports or reports
+line-import-report-*.json
+/imports/
+*.csv

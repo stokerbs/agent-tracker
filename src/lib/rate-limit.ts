@@ -61,6 +61,8 @@ export const RATE_LIMITS = {
   line_otp_request: { limit: 3, windowMs: 10 * 60_000 },
   /** 5 LINE-bot OTP verification attempts per 10 minutes per LINE user — coarse defense-in-depth alongside the per-account otp_attempts lockout stored on line_accounts. */
   line_otp_verify: { limit: 5, windowMs: 10 * 60_000 },
+  /** 20 captured LINE OA messages per hour per (hashed) sender into the Studio FAQ inbox — flood guard; excess is simply not stored. */
+  line_inbox_capture: { limit: 20, windowMs: 3_600_000 },
   /**
    * 4 LINE-bot OTP link requests per hour per RESOLVED TARGET AGENT (keyed on
    * agents.id, not the requesting LINE identity). `line_otp_request` above is

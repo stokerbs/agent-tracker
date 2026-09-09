@@ -1,7 +1,7 @@
 import "server-only";
 
 import { privacyStatusFromFindings, scrubText } from "@/lib/studio/privacy/scrub";
-import { getStudioSettings } from "@/lib/studio/settings";
+import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyFinding, PrivacyStatus } from "@/lib/studio/types";
 import { brandSystemPrompt } from "../prompts/brand";
 import { privacySystemAddendum, privacyUserPrompt } from "../prompts/privacy";
@@ -37,7 +37,8 @@ export async function runPrivacyCheck(input: {
   /** For the generation log only. */
   masterId?: string | null;
 }): Promise<PrivacyCheckResult> {
-  const settings = await getStudioSettings();
+  // Fail closed: a settings outage must not run the gate with an empty denylist.
+  const settings = await getStudioSettingsStrict();
   const rules = settings.privacy_rules;
   const det = scrubText({ fields: input.fields, rules });
   const detStatus = privacyStatusFromFindings(det, rules.strict_mode);

@@ -54,6 +54,15 @@ describe("runStructured", () => {
     expect(h.inserted[0].input_refs).toEqual({ brief: "x" });
   });
 
+  it("omits raw output from the log when storeOutput is false", async () => {
+    h.generate.mockResolvedValue({ data: { title: "ลูกค้าคุณสมชาย" }, provider: "anthropic", model: "m", inputTokens: 1, outputTokens: 1, durationMs: 1 });
+    const { runStructured } = await import("./run");
+    const res = await runStructured({ ...base, storeOutput: false });
+    expect(res.ok).toBe(true);
+    expect(JSON.stringify(h.inserted[0].output)).not.toContain("สมชาย");
+    expect(h.inserted[0].output).toMatchObject({ _omitted: "privacy" });
+  });
+
   it("logs an error row and returns a Thai user-facing message on failure", async () => {
     h.generate.mockRejectedValue(new Error("boom: internal stack"));
     const { runStructured } = await import("./run");

@@ -86,7 +86,8 @@ All tables: `uuid` PK `gen_random_uuid()`, `created_at`, `updated_at` (+`set_upd
 | `studio_knowledge_chunks` | RAG-ready chunks | `source_id, chunk_index, content, embedding vector(1536) NULL, token_count` |
 | `studio_cases` | anonymized case knowledge (NOT ops cases) | `case_code (DEMO-001…), case_type, situation, objective, method, observations, outcome, lessons, interesting_insight, content_potential (low/medium/high), sensitivity, anonymized_version, approved_for_content, linked_case_id → cases NULL, is_demo` |
 | `studio_case_insights` | content-safe extracted insights | `case_id, title, insight, lesson, content_angle, privacy_status, approved_for_content, generated_by (ai/human)` |
-| `studio_customer_questions` | FAQ mining | `question, answer_hint, frequency int, source (line_oa/phone/web/manual/import), tags, approved_for_content, is_demo` |
+| `studio_customer_questions` | FAQ mining | `question, answer_hint, frequency int, source (line_oa/phone/web/manual/import), tags, approved_for_content, is_demo, normalized_key, last_seen_at` |
+| `studio_line_inbox` (0113) | redacted LINE OA messages queued for mining | `sender_hash (HMAC of LINE userId), text_redacted, received_at, processed_at, batch_id → studio_ai_generations`; purged 30 days after processing |
 | `studio_campaigns` | Creative Director briefs | `title, objective, audience, platforms text[], pillar, tone, post_count, cta, brief jsonb, status (proposed/active/completed/archived)` |
 | `studio_ideas` | Idea Bank | `title, hook, pillar, platforms text[], format, origin (ai/owner/knowledge/case/question/repurpose), source_refs jsonb, ai_scores jsonb (labelled estimates), status (new/saved/rejected/generated/archived), tags, campaign_id` |
 | `studio_content_masters` | one per piece | `idea_id, campaign_id, title, pillar, status (idea/draft/review/approved/scheduled/published/archived/rejected), hook, script, caption, cta, target_duration_sec, estimated_duration_sec, primary_platform, creative_plan jsonb, notes, scheduled_at, published_at, published_url, approved_by, approved_at` |
@@ -166,7 +167,8 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 - 🚫 No social publishing / OAuth — "Publish" = mark as published + optional URL.
 - 🚫 No video/image/voice generation — creative plan is text (shot list, B-roll, overlays, thumbnail concept).
 - 🚫 No embeddings — `embedding` columns exist but stay NULL; search is keyword (trigram).
-- 🚫 LINE OA import — customer questions are manual/CSV-paste only.
+- 🟡 LINE OA import — inbound messages from non-agent senders are captured PII-redacted (`studio_line_inbox`, migration 0113) and mined weekly (`/api/cron/studio-faq-mine`, Mon 01:30 Bangkok) or on demand into `studio_customer_questions` (unapproved until the owner reviews). Paste-import still available.
+  - Data-protection notes for the inbox: text is pseudonymous personal data (HMAC sender under a purpose-specific subkey; redaction is best-effort, Thai digits normalised, owner denylist applied, per-sender 20 msgs/hour cap); processed rows purge after 30 days and ANY row after 90 days; mined output is re-scrubbed and dropped if it still carries an identifier; Anthropic acts as processor for the redacted batch. ⚠️ Open owner decision: the field-agent LINE bot currently auto-replies "ผูกบัญชี <เบอร์>" to every unlinked sender (real customers) — recommend replying only to command-like text.
 - 🟡 Analytics = manual entry.
 - 🟡 OpenAI provider = interface present, throws "not configured" (no fake success).
 
@@ -198,3 +200,19 @@ STUDIO CASE (studio_cases, hand-written, sensitivity, optional linked_case_id)
 7. `/studio/analytics` → **บันทึกผล** on a published piece.
 
 Not verified in a browser by the build session (no authenticated session available to automation); every route is covered by unit tests, typecheck, lint, and `next build`, and all pages render loading/empty/error/AI-unavailable states by code review.
+
+## 11. Bulk import of LINE OA chat history (offline)
+
+Export chats from LINE Official Account Manager (CSV per chat: `ประเภทผู้ส่ง,ชื่อผู้ส่ง,วันส่ง,เวลาส่ง,ข้อความ`), put them in one folder, then on the Mac:
+
+```bash
+set -a; source .env.local; set +a
+npx tsx --tsconfig tsconfig.scripts.json scripts/studio-import-line-history.ts ~/Downloads/line-history --dry-run   # parse + count only
+npx tsx --tsconfig tsconfig.scripts.json scripts/studio-import-line-history.ts ~/Downloads/line-history --model claude-sonnet-5 --user <your profile uuid>
+```
+
+What it does per file: PII redaction per message (studio denylist + customer display names in the file, Thai digits normalised) → AI windows (~12k chars, `ลูกค้า:`/`นักสืบ:`) → `extractChatKnowledge` → writes **unapproved** rows: investigator knowledge (`tags: line-import, จากแชทจริง|ต้องยืนยัน`), case lessons (`category cases`, sensitivity confidential), service facts, and customer questions (`source import`). Customer claims are discarded; anything still carrying a high-severity identifier is dropped. Idempotent per file + window (`origin_ref = line-import:<sha1>:<n>`). Raw transcripts are never stored; the JSON report (counts only) is written next to the inputs. Review in `/studio/knowledge` (filter tag `line-import`) and approve what should feed AI content.
+
+Measured on a 4-window pilot (Claude Opus 5, Sep 2026): ≈ 9.1k input + 5.5k output tokens and ~200 s per 12k-char window → ≈ US$0.18/window on Opus 5, ≈ US$0.07 on Sonnet 5 (output caps added afterwards should roughly halve that). The full 5-year export (6,009 chats → 2,505 with ≥ 2 customer messages → ~2,870 windows) is therefore ≈ US$100–200 on Sonnet 5 and several hours at `--concurrency 6`; pass `--model claude-sonnet-5` for bulk runs and keep Opus for content generation. Overlapping exports of the same chat (e.g. two Kimlank files) are deduped by content hash only when identical — import the longest export per chat.
+
+Residual risk (documented on purpose): Thai has no word spaces, so person names are detected heuristically — formal titles (นาย/นาง/…), cue words (ชื่อ…/เรียกว่า) and a short word-bounded token after “คุณ”. A given name introduced without those cues can still reach the Anthropic API (processor, never stored raw) and is caught only by the customer-display-name/owner denylist, the prompt rules, the output re-scrub and human review before approval. Settings outages fail closed: capture, mining and import stop rather than run without the denylist.
