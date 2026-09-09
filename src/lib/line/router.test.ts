@@ -24,7 +24,10 @@ vi.mock("@/lib/line/commands/add-timeline", () => ({ handleAddTimelineEntryComma
 vi.mock("@/lib/line/commands/attach-photo", () => ({ handleAttachPhotoCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/attach-location", () => ({ handleAttachLocationCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/intel", () => ({ handleIntelCommand: vi.fn() }));
-vi.mock("@/lib/studio/line-inbox", () => ({ captureCustomerMessage: vi.fn(async () => true) }));
+vi.mock("@/lib/studio/line-inbox", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/studio/line-inbox")>();
+  return { ...actual, captureCustomerMessage: vi.fn(async () => true) };
+});
 import { captureCustomerMessage } from "@/lib/studio/line-inbox";
 
 import { handleLineMessage, handleLineMediaMessage, parseCommand } from "./router";
@@ -146,6 +149,8 @@ describe("parseCommand", () => {
 
   it("parses Thai timeline keyword", () => {
     expect(parseCommand("ไทม์ไลน์ CASE-001")).toEqual({ type: "timeline", args: "CASE-001" });
+    expect(parseCommand("ไทม์ไลน์")).toEqual({ type: "timeline", args: "" });
+    expect(parseCommand("ไทม์ไลน์การทำงานเป็นอย่างไร")).toEqual({ type: "help" });
   });
 
   it("falls back to help for anything unrecognized", () => {
@@ -237,12 +242,31 @@ describe("parseCommand", () => {
 });
 
 describe("handleLineMessage — unlinked, non link/verify command", () => {
-  it("replies with the not-linked help prompt (including the userId)", async () => {
+  it("stays SILENT for plain customer text (humans reply in the OA chat)", async () => {
     await handleLineMessage(LINE_USER_ID, "สวัสดี", "rt1");
+    expect(replyLineMessage).not.toHaveBeenCalled();
+  });
+
+  it("stays silent for conversational words that merely resemble bot keywords", async () => {
+    for (const t of ["ยืนยัน นัดพรุ่งนี้นะคะ", "ยืนยัน", "?", "ไทม์ไลน์การทำงานเป็นอย่างไร", "เคสนี้ราคาเท่าไหร่", "150000"]) {
+      vi.mocked(replyLineMessage).mockClear();
+      await handleLineMessage(LINE_USER_ID, t, "rt1");
+      if (t === "150000") continue; // 6 digits still parses as an OTP verify attempt (pre-existing behaviour)
+      expect(replyLineMessage, t).not.toHaveBeenCalled();
+    }
+  });
+
+  it("prompts to link for a bare bot keyword with no arguments", async () => {
+    await handleLineMessage(LINE_USER_ID, "เคส", "rt1");
     expect(replyLineMessage).toHaveBeenCalledWith("rt1", msg.notLinkedHelp(LINE_USER_ID));
   });
 
-  it("does not call the case/timeline stub handlers", async () => {
+  it("replies with the not-linked help prompt when the sender explicitly asks the bot for help", async () => {
+    await handleLineMessage(LINE_USER_ID, "help", "rt1");
+    expect(replyLineMessage).toHaveBeenCalledWith("rt1", msg.notLinkedHelp(LINE_USER_ID));
+  });
+
+  it("does not call the case/timeline stub handlers but still prompts to link for a command attempt", async () => {
     await handleLineMessage(LINE_USER_ID, "เคส foo", "rt1");
     expect(handleCaseLookupCommand).not.toHaveBeenCalled();
     expect(replyLineMessage).toHaveBeenCalledWith("rt1", msg.notLinkedHelp(LINE_USER_ID));
@@ -653,11 +677,11 @@ describe("handleLineMediaMessage (Round 3 — image/location dispatch)", () => {
     ...overrides,
   });
 
-  it("gates behind linked status exactly like text commands — unlinked replies notLinkedHelp and never dispatches", async () => {
+  it("gates behind linked status — unlinked media is ignored silently and never dispatched", async () => {
     await handleLineMediaMessage(LINE_USER_ID, { type: "image", messageId: "m1" }, "rt1");
     expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
     expect(handleAttachLocationCommand).not.toHaveBeenCalled();
-    expect(lastReply()).toBe(msg.notLinkedHelp(LINE_USER_ID));
+    expect(replyLineMessage).not.toHaveBeenCalled();
   });
 
   it("replies GENERIC_ERROR when the line_accounts fetch errors", async () => {
@@ -740,14 +764,12 @@ describe("handleLineMediaMessage (Round 3 — image/location dispatch)", () => {
 });
 
 describe("customer-message capture (Creative Studio inbox)", () => {
-  it("captureCustomerMessage is called for unlinked free text, after the reply", async () => {
+  it("captureCustomerMessage is called for unlinked free text, with no bot reply", async () => {
     vi.mocked(createServiceClient).mockReturnValue(makeSvc().client as never);
     await handleLineMessage("Uunlinked", "ติด GPS รถแฟนได้ไหม", "tok");
     expect(vi.mocked(captureCustomerMessage)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(captureCustomerMessage).mock.calls[0][0]).toMatchObject({ lineUserId: "Uunlinked", text: "ติด GPS รถแฟนได้ไหม", isLinkedAgent: false });
-    const replyOrder = vi.mocked(replyLineMessage).mock.invocationCallOrder[0];
-    const captureOrder = vi.mocked(captureCustomerMessage).mock.invocationCallOrder[0];
-    expect(replyOrder).toBeLessThan(captureOrder);
+    expect(replyLineMessage).not.toHaveBeenCalled();
   });
   it("is NOT called for unlinked link/verify commands", async () => {
     vi.mocked(createServiceClient).mockReturnValue(makeSvc().client as never);

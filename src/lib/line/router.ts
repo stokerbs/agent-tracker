@@ -47,7 +47,8 @@ import { captureCustomerMessage } from "@/lib/studio/line-inbox";
  *   3. "link" and "verify" are always handled regardless of link state (you
  *      have to be able to link/verify precisely because you aren't linked
  *      yet). Every OTHER command is gated behind "is this LINE user linked" —
- *      unlinked users get a help/link-prompt message instead.
+ *      unlinked users get the link prompt ONLY for command/help attempts; plain
+ *      customer text is captured for Creative Studio and gets no bot reply.
  *
  * Every inbound image/location message instead flows through
  * handleLineMediaMessage() (Round 3), which resolves the same
@@ -102,7 +103,9 @@ type Command =
 
 const LINK_KEYWORDS = /^(?:link|ผูกบัญชี|ผูก|เชื่อมบัญชี|เชื่อมต่อบัญชี)\s+(.+)$/iu;
 const CASE_KEYWORDS = /^(?:case|เคส)\s+(.+)$/iu;
-const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)\s*(.*)$/iu;
+// Requires whitespace (or end of text) after the keyword: "ไทม์ไลน์ CASE-1" is a
+// command, "ไทม์ไลน์การทำงานเป็นอย่างไร" is a customer sentence.
+const TIMELINE_KEYWORDS = /^(?:timeline|ไทม์ไลน์|ไทม์ไลน)(?:\s+(.*))?$/iu;
 // Write command (Round 2): "เพิ่มไทม์ไลน์ <รหัสเคส> <ข้อความ>" / "บันทึกไทม์ไลน์ <รหัสเคส> <ข้อความ>".
 // First captured group is the case number, second is the entry text. Its
 // keyword prefixes ("เพิ่มไทม์ไลน์"/"บันทึกไทม์ไลน์") never start with, and so
@@ -145,12 +148,25 @@ export function parseCommand(raw: string): Command {
   }
 
   const timeline = text.match(TIMELINE_KEYWORDS);
-  if (timeline) return { type: "timeline", args: timeline[1]!.trim() };
+  if (timeline) return { type: "timeline", args: (timeline[1] ?? "").trim() };
 
   const intel = text.match(INTEL_KEYWORDS);
   if (intel) return { type: "intel", caseNumber: intel[1]!.trim() };
 
   return { type: "help" };
+}
+
+/**
+ * The sender wants the BOT (not a human): an explicit help/menu word, or a bare
+ * bot keyword with no arguments ("เคส", "ไทม์ไลน์", "link"). Deliberately NOT
+ * "ยืนยัน"/"verify"/"?" — customers use those in normal conversation
+ * ("ยืนยัน นัดพรุ่งนี้นะคะ"). Commands WITH arguments are already parsed by
+ * parseCommand() and never reach this function.
+ */
+function looksLikeBotHelpRequest(text: string): boolean {
+  const t = text.trim();
+  if (/^(?:help|คำสั่ง|เมนู|menu|ช่วยเหลือ|วิธีใช้)$/iu.test(t)) return true;
+  return /^(?:link|ผูกบัญชี|เชื่อมบัญชี|เชื่อมต่อบัญชี|case|เคส|timeline|ไทม์ไลน์|intel|ข่าวกรอง)$/iu.test(t);
 }
 
 // ── Logging helpers ──────────────────────────────────────────────────────────
@@ -225,15 +241,21 @@ export async function handleLineMessage(
 
   // Every other command is gated behind "is this LINE user linked".
   if (!isLinked) {
-    console.log(`[line:router] blocked unlinked user command=${command.type} userId=${redact(lineUserId)}`);
-    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
-    // Unlinked senders are (mostly) prospective customers writing to the OA.
-    // Capture a PII-redacted copy for Creative Studio FAQ mining AFTER the
-    // reply so it never delays it; the call itself never throws. Awaited (not
-    // after()) because after() is unreliable on this deployment — see memory.
-    if (command.type === "help") {
-      await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
+    // Most unlinked senders are prospective CUSTOMERS writing to the Official
+    // Account, not agents who forgot to link. They must never receive the
+    // "ผูกบัญชี <เบอร์>" bot prompt — humans reply to them in the OA chat as
+    // before. Only a message that clearly tries to use the bot (a parsed
+    // command, or a help/command-looking keyword) gets the link prompt.
+    const attemptsBot = command.type !== "help" || looksLikeBotHelpRequest(text);
+    console.log(`[line:router] unlinked user command=${command.type} botAttempt=${attemptsBot} userId=${redact(lineUserId)}`);
+    if (attemptsBot) {
+      await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
+      return;
     }
+    // Plain customer text: stay silent, capture a PII-redacted copy for
+    // Creative Studio FAQ mining. Never throws. Awaited (not after()) because
+    // after() is unreliable on this deployment — see memory.
+    await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
     return;
   }
 
@@ -265,8 +287,8 @@ export async function handleLineMessage(
  * Flow:
  *   1. Resolve `lineUserId -> line_accounts` via the same resolveLineAccount()
  *      helper handleLineMessage() uses.
- *   2. Gate behind "is this LINE user linked", identical to every non-link/
- *      verify text command (unlinked -> notLinkedHelp()).
+ *   2. Gate behind "is this LINE user linked" — unlinked media is ignored
+ *      silently (a customer photo is not a bot command).
  *   3. Once linked, check whether a pending-attachment window is open and
  *      still valid (`pending_attachment_entry_id` set AND
  *      `pending_attachment_case_id` set AND `pending_attachment_expires_at`
@@ -314,10 +336,11 @@ export async function handleLineMediaMessage(
   );
 
   if (!isLinked) {
+    // A customer sending a photo/location to the OA is not trying to use the
+    // bot — stay silent (humans handle it in the OA chat), never prompt to link.
     console.log(
-      `[line:router] blocked unlinked user media=${media.type} userId=${redact(lineUserId)}`,
+      `[line:router] ignored unlinked user media=${media.type} userId=${redact(lineUserId)}`,
     );
-    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
     return;
   }
 
