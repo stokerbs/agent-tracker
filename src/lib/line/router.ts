@@ -23,7 +23,7 @@ import { handleAddTimelineEntryCommand } from "@/lib/line/commands/add-timeline"
 import { handleAttachPhotoCommand } from "@/lib/line/commands/attach-photo";
 import { handleAttachLocationCommand } from "@/lib/line/commands/attach-location";
 import { handleIntelCommand } from "@/lib/line/commands/intel";
-import { captureCustomerMessage } from "@/lib/studio/line-inbox";
+import { captureCustomerMessage, looksLikeBotCommand } from "@/lib/studio/line-inbox";
 
 /**
  * Command router/dispatcher for the LINE-bot webhook (Round 1: phone+OTP
@@ -153,6 +153,13 @@ export function parseCommand(raw: string): Command {
   return { type: "help" };
 }
 
+/** "help", "คำสั่ง", "เมนู", a bare bot keyword, or a typo'd link attempt — the sender wants the bot, not a human. */
+function looksLikeBotHelpRequest(text: string): boolean {
+  const t = text.trim();
+  if (/^(?:help|\?|คำสั่ง|เมนู|menu|ช่วยเหลือ|วิธีใช้)$/iu.test(t)) return true;
+  return looksLikeBotCommand(t);
+}
+
 // ── Logging helpers ──────────────────────────────────────────────────────────
 
 /** Never log a full LINE userId or phone/OTP — a short, non-reversible-enough reference is enough for correlating log lines. */
@@ -225,15 +232,21 @@ export async function handleLineMessage(
 
   // Every other command is gated behind "is this LINE user linked".
   if (!isLinked) {
-    console.log(`[line:router] blocked unlinked user command=${command.type} userId=${redact(lineUserId)}`);
-    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
-    // Unlinked senders are (mostly) prospective customers writing to the OA.
-    // Capture a PII-redacted copy for Creative Studio FAQ mining AFTER the
-    // reply so it never delays it; the call itself never throws. Awaited (not
-    // after()) because after() is unreliable on this deployment — see memory.
-    if (command.type === "help") {
-      await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
+    // Most unlinked senders are prospective CUSTOMERS writing to the Official
+    // Account, not agents who forgot to link. They must never receive the
+    // "ผูกบัญชี <เบอร์>" bot prompt — humans reply to them in the OA chat as
+    // before. Only a message that clearly tries to use the bot (a parsed
+    // command, or a help/command-looking keyword) gets the link prompt.
+    const attemptsBot = command.type !== "help" || looksLikeBotHelpRequest(text);
+    console.log(`[line:router] unlinked user command=${command.type} botAttempt=${attemptsBot} userId=${redact(lineUserId)}`);
+    if (attemptsBot) {
+      await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
+      return;
     }
+    // Plain customer text: stay silent, capture a PII-redacted copy for
+    // Creative Studio FAQ mining. Never throws. Awaited (not after()) because
+    // after() is unreliable on this deployment — see memory.
+    await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
     return;
   }
 
@@ -314,10 +327,11 @@ export async function handleLineMediaMessage(
   );
 
   if (!isLinked) {
+    // A customer sending a photo/location to the OA is not trying to use the
+    // bot — stay silent (humans handle it in the OA chat), never prompt to link.
     console.log(
-      `[line:router] blocked unlinked user media=${media.type} userId=${redact(lineUserId)}`,
+      `[line:router] ignored unlinked user media=${media.type} userId=${redact(lineUserId)}`,
     );
-    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
     return;
   }
 
