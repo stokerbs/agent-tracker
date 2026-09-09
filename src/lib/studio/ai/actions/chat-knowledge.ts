@@ -26,7 +26,8 @@ export async function extractChatKnowledge(input: {
     storeOutput: false,
     userId: input.userId,
     effort: "medium",
-    maxTokens: 8000,
+    maxTokens: 5000,
+    timeoutMs: 300_000,
     model: input.model,
   });
 }

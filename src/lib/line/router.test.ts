@@ -25,6 +25,7 @@ vi.mock("@/lib/line/commands/attach-photo", () => ({ handleAttachPhotoCommand: v
 vi.mock("@/lib/line/commands/attach-location", () => ({ handleAttachLocationCommand: vi.fn() }));
 vi.mock("@/lib/line/commands/intel", () => ({ handleIntelCommand: vi.fn() }));
 vi.mock("@/lib/studio/line-inbox", () => ({ captureCustomerMessage: vi.fn(async () => true) }));
+import { captureCustomerMessage } from "@/lib/studio/line-inbox";
 
 import { handleLineMessage, handleLineMediaMessage, parseCommand } from "./router";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -735,5 +736,44 @@ describe("handleLineMediaMessage (Round 3 — image/location dispatch)", () => {
       "rt1",
     );
     expect(handleAttachPhotoCommand).not.toHaveBeenCalled();
+  });
+});
+
+describe("customer-message capture (Creative Studio inbox)", () => {
+  it("captureCustomerMessage is called for unlinked free text, after the reply", async () => {
+    vi.mocked(createServiceClient).mockReturnValue(makeSvc().client as never);
+    await handleLineMessage("Uunlinked", "ติด GPS รถแฟนได้ไหม", "tok");
+    expect(vi.mocked(captureCustomerMessage)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(captureCustomerMessage).mock.calls[0][0]).toMatchObject({ lineUserId: "Uunlinked", text: "ติด GPS รถแฟนได้ไหม", isLinkedAgent: false });
+    const replyOrder = vi.mocked(replyLineMessage).mock.invocationCallOrder[0];
+    const captureOrder = vi.mocked(captureCustomerMessage).mock.invocationCallOrder[0];
+    expect(replyOrder).toBeLessThan(captureOrder);
+  });
+  it("is NOT called for unlinked link/verify commands", async () => {
+    vi.mocked(createServiceClient).mockReturnValue(makeSvc().client as never);
+    await handleLineMessage("Uunlinked", "ผูกบัญชี 0812345678", "tok");
+    await handleLineMessage("Uunlinked", "123456", "tok");
+    expect(vi.mocked(captureCustomerMessage)).not.toHaveBeenCalled();
+  });
+  it("is NOT called for linked agents", async () => {
+    vi.mocked(createServiceClient).mockReturnValue(
+      makeSvc({
+        accountRow: {
+          id: "33333333-3333-3333-3333-333333333333",
+          agent_id: AGENT_ID,
+          phone_at_link_time: "0812345678",
+          otp_code_hash: null,
+          otp_expires_at: null,
+          otp_attempts: 0,
+          otp_requested_at: null,
+          linked_at: "2026-01-01T00:00:00.000Z",
+          pending_attachment_entry_id: null,
+          pending_attachment_case_id: null,
+          pending_attachment_expires_at: null,
+        } as never,
+      }).client as never,
+    );
+    await handleLineMessage("Ulinked", "สวัสดีครับ", "tok");
+    expect(vi.mocked(captureCustomerMessage)).not.toHaveBeenCalled();
   });
 });

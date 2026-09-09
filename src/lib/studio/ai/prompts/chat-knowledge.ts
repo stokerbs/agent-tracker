@@ -55,6 +55,10 @@ EXTRACT (Thai output):
 3. case_lessons — if a specific engagement is discussed with an outcome, extract the generalised lesson (no identifiers, no dates, no places). Mark privacy_status honestly.
 4. service_facts — process/payment/coverage/timing facts stated by the investigator (e.g. deposit before start, report delivery method).
 
+LIMITS (keep output tight — this runs over thousands of windows)
+- At most 6 knowledge items, 8 questions, 3 case_lessons, 6 service_facts per window. Prefer fewer, stronger items over many weak ones. No duplicates of near-identical points.
+- knowledge.content 2–5 sentences; answer_hint ≤ 2 sentences.
+
 RULES
 - Zero identifiers in output: no names/nicknames (even redacted tokens — drop them), phone numbers, plates, addresses, venues, companies, exact dates, ages. Generalise ("ลูกค้ารายหนึ่ง", "ย่านหนึ่ง", "ช่วงเช้า").
 - Do not copy the customer's personal story as knowledge; extract the investigator's expertise.

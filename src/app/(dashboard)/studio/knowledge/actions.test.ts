@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
   result: { data: null as unknown, error: null as unknown },
   aiAvailable: true,
   aiResult: { ok: true, data: { questions: [] as unknown[] } } as unknown,
+  mineResult: { ok: true, messages: 7, inserted: 2, merged: 1, dropped: 0, purged: 0, generationId: "g1" } as Record<string, unknown>,
   audit: vi.fn(),
 }));
 
@@ -28,6 +29,9 @@ vi.mock("@/lib/studio/auth", () => ({
 vi.mock("@/lib/studio/ai", () => ({
   isAiAvailable: () => h.aiAvailable,
   extractCustomerFAQs: vi.fn(async () => h.aiResult),
+}));
+vi.mock("@/lib/studio/faq-mining", () => ({
+  mineLineInbox: vi.fn(async () => h.mineResult),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -173,5 +177,34 @@ describe("customer questions", () => {
     const insert = h.calls.find((c) => c.op === "insert");
     expect(insert?.table).toBe("studio_ideas");
     expect(insert?.payload).toMatchObject({ origin: "question", status: "new", pillar: "detective_knowledge", source_refs: [{ kind: "customer_question", id: qid, label: "GPS ติดยังไง" }] });
+  });
+});
+
+describe("mineLineInboxNow", () => {
+  it("throws for non-admins", async () => {
+    h.profile = { id: "u2", role: "agent" };
+    const { mineLineInboxNow } = await import("./actions");
+    await expect(mineLineInboxNow()).rejects.toThrow("Unauthorized");
+  });
+  it("returns an error when AI is unavailable, without mining", async () => {
+    h.aiAvailable = false;
+    const { mineLineInboxNow } = await import("./actions");
+    const res = await mineLineInboxNow();
+    expect(res.ok).toBe(false);
+    expect(h.audit).not.toHaveBeenCalled();
+  });
+  it("passes mining errors through", async () => {
+    h.mineResult = { ok: false, error: "AI ล้มเหลว", messages: 9, inserted: 0, merged: 0, dropped: 0, purged: 0, generationId: null };
+    const { mineLineInboxNow } = await import("./actions");
+    const res = await mineLineInboxNow();
+    expect(res).toEqual({ ok: false, error: "AI ล้มเหลว" });
+  });
+  it("audits a successful manual run", async () => {
+    h.aiAvailable = true;
+    h.mineResult = { ok: true, messages: 7, inserted: 2, merged: 1, dropped: 0, purged: 0, generationId: "g1" };
+    const { mineLineInboxNow } = await import("./actions");
+    const res = await mineLineInboxNow();
+    expect(res.ok).toBe(true);
+    expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "STUDIO_FAQ_MINE", metadata: expect.objectContaining({ trigger: "manual", inserted: 2 }) }));
   });
 });

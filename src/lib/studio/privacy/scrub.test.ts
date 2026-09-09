@@ -33,8 +33,11 @@ describe("scrubText", () => {
   it("flags 13-digit id numbers", () => {
     expect(scan("เลข 1-1234-56789-01-2").some((f) => f.kind === "id_number")).toBe(true);
   });
-  it("flags titled names", () => {
-    expect(scan("คุณสมชาย ขับรถออกจากบ้าน").some((f) => f.kind === "name")).toBe(true);
+  it("flags formally titled names but not the pronoun คุณ", () => {
+    expect(scan("นายสมชาย ขับรถออกจากบ้าน").some((f) => f.kind === "name")).toBe(true);
+    expect(scan("คุณรับงานต่างจังหวัดไหม").some((f) => f.kind === "name")).toBe(false);
+    expect(scan("แฟนชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
+    expect(scan("บริษัทมีชื่อเสียงดี").some((f) => f.kind === "name")).toBe(false);
   });
   it("flags denylist terms case-insensitively", () => {
     expect(scan("ลูกค้าชื่อ Pimchanok มาปรึกษา", ["pimchanok"]).some((f) => f.kind === "denylist")).toBe(true);

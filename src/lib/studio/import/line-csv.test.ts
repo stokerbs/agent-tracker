@@ -32,6 +32,14 @@ describe("parseLineOaCsv", () => {
   });
 });
 
+describe("parseLineOaCsv — malformed rows", () => {
+  it("skips rows with an unparsable timestamp instead of producing epoch 1970", () => {
+    const ex = parseLineOaCsv(SAMPLE + 'User,Lek,bad,bad,"ข้อความเวลาเพี้ยน"\r\n');
+    expect(ex.messages.some((m) => m.text === "ข้อความเวลาเพี้ยน")).toBe(false);
+    expect(ex.messages.every((m) => !m.at.startsWith("1970"))).toBe(true);
+  });
+});
+
 describe("buildTranscriptWindows", () => {
   it("skips auto-replies and placeholders, labels sides, applies redaction", () => {
     const ex = parseLineOaCsv(SAMPLE);

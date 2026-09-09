@@ -99,13 +99,25 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
   let chars = 0;
   let i = 0;
   for (const g of bySender.values()) {
-    const block = `--- ลูกค้า #${++i} ---\n${g.texts.map((t) => `• ${t}`).join("\n")}`;
-    if (chars + block.length > MAX_PROMPT_CHARS && includedIds.length > 0) break;
-    blocks.push(block);
-    includedIds.push(...g.ids);
-    chars += block.length + 2;
+    // Fill message by message so a sender block never overflows the window; only what fits is marked processed.
+    const header = `--- ลูกค้า #${++i} ---`;
+    const lines: string[] = [];
+    const ids: string[] = [];
+    let size = header.length + 1;
+    for (let k = 0; k < g.texts.length; k++) {
+      const line = `• ${g.texts[k]}`;
+      if (chars + size + line.length + 1 > MAX_PROMPT_CHARS) break;
+      lines.push(line);
+      ids.push(g.ids[k]);
+      size += line.length + 1;
+    }
+    if (!lines.length) break;
+    blocks.push(`${header}\n${lines.join("\n")}`);
+    includedIds.push(...ids);
+    chars += size + 2;
+    if (lines.length < g.texts.length) break; // window is full
   }
-  const pasted = blocks.join("\n\n").slice(0, MAX_PROMPT_CHARS);
+  const pasted = blocks.join("\n\n");
 
   const res = await extractCustomerFAQs({ pastedText: pasted, source: "line_oa", userId: opts.userId });
   if (!res.ok) {
@@ -137,6 +149,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
     const { data: existing, error: fErr } = await svc
       .from("studio_customer_questions")
       .select("id, frequency, tags, answer_hint")
+      .eq("is_demo", false)
       .or(`normalized_key.eq.${key},question.eq.${JSON.stringify(question)}`)
       .limit(1)
       .maybeSingle();
@@ -172,7 +185,18 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
         created_by: opts.userId,
       });
       if (!iErr) inserted += 1;
-      else console.error("[studio:faq-mining] insert failed:", iErr.message);
+      else if (iErr.code === "23505") {
+        // Lost a race on the unique normalized_key (0114) → merge into the winner.
+        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).limit(1).maybeSingle();
+        if (race) {
+          const { error: mErr } = await svc
+            .from("studio_customer_questions")
+            .update({ frequency: (race.frequency ?? 1) + freq, tags: Array.from(new Set([...(race.tags ?? []), ...tags])).slice(0, 12), last_seen_at: now })
+            .eq("id", race.id);
+          if (!mErr) merged += 1;
+          else console.error("[studio:faq-mining] merge (race) failed:", mErr.message);
+        }
+      } else console.error("[studio:faq-mining] insert failed:", iErr.message);
     }
   }
 

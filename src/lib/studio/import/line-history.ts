@@ -93,7 +93,8 @@ type Verdict = "ok" | "flag" | "drop";
 function judge(rules: PrivacyRules | null, ...fields: string[]): Verdict {
   const findings = scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules });
   if (!findings.length) return "ok";
-  if (findings.some((f) => f.severity === "high" || f.kind === "name" || f.kind === "denylist" || f.kind === "line_id")) return "drop";
+  if (findings.some((f) => f.severity === "high" || f.kind === "denylist" || f.kind === "line_id")) return "drop";
+  // Possible person names are flagged for review, not dropped — the heuristic has false positives on ordinary Thai.
   return "flag";
 }
 const REVIEW_TAG = "ต้องตรวจ privacy";
@@ -133,6 +134,11 @@ export async function importLineHistoryFile(fileName: string, content: string, o
   }
 
   const rules = await cachedPrivacyRules();
+  if (rules === null && !opts.dryRun) {
+    // Never import without the owner's denylist — a settings outage must not silently weaken redaction.
+    result.errors.push("aborted: studio settings (privacy denylist) unavailable");
+    return result;
+  }
   const { redact, rules: mergedRules } = makeRedactor(rules, parsed.customerNames);
   const windows = buildTranscriptWindows(parsed.messages, redact, opts.maxWindowChars ?? 12_000).filter((w) => w.userCount > 0);
   result.windows = windows.length;
@@ -167,7 +173,12 @@ export async function importLineHistoryFile(fileName: string, content: string, o
       result.errors.push(`window ${w.index + 1}: ${res.error}`);
       continue;
     }
+    const before = result.errors.length;
     await persistWindow(svc, res.data, ref, w, opts.userId ?? null, result, mergedRules);
+    if (result.errors.length > before && res.generationId) {
+      // A persist error must not make this window look "done" on the next run.
+      await svc.from("studio_ai_generations").update({ status: "error", error: "persist failed — window will be retried" }).eq("id", res.generationId);
+    }
   }
   return result;
 }
@@ -270,6 +281,7 @@ async function persistWindow(svc: Svc, out: Output, ref: string, w: TranscriptWi
     const { data: existing, error: fErr } = await svc
       .from("studio_customer_questions")
       .select("id, frequency, tags, answer_hint")
+      .eq("is_demo", false)
       .or(`normalized_key.eq.${key},question.eq.${JSON.stringify(question)}`)
       .limit(1)
       .maybeSingle();

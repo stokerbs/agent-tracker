@@ -49,6 +49,13 @@ describe("redactForInbox", () => {
     expect(out).not.toContain("สมชาย");
     expect(out).toContain("[เบอร์โทร]");
   });
+  it("keeps ordinary Thai that starts with the pronoun คุณ or contains ชื่อเสียง", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("คุณรับงานต่างจังหวัดไหม")).toBe("คุณรับงานต่างจังหวัดไหม");
+    expect(redactForInbox("คุณควรเตรียมรูปถ่ายและตารางชีวิตของเป้าหมาย")).toContain("เตรียมรูปถ่าย");
+    expect(redactForInbox("บริษัทนี้มีชื่อเสียงดี")).toContain("ชื่อเสียง");
+    expect(redactForInbox("แฟนชื่อสมชาย ทำงานที่กรุงเทพ")).not.toContain("สมชาย");
+  });
   it("applies the owner denylist", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("เคสของ Pimchanok", { denylist: ["pimchanok"], custom_patterns: [], strict_mode: false })).not.toContain("Pimchanok");

@@ -75,6 +75,8 @@ export function LineInboxCard({ stats, aiAvailable }: { stats: InboxStats | null
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pickaxe className="h-4 w-4" />}
               ขุดคำถามตอนนี้
             </Button>
+            {stats && stats.unprocessed === 0 && <p className="mt-1.5 text-[11px] text-muted-foreground">ยังไม่มีข้อความรอขุด — ปุ่มจะเปิดเมื่อมีข้อความใหม่จากลูกค้า</p>}
+            {!aiAvailable && <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">AI ยังใช้งานไม่ได้ — ตั้งค่า ANTHROPIC_API_KEY ก่อน</p>}
           </div>
         </div>
       </CardContent>

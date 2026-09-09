@@ -7,6 +7,8 @@ const h = vi.hoisted(() => ({
   inserts: [] as Row[],
   updates: [] as Row[],
   deleted: [] as Row[],
+  insertError: null as null | { code: string; message: string },
+  raceWinner: null as Row | null,
   ai: null as null | { ok: true; data: { questions: Row[] }; generationId: string; model: string } | { ok: false; error: string; code: string; generationId: null },
 }));
 
@@ -20,15 +22,18 @@ vi.mock("@/lib/supabase/server", () => ({
       for (const m of ["select", "is", "order", "limit", "or", "in", "lt", "gte", "not", "eq"]) b[m] = () => b;
       b.maybeSingle = () => ((st.single = true), b);
       b.insert = (row: Row) => ((st.op = "insert"), h.inserts.push({ table, ...row }), b);
+      b.eq = (col: string, v: unknown) => ((st as { eqKey?: unknown }).eqKey = col === "normalized_key" ? v : (st as { eqKey?: unknown }).eqKey, b);
       b.update = (row: Row) => ((st.op = "update"), h.updates.push({ table, ...row }), b);
       b.delete = () => ((st.op = "delete"), b);
       b.then = (resolve: (v: unknown) => unknown) => {
         let data: unknown = null;
+        let error: unknown = null;
         if (st.op === "select") {
           if (table === "studio_line_inbox") data = h.inbox;
-          if (table === "studio_customer_questions") data = st.single ? h.existing : [];
+          if (table === "studio_customer_questions") data = st.single ? ((st as { eqKey?: unknown }).eqKey ? h.raceWinner : h.existing) : [];
         } else if (st.op === "delete") data = h.deleted;
-        return Promise.resolve(resolve({ data, error: null, count: 0 }));
+        else if (st.op === "insert" && table === "studio_customer_questions" && h.insertError) error = h.insertError;
+        return Promise.resolve(resolve({ data, error, count: 0 }));
       };
       return b;
     },
@@ -43,6 +48,8 @@ beforeEach(() => {
   h.inserts = [];
   h.updates = [];
   h.deleted = [];
+  h.insertError = null;
+  h.raceWinner = null;
   h.ai = { ok: true, data: { questions: [] }, generationId: "g1", model: "m" };
 });
 
@@ -104,6 +111,26 @@ describe("mineLineInbox", () => {
     const r = await mineLineInbox({ userId: null });
     expect(r.ok).toBe(true);
     expect(r.messages).toBeLessThan(5);
+  });
+  it("merges instead of losing a question when the unique key insert races (23505)", async () => {
+    h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));
+    h.ai = { ok: true, generationId: "g5", model: "m", data: { questions: [{ question: "ราคาเท่าไหร่", answer_hint: null, frequency: 2, tags: ["ราคา"], content_idea: "" }] } };
+    h.insertError = { code: "23505", message: "duplicate key" };
+    h.raceWinner = { id: "q-win", frequency: 3, tags: [] };
+    const { mineLineInbox } = await import("./faq-mining");
+    const r = await mineLineInbox({ userId: null });
+    expect(r.inserted).toBe(0);
+    expect(r.merged).toBe(1);
+    expect(h.updates.find((u) => u.table === "studio_customer_questions")).toMatchObject({ frequency: 5 });
+  });
+  it("fills a huge single-sender block message by message and marks only what fit", async () => {
+    const { mineLineInbox, MAX_PROMPT_CHARS } = await import("./faq-mining");
+    const big = "ก".repeat(Math.floor(MAX_PROMPT_CHARS / 3));
+    h.inbox = Array.from({ length: 6 }, (_, i) => ({ ...msg(i, "same"), text_redacted: big }));
+    const r = await mineLineInbox({ userId: null });
+    expect(r.ok).toBe(true);
+    expect(r.messages).toBeGreaterThan(0);
+    expect(r.messages).toBeLessThan(6);
   });
   it("returns the AI error without marking messages processed", async () => {
     h.inbox = Array.from({ length: 6 }, (_, i) => msg(i));

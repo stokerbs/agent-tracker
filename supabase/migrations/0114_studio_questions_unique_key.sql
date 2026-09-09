@@ -12,16 +12,17 @@ WITH ranked AS (
   WHERE normalized_key IS NOT NULL
 ),
 dups AS (SELECT * FROM ranked WHERE id <> keep_id),
-merged AS (
-  SELECT keep_id, sum(frequency) AS extra_freq,
-         array_agg(DISTINCT t) FILTER (WHERE t IS NOT NULL) AS extra_tags
-  FROM dups LEFT JOIN LATERAL unnest(dups.tags) AS t ON true
-  GROUP BY keep_id
+freq AS (SELECT keep_id, sum(frequency) AS extra_freq FROM dups GROUP BY keep_id),
+tagset AS (
+  SELECT d.keep_id, array_agg(DISTINCT t) AS extra_tags
+  FROM dups d CROSS JOIN LATERAL unnest(d.tags) AS t
+  GROUP BY d.keep_id
 )
 UPDATE public.studio_customer_questions q
-SET frequency = q.frequency + m.extra_freq,
-    tags = (SELECT array_agg(DISTINCT x) FROM unnest(q.tags || coalesce(m.extra_tags, '{}')) AS x)
-FROM merged m WHERE q.id = m.keep_id;
+SET frequency = q.frequency + f.extra_freq,
+    tags = (SELECT array_agg(DISTINCT x) FROM unnest(q.tags || coalesce(ts.extra_tags, '{}')) AS x)
+FROM freq f LEFT JOIN tagset ts ON ts.keep_id = f.keep_id
+WHERE q.id = f.keep_id;
 
 DELETE FROM public.studio_customer_questions
 WHERE id IN (

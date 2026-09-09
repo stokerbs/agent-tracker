@@ -70,12 +70,12 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-function toIso(date: string, time: string, tz: string): string {
+function toIso(date: string, time: string, tz: string): string | null {
   const d = date.replace(/\//g, "-");
   const t = /^\d{2}:\d{2}$/.test(time) ? `${time}:00` : time;
   const offset = /^[+-]\d{2}:\d{2}$/.test(tz) ? tz : "+07:00";
   const parsed = new Date(`${d}T${t}${offset}`);
-  return Number.isNaN(parsed.getTime()) ? new Date(0).toISOString() : parsed.toISOString();
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 export function parseLineOaCsv(text: string): LineChatExport {
@@ -104,8 +104,10 @@ export function parseLineOaCsv(text: string): LineChatExport {
       if (!body) continue;
       const side: LineChatMessage["side"] = /^user$/i.test(type) ? "user" : "account";
       const isAutoReply = side === "account" && AUTO_REPLY_SENDERS.has(sender.trim());
+      const at = toIso(date, time, timezone);
+      if (!at) continue; // unparsable timestamp → not a message row
       if (side === "user" && sender.trim()) customers.add(sender.trim());
-      messages.push({ side, sender: sender.trim(), at: toIso(date, time, timezone), text: body, isAutoReply });
+      messages.push({ side, sender: sender.trim(), at, text: body, isAutoReply });
     }
   }
   return { accountName, timezone, downloadedAt, messages, customerNames: Array.from(customers) };

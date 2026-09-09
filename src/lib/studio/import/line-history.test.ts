@@ -145,14 +145,15 @@ describe("importLineHistoryFile", () => {
     expect(String(rows[0].content)).toContain("มัดจำ 50%");
     expect(r.dropped).toBe(1);
   });
-  it("flags (not drops) medium findings and drops names in model output", async () => {
+  it("flags medium findings for review instead of dropping them (names are heuristic)", async () => {
     h.ai = {
       ok: true, generationId: "g3", model: "m",
       data: {
         questions: [],
         knowledge: [
           { title: "นัดคุยวันที่ 12/03/2568", content: "การนัดคุยรายละเอียดควรทำก่อนเริ่มงานเสมอเพื่อตั้งความคาดหวังเรื่องเวลาและงบประมาณ", category: "owner_experience", tags: [], evidence: "stated_by_investigator" },
-          { title: "คุณสมชายเป็นตัวอย่าง", content: "ลูกค้าคุณสมชายเคยถามว่าต้องเตรียมอะไรบ้าง คำตอบคือรูปถ่ายและตารางชีวิตของเป้าหมาย", category: "investigator_knowledge", tags: [], evidence: "stated_by_investigator" },
+          { title: "คุณควรเตรียมอะไรก่อนจ้างนักสืบ", content: "คุณควรเตรียมรูปถ่ายล่าสุดและตารางชีวิตของเป้าหมาย เพื่อให้ทีมวางแผนเฝ้าติดตามได้ตรงจุด", category: "investigator_knowledge", tags: [], evidence: "stated_by_investigator" },
+          { title: "ลูกค้าเล่าว่าแฟนชื่อสมชาย", content: "ลูกค้ารายหนึ่งเล่าว่าแฟนชื่อสมชายและมักกลับดึก ทีมจึงเฝ้าช่วงค่ำ", category: "investigator_knowledge", tags: [], evidence: "stated_by_investigator" },
         ],
         case_lessons: [], service_facts: [],
       },
@@ -160,9 +161,12 @@ describe("importLineHistoryFile", () => {
     const { importLineHistoryFile } = await import("./line-history");
     const r = await importLineHistoryFile("a.csv", CSV, { minUserMessages: 1 });
     const rows = h.inserts.filter((i) => i.table === "studio_knowledge_sources");
-    expect(rows).toHaveLength(1);
-    expect(rows[0].tags).toContain("ต้องตรวจ privacy");
-    expect(r.dropped).toBe(1);
+    expect(rows).toHaveLength(3);
+    const byTitle = Object.fromEntries(rows.map((x) => [String(x.title), x.tags as string[]]));
+    expect(byTitle["นัดคุยวันที่ 12/03/2568"]).toContain("ต้องตรวจ privacy"); // date → flag
+    expect(byTitle["คุณควรเตรียมอะไรก่อนจ้างนักสืบ"]).not.toContain("ต้องตรวจ privacy"); // pronoun, not a name
+    expect(byTitle["ลูกค้าเล่าว่าแฟนชื่อสมชาย"]).toContain("ต้องตรวจ privacy"); // cue-word name → flag for review
+    expect(r.dropped).toBe(0);
   });
   it("records AI failures per window and continues", async () => {
     h.ai = { ok: false, error: "AI ล้มเหลว", code: "failed", generationId: null };

@@ -22,7 +22,7 @@ async function main() {
   const concIdx = args.indexOf("--concurrency");
   const concurrency = Math.max(1, Math.min(8, concIdx >= 0 ? Number(args[concIdx + 1]) || 1 : 3));
   const minIdx = args.indexOf("--min-user-messages");
-  const minUserMessages = minIdx >= 0 ? Number(args[minIdx + 1]) || 2 : 2;
+  const minUserMessages = minIdx >= 0 && Number.isFinite(Number(args[minIdx + 1])) ? Number(args[minIdx + 1]) : 2;
   const VALUE_FLAGS = new Set(["--model", "--user", "--concurrency", "--min-user-messages"]);
   const paths = args.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(args[i - 1] ?? ""));
   if (!paths.length) {
@@ -68,8 +68,13 @@ async function main() {
     while (next < files.length) {
       const i = next++;
       const f = files[i];
-      const content = readFileSync(f, "utf8");
-      const r = await importLineHistoryFile(basename(f), content, { dryRun, model, userId, minUserMessages, onProgress: quiet ? undefined : (m) => console.log(m) });
+      let r: FileResult;
+      try {
+        const content = readFileSync(f, "utf8");
+        r = await importLineHistoryFile(basename(f), content, { dryRun, model, userId, minUserMessages, onProgress: quiet ? undefined : (m) => console.log(m) });
+      } catch (e) {
+        r = { file: basename(f), fileHash: "", messages: 0, windows: 0, windowsSkipped: 0, knowledgeInserted: 0, questionsInserted: 0, questionsMerged: 0, caseLessonsInserted: 0, serviceFactsInserted: 0, dropped: 0, errors: [`threw: ${e instanceof Error ? e.message : String(e)}`], inputTokens: 0, outputTokens: 0 };
+      }
       results[i] = r;
       if (r.errors.length === 1 && r.errors[0].startsWith("skipped:")) {
         skippedTiny += 1;
@@ -83,7 +88,8 @@ async function main() {
   };
   await Promise.all(Array.from({ length: dryRun ? 1 : concurrency }, worker));
   console.log(`\nskipped ${skippedTiny} chat(s) with < ${minUserMessages} customer messages`);
-  const sum = (k: keyof FileResult) => results.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : Number(r[k]) || 0), 0);
+  const realErrors = (r: FileResult) => r.errors.filter((e) => !e.startsWith("skipped:"));
+  const sum = (k: keyof FileResult) => results.reduce((n, r) => n + (k === "errors" ? realErrors(r).length : Number(r[k]) || 0), 0);
   console.log(
     `\nDONE in ${((Date.now() - started) / 1000).toFixed(0)}s · files=${results.length} windows=${sum("windows")} (skipped ${sum("windowsSkipped")}) knowledge=+${sum("knowledgeInserted")} caseLessons=+${sum("caseLessonsInserted")} facts=+${sum("serviceFactsInserted")} questions=+${sum("questionsInserted")}/~${sum("questionsMerged")} dropped=${sum("dropped")} errors=${sum("errors")}`,
   );

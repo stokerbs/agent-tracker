@@ -41,6 +41,8 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   let out = trimmed;
   for (const ex of excerpts) {
     const kind = findings.find((f) => f.excerpt === ex)?.kind ?? "other";
+    // A "name" longer than a real Thai name is a clause the heuristic grabbed — keep the text.
+    if (kind === "name" && ex.length > 20) continue;
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
     // Case-insensitive: denylist excerpts are the configured term, not the text's casing.
     out = out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), token);

@@ -27,6 +27,8 @@ export interface RunOptions<T> {
    * a marker + token counts only; the caller persists what survived filtering.
    */
   storeOutput?: boolean;
+  /** Per-call HTTP timeout (default 120 s); long transcript windows need more. */
+  timeoutMs?: number;
 }
 
 export type RunErrorCode = "not_configured" | "refused" | "failed";
@@ -53,6 +55,7 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
       maxTokens: opts.maxTokens,
       effort: opts.effort,
       model: opts.model,
+      timeoutMs: opts.timeoutMs,
     });
     const generationId = await record({
       purpose: opts.purpose,

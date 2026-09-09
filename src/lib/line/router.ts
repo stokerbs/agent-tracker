@@ -226,13 +226,14 @@ export async function handleLineMessage(
   // Every other command is gated behind "is this LINE user linked".
   if (!isLinked) {
     console.log(`[line:router] blocked unlinked user command=${command.type} userId=${redact(lineUserId)}`);
+    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
     // Unlinked senders are (mostly) prospective customers writing to the OA.
-    // Capture a PII-redacted copy for Creative Studio FAQ mining — never
-    // throws, never blocks the reply. See src/lib/studio/line-inbox.ts.
+    // Capture a PII-redacted copy for Creative Studio FAQ mining AFTER the
+    // reply so it never delays it; the call itself never throws. Awaited (not
+    // after()) because after() is unreliable on this deployment — see memory.
     if (command.type === "help") {
       await captureCustomerMessage({ lineUserId, text, isLinkedAgent: false });
     }
-    await replyLineMessage(replyToken, msg.notLinkedHelp(lineUserId));
     return;
   }
 
