@@ -50,6 +50,7 @@ const PAGE_KEYS: Record<string, string> = {
   "/users": "users",
   "/audit": "audit",
   "/settings": "settings",
+  "/studio": "studio",
 };
 
 function Breadcrumb() {
@@ -75,6 +76,7 @@ function Breadcrumb() {
     users: tNav("items.users"),
     audit: tNav("items.audit"),
     settings: tNav("items.settings"),
+    studio: tNav("items.studio"),
   };
 
   const label = (navKey ? navLabels[navKey] : null) ?? parts[0] ?? "";

@@ -24,6 +24,7 @@ with Row Level Security, RBAC and audit logging.
 | **Emergency SOS** | One-tap distress alert capturing GPS, auto-notifying all supervisors. Acknowledge / resolve workflow. |
 | **Expense Management** | Fuel / Toll / Parking / Food / Hotel / Misc with receipts and monthly category summaries. |
 | **Client Portal** | Secure, separate area where clients read & download only *approved* reports. |
+| **AI Creative Studio** | Admin-only content operating system at `/studio`: Creative Director (brief → campaign), Idea Bank, Content Editor with AI rewrite/repurpose/creative plan, Privacy Check gate, source traceability, calendar, knowledge base + anonymised case insights, manual analytics. See `docs/CREATIVE_STUDIO.md`. |
 | **Admin** | User & role management, clients, immutable audit log, integration health. |
 
 ## 🏛 Roles & Permissions (RBAC)
