@@ -1,4 +1,4 @@
--- Migration 0110 — LINE bot pending-attachment state (Round 3: photo/location
+-- Migration 0112 (renumbered from 0110 — collided with 0110_studio_generation_fk) — LINE bot pending-attachment state (Round 3: photo/location
 -- follow-up on a just-added timeline entry)
 --
 -- Round 2 (src/lib/line/commands/add-timeline.ts, already shipped) lets a
