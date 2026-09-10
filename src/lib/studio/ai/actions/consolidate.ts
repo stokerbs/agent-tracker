@@ -29,8 +29,10 @@ export async function consolidateKnowledgeBatch(input: {
     storeOutput: false,
     userId: input.userId,
     effort: "medium",
-    maxTokens: 8000,
-    timeoutMs: 300_000,
+    // Thai output tokenises ~1 token/char; a 45-row batch with 8–12 merged groups
+    // exceeded 8000 tokens in production (truncated JSON) — give ample headroom.
+    maxTokens: 20000,
+    timeoutMs: 600_000,
     model: input.model,
   });
 }
@@ -51,8 +53,8 @@ export async function consolidateQuestionsBatch(input: {
     storeOutput: false,
     userId: input.userId,
     effort: "medium",
-    maxTokens: 6000,
-    timeoutMs: 300_000,
+    maxTokens: 12000,
+    timeoutMs: 600_000,
     model: input.model,
   });
 }
