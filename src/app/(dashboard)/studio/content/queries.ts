@@ -16,6 +16,7 @@ import type {
   PrivacyFinding,
   PrivacyStatus,
   CreativeAsset,
+  SocialPost,
 } from "@/lib/studio/types";
 
 /**
@@ -69,6 +70,8 @@ export interface MasterWithRelations {
   /** Generated media (newest first) + 10-minute signed URLs keyed by asset id. */
   assets: CreativeAsset[];
   assetUrls: Record<string, string | null>;
+  /** Posts sent through the publishing provider (newest first). */
+  socialPosts: SocialPost[];
 }
 
 function asCreativePlan(v: unknown): CreativePlan | null {
@@ -177,15 +180,16 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
   }
   if (!masterRow) return null;
 
-  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes] = await Promise.all([
+  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes] = await Promise.all([
     supabase.from("studio_content_variants").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_sources").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_claims").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_privacy_checks").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(20),
     supabase.from("studio_content_reviews").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(50),
     supabase.from("studio_creative_assets").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(100),
+    supabase.from("studio_social_posts").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(50),
   ]);
-  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes]) {
+  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes]) {
     if (r.error) console.error("[studio:content] relation load failed:", r.error.message);
   }
 
@@ -225,5 +229,6 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
     approvedByName: masterRow.approved_by ? names.get(masterRow.approved_by) ?? null : null,
     assets,
     assetUrls,
+    socialPosts: socialRes.data ?? [],
   };
 }

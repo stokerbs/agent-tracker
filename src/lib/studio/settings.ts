@@ -8,6 +8,7 @@ import type {
   MediaPrefs,
   PillarConfig,
   PrivacyRules,
+  SocialConnections,
   StudioSettingsRow,
 } from "@/lib/studio/types";
 
@@ -30,6 +31,10 @@ export const DEFAULT_PILLARS: PillarConfig[] = [
 
 export const DEFAULT_PRIVACY_RULES: PrivacyRules = { denylist: [], custom_patterns: [], strict_mode: false };
 export const DEFAULT_APPROVAL_RULES: ApprovalRules = { require_privacy_safe: true, allow_override: true };
+export const DEFAULT_SOCIAL_CONNECTIONS: SocialConnections = {
+  ayrshare: { checked_at: null, active: [], display_names: {} },
+  defaults: { youtube_visibility: "public", tiktok_privacy: "PUBLIC_TO_EVERYONE" },
+};
 export const DEFAULT_MEDIA_PREFS: MediaPrefs = {
   image_style:
     "Cinematic, moody documentary photography for a Thai private-investigation brand. Dark navy and amber palette, shallow depth of field, urban Bangkok night settings, realistic textures. No text, no watermark.",
@@ -57,6 +62,14 @@ export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
   return loadSettings(true);
 }
 
+function normaliseSocial(v: unknown): SocialConnections {
+  const raw = (v && typeof v === "object" ? v : {}) as Partial<{ ayrshare: Partial<SocialConnections["ayrshare"]>; defaults: Partial<SocialConnections["defaults"]> }>;
+  return {
+    ayrshare: { ...DEFAULT_SOCIAL_CONNECTIONS.ayrshare, ...(raw.ayrshare ?? {}), active: Array.isArray(raw.ayrshare?.active) ? raw.ayrshare!.active! : [] },
+    defaults: { ...DEFAULT_SOCIAL_CONNECTIONS.defaults, ...(raw.defaults ?? {}) },
+  };
+}
+
 async function loadSettings(strict: boolean): Promise<StudioSettingsRow> {
   const svc = createServiceClient();
   const { data, error } = await svc.from("studio_settings").select("*").eq("id", STUDIO_SETTINGS_ID).maybeSingle();
@@ -72,7 +85,7 @@ async function loadSettings(strict: boolean): Promise<StudioSettingsRow> {
     ai_provider: row?.ai_provider ?? "anthropic",
     ai_model: row?.ai_model ?? null,
     knowledge_prefs: row?.knowledge_prefs ?? {},
-    social_connections: row?.social_connections ?? {},
+    social_connections: normaliseSocial(row?.social_connections),
     updated_by: row?.updated_by ?? null,
     created_at: row?.created_at ?? new Date(0).toISOString(),
     updated_at: row?.updated_at ?? new Date(0).toISOString(),

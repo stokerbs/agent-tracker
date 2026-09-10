@@ -124,6 +124,18 @@ export interface ApprovalRules {
   allow_override: boolean;
 }
 
+// ─── Publishing (phase 2: aggregator auto-posting) ───────────────────────────
+export type SocialPlatform = "facebook" | "instagram" | "tiktok" | "youtube" | "line_oa";
+export const SOCIAL_PLATFORMS: SocialPlatform[] = ["facebook", "instagram", "tiktok", "youtube"];
+export type SocialPostStatus = "queued" | "scheduled" | "published" | "failed" | "deleted";
+export type YoutubeVisibility = "public" | "private" | "unlisted";
+export type TiktokPrivacy = "PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY";
+
+export interface SocialConnections {
+  ayrshare: { checked_at: string | null; active: SocialPlatform[]; display_names: Partial<Record<SocialPlatform, string>> };
+  defaults: { youtube_visibility: YoutubeVisibility; tiktok_privacy: TiktokPrivacy };
+}
+
 // ─── Media generation (phase 1: images + voice-over) ─────────────────────────
 export type ImageAspect = "9:16" | "1:1" | "16:9" | "4:5";
 export const IMAGE_ASPECTS: ImageAspect[] = ["9:16", "1:1", "16:9", "4:5"];
@@ -200,14 +212,16 @@ export interface PrivacyFinding {
 // ─── Row aliases ─────────────────────────────────────────────────────────────
 export type StudioSettingsRow = Omit<
   Row<"studio_settings">,
-  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules" | "media_prefs"
+  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules" | "media_prefs" | "social_connections"
 > & {
   brand_voice: BrandVoice;
   pillars: PillarConfig[];
   privacy_rules: PrivacyRules;
   approval_rules: ApprovalRules;
   media_prefs: MediaPrefs;
+  social_connections: SocialConnections;
 };
+export type SocialPost = Row<"studio_social_posts">;
 
 export type KnowledgeSource = Row<"studio_knowledge_sources">;
 export type KnowledgeSourceInsert = Insert<"studio_knowledge_sources">;

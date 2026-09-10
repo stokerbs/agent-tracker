@@ -6,6 +6,7 @@ import {
   Database,
   ImageIcon,
   Layers,
+  Link2,
   Link2Off,
   Mic,
   Mic2,
@@ -19,10 +20,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { isAiAvailable, resolveAiConfig } from "@/lib/studio/ai/provider";
 import { getMediaAvailability } from "@/lib/studio/media/provider";
+import { PLATFORM_LABEL } from "@/lib/studio/publish/captions";
+import { getPublishAvailability } from "@/lib/studio/publish/provider";
+import { SOCIAL_PLATFORMS } from "@/lib/studio/types";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AiModelTag, AiUnavailableBanner } from "@/components/studio/ai-status";
@@ -36,7 +39,9 @@ import { PrivacyRulesForm } from "./privacy-rules-form";
 import { ApprovalForm } from "./approval-form";
 import { DemoDataForm, type DemoCounts } from "./demo-data-form";
 import { MediaForm } from "./media-form";
+import { SocialForm } from "./social-form";
 import { normalizeKnowledgePrefs } from "./knowledge-prefs";
+import { formatDateTimeBkk } from "../content/format";
 
 export const metadata: Metadata = { title: "Studio Settings" };
 export const dynamic = "force-dynamic";
@@ -56,12 +61,6 @@ interface GenerationRow {
   duration_ms: number | null;
   error: string | null;
 }
-
-const SOCIALS: { key: string; label: string }[] = [
-  { key: "tiktok", label: "TikTok" },
-  { key: "instagram", label: "Instagram" },
-  { key: "facebook", label: "Facebook" },
-];
 
 export default async function StudioSettingsPage() {
   await requireRole(["admin"]);
@@ -111,6 +110,9 @@ export default async function StudioSettingsPage() {
   const aiReady = isAiAvailable(aiConfig.provider);
   const knowledgePrefs = normalizeKnowledgePrefs(settings.knowledge_prefs);
   const media = getMediaAvailability(settings.media_prefs);
+  // Only the boolean crosses to the client; the Ayrshare key itself never leaves the server.
+  const publish = getPublishAvailability();
+  const social = settings.social_connections;
 
   return (
     <div className="space-y-6">
@@ -206,6 +208,55 @@ export default async function StudioSettingsPage() {
         <MediaForm initial={settings.media_prefs} placeholders={{ imageModel: media.image.model, ttsModel: media.tts.model, voiceId: media.tts.voiceId }} />
       </Section>
 
+      {/* 4c. Social publishing (Ayrshare) */}
+      <Section
+        id="social"
+        icon={<Share2 className="h-4 w-4" />}
+        title="การเชื่อมต่อโซเชียล (โพสต์อัตโนมัติ)"
+        description="โพสต์ไป Facebook · Instagram · TikTok · YouTube ผ่าน Ayrshare จาก Content Editor — API key อยู่ใน ENV เท่านั้น"
+        badge={<Pill className="border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400">Phase 2</Pill>}
+      >
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <StatusTile
+            label="สถานะ Ayrshare key"
+            value={
+              <Badge variant={publish.available ? "default" : "destructive"} className="gap-1">
+                {publish.available ? <CheckCircle2 className="h-3 w-3" /> : null}
+                {publish.available ? "Configured" : "Missing key"}
+              </Badge>
+            }
+            hint="ตั้ง AYRSHARE_API_KEY ใน Vercel/ENV เท่านั้น ไม่เก็บในฐานข้อมูล"
+          />
+          <StatusTile
+            label="บัญชีที่เชื่อมต่อ"
+            value={
+              <ul className="flex flex-wrap gap-1.5" aria-label="บัญชีที่เชื่อมต่อ">
+                {SOCIAL_PLATFORMS.map((p) => {
+                  const on = social.ayrshare.active.includes(p);
+                  const name = social.ayrshare.display_names[p];
+                  return (
+                    <li key={p}>
+                      <Pill
+                        className={on ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border bg-muted text-muted-foreground"}
+                        dot={on ? "bg-emerald-500" : "bg-muted-foreground/50"}
+                        title={on ? `เชื่อมต่อแล้ว${name ? ` — ${name}` : ""}` : "ยังไม่เชื่อมต่อ"}
+                      >
+                        {on ? <Link2 className="h-3 w-3" /> : <Link2Off className="h-3 w-3" />}
+                        {PLATFORM_LABEL[p]}
+                        {on && name ? <span className="max-w-[120px] truncate font-normal opacity-80">· {name}</span> : null}
+                      </Pill>
+                    </li>
+                  );
+                })}
+              </ul>
+            }
+            hint={social.ayrshare.active.length === 0 ? "ยังไม่มีบัญชีที่เชื่อม — ลิงก์ใน Ayrshare แล้วกดรีเฟรช" : `${social.ayrshare.active.length.toLocaleString("en-GB")} จาก ${SOCIAL_PLATFORMS.length.toLocaleString("en-GB")} แพลตฟอร์ม`}
+          />
+          <StatusTile label="ตรวจล่าสุด" value={social.ayrshare.checked_at ? formatDateTimeBkk(social.ayrshare.checked_at) : "ยังไม่เคย"} hint="กด “รีเฟรชการเชื่อมต่อ” เพื่อถาม Ayrshare ใหม่" />
+        </div>
+        <SocialForm initial={social.defaults} configured={publish.available} />
+      </Section>
+
       {/* 5. Knowledge prefs */}
       <Section
         icon={<BookOpen className="h-4 w-4" />}
@@ -226,29 +277,7 @@ export default async function StudioSettingsPage() {
         <ApprovalForm initial={settings.approval_rules} />
       </Section>
 
-      {/* 8. Social connections */}
-      <Section icon={<Link2Off className="h-4 w-4" />} title="การเชื่อมต่อโซเชียล" description="V1 ไม่มีการเผยแพร่อัตโนมัติ — ปุ่ม 'เผยแพร่' ในคอนเทนต์คือการทำเครื่องหมาย + ใส่ลิงก์เอง">
-        <div className="space-y-2">
-          {SOCIALS.map((s) => (
-            <div key={s.key} className="flex items-center justify-between rounded-lg border p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Link2Off className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{s.label}</p>
-                  <p className="text-xs text-muted-foreground">ยังไม่เชื่อมต่อ — จะมาใน V2</p>
-                </div>
-              </div>
-              <Button size="sm" variant="outline" disabled>
-                เชื่อมต่อ
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* 9. Demo data */}
+      {/* 8. Demo data */}
       <Section icon={<Database className="h-4 w-4" />} title="ข้อมูลตัวอย่าง (Demo data)" description="สำหรับลองใช้สตูดิโอก่อนมีข้อมูลจริง">
         <div className="mb-4 rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">สิ่งที่จะถูกเพิ่ม</p>
@@ -263,7 +292,7 @@ export default async function StudioSettingsPage() {
         <DemoDataForm counts={demoCounts} />
       </Section>
 
-      {/* 10. AI generation log */}
+      {/* 9. AI generation log */}
       <Section
         icon={<ScrollText className="h-4 w-4" />}
         title="บันทึกการเรียก AI"
