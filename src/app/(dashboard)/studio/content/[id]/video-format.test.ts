@@ -1,0 +1,85 @@
+import { describe, expect, it } from "vitest";
+import type { CreativePlan } from "@/lib/studio/types";
+import { MAX_SHOTS } from "@/lib/studio/video/timeline";
+import { buildStoryboard, clampProgress, formatElapsed, isActiveRenderStatus, plannedTotalSec, readyImages, renderBlockedReason, renderStatusMeta, videoAssets } from "./video-format";
+
+type Lite = { id: string; kind: string; status: string; meta: unknown; mime: string | null };
+const img = (id: string, kind: string, meta: unknown = null, status = "ready"): Lite => ({ id, kind, status, meta, mime: "image/png" });
+const plan = (voices: (string | null)[]): CreativePlan => ({
+  shots: voices.map((v, i) => ({ start_sec: i * 5, end_sec: i * 5 + 5, voice: v ?? "", visual: `ฉาก ${i + 1}` })),
+  broll: [],
+  text_overlays: [],
+});
+
+describe("video-format helpers", () => {
+  it("formats elapsed time as m:ss and never negative", () => {
+    expect(formatElapsed(-500)).toBe("0:00");
+    expect(formatElapsed(0)).toBe("0:00");
+    expect(formatElapsed(65_400)).toBe("1:05");
+    expect(formatElapsed(10 * 60_000)).toBe("10:00");
+  });
+
+  it("clamps progress into 0–100", () => {
+    expect(clampProgress(null)).toBe(0);
+    expect(clampProgress(Number.NaN)).toBe(0);
+    expect(clampProgress(-5)).toBe(0);
+    expect(clampProgress(42.6)).toBe(43);
+    expect(clampProgress(250)).toBe(100);
+  });
+
+  it("maps job statuses to Thai pills and treats unknown safely", () => {
+    expect(renderStatusMeta("queued").label).toBe("รอเริ่ม");
+    expect(renderStatusMeta("running").label).toBe("กำลังทำ");
+    expect(renderStatusMeta("done").label).toBe("เสร็จ");
+    expect(renderStatusMeta("failed").label).toBe("ล้มเหลว");
+    expect(renderStatusMeta("weird").label).toBe("ไม่ทราบสถานะ");
+    expect(isActiveRenderStatus("queued")).toBe(true);
+    expect(isActiveRenderStatus("running")).toBe(true);
+    expect(isActiveRenderStatus("done")).toBe(false);
+  });
+
+  it("filters ready images (thumbnail/image only) and video outputs", () => {
+    const assets: Lite[] = [img("a", "thumbnail"), img("b", "image"), img("c", "image", null, "pending"), img("d", "broll"), img("e", "audio"), { id: "v", kind: "video", status: "ready", meta: null, mime: "video/mp4" }];
+    expect(readyImages(assets).map((a) => a.id)).toEqual(["a", "b"]);
+    expect(videoAssets(assets).map((a) => a.id)).toEqual(["v"]);
+  });
+
+  it("builds a storyboard with per-shot image resolution and warning flags", () => {
+    const p = plan(["พูดหนึ่ง", null, "พูดสาม"]);
+    const rows = buildStoryboard(p, [img("cover", "thumbnail"), img("s3", "image", { target: { kind: "scene", index: 2 } })]);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({ index: 0, imageAssetId: "cover", usesFallback: true, silent: false, dropped: false });
+    expect(rows[1]).toMatchObject({ index: 1, imageAssetId: "cover", usesFallback: true, silent: true });
+    expect(rows[2]).toMatchObject({ index: 2, imageAssetId: "s3", usesFallback: false, silent: false });
+  });
+
+  it("returns null images when nothing is ready, and no rows without a plan", () => {
+    const rows = buildStoryboard(plan(["x"]), [img("p", "image", null, "pending")]);
+    expect(rows[0].imageAssetId).toBeNull();
+    expect(rows[0].usesFallback).toBe(false);
+    expect(buildStoryboard(null, [])).toEqual([]);
+    expect(buildStoryboard({ shots: [], broll: [], text_overlays: [] }, [])).toEqual([]);
+  });
+
+  it("flags shots beyond MAX_SHOTS as dropped and caps planned total to the kept shots", () => {
+    const voices = Array.from({ length: MAX_SHOTS + 2 }, () => "พูด");
+    const p = plan(voices);
+    const rows = buildStoryboard(p, [img("cover", "thumbnail")]);
+    expect(rows[MAX_SHOTS - 1].dropped).toBe(false);
+    expect(rows[MAX_SHOTS].dropped).toBe(true);
+    expect(plannedTotalSec(p)).toBe(MAX_SHOTS * 5);
+    expect(plannedTotalSec(null)).toBe(0);
+  });
+
+  it("explains why rendering is blocked in gate order, else null", () => {
+    const ok = { ttsAvailable: true, shotCount: 3, hasVoice: true, hasImage: true, editable: true, jobActive: false };
+    expect(renderBlockedReason(ok)).toBeNull();
+    expect(renderBlockedReason({ ...ok, jobActive: true })).toContain("กำลัง render");
+    expect(renderBlockedReason({ ...ok, editable: false })).toContain("ล็อก");
+    expect(renderBlockedReason({ ...ok, ttsAvailable: false, ttsReason: "ไม่มี ELEVENLABS_API_KEY" })).toBe("ไม่มี ELEVENLABS_API_KEY");
+    expect(renderBlockedReason({ ...ok, ttsAvailable: false })).toContain("TTS");
+    expect(renderBlockedReason({ ...ok, shotCount: 0 })).toContain("creative plan");
+    expect(renderBlockedReason({ ...ok, hasVoice: false })).toContain("voice");
+    expect(renderBlockedReason({ ...ok, hasImage: false })).toContain("สื่อ");
+  });
+});

@@ -103,6 +103,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // ffmpeg-static ships a native binary; keep it out of the webpack bundle and
+  // trace it (plus the Thai subtitle fonts) into the render route's function.
+  serverExternalPackages: ["ffmpeg-static"],
+  outputFileTracingIncludes: {
+    "/api/studio/render/[jobId]": ["./node_modules/ffmpeg-static/ffmpeg", "./src/lib/studio/video/fonts/**"],
+  },
   webpack(config) {
     // Suppress "Critical dependency" warning from the bundled CJS output of
     // @supabase/supabase-js — upstream packaging artefact, no runtime impact.

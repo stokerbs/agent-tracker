@@ -3835,6 +3835,86 @@ export type Database = {
           },
         ]
       }
+      studio_render_jobs: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          master_id: string
+          params: Json
+          progress: number
+          started_at: string | null
+          status: string
+          step: string | null
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          master_id: string
+          params?: Json
+          progress?: number
+          started_at?: string | null
+          status?: string
+          step?: string | null
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          master_id?: string
+          params?: Json
+          progress?: number
+          started_at?: string | null
+          status?: string
+          step?: string | null
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_render_jobs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "studio_creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_render_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_render_jobs_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_render_jobs_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_settings: {
         Row: {
           ai_model: string | null
