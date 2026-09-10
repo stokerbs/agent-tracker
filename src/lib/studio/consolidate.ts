@@ -93,6 +93,10 @@ function judgeCanonical(rules: PrivacyRules, ...fields: string[]): "ok" | "flag"
   return findings.length ? "flag" : "ok";
 }
 const REVIEW_TAG = "ต้องตรวจ privacy";
+/** Model-supplied tags: same bounds as the manual form (≤ 6 tags, ≤ 40 chars each). */
+function cleanTags(tags: string[] | undefined): string[] {
+  return (tags ?? []).map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 6);
+}
 
 export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promise<ConsolidateResult> {
   const svc = createServiceClient();
@@ -149,7 +153,7 @@ export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promi
         }
         const memberTags = Array.from(new Set(members.flatMap((m) => m.tags ?? [])));
         const flagged = verdict === "flag" || memberTags.includes(REVIEW_TAG);
-        const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), sourceTag, CONSOLIDATED_TAG, ...(flagged ? [REVIEW_TAG] : []), ...(g.confidence === "medium" ? ["ต้องยืนยัน"] : [])]));
+        const tags = Array.from(new Set([...cleanTags(g.tags), sourceTag, CONSOLIDATED_TAG, ...(flagged ? [REVIEW_TAG] : []), ...(g.confidence === "medium" ? ["ต้องยืนยัน"] : [])]));
         // Case lessons keep their own category (the normaliser has no "cases" bucket).
         const cat: string = category === "cases" ? "cases" : normalizeKnowledgeCategory(g.category || category);
         const memberCount = members.reduce((n, m) => n + Math.max(1, m.member_count ?? 1), 0);
@@ -178,7 +182,9 @@ export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promi
         const { error: uErr } = await svc
           .from("studio_knowledge_sources")
           .update({ superseded_by: canon.id })
-          .in("id", members.map((m) => m.id));
+          .in("id", members.map((m) => m.id))
+          .eq("approved_for_content", false)
+          .is("superseded_by", null);
         if (uErr) res.errors.push(`${category}#${bi} supersede: ${uErr.message}`);
         res.groups += 1;
         res.merged += members.length;
@@ -239,7 +245,7 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
       const freq = members.reduce((n, m) => n + (m.frequency ?? 1), 0);
       const memberCount = members.reduce((n, m) => n + Math.max(1, m.member_count ?? 1), 0);
       const memberTags = members.flatMap((m) => m.tags ?? []);
-      const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), "line-import", CONSOLIDATED_TAG, ...(verdict === "flag" || memberTags.includes(REVIEW_TAG) ? [REVIEW_TAG] : [])]));
+      const tags = Array.from(new Set([...cleanTags(g.tags), "line-import", CONSOLIDATED_TAG, ...(verdict === "flag" || memberTags.includes(REVIEW_TAG) ? [REVIEW_TAG] : [])]));
       // Canonical key may collide with an existing ACTIVE row (unique index, 0116) → merge into it instead.
       const key = normalizeQuestionKey(question) || null;
       const { data: canon, error: iErr } = await svc

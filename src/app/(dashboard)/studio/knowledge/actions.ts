@@ -114,8 +114,12 @@ export async function updateKnowledge(id: string, input: unknown): Promise<Actio
   if (readErr) return { ok: false, error: handleDbError(readErr, "studio:updateKnowledge:read") };
   if (!existing) return { ok: false, error: "ไม่พบความรู้รายการนี้" };
 
-  const { error } = await supabase.from("studio_knowledge_sources").update(parsed.data).eq("id", idParsed.data);
+  // Same invariant as setKnowledgeApproved: a merged member can never be approved (edit path included).
+  let update = supabase.from("studio_knowledge_sources").update(parsed.data).eq("id", idParsed.data);
+  if (parsed.data.approved_for_content) update = update.is("superseded_by", null);
+  const { data: updated, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:updateKnowledge") };
+  if (!updated?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   if (existing.approved_for_content !== parsed.data.approved_for_content) {
     await logAudit({ actorId: profile.id, action: "STUDIO_KNOWLEDGE_APPROVE", entity: "studio_knowledge_sources", entityId: idParsed.data, metadata: { approved: parsed.data.approved_for_content, via: "edit" } });
@@ -188,8 +192,11 @@ export async function updateQuestion(id: string, input: unknown): Promise<Action
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("studio_customer_questions").update(parsed.data).eq("id", idParsed.data);
+  let update = supabase.from("studio_customer_questions").update(parsed.data).eq("id", idParsed.data);
+  if (parsed.data.approved_for_content) update = update.is("superseded_by", null);
+  const { data: updated, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:updateQuestion") };
+  if (!updated?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   console.info(`[studio:questions] updated ${idParsed.data} by ${profile.id}`);
   revalidatePath(KNOWLEDGE_PATH);

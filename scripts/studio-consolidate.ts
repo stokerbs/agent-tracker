@@ -17,6 +17,10 @@ async function main() {
   };
   const model = val("--model");
   const userId = val("--user") ?? null;
+  if (userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    console.error("--user must be a UUID");
+    process.exit(1);
+  }
   const passes = Math.max(1, Math.min(4, Number(val("--passes") ?? 2) || 2));
   const categories = val("--category")?.split(",").map((s) => s.trim()).filter(Boolean);
   for (const k of ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {

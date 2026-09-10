@@ -142,6 +142,17 @@ describe("setKnowledgeApproved", () => {
   });
 });
 
+describe("updateKnowledge", () => {
+  it("refuses to approve a merged member through the edit path", async () => {
+    h.result = { data: [], error: null }; // read → no row match once .is("superseded_by") is applied
+    const { updateKnowledge } = await load();
+    const res = await updateKnowledge("11111111-1111-4111-8111-111111111111", validKnowledge);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("รวม");
+    expect(h.calls.some((c) => c.op === "is" && c.payload === "superseded_by")).toBe(true);
+  });
+});
+
 describe("customer questions", () => {
   it("createQuestion validates and inserts with defaults", async () => {
     const { createQuestion } = await load();
