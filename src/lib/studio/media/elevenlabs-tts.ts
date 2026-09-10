@@ -3,7 +3,8 @@ import "server-only";
 import { MediaRefusedError, type GeneratedAudio, type TtsProvider } from "./provider";
 
 /**
- * ElevenLabs text-to-speech over REST. `eleven_multilingual_v2` covers Thai.
+ * ElevenLabs text-to-speech over REST. Default model `eleven_v3` — the only one
+ * that renders Thai reliably (multilingual_v2 mis-detects, turbo/flash v2.5 reject th).
  * Docs: https://elevenlabs.io/docs/api-reference/text-to-speech/convert
  */
 
@@ -24,7 +25,7 @@ export class ElevenLabsTtsProvider implements TtsProvider {
     if (!text) throw new Error("ไม่มีข้อความให้พากย์");
     if (text.length > MAX_TTS_CHARS) throw new Error(`ข้อความยาวเกิน ${MAX_TTS_CHARS} ตัวอักษร — ตัดสคริปต์เป็นช่วงสั้นลง`);
     const voiceId = input.voiceId?.trim() || "EXAVITQu4vr4xnSDxMaL";
-    const model = input.model?.trim() || "eleven_multilingual_v2";
+    const model = input.model?.trim() || "eleven_v3";
     const started = Date.now();
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), input.timeoutMs ?? DEFAULT_TIMEOUT_MS);

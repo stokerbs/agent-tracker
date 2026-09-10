@@ -103,7 +103,7 @@ export function MediaForm({ initial, placeholders }: MediaFormProps) {
         <div className="space-y-1.5">
           <Label htmlFor="media-tts-model">โมเดลเสียง</Label>
           <Input id="media-tts-model" value={prefs.tts_model} onChange={(e) => set("tts_model", e.target.value)} placeholder={placeholders.ttsModel} maxLength={80} disabled={pending} className="h-9 font-mono text-xs" autoComplete="off" spellCheck={false} />
-          <p className="text-xs text-muted-foreground">ต้องเป็นโมเดลที่รองรับภาษาไทย เช่น eleven_multilingual_v2</p>
+          <p className="text-xs text-muted-foreground">ต้องเป็นโมเดลที่รองรับภาษาไทย — แนะนำ eleven_v3 (multilingual_v2 มักเดาภาษาผิด, turbo/flash ไม่รับไทย)</p>
         </div>
       </div>
 
