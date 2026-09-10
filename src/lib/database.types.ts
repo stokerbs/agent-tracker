@@ -3442,9 +3442,11 @@ export type Database = {
           id: string
           is_demo: boolean
           last_seen_at: string | null
+          member_count: number
           normalized_key: string | null
           question: string
           source: string
+          superseded_by: string | null
           tags: string[]
           updated_at: string
         }
@@ -3457,9 +3459,11 @@ export type Database = {
           id?: string
           is_demo?: boolean
           last_seen_at?: string | null
+          member_count?: number
           normalized_key?: string | null
           question: string
           source?: string
+          superseded_by?: string | null
           tags?: string[]
           updated_at?: string
         }
@@ -3472,9 +3476,11 @@ export type Database = {
           id?: string
           is_demo?: boolean
           last_seen_at?: string | null
+          member_count?: number
           normalized_key?: string | null
           question?: string
           source?: string
+          superseded_by?: string | null
           tags?: string[]
           updated_at?: string
         }
@@ -3484,6 +3490,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_customer_questions_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "studio_customer_questions"
             referencedColumns: ["id"]
           },
         ]
@@ -3620,10 +3633,12 @@ export type Database = {
           created_by: string | null
           id: string
           is_demo: boolean
+          member_count: number
           origin_ref: string | null
           sensitivity: string
           source_type: string
           summary: string | null
+          superseded_by: string | null
           tags: string[]
           title: string
           updated_at: string
@@ -3636,10 +3651,12 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_demo?: boolean
+          member_count?: number
           origin_ref?: string | null
           sensitivity?: string
           source_type?: string
           summary?: string | null
+          superseded_by?: string | null
           tags?: string[]
           title: string
           updated_at?: string
@@ -3652,10 +3669,12 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_demo?: boolean
+          member_count?: number
           origin_ref?: string | null
           sensitivity?: string
           source_type?: string
           summary?: string | null
+          superseded_by?: string | null
           tags?: string[]
           title?: string
           updated_at?: string
@@ -3666,6 +3685,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_knowledge_sources_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "studio_knowledge_sources"
             referencedColumns: ["id"]
           },
         ]

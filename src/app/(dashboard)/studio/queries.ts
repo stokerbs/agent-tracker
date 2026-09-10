@@ -138,7 +138,7 @@ export async function getStudioDashboardData(): Promise<StudioDashboardData> {
     }),
     safe("knowledge", { approved: [] as { id: string; title: string }[], used: new Set<string>() }, async () => {
       const [approvedRes, usedRes] = await Promise.all([
-        sb.from("studio_knowledge_sources").select("id, title").eq("approved_for_content", true).order("updated_at", { ascending: false }).limit(500),
+        sb.from("studio_knowledge_sources").select("id, title").eq("approved_for_content", true).is("superseded_by", null).order("updated_at", { ascending: false }).limit(500),
         sb.from("studio_content_sources").select("source_id").eq("source_kind", "knowledge").not("source_id", "is", null).limit(2000),
       ]);
       const approvedRows = must("knowledge.approved", approvedRes) ?? [];

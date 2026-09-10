@@ -41,7 +41,7 @@ export async function recommendContentMix(input: { days?: number; userId: string
       .lte("updated_at", until)
       .limit(100),
     svc.from("studio_content_sources").select("source_id").eq("source_kind", "knowledge").limit(1000),
-    svc.from("studio_knowledge_sources").select("id, title").eq("approved_for_content", true).limit(200),
+    svc.from("studio_knowledge_sources").select("id, title").eq("approved_for_content", true).is("superseded_by", null).limit(200),
   ]);
   const counts = Object.fromEntries(PILLARS.map((p) => [p, 0])) as Record<Pillar, number>;
   const titles: string[] = [];

@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "คลังความรู้ ·
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: Promise<{ tab?: string; q?: string; category?: string; tag?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; category?: string; tag?: string; merged?: string }>;
 }
 
 /** PostgREST `or()` filter is comma/paren delimited — strip those from user input. */
@@ -38,6 +38,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
   const q = (sp.q ?? "").trim().slice(0, 100);
   const category = KNOWLEDGE_CATEGORIES.includes(sp.category as KnowledgeCategory) ? (sp.category as KnowledgeCategory) : null;
   const tag = (sp.tag ?? "").trim().slice(0, 40).replace(/[,()"']/g, "") || null;
+  const showMerged = sp.merged === "1"; // include rows that were merged into a consolidated row
 
   const supabase = await createClient();
   const aiAvailable = isAiAvailable();
@@ -48,14 +49,15 @@ export default async function KnowledgePage({ searchParams }: Props) {
   let totalQuestions = 0;
 
   const [{ count: kCount }, { count: qCount }] = await Promise.all([
-    supabase.from("studio_knowledge_sources").select("id", { count: "exact", head: true }),
-    supabase.from("studio_customer_questions").select("id", { count: "exact", head: true }),
+    supabase.from("studio_knowledge_sources").select("id", { count: "exact", head: true }).is("superseded_by", null),
+    supabase.from("studio_customer_questions").select("id", { count: "exact", head: true }).is("superseded_by", null),
   ]);
   totalKnowledge = kCount ?? 0;
   totalQuestions = qCount ?? 0;
 
   if (tab === "knowledge") {
-    let query = supabase.from("studio_knowledge_sources").select("*").order("updated_at", { ascending: false }).limit(200);
+    let query = supabase.from("studio_knowledge_sources").select("*").order("member_count", { ascending: false }).order("updated_at", { ascending: false }).limit(200);
+    if (!showMerged) query = query.is("superseded_by", null);
     if (category) query = query.eq("category", category);
     if (tag) query = query.contains("tags", [tag]);
     if (q) {
@@ -66,7 +68,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
     if (error) throw new Error(handleDbError(error, "studio:knowledge:list"));
     knowledge = (data ?? []) as KnowledgeSource[];
   } else {
-    let query = supabase.from("studio_customer_questions").select("*").order("frequency", { ascending: false }).order("updated_at", { ascending: false }).limit(300);
+    let query = supabase.from("studio_customer_questions").select("*").is("superseded_by", null).order("frequency", { ascending: false }).order("updated_at", { ascending: false }).limit(300);
     if (q) query = query.ilike("question", likeTerm(q));
     const { data, error } = await query;
     if (error) throw new Error(handleDbError(error, "studio:knowledge:questions"));
@@ -87,6 +89,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
     if (c) params.set("category", c);
     if (t) params.set("tag", t);
     if (q) params.set("q", q);
+    if (showMerged) params.set("merged", "1");
     const s = params.toString();
     return `/studio/knowledge${s ? `?${s}` : ""}`;
   };
@@ -163,6 +166,9 @@ export default async function KnowledgePage({ searchParams }: Props) {
               </Link>
             ))}
             {tag && !REVIEW_TAGS.some((t) => t.tag === tag) && <span className="rounded-full border border-amber-500 bg-amber-500/10 px-3 py-1 text-amber-700 dark:text-amber-300">#{tag}</span>}
+            <Link href={`${filterHref(category)}${filterHref(category).includes("?") ? "&" : "?"}merged=${showMerged ? "0" : "1"}`} className="ml-auto text-[11px] text-muted-foreground hover:text-foreground">
+              {showMerged ? "ซ่อนรายการที่ถูกรวมแล้ว" : "แสดงรายการที่ถูกรวมแล้ว"}
+            </Link>
           </div>
           {/* Category chips */}
           <div className="flex flex-wrap gap-1.5">
@@ -228,6 +234,8 @@ function KnowledgeCard({ k }: { k: KnowledgeSource }) {
             {k.title}
           </Link>
           {k.is_demo && <Pill className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">DEMO</Pill>}
+          {(k.member_count ?? 1) > 1 && <Pill className="bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30">รวมจาก {k.member_count} แหล่ง</Pill>}
+          {k.superseded_by && <Pill className="bg-muted text-muted-foreground border-border">ถูกรวมแล้ว</Pill>}
         </div>
         <p className="line-clamp-3 text-xs text-muted-foreground">{k.summary ?? k.content}</p>
         <div className="flex flex-wrap items-center gap-1.5">

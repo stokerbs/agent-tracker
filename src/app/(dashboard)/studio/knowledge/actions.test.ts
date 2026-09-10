@@ -41,7 +41,7 @@ vi.mock("@/lib/supabase/server", () => ({
         h.calls.push({ table, op, payload });
         return b;
       };
-      for (const m of ["select", "eq", "neq", "order", "limit", "ilike", "or"]) b[m] = record(m);
+      for (const m of ["select", "eq", "neq", "is", "order", "limit", "ilike", "or"]) b[m] = record(m);
       b.insert = record("insert");
       b.update = record("update");
       b.delete = record("delete");
@@ -123,12 +123,33 @@ describe("setKnowledgeApproved", () => {
   });
 
   it("updates the flag and writes an audit row", async () => {
-    h.result = { data: null, error: null };
+    h.result = { data: [{ id: "11111111-1111-4111-8111-111111111111" }], error: null };
     const { setKnowledgeApproved } = await load();
     const res = await setKnowledgeApproved("11111111-1111-4111-8111-111111111111", false);
     expect(res).toEqual({ ok: true });
     expect(h.calls.find((c) => c.op === "update")?.payload).toEqual({ approved_for_content: false });
     expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "STUDIO_KNOWLEDGE_APPROVE", metadata: { approved: false } }));
+  });
+
+  it("refuses to approve a row that was merged into a canonical row", async () => {
+    h.result = { data: [], error: null }; // update matched nothing because superseded_by IS NOT NULL
+    const { setKnowledgeApproved } = await load();
+    const res = await setKnowledgeApproved("11111111-1111-4111-8111-111111111111", true);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("รวม");
+    expect(h.calls.find((c) => c.op === "is")?.payload).toBe("superseded_by");
+    expect(h.audit).not.toHaveBeenCalledWith(expect.objectContaining({ action: "STUDIO_KNOWLEDGE_APPROVE", metadata: { approved: true } }));
+  });
+});
+
+describe("updateKnowledge", () => {
+  it("refuses to approve a merged member through the edit path", async () => {
+    h.result = { data: [], error: null }; // read → no row match once .is("superseded_by") is applied
+    const { updateKnowledge } = await load();
+    const res = await updateKnowledge("11111111-1111-4111-8111-111111111111", validKnowledge);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("รวม");
+    expect(h.calls.some((c) => c.op === "is" && c.payload === "superseded_by")).toBe(true);
   });
 });
 

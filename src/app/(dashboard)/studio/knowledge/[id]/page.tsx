@@ -41,7 +41,7 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Prop
   if (!UUID_RE.test(id)) notFound();
 
   const supabase = await createClient();
-  const [{ data: k, error }, { data: usage, error: usageErr }] = await Promise.all([
+  const [{ data: k, error }, { data: usage, error: usageErr }, { data: memberRows }] = await Promise.all([
     supabase.from("studio_knowledge_sources").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("studio_content_sources")
@@ -50,12 +50,17 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Prop
       .eq("source_id", id)
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase.from("studio_knowledge_sources").select("id, title, category, created_at").eq("superseded_by", id).order("created_at").limit(200),
   ]);
   if (error) throw new Error(`โหลดความรู้ไม่สำเร็จ: ${error.message}`);
   if (!k) notFound();
   if (usageErr) console.error("[studio:knowledge] usage lookup failed:", usageErr.message);
 
   const knowledge = k as KnowledgeSource;
+  const members = (memberRows ?? []) as { id: string; title: string; category: string; created_at: string }[];
+  const canonical = knowledge.superseded_by
+    ? (await supabase.from("studio_knowledge_sources").select("id, title").eq("id", knowledge.superseded_by).maybeSingle()).data
+    : null;
   const usageRows = ((usage ?? []) as unknown as UsageRow[]).filter((u) => u.studio_content_masters);
   const editing = sp.edit === "1";
   const cat = KNOWLEDGE_CATEGORY_META[knowledge.category as KnowledgeCategory];
@@ -113,7 +118,14 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Prop
               <CardTitle className="text-sm">การใช้กับ AI</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs text-muted-foreground">
-              <ApproveSwitch id={knowledge.id} approved={knowledge.approved_for_content} action={setKnowledgeApproved} className="w-full justify-between" />
+              <ApproveSwitch
+                id={knowledge.id}
+                approved={knowledge.approved_for_content}
+                action={setKnowledgeApproved}
+                disabled={!!knowledge.superseded_by}
+                disabledReason="รายการนี้ถูกรวมเข้ากับรายการหลักแล้ว — อนุมัติที่รายการหลักแทน"
+                className="w-full justify-between"
+              />
               <p>เมื่ออนุมัติ AI จะเห็นเนื้อหานี้เป็นบล็อกอ้างอิง [K#] เวลาสร้างไอเดียและสคริปต์</p>
             </CardContent>
           </Card>
@@ -135,6 +147,31 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Prop
             </CardContent>
           </Card>
 
+          {canonical && (
+            <Card className="border-violet-500/30">
+              <CardContent className="p-4 text-sm">
+                รายการนี้ถูกรวมเข้ากับ{" "}
+                <Link href={`/studio/knowledge/${canonical.id}`} className="font-medium text-primary hover:underline">
+                  {canonical.title}
+                </Link>{" "}
+                แล้ว — ตรวจและอนุมัติที่รายการรวมแทน
+              </CardContent>
+            </Card>
+          )}
+          {members.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">รวมมาจาก {members.length} แหล่ง</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {members.map((m) => (
+                  <Link key={m.id} href={`/studio/knowledge/${m.id}`} className="block truncate text-xs text-muted-foreground hover:text-foreground hover:underline">
+                    {m.title}
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">ใช้ในคอนเทนต์</CardTitle>

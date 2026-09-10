@@ -20,6 +20,7 @@ import type { ActionResult, SourceRef } from "@/lib/studio/types";
  */
 
 const KNOWLEDGE_PATH = "/studio/knowledge";
+const SUPERSEDED_APPROVE_ERROR = "รายการนี้ถูกรวมเข้ากับรายการหลักแล้ว — อนุมัติที่รายการหลักแทน";
 
 const SOURCE_TYPES = [
   "case",
@@ -113,8 +114,12 @@ export async function updateKnowledge(id: string, input: unknown): Promise<Actio
   if (readErr) return { ok: false, error: handleDbError(readErr, "studio:updateKnowledge:read") };
   if (!existing) return { ok: false, error: "ไม่พบความรู้รายการนี้" };
 
-  const { error } = await supabase.from("studio_knowledge_sources").update(parsed.data).eq("id", idParsed.data);
+  // Same invariant as setKnowledgeApproved: a merged member can never be approved (edit path included).
+  let update = supabase.from("studio_knowledge_sources").update(parsed.data).eq("id", idParsed.data);
+  if (parsed.data.approved_for_content) update = update.is("superseded_by", null);
+  const { data: updated, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:updateKnowledge") };
+  if (!updated?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   if (existing.approved_for_content !== parsed.data.approved_for_content) {
     await logAudit({ actorId: profile.id, action: "STUDIO_KNOWLEDGE_APPROVE", entity: "studio_knowledge_sources", entityId: idParsed.data, metadata: { approved: parsed.data.approved_for_content, via: "edit" } });
@@ -146,11 +151,12 @@ export async function setKnowledgeApproved(id: string, approved: boolean): Promi
   if (!parsed.success) return { ok: false, error: "ข้อมูลไม่ถูกต้อง" };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("studio_knowledge_sources")
-    .update({ approved_for_content: parsed.data.approved })
-    .eq("id", parsed.data.id);
+  // A merged member must never be approved on its own — approve the canonical row instead.
+  let update = supabase.from("studio_knowledge_sources").update({ approved_for_content: parsed.data.approved }).eq("id", parsed.data.id);
+  if (parsed.data.approved) update = update.is("superseded_by", null);
+  const { data, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:setKnowledgeApproved") };
+  if (!data?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   await logAudit({ actorId: profile.id, action: "STUDIO_KNOWLEDGE_APPROVE", entity: "studio_knowledge_sources", entityId: parsed.data.id, metadata: { approved: parsed.data.approved } });
   revalidatePath(KNOWLEDGE_PATH);
@@ -186,8 +192,11 @@ export async function updateQuestion(id: string, input: unknown): Promise<Action
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("studio_customer_questions").update(parsed.data).eq("id", idParsed.data);
+  let update = supabase.from("studio_customer_questions").update(parsed.data).eq("id", idParsed.data);
+  if (parsed.data.approved_for_content) update = update.is("superseded_by", null);
+  const { data: updated, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:updateQuestion") };
+  if (!updated?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   console.info(`[studio:questions] updated ${idParsed.data} by ${profile.id}`);
   revalidatePath(KNOWLEDGE_PATH);
@@ -214,11 +223,11 @@ export async function setQuestionApproved(id: string, approved: boolean): Promis
   if (!parsed.success) return { ok: false, error: "ข้อมูลไม่ถูกต้อง" };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("studio_customer_questions")
-    .update({ approved_for_content: parsed.data.approved })
-    .eq("id", parsed.data.id);
+  let update = supabase.from("studio_customer_questions").update({ approved_for_content: parsed.data.approved }).eq("id", parsed.data.id);
+  if (parsed.data.approved) update = update.is("superseded_by", null);
+  const { data, error } = await update.select("id");
   if (error) return { ok: false, error: handleDbError(error, "studio:setQuestionApproved") };
+  if (!data?.length) return { ok: false, error: SUPERSEDED_APPROVE_ERROR };
 
   await logAudit({ actorId: profile.id, action: "STUDIO_QUESTION_APPROVE", entity: "studio_customer_questions", entityId: parsed.data.id, metadata: { approved: parsed.data.approved } });
   revalidatePath(KNOWLEDGE_PATH);

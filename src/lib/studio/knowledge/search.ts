@@ -101,6 +101,7 @@ export async function searchKnowledge(query: string, opts: SearchOptions = {}): 
           .select("id, title, content, summary, tags")
           .eq("approved_for_content", true)
           .neq("sensitivity", "restricted") // defence-in-depth: restricted never reaches prompts
+          .is("superseded_by", null) // merged duplicates are represented by their canonical row
           .limit(40);
         const f = orFilter(["title", "content"]);
         if (f) q = q.or(f);
@@ -163,6 +164,7 @@ export async function searchKnowledge(query: string, opts: SearchOptions = {}): 
           .from("studio_customer_questions")
           .select("id, question, answer_hint, frequency, tags")
           .eq("approved_for_content", true)
+          .is("superseded_by", null)
           .order("frequency", { ascending: false })
           .limit(30);
         const f = orFilter(["question", "answer_hint"]);
