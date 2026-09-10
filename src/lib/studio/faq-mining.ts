@@ -151,6 +151,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
       .from("studio_customer_questions")
       .select("id, frequency, tags, answer_hint")
       .eq("is_demo", false)
+      .is("superseded_by", null)
       .or(`normalized_key.eq.${key},question.eq.${JSON.stringify(question)}`)
       .limit(1)
       .maybeSingle();
@@ -188,7 +189,7 @@ export async function mineLineInbox(opts: { userId: string | null; minMessages?:
       if (!iErr) inserted += 1;
       else if (iErr.code === "23505") {
         // Lost a race on the unique normalized_key (0114) → merge into the winner.
-        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).eq("is_demo", false).limit(1).maybeSingle();
+        const { data: race } = await svc.from("studio_customer_questions").select("id, frequency, tags").eq("normalized_key", key).eq("is_demo", false).is("superseded_by", null).limit(1).maybeSingle();
         if (race) {
           const { error: mErr } = await svc
             .from("studio_customer_questions")

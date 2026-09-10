@@ -89,6 +89,7 @@ export default async function KnowledgePage({ searchParams }: Props) {
     if (c) params.set("category", c);
     if (t) params.set("tag", t);
     if (q) params.set("q", q);
+    if (showMerged) params.set("merged", "1");
     const s = params.toString();
     return `/studio/knowledge${s ? `?${s}` : ""}`;
   };

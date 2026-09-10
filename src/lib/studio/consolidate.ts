@@ -86,9 +86,13 @@ async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ da
   return { rows, error: null };
 }
 
-function carriesHighPii(rules: PrivacyRules, ...fields: string[]): boolean {
-  return scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules }).some((f) => f.severity === "high" || f.kind === "denylist");
+/** Re-scrub canonical text: "drop" on identifiers, "flag" when softer findings (names, dates) remain. */
+function judgeCanonical(rules: PrivacyRules, ...fields: string[]): "ok" | "flag" | "drop" {
+  const findings = scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules });
+  if (findings.some((f) => f.severity === "high" || f.kind === "denylist")) return "drop";
+  return findings.length ? "flag" : "ok";
 }
+const REVIEW_TAG = "ต้องตรวจ privacy";
 
 export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promise<ConsolidateResult> {
   const svc = createServiceClient();
@@ -104,6 +108,7 @@ export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promi
       .contains("tags", [sourceTag])
       .is("superseded_by", null)
       .eq("approved_for_content", false)
+      .neq("sensitivity", "restricted")
       .order("category")
       .order("title")
       .order("id")
@@ -137,13 +142,14 @@ export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promi
         const title = g.title.trim().slice(0, 200);
         const content = g.content.trim();
         if (!title || content.length < 20) continue;
-        if (carriesHighPii(rules, title, content)) {
+        const verdict = judgeCanonical(rules, title, content);
+        if (verdict === "drop") {
           res.dropped += 1;
           continue;
         }
         const memberTags = Array.from(new Set(members.flatMap((m) => m.tags ?? [])));
-        const flagged = memberTags.includes("ต้องตรวจ privacy");
-        const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), sourceTag, CONSOLIDATED_TAG, ...(flagged ? ["ต้องตรวจ privacy"] : []), ...(g.confidence === "medium" ? ["ต้องยืนยัน"] : [])]));
+        const flagged = verdict === "flag" || memberTags.includes(REVIEW_TAG);
+        const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), sourceTag, CONSOLIDATED_TAG, ...(flagged ? [REVIEW_TAG] : []), ...(g.confidence === "medium" ? ["ต้องยืนยัน"] : [])]));
         // Case lessons keep their own category (the normaliser has no "cases" bucket).
         const cat: string = category === "cases" ? "cases" : normalizeKnowledgeCategory(g.category || category);
         const memberCount = members.reduce((n, m) => n + Math.max(1, m.member_count ?? 1), 0);
@@ -193,7 +199,7 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
   const { rows, error } = await fetchAll((from, to) =>
     svc
       .from("studio_customer_questions")
-      .select("id, question, answer_hint, frequency, tags, normalized_key")
+      .select("id, question, answer_hint, frequency, tags, normalized_key, member_count")
       .in("source", ["import", "line_oa"])
       .is("superseded_by", null)
       .eq("approved_for_content", false)
@@ -225,13 +231,16 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
       const question = g.question.trim().slice(0, 500);
       const hint = g.answer_hint?.trim().slice(0, 1000) || null;
       if (!question) continue;
-      if (carriesHighPii(rules, question, hint ?? "")) {
+      const verdict = judgeCanonical(rules, question, hint ?? "");
+      if (verdict === "drop") {
         res.dropped += 1;
         continue;
       }
       const freq = members.reduce((n, m) => n + (m.frequency ?? 1), 0);
-      const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), "line-import", CONSOLIDATED_TAG]));
-      // Canonical key may collide with an existing active row (unique index) → merge into it instead.
+      const memberCount = members.reduce((n, m) => n + Math.max(1, m.member_count ?? 1), 0);
+      const memberTags = members.flatMap((m) => m.tags ?? []);
+      const tags = Array.from(new Set([...(g.tags ?? []).slice(0, 6), "line-import", CONSOLIDATED_TAG, ...(verdict === "flag" || memberTags.includes(REVIEW_TAG) ? [REVIEW_TAG] : [])]));
+      // Canonical key may collide with an existing ACTIVE row (unique index, 0116) → merge into it instead.
       const key = normalizeQuestionKey(question) || null;
       const { data: canon, error: iErr } = await svc
         .from("studio_customer_questions")
@@ -245,19 +254,43 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
           is_demo: false,
           last_seen_at: new Date().toISOString(),
           normalized_key: key,
-          member_count: members.length,
+          member_count: memberCount,
           created_by: opts.userId ?? null,
         })
         .select("id")
         .single();
       let canonId = canon?.id ?? null;
       if (iErr?.code === "23505" && key) {
-        const { data: existing } = await svc.from("studio_customer_questions").select("id, frequency").eq("normalized_key", key).eq("is_demo", false).limit(1).maybeSingle();
-        if (existing) {
-          const extra = members.filter((m) => m.id !== existing.id).reduce((n, m) => n + (m.frequency ?? 1), 0);
-          await svc.from("studio_customer_questions").update({ frequency: (existing.frequency ?? 1) + extra, member_count: members.length + 1 }).eq("id", existing.id);
-          canonId = existing.id;
+        // The winner must be active (0116 index is partial on superseded_by IS NULL); never merge into a hidden row.
+        const { data: existing, error: eErr } = await svc
+          .from("studio_customer_questions")
+          .select("id, frequency, member_count, approved_for_content")
+          .eq("normalized_key", key)
+          .eq("is_demo", false)
+          .is("superseded_by", null)
+          .limit(1)
+          .maybeSingle();
+        if (eErr || !existing) {
+          res.errors.push(`q#${bi} collision lookup: ${eErr?.message ?? "no active row"}`);
+          continue;
         }
+        if (existing.approved_for_content) {
+          // Owner already reviewed this question — leave it and its members untouched for manual review.
+          res.errors.push(`q#${bi} skipped: canonical collides with an approved question`);
+          continue;
+        }
+        const others = members.filter((m) => m.id !== existing.id);
+        const extraFreq = others.reduce((n, m) => n + (m.frequency ?? 1), 0);
+        const extraMembers = others.reduce((n, m) => n + Math.max(1, m.member_count ?? 1), 0);
+        const { error: mErr } = await svc
+          .from("studio_customer_questions")
+          .update({ frequency: (existing.frequency ?? 1) + extraFreq, member_count: Math.max(1, existing.member_count ?? 1) + extraMembers, last_seen_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (mErr) {
+          res.errors.push(`q#${bi} collision merge: ${mErr.message}`);
+          continue;
+        }
+        canonId = existing.id;
       } else if (iErr || !canon) {
         res.errors.push(`q#${bi} insert: ${iErr?.message ?? "no row"}`);
         continue;

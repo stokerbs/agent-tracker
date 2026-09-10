@@ -351,9 +351,9 @@ export async function searchSourceCandidates(input: unknown): Promise<ActionResu
   const rls = await createClient();
   const pattern = `%${term}%`;
   const [k, i, q] = await Promise.all([
-    rls.from("studio_knowledge_sources").select("id, title, approved_for_content").ilike("title", pattern).order("updated_at", { ascending: false }).limit(8),
+    rls.from("studio_knowledge_sources").select("id, title, approved_for_content").is("superseded_by", null).ilike("title", pattern).order("updated_at", { ascending: false }).limit(8),
     rls.from("studio_case_insights").select("id, title, case_id, approved_for_content").ilike("title", pattern).order("updated_at", { ascending: false }).limit(8),
-    rls.from("studio_customer_questions").select("id, question, approved_for_content").ilike("question", pattern).order("frequency", { ascending: false }).limit(8),
+    rls.from("studio_customer_questions").select("id, question, approved_for_content").is("superseded_by", null).ilike("question", pattern).order("frequency", { ascending: false }).limit(8),
   ]);
   for (const r of [k, i, q]) if (r.error) console.error("[studio:content] source search failed:", r.error.message);
 

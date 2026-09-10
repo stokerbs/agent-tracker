@@ -118,7 +118,14 @@ export default async function KnowledgeDetailPage({ params, searchParams }: Prop
               <CardTitle className="text-sm">การใช้กับ AI</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs text-muted-foreground">
-              <ApproveSwitch id={knowledge.id} approved={knowledge.approved_for_content} action={setKnowledgeApproved} className="w-full justify-between" />
+              <ApproveSwitch
+                id={knowledge.id}
+                approved={knowledge.approved_for_content}
+                action={setKnowledgeApproved}
+                disabled={!!knowledge.superseded_by}
+                disabledReason="รายการนี้ถูกรวมเข้ากับรายการหลักแล้ว — อนุมัติที่รายการหลักแทน"
+                className="w-full justify-between"
+              />
               <p>เมื่ออนุมัติ AI จะเห็นเนื้อหานี้เป็นบล็อกอ้างอิง [K#] เวลาสร้างไอเดียและสคริปต์</p>
             </CardContent>
           </Card>

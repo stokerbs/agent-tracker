@@ -121,6 +121,7 @@ export function GlobalSearch({ role }: { role: UserRole }) {
             ? supabase
                 .from("studio_knowledge_sources")
                 .select("id, title, category")
+                .is("superseded_by", null)
                 .or(`title.ilike.${like},content.ilike.${like}`)
                 .limit(5)
             : Promise.resolve({ data: null }),
