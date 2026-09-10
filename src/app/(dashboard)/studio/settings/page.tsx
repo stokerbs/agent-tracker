@@ -17,6 +17,7 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -119,6 +120,7 @@ export default async function StudioSettingsPage() {
   for (const [label, r] of [["log", logRes], ["tokens", tokRes], ["autopilot runs", runRes]] as const) {
     if (r.error) console.error(`[studio:settings] ${label} query failed:`, r.error.message);
   }
+  const autopilotRunsFailed = !!runRes.error;
 
   const demoCounts: DemoCounts = {
     knowledge: kRes.count ?? 0,
@@ -328,7 +330,7 @@ export default async function StudioSettingsPage() {
         <div className="mt-6 border-t pt-5">
           <h3 className="text-sm font-medium">รอบล่าสุด</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">{RUN_LIMIT.toLocaleString("en-GB")} รอบล่าสุด — อ่านอย่างเดียว · เก็บเฉพาะขั้นตอนและตัวเลข ไม่เก็บข้อความสคริปต์</p>
-          <AutopilotRuns runs={autopilotRuns} />
+          <AutopilotRuns runs={autopilotRuns} loadFailed={autopilotRunsFailed} />
         </div>
       </Section>
 
@@ -465,7 +467,16 @@ function Section({
 }
 
 /** Read-only history of autopilot runs — server-rendered, no client JS. */
-function AutopilotRuns({ runs }: { runs: AutopilotRunRow[] }) {
+function AutopilotRuns({ runs, loadFailed }: { runs: AutopilotRunRow[]; loadFailed: boolean }) {
+  // "Never ran" and "could not read the history" must not look the same on a page that arms automatic posting.
+  if (loadFailed) {
+    return (
+      <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-3 text-xs text-destructive" role="alert">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>อ่านประวัติรอบอัตโนมัติไม่สำเร็จ — รีเฟรชหน้าอีกครั้ง (ไม่ได้แปลว่าไม่มีรอบที่ทำงาน)</span>
+      </div>
+    );
+  }
   if (runs.length === 0) {
     return (
       <div className="mt-3 flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">

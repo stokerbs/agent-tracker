@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await runAutopilot({ userId: null, trigger: "cron" });
-    if (result.status !== "skipped") {
+    // A skip that means "a previous run is stuck" must be visible; routine skips (off-day, cap) are not audited.
+    if (result.status !== "skipped" || result.stopReason === "already_running") {
       await logAudit({
         actorId: null,
         action: "STUDIO_AUTOPILOT_RUN",

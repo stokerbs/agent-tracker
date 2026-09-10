@@ -14,6 +14,9 @@ const h = vi.hoisted(() => ({
   render: { ok: true, jobId: "j1", assetId: "vid1", durationSec: 30 } as Row,
   publish: { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false } as Row,
   privacy: { status: "safe", findings: [], summary: "ok", checked_by: "ai", model: "m" } as Row,
+  allowOverride: true,
+  privacyInsertFails: false,
+  admin: { id: "admin-1" } as Row | null,
   inserts: [] as { table: string; row: Row }[],
   updates: [] as { table: string; row: Row }[],
   notices: [] as string[],
@@ -29,7 +32,7 @@ vi.mock("@/lib/studio/settings", async (orig) => ({
   getStudioSettingsStrict: vi.fn(async () => {
     if (h.settingsThrow) throw new Error("down");
     const { DEFAULT_AUTOPILOT } = await orig<typeof import("@/lib/studio/settings")>();
-    return { autopilot: { ...DEFAULT_AUTOPILOT, enabled: true, days: [0, 1, 2, 3, 4, 5, 6], ...h.cfg }, pillars: h.pillars };
+    return { autopilot: { ...DEFAULT_AUTOPILOT, enabled: true, days: [0, 1, 2, 3, 4, 5, 6], ...h.cfg }, pillars: h.pillars, approval_rules: { require_privacy_safe: true, allow_override: h.allowOverride } };
   }),
 }));
 vi.mock("@/lib/studio/ai", () => ({
@@ -46,22 +49,31 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       const st = { op: "select", row: null as Row | null };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "gte", "is", "order", "limit", "neq"]) b[m] = () => b;
+      for (const m of ["select", "eq", "in", "gte", "lt", "is", "order", "limit", "neq"]) b[m] = () => b;
       b.insert = (row: Row | Row[]) => ((st.op = "insert"), (st.row = Array.isArray(row) ? row[0] : row), h.inserts.push(...(Array.isArray(row) ? row : [row]).map((r) => ({ table, row: r }))), b);
       b.update = (row: Row) => ((st.op = "update"), (st.row = row), h.updates.push({ table, row }), b);
       const result = () => {
         if (st.op === "insert") {
+          if (table === "studio_privacy_checks" && h.privacyInsertFails) return { data: null, error: { code: "42501", message: "denied" } };
           if (h.insertError) return { data: null, error: h.insertError };
           return { data: { ...(st.row ?? {}), id: `${table}-1`, title: (st.row as Row)?.title ?? "หัวข้อ" }, error: null };
         }
         if (st.op === "update") return { data: null, error: null };
+        if (table === "profiles") return { data: h.admin, error: null };
         if (table === "studio_ideas") return { data: h.savedIdea, error: null };
         if (table === "studio_content_masters") return { data: { title: "หัวข้อ", hook: "h", script: "s", caption: "c", cta: "x" }, error: null };
         return { data: null, error: null };
       };
       b.single = async () => result();
       b.maybeSingle = async () => result();
-      b.then = (r: (v: unknown) => unknown) => Promise.resolve(r({ data: table === "studio_customer_questions" ? [{ question: "q", frequency: 3 }] : [], count: table === "studio_autopilot_runs" ? h.runsThisWeek : 0, error: null }));
+      b.then = (r: (v: unknown) => unknown) =>
+        Promise.resolve(
+          r({
+            data: table === "studio_customer_questions" ? [{ question: "q", frequency: 3 }] : [],
+            count: table === "studio_autopilot_runs" ? h.runsThisWeek : 0,
+            error: st.op === "insert" && table === "studio_privacy_checks" && h.privacyInsertFails ? { code: "42501", message: "denied" } : null,
+          }),
+        );
       return b;
     },
   }),
@@ -75,6 +87,9 @@ beforeEach(() => {
   h.savedIdea = null;
   h.script = { ok: true, data: { hook: "h", script: "สคริปต์", caption: "แคปชัน", cta: "cta", estimated_duration_sec: 30, ai_notes: "", source_refs: [], claims: [] } };
   h.privacy = { status: "safe", findings: [], summary: "ok", checked_by: "ai", model: "m" };
+  h.allowOverride = true;
+  h.privacyInsertFails = false;
+  h.admin = { id: "admin-1" };
   h.render = { ok: true, jobId: "j1", assetId: "vid1", durationSec: 30 };
   h.publish = { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false };
   h.inserts = [];
@@ -108,6 +123,53 @@ describe("runAutopilot gating", () => {
     h.insertError = { code: "23505", message: "duplicate" };
     const { runAutopilot } = await load();
     expect(await runAutopilot({ userId: null })).toMatchObject({ status: "skipped", stopReason: "already_running" });
+  });
+});
+
+describe("runAutopilot identity and degraded checks", () => {
+  it("refuses to run when there is no admin profile to act as", async () => {
+    h.admin = null;
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: null })).toMatchObject({ ok: false, status: "failed" });
+    expect(h.inserts.filter((i) => i.table === "studio_autopilot_runs")).toHaveLength(0);
+  });
+  it("resolves the admin id and never writes an empty uuid for the cron identity", async () => {
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: null });
+    // every uuid-shaped column carries the resolved admin id, never "" (which Postgres rejects)
+    const idFields = ["created_by", "reviewer_id", "approved_by", "user_id"];
+    for (const { row } of h.inserts) for (const f of idFields) if (f in row) expect(row[f]).not.toBe("");
+    for (const { row } of h.updates) for (const f of idFields) if (f in row) expect(row[f]).not.toBe("");
+    expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row.created_by).toBe("admin-1");
+    expect(h.inserts.find((i) => i.table === "studio_content_reviews")!.row.reviewer_id).toBe("admin-1");
+  });
+  it("never publishes on a deterministic-only verdict when the AI pass failed", async () => {
+    h.privacy = { status: "safe", findings: [], summary: "ok", checked_by: "deterministic", model: null, ai_error: "rate limited" };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "privacy_ai_unavailable" });
+    expect(h.audit.map((a) => a.action)).not.toContain("STUDIO_SOCIAL_POST");
+  });
+  it("records an override review row and honours approval_rules.allow_override", async () => {
+    h.privacy = { status: "review_required", findings: [{}], summary: "ต้องตรวจ", checked_by: "ai", model: "m" };
+    h.cfg = { publish_on_review_required: true };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(h.inserts.find((i) => i.table === "studio_content_reviews")!.row.decision).toBe("override_privacy");
+    h.allowOverride = false;
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "privacy_review" });
+  });
+  it("stops when the privacy row or the review row cannot be stored", async () => {
+    const { runAutopilot } = await load();
+    h.privacyInsertFails = true;
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "failed", stopReason: "privacy_not_stored" });
+  });
+  it("keeps run rows free of AI prose (findings are recorded as a count)", async () => {
+    h.privacy = { status: "blocked", findings: [{}, {}], summary: "พบชื่อคุณสมชาย ในสคริปต์", checked_by: "ai", model: "m" };
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const rows = JSON.stringify(h.updates.filter((u) => u.table === "studio_autopilot_runs"));
+    expect(rows).not.toContain("สมชาย");
+    expect(rows).toContain("findings=2");
   });
 });
 

@@ -1,7 +1,8 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
+import { PILLARS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
+import { SOCIAL_PLATFORMS, TARGET_DURATIONS, type SocialPlatform } from "@/lib/studio/types";
 import type {
   ApprovalRules,
   AutopilotSettings,
@@ -77,16 +78,29 @@ export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
   return loadSettings(true);
 }
 
+/**
+ * Autopilot config gates a fully automatic public post, so nothing is trusted
+ * from jsonb: booleans are coerced strictly (a stray "no" string must not read
+ * as true), enums are whitelisted and numbers are clamped.
+ */
 function normaliseAutopilot(v: unknown): AutopilotSettings {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
-  const days = Array.isArray(raw.days) ? raw.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : DEFAULT_AUTOPILOT.days;
+  const bool = (x: unknown, fallback: boolean) => (typeof x === "boolean" ? x : fallback);
+  const days = Array.isArray(raw.days) ? raw.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+  const platforms = Array.isArray(raw.platforms) ? raw.platforms.filter((p): p is SocialPlatform => SOCIAL_PLATFORMS.includes(p as SocialPlatform)) : [];
+  const num = (x: unknown, fallback: number, lo: number, hi: number) => (typeof x === "number" && Number.isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : fallback);
   return {
-    ...DEFAULT_AUTOPILOT,
-    ...raw,
+    enabled: bool(raw.enabled, DEFAULT_AUTOPILOT.enabled),
     days: days.length ? Array.from(new Set(days)).sort() : DEFAULT_AUTOPILOT.days,
-    platforms: Array.isArray(raw.platforms) && raw.platforms.length ? raw.platforms : DEFAULT_AUTOPILOT.platforms,
-    images_per_run: Math.max(1, Math.min(6, Math.round(raw.images_per_run ?? DEFAULT_AUTOPILOT.images_per_run))),
-    max_runs_per_week: Math.max(1, Math.min(14, Math.round(raw.max_runs_per_week ?? DEFAULT_AUTOPILOT.max_runs_per_week))),
+    platforms: platforms.length ? Array.from(new Set(platforms)) : DEFAULT_AUTOPILOT.platforms,
+    pillar_mode: raw.pillar_mode === "fixed" ? "fixed" : "rotate",
+    pillar: PILLARS.includes(raw.pillar as (typeof PILLARS)[number]) ? (raw.pillar as AutopilotSettings["pillar"]) : null,
+    target_seconds: (TARGET_DURATIONS as readonly number[]).includes(raw.target_seconds as number) ? raw.target_seconds! : DEFAULT_AUTOPILOT.target_seconds,
+    images_per_run: num(raw.images_per_run, DEFAULT_AUTOPILOT.images_per_run, 1, 6),
+    auto_publish: bool(raw.auto_publish, DEFAULT_AUTOPILOT.auto_publish),
+    publish_on_review_required: bool(raw.publish_on_review_required, DEFAULT_AUTOPILOT.publish_on_review_required),
+    allow_unsupported_claims: bool(raw.allow_unsupported_claims, DEFAULT_AUTOPILOT.allow_unsupported_claims),
+    max_runs_per_week: num(raw.max_runs_per_week, DEFAULT_AUTOPILOT.max_runs_per_week, 1, 14),
   };
 }
 

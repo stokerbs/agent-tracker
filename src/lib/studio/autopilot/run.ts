@@ -45,31 +45,54 @@ export interface AutopilotResult {
 
 type Svc = ReturnType<typeof createServiceClient>;
 
+/** The cron has no session: every uuid column and every per-user quota needs a real admin profile. */
+async function resolveActor(svc: Svc, given: string | null): Promise<string | null> {
+  if (given) return given;
+  const { data, error } = await svc.from("profiles").select("id").eq("role", "admin").order("created_at", { ascending: true }).limit(1).maybeSingle();
+  if (error) console.error("[studio:autopilot] admin lookup failed:", error.message);
+  return data?.id ?? null;
+}
+
 export async function runAutopilot(opts: { userId: string | null; trigger?: "cron" | "manual"; now?: Date } = { userId: null }): Promise<AutopilotResult> {
   const svc = createServiceClient();
   const now = opts.now ?? new Date();
   let cfg: AutopilotSettings;
   let pillars;
+  let approval;
   try {
     const settings = await getStudioSettingsStrict();
     cfg = settings.autopilot;
     pillars = settings.pillars;
+    approval = settings.approval_rules;
   } catch (e) {
     console.error("[studio:autopilot] settings unavailable:", e instanceof Error ? e.message : e);
     return { ok: false, runId: null, status: "failed", error: "โหลดการตั้งค่าสตูดิโอไม่สำเร็จ" };
   }
 
   const weekAgo = new Date(now.getTime() - 7 * 24 * 3600_000).toISOString();
-  const { count: runsThisWeek } = await svc.from("studio_autopilot_runs").select("id", { count: "exact", head: true }).gte("created_at", weekAgo).in("status", ["done", "review", "running"]);
+  const { count: runsThisWeek } = await svc.from("studio_autopilot_runs").select("id", { count: "exact", head: true }).gte("created_at", weekAgo).in("status", ["done", "review", "running", "failed"]);
   const verdict = shouldRun(cfg, { now, runsThisWeek: runsThisWeek ?? 0 });
   if (!verdict.run) {
     console.info(`[studio:autopilot] skipped: ${verdict.reason}`);
     return { ok: true, runId: null, status: "skipped", stopReason: verdict.reason };
   }
 
+  const actor = await resolveActor(svc, opts.userId);
+  if (!actor) {
+    console.error("[studio:autopilot] no admin profile to act as — refusing to run");
+    return { ok: false, runId: null, status: "failed", error: "ไม่พบบัญชีแอดมินสำหรับรันอัตโนมัติ" };
+  }
+
+  // Reap a run the platform killed mid-flight, otherwise the one-running-row index blocks every future run.
+  await svc
+    .from("studio_autopilot_runs")
+    .update({ status: "failed", error: "งานหยุดกลางทาง (เกินเวลาที่เซิร์ฟเวอร์อนุญาต)", step: "ล้มเหลว", progress: 100, finished_at: new Date().toISOString() })
+    .eq("status", "running")
+    .lt("started_at", new Date(now.getTime() - 10 * 60_000).toISOString());
+
   const { data: run, error: rErr } = await svc
     .from("studio_autopilot_runs")
-    .insert({ status: "running", step: "กำลังเลือกหัวข้อ", progress: 2, trigger: opts.trigger ?? "cron", platforms: cfg.platforms })
+    .insert({ status: "running", step: "กำลังเลือกหัวข้อ", progress: 2, trigger: opts.trigger ?? "cron", platforms: cfg.platforms, created_by: actor })
     .select("id")
     .single();
   if (rErr || !run) {
@@ -99,7 +122,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     const publishedByPillar = await countPublishedByPillar(svc);
     const pillar = choosePillar(cfg, pillars, publishedByPillar);
     await svc.from("studio_autopilot_runs").update({ pillar }).eq("id", runId);
-    const idea = await pickIdea(svc, pillar, opts.userId);
+    const idea = await pickIdea(svc, pillar, actor);
     if (!idea) return await stop("no_idea", null, "failed");
 
     // ── 2. master + script ──────────────────────────────────────────────────
@@ -116,7 +139,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
         hook: idea.hook,
         status: "draft",
         tags: ["autopilot"],
-        created_by: opts.userId,
+        created_by: actor,
       })
       .select("id, title")
       .single();
@@ -134,7 +157,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
       platform: primary,
       targetSeconds: cfg.target_seconds,
       searchHint: idea.tags.join(" "),
-      userId: opts.userId,
+      userId: actor,
     });
     if (!script.ok) return await stop("script_failed", masterId, "failed", script.error);
     await svc
@@ -147,7 +170,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
 
     // ── 3. creative plan ────────────────────────────────────────────────────
     await step(30, "กำลังวางแผนภาพ");
-    const plan = await generateCreativePlan({ title: master.title, pillar, platform: primary, script: script.data.script, targetSeconds: cfg.target_seconds, userId: opts.userId });
+    const plan = await generateCreativePlan({ title: master.title, pillar, platform: primary, script: script.data.script, targetSeconds: cfg.target_seconds, userId: actor });
     if (!plan.ok) return await stop("plan_failed", masterId, "failed", plan.error);
     // Trim to the time budget: every extra shot costs a TTS call and encode time.
     const trimmed: CreativePlan = { ...plan.data, shots: plan.data.shots.slice(0, MAX_AUTOPILOT_SHOTS) };
@@ -157,7 +180,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     // ── 4. images ───────────────────────────────────────────────────────────
     await step(40, "กำลังสร้างภาพ");
     const ctx = { id: mid, title: master.title, creative_plan: trimmed };
-    const cover = await generateImageAsset({ master: ctx, target: { kind: "thumbnail" }, aspect: "9:16", userId: opts.userId ?? "" });
+    const cover = await generateImageAsset({ master: ctx, target: { kind: "thumbnail" }, aspect: "9:16", userId: actor });
     if (!cover.ok) return await stop("image_failed", masterId, "failed", `${cover.code}: ${cover.error}`);
     let images = 1;
     for (let i = 0; i < Math.min(trimmed.shots.length, cfg.images_per_run - 1); i++) {
@@ -166,32 +189,46 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
         console.warn(`[studio:autopilot] run=${runId} skipping remaining scene images to protect the time budget`);
         break;
       }
-      const shot = await generateImageAsset({ master: ctx, target: { kind: "scene", index: i }, aspect: "9:16", userId: opts.userId ?? "" });
+      const shot = await generateImageAsset({ master: ctx, target: { kind: "scene", index: i }, aspect: "9:16", userId: actor });
       if (shot.ok) images += 1;
       else console.warn(`[studio:autopilot] run=${runId} scene image ${i} skipped: ${shot.code}`);
     }
 
     // ── 5. video ────────────────────────────────────────────────────────────
+    if (Date.now() > deadline - 110_000) return await stop("timeout", masterId, "review", "หมดเวลาก่อนเริ่มตัดต่อ");
     await step(55, "กำลังสร้างวิดีโอ");
     const { data: job, error: jErr } = await svc
       .from("studio_render_jobs")
-      .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", shots: trimmed.shots.length, source: "autopilot" } as never, created_by: opts.userId })
+      .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", shots: trimmed.shots.length, source: "autopilot" } as never, created_by: actor })
       .select("id")
       .single();
     if (jErr || !job) throw new Error(`render job: ${jErr?.message ?? "no row"}`);
-    const render = await runRenderJob(job.id, { userId: opts.userId ?? "" });
+    const render = await runRenderJob(job.id, { userId: actor });
     if (!render.ok) return await stop("video_failed", masterId, "failed", render.error);
 
     // ── 6. privacy (deterministic + AI: no human will read this before it goes out) ──
     await step(75, "กำลังตรวจความเป็นส่วนตัว");
-    const privacy = await storePrivacyCheck(svc, mid, opts.userId);
-    if (privacy.status === "blocked") return await stop("privacy_blocked", masterId, "review", privacy.summary);
-    if (privacy.status === "review_required" && !cfg.publish_on_review_required) return await stop("privacy_review", masterId, "review", privacy.summary);
+    const privacy = await storePrivacyCheck(svc, mid, actor);
+    if (!privacy.stored) return await stop("privacy_not_stored", masterId, "failed");
+    // The regex scan alone cannot see names, places or case-identifying detail, and no human reads this —
+    // a degraded (AI-unavailable) verdict must never publish.
+    if (privacy.checkedBy !== "ai") return await stop("privacy_ai_unavailable", masterId, "review", privacy.aiError?.slice(0, 200));
+    if (privacy.status !== "safe") {
+      const allowed = privacy.status === "review_required" && cfg.publish_on_review_required && approval.allow_override;
+      if (!allowed) return await stop(privacy.status === "blocked" ? "privacy_blocked" : "privacy_review", masterId, "review", `findings=${privacy.findings}`);
+    }
 
     // ── 7. approve ──────────────────────────────────────────────────────────
-    await svc.from("studio_content_masters").update({ status: "approved", approved_by: opts.userId, approved_at: new Date().toISOString() }).eq("id", masterId);
-    await svc.from("studio_content_reviews").insert({ master_id: masterId, reviewer_id: opts.userId, decision: "approve", note: "อนุมัติอัตโนมัติโดย Autopilot (ผ่าน Privacy Check)" });
-    await logAudit({ actorId: opts.userId, action: "STUDIO_CONTENT_APPROVE", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, privacy: privacy.status } });
+    await svc.from("studio_content_masters").update({ status: "approved", approved_by: actor, approved_at: new Date().toISOString() }).eq("id", masterId);
+    const overrode = privacy.status === "review_required";
+    const { error: revErr } = await svc.from("studio_content_reviews").insert({
+      master_id: masterId,
+      reviewer_id: actor,
+      decision: overrode ? "override_privacy" : "approve",
+      note: overrode ? "Autopilot: อนุมัติทั้งที่ Privacy Check ขอให้ตรวจ (เจ้าของเปิดสวิตช์ไว้)" : "อนุมัติอัตโนมัติโดย Autopilot (ผ่าน Privacy Check)",
+    });
+    if (revErr) return await stop("review_not_stored", masterId, "failed", revErr.message);
+    await logAudit({ actorId: actor, action: "STUDIO_CONTENT_APPROVE", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, privacy: privacy.status } });
 
     if (!cfg.auto_publish) {
       await finish({ status: "review", stopped_at: "manual_review", step: "รอตรวจก่อนโพสต์", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null } as never });
@@ -200,6 +237,8 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     }
 
     // ── 8. publish ──────────────────────────────────────────────────────────
+    // Never start a public post we might not live long enough to record.
+    if (Date.now() > deadline - 45_000) return await stop("timeout", masterId, "review", "หมดเวลาก่อนโพสต์");
     await step(88, "กำลังโพสต์");
     const published = await publishMaster({
       master: { id: mid, title: master.title, caption: script.data.caption, cta: script.data.cta, hook: script.data.hook, scheduled_at: null },
@@ -207,10 +246,10 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
       platforms: cfg.platforms,
       assetIds: render.assetId ? [render.assetId] : [],
       scheduleAt: null,
-      userId: opts.userId ?? "",
+      userId: actor,
     });
     if (!published.ok) return await stop("publish_failed", masterId, "review", `${published.code}: ${published.error}`);
-    await logAudit({ actorId: opts.userId, action: "STUDIO_SOCIAL_POST", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, platforms: cfg.platforms, provider_post_id: published.providerPostId } });
+    await logAudit({ actorId: actor, action: "STUDIO_SOCIAL_POST", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, platforms: cfg.platforms, provider_post_id: published.providerPostId } });
 
     const urls = published.posts.map((p) => p.post_url).filter((u): u is string => !!u);
     await finish({ status: "done", published: true, step: "เสร็จแล้ว", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null, posts: published.posts.length } as never });
@@ -267,10 +306,12 @@ async function pickIdea(svc: Svc, pillar: Pillar, userId: string | null): Promis
     .maybeSingle();
   if (saved) return { id: saved.id, title: saved.title, hook: saved.hook, description: saved.description, tags: saved.tags ?? [], persisted: true };
 
+  // Only owner-approved questions may steer generation (0109 invariant): these rows are customer-authored.
   const { data: questions } = await svc
     .from("studio_customer_questions")
     .select("question, frequency")
     .is("superseded_by", null)
+    .eq("approved_for_content", true)
     .order("frequency", { ascending: false })
     .limit(20);
   const res = await generateIdeas({ brief: buildBrief(pillar, questions ?? []), count: 3, pillar, userId });
@@ -316,7 +357,7 @@ async function storeSourcesAndClaims(svc: Svc, masterId: string, script: { sourc
   }
 }
 
-async function storePrivacyCheck(svc: Svc, masterId: string, userId: string | null): Promise<{ status: string; summary: string }> {
+async function storePrivacyCheck(svc: Svc, masterId: string, userId: string | null): Promise<{ status: string; checkedBy: string; findings: number; stored: boolean; aiError?: string }> {
   const { data: master } = await svc.from("studio_content_masters").select("title, hook, script, caption, cta").eq("id", masterId).maybeSingle();
   const result = await runPrivacyCheck({
     fields: { title: master?.title ?? "", hook: master?.hook, script: master?.script, caption: master?.caption, cta: master?.cta },
@@ -324,9 +365,10 @@ async function storePrivacyCheck(svc: Svc, masterId: string, userId: string | nu
     userId,
     masterId,
   });
-  await svc.from("studio_privacy_checks").insert({ master_id: masterId, status: result.status, findings: result.findings as never, checked_by: result.checked_by, model: result.model, created_by: userId });
+  const { error } = await svc.from("studio_privacy_checks").insert({ master_id: masterId, status: result.status, findings: result.findings as never, checked_by: result.checked_by, model: result.model, created_by: userId });
+  if (error) console.error("[studio:autopilot] privacy insert failed:", error.message);
   console.info(`[studio:autopilot] privacy master=${masterId} status=${result.status} by=${result.checked_by} findings=${result.findings.length}`);
-  return { status: result.status, summary: result.summary };
+  return { status: result.status, checkedBy: result.checked_by, findings: result.findings.length, stored: !error, aiError: result.ai_error };
 }
 
 export type { SkipReason };
