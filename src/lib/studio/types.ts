@@ -124,6 +124,28 @@ export interface ApprovalRules {
   allow_override: boolean;
 }
 
+// ─── Autopilot (phase 4: scheduled end-to-end production) ────────────────────
+export interface AutopilotSettings {
+  enabled: boolean;
+  /** Days the cron may run, 0 = Sunday … 6 = Saturday, Asia/Bangkok. */
+  days: number[];
+  platforms: SocialPlatform[];
+  pillar_mode: "rotate" | "fixed";
+  pillar: Pillar | null;
+  target_seconds: TargetDuration;
+  /** 1 = cover only; more adds per-shot images (cost ≈ ฿1.5 each). */
+  images_per_run: number;
+  /** false = produce and leave in review for the owner instead of posting. */
+  auto_publish: boolean;
+  /** Publish even when the privacy check says review_required (never when blocked). */
+  publish_on_review_required: boolean;
+  /** Publish even when the script carries unsupported fact claims. */
+  allow_unsupported_claims: boolean;
+  max_runs_per_week: number;
+}
+export type AutopilotRun = Row<"studio_autopilot_runs">;
+export type AutopilotRunStatus = "running" | "done" | "failed" | "skipped" | "review";
+
 // ─── Publishing (phase 2: aggregator auto-posting) ───────────────────────────
 export type SocialPlatform = "facebook" | "instagram" | "tiktok" | "youtube" | "line_oa";
 export const SOCIAL_PLATFORMS: SocialPlatform[] = ["facebook", "instagram", "tiktok", "youtube"];
@@ -212,7 +234,7 @@ export interface PrivacyFinding {
 // ─── Row aliases ─────────────────────────────────────────────────────────────
 export type StudioSettingsRow = Omit<
   Row<"studio_settings">,
-  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules" | "media_prefs" | "social_connections"
+  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules" | "media_prefs" | "social_connections" | "autopilot"
 > & {
   brand_voice: BrandVoice;
   pillars: PillarConfig[];
@@ -220,6 +242,7 @@ export type StudioSettingsRow = Omit<
   approval_rules: ApprovalRules;
   media_prefs: MediaPrefs;
   social_connections: SocialConnections;
+  autopilot: AutopilotSettings;
 };
 export type SocialPost = Row<"studio_social_posts">;
 export type RenderJob = Row<"studio_render_jobs">;

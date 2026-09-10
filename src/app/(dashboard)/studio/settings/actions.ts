@@ -9,7 +9,7 @@ import { handleDbError } from "@/lib/errors";
 import { PILLARS, PLATFORMS, STUDIO_MODELS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { loadDemoData, removeDemoData, type SeedSummary } from "@/lib/studio/seed";
 import { getStudioSettings } from "@/lib/studio/settings";
-import { IMAGE_ASPECTS, type ActionResult, type ApprovalRules, type BrandVoice, type ImageAspect, type PillarConfig, type PrivacyRules } from "@/lib/studio/types";
+import { IMAGE_ASPECTS, SOCIAL_PLATFORMS, TARGET_DURATIONS, type ActionResult, type ApprovalRules, type BrandVoice, type ImageAspect, type PillarConfig, type PrivacyRules, type SocialPlatform } from "@/lib/studio/types";
 import type { KnowledgePrefs } from "./knowledge-prefs";
 
 /**
@@ -188,6 +188,34 @@ export async function updateSocialDefaults(input: unknown): Promise<ActionResult
   const res = await saveSettings({ social_connections: { ...current, defaults: parsed.data } }, profile.id, "social_defaults");
   if (!res.ok) return res;
   await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "social_defaults", ...parsed.data } });
+  revalidatePath(SETTINGS_PATH);
+  return { ok: true };
+}
+
+// ─── 4d. Autopilot (scheduled end-to-end production) ────────────────────────
+const autopilotSchema = z.object({
+  enabled: z.boolean(),
+  days: z.array(z.number().int().min(0).max(6)).min(1, "เลือกอย่างน้อย 1 วัน").max(7),
+  platforms: z.array(z.enum(SOCIAL_PLATFORMS as [SocialPlatform, ...SocialPlatform[]])).min(1, "เลือกอย่างน้อย 1 แพลตฟอร์ม").max(4),
+  pillar_mode: z.enum(["rotate", "fixed"]),
+  pillar: z.enum(PILLARS as [string, ...string[]]).nullable(),
+  target_seconds: z.number().int().refine((n) => (TARGET_DURATIONS as number[]).includes(n), "ความยาวไม่ถูกต้อง"),
+  images_per_run: z.number().int().min(1).max(6),
+  auto_publish: z.boolean(),
+  publish_on_review_required: z.boolean(),
+  allow_unsupported_claims: z.boolean(),
+  max_runs_per_week: z.number().int().min(1).max(14),
+});
+
+export async function updateAutopilot(input: unknown): Promise<ActionResult> {
+  const profile = await requireStudioAdmin();
+  const parsed = autopilotSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
+  const d = parsed.data;
+  if (d.pillar_mode === "fixed" && !d.pillar) return { ok: false, error: "เลือกเสาเนื้อหาเมื่อใช้โหมดกำหนดเอง" };
+  const res = await saveSettings({ autopilot: { ...d, days: Array.from(new Set(d.days)).sort() } }, profile.id, "autopilot");
+  if (!res.ok) return res;
+  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "autopilot", enabled: d.enabled, auto_publish: d.auto_publish, days: d.days, platforms: d.platforms } });
   revalidatePath(SETTINGS_PATH);
   return { ok: true };
 }

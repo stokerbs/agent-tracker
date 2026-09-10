@@ -2849,6 +2849,91 @@ export type Database = {
           },
         ]
       }
+      studio_autopilot_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          idea_id: string | null
+          master_id: string | null
+          pillar: string | null
+          platforms: string[]
+          progress: number
+          published: boolean
+          started_at: string
+          stats: Json
+          status: string
+          step: string | null
+          stopped_at: string | null
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          idea_id?: string | null
+          master_id?: string | null
+          pillar?: string | null
+          platforms?: string[]
+          progress?: number
+          published?: boolean
+          started_at?: string
+          stats?: Json
+          status?: string
+          step?: string | null
+          stopped_at?: string | null
+          trigger?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          idea_id?: string | null
+          master_id?: string | null
+          pillar?: string | null
+          platforms?: string[]
+          progress?: number
+          published?: boolean
+          started_at?: string
+          stats?: Json
+          status?: string
+          step?: string | null
+          stopped_at?: string | null
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_autopilot_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_autopilot_runs_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_autopilot_runs_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_campaigns: {
         Row: {
           audience: string | null
@@ -3920,6 +4005,7 @@ export type Database = {
           ai_model: string | null
           ai_provider: string
           approval_rules: Json
+          autopilot: Json
           brand_voice: Json
           created_at: string
           default_language: string
@@ -3937,6 +4023,7 @@ export type Database = {
           ai_model?: string | null
           ai_provider?: string
           approval_rules?: Json
+          autopilot?: Json
           brand_voice?: Json
           created_at?: string
           default_language?: string
@@ -3954,6 +4041,7 @@ export type Database = {
           ai_model?: string | null
           ai_provider?: string
           approval_rules?: Json
+          autopilot?: Json
           brand_voice?: Json
           created_at?: string
           default_language?: string

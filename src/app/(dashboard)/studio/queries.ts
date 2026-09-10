@@ -2,8 +2,8 @@ import "server-only";
 
 import { computeMixFlags, isAiAvailable } from "@/lib/studio/ai";
 import { PILLARS, PILLAR_META } from "@/lib/studio/constants";
-import { getStudioSettings } from "@/lib/studio/settings";
-import type { AiScores, Pillar, PillarConfig } from "@/lib/studio/types";
+import { DEFAULT_AUTOPILOT, getStudioSettings } from "@/lib/studio/settings";
+import type { AiScores, AutopilotSettings, Pillar, PillarConfig } from "@/lib/studio/types";
 import { createClient } from "@/lib/supabase/server";
 
 export interface PipelineCounts {
@@ -54,6 +54,8 @@ export interface StudioDashboardData {
   mix: MixSnapshot;
   unusedKnowledge: UnusedKnowledge;
   aiAvailable: boolean;
+  /** Config only — the dashboard shows a one-line reminder when it is on. */
+  autopilot: AutopilotSettings;
 }
 
 const MIX_WINDOW_DAYS = 14;
@@ -169,5 +171,6 @@ export async function getStudioDashboardData(): Promise<StudioDashboardData> {
     },
     unusedKnowledge: { count: unused.length, totalApproved: knowledge.approved.length, examples: unused.slice(0, 3) },
     aiAvailable: isAiAvailable((settings?.ai_provider as "anthropic" | "openai" | undefined) ?? "anthropic"),
+    autopilot: settings?.autopilot ?? DEFAULT_AUTOPILOT,
   };
 }
