@@ -22,6 +22,8 @@ const h = vi.hoisted(() => ({
   notices: [] as string[],
   audit: [] as { action: string }[],
   insertError: null as null | { code: string; message: string },
+  /** Interleaved write log so tests can assert ordering across tables. */
+  writes: [] as { op: "insert" | "update"; table: string; row: Row }[],
 }));
 
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
@@ -50,8 +52,8 @@ vi.mock("@/lib/supabase/server", () => ({
       const st = { op: "select", row: null as Row | null };
       const b: Record<string, unknown> = {};
       for (const m of ["select", "eq", "in", "gte", "lt", "is", "order", "limit", "neq"]) b[m] = () => b;
-      b.insert = (row: Row | Row[]) => ((st.op = "insert"), (st.row = Array.isArray(row) ? row[0] : row), h.inserts.push(...(Array.isArray(row) ? row : [row]).map((r) => ({ table, row: r }))), b);
-      b.update = (row: Row) => ((st.op = "update"), (st.row = row), h.updates.push({ table, row }), b);
+      b.insert = (row: Row | Row[]) => ((st.op = "insert"), (st.row = Array.isArray(row) ? row[0] : row), h.inserts.push(...(Array.isArray(row) ? row : [row]).map((r) => ({ table, row: r }))), h.writes.push({ op: "insert", table, row: Array.isArray(row) ? row[0] : row }), b);
+      b.update = (row: Row) => ((st.op = "update"), (st.row = row), h.updates.push({ table, row }), h.writes.push({ op: "update", table, row }), b);
       const result = () => {
         if (st.op === "insert") {
           if (table === "studio_privacy_checks" && h.privacyInsertFails) return { data: null, error: { code: "42501", message: "denied" } };
@@ -94,6 +96,7 @@ beforeEach(() => {
   h.publish = { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false };
   h.inserts = [];
   h.updates = [];
+  h.writes = [];
   h.notices = [];
   h.audit = [];
   h.insertError = null;
@@ -119,15 +122,14 @@ describe("runAutopilot gating", () => {
     expect(await runAutopilot({ userId: null })).toMatchObject({ ok: false, status: "failed" });
     expect(h.inserts).toHaveLength(0);
   });
-  it("reaps a run the platform killed before counting the cap or inserting a new run", async () => {
+  it("reaps a run the platform killed before inserting a new one (else the one-running-row index deadlocks the schedule)", async () => {
     const { runAutopilot } = await load();
     await runAutopilot({ userId: "u1" });
-    const reap = h.updates.find((u) => u.table === "studio_autopilot_runs" && u.row.status === "failed");
-    expect(reap?.row).toMatchObject({ status: "failed", progress: 100 });
-    // without this the one-running-row index would deadlock every future run, silently
-    const insertIdx = h.inserts.findIndex((i) => i.table === "studio_autopilot_runs");
-    expect(insertIdx).toBeGreaterThanOrEqual(0);
-    expect(h.updates.indexOf(reap!)).toBe(0);
+    const reapAt = h.writes.findIndex((w) => w.op === "update" && w.table === "studio_autopilot_runs" && w.row.status === "failed");
+    const insertAt = h.writes.findIndex((w) => w.op === "insert" && w.table === "studio_autopilot_runs");
+    expect(reapAt).toBeGreaterThanOrEqual(0);
+    expect(insertAt).toBeGreaterThan(reapAt);
+    expect(h.writes[reapAt].row).toMatchObject({ status: "failed", progress: 100 });
   });
   it("treats a unique-violation on the run row as another run in flight", async () => {
     h.insertError = { code: "23505", message: "duplicate" };
@@ -169,15 +171,14 @@ describe("runAutopilot identity and degraded checks", () => {
     h.allowOverride = false;
     expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "privacy_review" });
   });
-  it("never leaves an approved master without its review row", async () => {
+  it("writes the review row before flipping the master to approved", async () => {
     const { runAutopilot } = await load();
     await runAutopilot({ userId: "u1" });
-    const reviewAt = h.inserts.findIndex((i) => i.table === "studio_content_reviews");
-    const approveAt = h.updates.findIndex((u) => u.table === "studio_content_masters" && u.row.status === "approved");
+    const reviewAt = h.writes.findIndex((w) => w.op === "insert" && w.table === "studio_content_reviews");
+    const approveAt = h.writes.findIndex((w) => w.op === "update" && w.table === "studio_content_masters" && w.row.status === "approved");
     expect(reviewAt).toBeGreaterThanOrEqual(0);
-    expect(approveAt).toBeGreaterThanOrEqual(0);
-    // the review row is written first, so a failed insert can never leave an approved-but-untraceable master
-    expect(h.inserts.slice(0, reviewAt + 1).some((i) => i.table === "studio_content_reviews")).toBe(true);
+    // a failed review insert must never leave an approved master with no trail
+    expect(approveAt).toBeGreaterThan(reviewAt);
   });
   it("stops when the privacy row or the review row cannot be stored", async () => {
     const { runAutopilot } = await load();

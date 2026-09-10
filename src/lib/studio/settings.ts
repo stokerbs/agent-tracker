@@ -78,11 +78,6 @@ export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
   return loadSettings(true);
 }
 
-/**
- * Autopilot config gates a fully automatic public post, so nothing is trusted
- * from jsonb: booleans are coerced strictly (a stray "no" string must not read
- * as true), enums are whitelisted and numbers are clamped.
- */
 /** These two booleans gate publishing, so a stray jsonb string must not read as true. */
 function normaliseApproval(v: unknown): ApprovalRules {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<ApprovalRules>;
@@ -92,6 +87,11 @@ function normaliseApproval(v: unknown): ApprovalRules {
   };
 }
 
+/**
+ * Autopilot config gates a fully automatic public post, so nothing is trusted
+ * from jsonb: booleans are coerced strictly (a stray "no" string must not read
+ * as true), enums are whitelisted and numbers are clamped.
+ */
 function normaliseAutopilot(v: unknown): AutopilotSettings {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
   const bool = (x: unknown, fallback: boolean) => (typeof x === "boolean" ? x : fallback);
