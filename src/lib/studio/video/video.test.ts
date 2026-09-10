@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assTime, buildAss, escapeAss } from "./ass";
-import { buildFfmpegArgs, escapeFilterPath } from "./ffmpeg";
+import { buildFfmpegArgs, escapeFilterPath, runFfmpeg } from "./ffmpeg";
 import { chunkSubtitle, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 import type { CreativePlan } from "@/lib/studio/types";
 
@@ -117,5 +117,14 @@ describe("ffmpeg args", () => {
   });
   it("escapes filter-sensitive characters in paths", () => {
     expect(escapeFilterPath("C:/x'y")).toBe("C\\:/x\\'y");
+  });
+});
+
+describe("runFfmpeg error mapping", () => {
+  it("maps a non-zero exit, a timeout and a missing binary to clear errors", async () => {
+    await expect(runFfmpeg(["-c", "echo boom >&2; exit 3"], { bin: "/bin/sh" })).rejects.toThrow(/ffmpeg exited 3: boom/);
+    await expect(runFfmpeg(["5"], { bin: "/bin/sleep", timeoutMs: 50 })).rejects.toThrow(/timed out after 50 ms/);
+    await expect(runFfmpeg([], { bin: "/definitely/not/here" })).rejects.toThrow(/failed to start/);
+    await expect(runFfmpeg(["-c", "exit 0"], { bin: "/bin/sh" })).resolves.toMatchObject({ durationMs: expect.any(Number) });
   });
 });

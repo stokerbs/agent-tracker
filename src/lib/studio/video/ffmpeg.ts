@@ -26,9 +26,7 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
   const args: string[] = ["-hide_banner", "-loglevel", "error", "-y", "-nostdin"];
   const filters: string[] = [];
   let audioInputs = 0;
-  shots.forEach((s, i) => {
-    args.push("-loop", "1", "-framerate", String(FPS), "-t", s.duration.toFixed(3), "-i", s.imagePath);
-  });
+  for (const s of shots) args.push("-loop", "1", "-framerate", String(FPS), "-t", s.duration.toFixed(3), "-i", s.imagePath);
   shots.forEach((s) => {
     if (s.audioPath) {
       args.push("-i", s.audioPath);
