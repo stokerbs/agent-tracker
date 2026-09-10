@@ -144,6 +144,8 @@ export const BUCKETS = {
   receipts: "receipts",
   reports: "reports",
   intelligence: "intelligence",
+  /** Creative Studio generated media (private; admin-only, signed URLs). */
+  studioMedia: "studio-media",
 } as const;
 
 // ─── AI Case Intake ──────────────────────────────────────────────────────────

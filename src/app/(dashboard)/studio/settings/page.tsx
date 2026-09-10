@@ -4,8 +4,10 @@ import {
   Bot,
   CheckCircle2,
   Database,
+  ImageIcon,
   Layers,
   Link2Off,
+  Mic,
   Mic2,
   ScrollText,
   Share2,
@@ -16,6 +18,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { isAiAvailable, resolveAiConfig } from "@/lib/studio/ai/provider";
+import { getMediaAvailability } from "@/lib/studio/media/provider";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +35,7 @@ import { KnowledgePrefsForm } from "./knowledge-prefs-form";
 import { PrivacyRulesForm } from "./privacy-rules-form";
 import { ApprovalForm } from "./approval-form";
 import { DemoDataForm, type DemoCounts } from "./demo-data-form";
+import { MediaForm } from "./media-form";
 import { normalizeKnowledgePrefs } from "./knowledge-prefs";
 
 export const metadata: Metadata = { title: "Studio Settings" };
@@ -106,12 +110,13 @@ export default async function StudioSettingsPage() {
 
   const aiReady = isAiAvailable(aiConfig.provider);
   const knowledgePrefs = normalizeKnowledgePrefs(settings.knowledge_prefs);
+  const media = getMediaAvailability(settings.media_prefs);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="ตั้งค่าสตูดิโอ"
-        description="น้ำเสียงแบรนด์ · แพลตฟอร์ม · สัดส่วน pillar · AI · กฎความเป็นส่วนตัว/การอนุมัติ · ข้อมูลตัวอย่าง · บันทึกการเรียก AI"
+        description="น้ำเสียงแบรนด์ · แพลตฟอร์ม · สัดส่วน pillar · AI · สื่อ (รูป/เสียง) · กฎความเป็นส่วนตัว/การอนุมัติ · ข้อมูลตัวอย่าง · บันทึกการเรียก AI"
       >
         {settings.updated_at && new Date(settings.updated_at).getTime() > 0 && (
           <span className="text-xs text-muted-foreground">อัปเดตล่าสุด {formatDate(settings.updated_at)}</span>
@@ -152,6 +157,53 @@ export default async function StudioSettingsPage() {
           />
         </div>
         <AiProviderForm initialProvider={aiConfig.provider} initialModel={aiConfig.model} />
+      </Section>
+
+      {/* 4b. Media (images + voice-over) */}
+      <Section
+        id="media"
+        icon={<ImageIcon className="h-4 w-4" />}
+        title="สื่อ (รูป / เสียงพากย์)"
+        description="สร้างภาพนิ่งด้วย Gemini และเสียงพากย์ไทยด้วย ElevenLabs จาก Content Editor — API key อยู่ใน ENV เท่านั้น"
+        badge={<Pill className="border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400">Phase 1</Pill>}
+      >
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <StatusTile
+            label="สถานะ Gemini key (ภาพ)"
+            value={
+              <Badge variant={media.image.available ? "default" : "destructive"} className="gap-1">
+                {media.image.available ? <CheckCircle2 className="h-3 w-3" /> : null}
+                {media.image.available ? "Configured" : "Missing key"}
+              </Badge>
+            }
+            hint="ตั้ง GEMINI_API_KEY ใน Vercel/ENV เท่านั้น ไม่เก็บในฐานข้อมูล"
+          />
+          <StatusTile
+            label="สถานะ ElevenLabs key (เสียง)"
+            value={
+              <Badge variant={media.tts.available ? "default" : "destructive"} className="gap-1">
+                {media.tts.available ? <CheckCircle2 className="h-3 w-3" /> : null}
+                {media.tts.available ? "Configured" : "Missing key"}
+              </Badge>
+            }
+            hint="ตั้ง ELEVENLABS_API_KEY ใน Vercel/ENV เท่านั้น ไม่เก็บในฐานข้อมูล"
+          />
+          <StatusTile
+            label="โมเดลที่ใช้อยู่"
+            value={
+              <div className="flex flex-col gap-1">
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <ImageIcon className="h-3 w-3 text-muted-foreground" /> <AiModelTag model={media.image.model} />
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <Mic className="h-3 w-3 text-muted-foreground" /> <AiModelTag model={media.tts.model} />
+                </span>
+              </div>
+            }
+            hint={`voice ${media.tts.voiceId} · ${settings.media_prefs.image_model || settings.media_prefs.tts_voice_id ? "มีค่าจากตั้งค่า" : "ค่าจาก ENV/ระบบ"}`}
+          />
+        </div>
+        <MediaForm initial={settings.media_prefs} placeholders={{ imageModel: media.image.model, ttsModel: media.tts.model, voiceId: media.tts.voiceId }} />
       </Section>
 
       {/* 5. Knowledge prefs */}
@@ -278,12 +330,15 @@ export default async function StudioSettingsPage() {
 }
 
 function Section({
+  id,
   icon,
   title,
   description,
   badge,
   children,
 }: {
+  /** Anchor target (e.g. /studio/settings#media). */
+  id?: string;
   icon: React.ReactNode;
   title: string;
   description?: string;
@@ -291,7 +346,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card>
+    <Card id={id} className={id ? "scroll-mt-4" : undefined}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-base">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">{icon}</span>

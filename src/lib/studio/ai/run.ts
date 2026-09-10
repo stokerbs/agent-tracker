@@ -57,7 +57,7 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
       model: opts.model,
       timeoutMs: opts.timeoutMs,
     });
-    const generationId = await record({
+    const generationId = await recordGeneration({
       purpose: opts.purpose,
       provider: result.provider,
       model: result.model,
@@ -78,7 +78,7 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
     const message = describe(err);
     console.error(`[studio:ai] ${opts.purpose} ${code}:`, message);
     if (code === "failed") Sentry.captureException(err, { tags: { module: "studio-ai", purpose: opts.purpose } });
-    const generationId = await record({
+    const generationId = await recordGeneration({
       purpose: opts.purpose,
       provider: provider.name,
       model: opts.model ?? "unknown",
@@ -106,7 +106,8 @@ function userFacing(code: RunErrorCode, message: string): string {
   return "สร้างด้วย AI ไม่สำเร็จ — ลองใหม่อีกครั้ง หากยังไม่ได้ให้ตรวจดูบันทึก AI ในตั้งค่าสตูดิโอ";
 }
 
-async function record(row: {
+/** Append one row to studio_ai_generations (also used by media generation). Never throws. */
+export async function recordGeneration(row: {
   purpose: string;
   provider: string;
   model: string;

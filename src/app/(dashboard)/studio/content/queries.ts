@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { signAssetUrls } from "@/lib/studio/media/generate";
 import type {
   ContentClaim,
   ContentMaster,
@@ -14,6 +15,7 @@ import type {
   PrivacyCheck,
   PrivacyFinding,
   PrivacyStatus,
+  CreativeAsset,
 } from "@/lib/studio/types";
 
 /**
@@ -64,6 +66,9 @@ export interface MasterWithRelations {
   /** Newest first. */
   reviews: ContentReviewWithName[];
   approvedByName: string | null;
+  /** Generated media (newest first) + 10-minute signed URLs keyed by asset id. */
+  assets: CreativeAsset[];
+  assetUrls: Record<string, string | null>;
 }
 
 function asCreativePlan(v: unknown): CreativePlan | null {
@@ -172,14 +177,15 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
   }
   if (!masterRow) return null;
 
-  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes] = await Promise.all([
+  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes] = await Promise.all([
     supabase.from("studio_content_variants").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_sources").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_claims").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_privacy_checks").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(20),
     supabase.from("studio_content_reviews").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(50),
+    supabase.from("studio_creative_assets").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(100),
   ]);
-  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes]) {
+  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes]) {
     if (r.error) console.error("[studio:content] relation load failed:", r.error.message);
   }
 
@@ -201,6 +207,14 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
     for (const p of profiles ?? []) names.set(p.id, p.full_name);
   }
 
+  const assets = assetsRes.data ?? [];
+  let assetUrls: Record<string, string | null> = {};
+  try {
+    assetUrls = await signAssetUrls(assets.filter((a) => a.status === "ready"));
+  } catch (e) {
+    console.error("[studio:content] asset signing failed:", e instanceof Error ? e.message : e);
+  }
+
   return {
     master: { ...masterRow, creative_plan: asCreativePlan(masterRow.creative_plan) },
     variants: (variantsRes.data ?? []).map((v) => ({ ...v, creative_plan: asCreativePlan(v.creative_plan) })),
@@ -209,5 +223,7 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
     privacyChecks: (checksRes.data ?? []).map((c) => ({ ...c, findings: asFindings(c.findings) })),
     reviews: reviews.map((r) => ({ ...r, reviewer_name: r.reviewer_id ? names.get(r.reviewer_id) ?? null : null })),
     approvedByName: masterRow.approved_by ? names.get(masterRow.approved_by) ?? null : null,
+    assets,
+    assetUrls,
   };
 }

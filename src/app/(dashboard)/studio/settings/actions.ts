@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
 import { PILLARS, PLATFORMS, STUDIO_MODELS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { loadDemoData, removeDemoData, type SeedSummary } from "@/lib/studio/seed";
-import type { ActionResult, ApprovalRules, BrandVoice, PillarConfig, PrivacyRules } from "@/lib/studio/types";
+import { IMAGE_ASPECTS, type ActionResult, type ApprovalRules, type BrandVoice, type ImageAspect, type PillarConfig, type PrivacyRules } from "@/lib/studio/types";
 import type { KnowledgePrefs } from "./knowledge-prefs";
 
 /**
@@ -139,6 +139,26 @@ export async function updateAiProvider(input: unknown): Promise<ActionResult> {
   const res = await saveSettings({ ai_provider: parsed.data.provider, ai_model: parsed.data.model }, profile.id, "ai_provider");
   if (!res.ok) return res;
   await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "ai_provider", ...parsed.data } });
+  revalidatePath(SETTINGS_PATH);
+  return { ok: true };
+}
+
+// ─── 4b. Media (images + voice-over) preferences ────────────────────────────
+const mediaPrefsSchema = z.object({
+  image_style: z.string().trim().max(1200, "สไตล์ภาพยาวเกิน 1200 ตัวอักษร"),
+  default_aspect: z.enum(IMAGE_ASPECTS as [ImageAspect, ...ImageAspect[]]),
+  image_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลไม่ถูกต้อง"),
+  tts_voice_id: z.string().trim().max(80).regex(/^[\w\-]*$/u, "voice id ไม่ถูกต้อง"),
+  tts_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลเสียงไม่ถูกต้อง"),
+});
+
+export async function updateMediaPrefs(input: unknown): Promise<ActionResult> {
+  const profile = await requireStudioAdmin();
+  const parsed = mediaPrefsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
+  const res = await saveSettings({ media_prefs: parsed.data }, profile.id, "media_prefs");
+  if (!res.ok) return res;
+  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "media_prefs" } });
   revalidatePath(SETTINGS_PATH);
   return { ok: true };
 }

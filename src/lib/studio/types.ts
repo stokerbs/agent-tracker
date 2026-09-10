@@ -124,6 +124,23 @@ export interface ApprovalRules {
   allow_override: boolean;
 }
 
+// ─── Media generation (phase 1: images + voice-over) ─────────────────────────
+export type ImageAspect = "9:16" | "1:1" | "16:9" | "4:5";
+export const IMAGE_ASPECTS: ImageAspect[] = ["9:16", "1:1", "16:9", "4:5"];
+export type MediaAssetKind = "thumbnail" | "broll" | "image" | "video" | "audio" | "subtitle" | "other";
+export type MediaAssetStatus = "pending" | "ready" | "failed";
+
+export interface MediaPrefs {
+  /** Brand style preset prepended to every image prompt (Thai or English). */
+  image_style: string;
+  default_aspect: ImageAspect;
+  /** Provider model id override; empty = env/default. */
+  image_model: string;
+  /** ElevenLabs voice id; empty = provider default voice. */
+  tts_voice_id: string;
+  tts_model: string;
+}
+
 /** AI-estimated idea scores. 1–5. Labelled "AI estimate" in UI — not validated predictions. */
 export interface AiScores {
   hook: number;
@@ -183,12 +200,13 @@ export interface PrivacyFinding {
 // ─── Row aliases ─────────────────────────────────────────────────────────────
 export type StudioSettingsRow = Omit<
   Row<"studio_settings">,
-  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules"
+  "brand_voice" | "pillars" | "privacy_rules" | "approval_rules" | "media_prefs"
 > & {
   brand_voice: BrandVoice;
   pillars: PillarConfig[];
   privacy_rules: PrivacyRules;
   approval_rules: ApprovalRules;
+  media_prefs: MediaPrefs;
 };
 
 export type KnowledgeSource = Row<"studio_knowledge_sources">;
