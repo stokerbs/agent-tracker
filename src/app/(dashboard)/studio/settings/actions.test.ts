@@ -192,6 +192,44 @@ describe("updateSocialDefaults", () => {
   });
 });
 
+describe("updateAutopilot", () => {
+  const good = {
+    enabled: true,
+    days: [4, 1, 1],
+    platforms: ["facebook", "instagram"],
+    pillar_mode: "rotate",
+    pillar: null,
+    target_seconds: 30,
+    images_per_run: 2,
+    auto_publish: true,
+    publish_on_review_required: false,
+    allow_unsupported_claims: false,
+    max_runs_per_week: 3,
+  };
+  it("refuses a non-admin before touching the database", async () => {
+    h.profile = { id: "u", role: "supervisor" };
+    const { updateAutopilot } = await load();
+    await expect(updateAutopilot(good)).rejects.toThrow();
+    expect(h.upsertCalls).toHaveLength(0);
+  });
+  it("rejects a fixed pillar mode with no pillar and out-of-range values", async () => {
+    const { updateAutopilot } = await load();
+    expect((await updateAutopilot({ ...good, pillar_mode: "fixed", pillar: null })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, images_per_run: 7 })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, days: [] })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, platforms: [] })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, target_seconds: 42 })).ok).toBe(false);
+    expect(h.upsertCalls).toHaveLength(0);
+  });
+  it("stores the config with days de-duplicated and sorted, and audits", async () => {
+    const { updateAutopilot } = await load();
+    expect(await updateAutopilot(good)).toEqual({ ok: true });
+    expect((h.upsertCalls[0]!.row.autopilot as Record<string, unknown>).days).toEqual([1, 4]);
+    expect((h.upsertCalls[0]!.row.autopilot as Record<string, unknown>).auto_publish).toBe(true);
+    expect(h.audit.map((a) => a.action)).toContain("STUDIO_SETTINGS_UPDATE");
+  });
+});
+
 describe("demo data", () => {
   it("loadDemo returns the seed summary and audits", async () => {
     const { loadDemo } = await load();

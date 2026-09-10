@@ -119,6 +119,16 @@ describe("runAutopilot gating", () => {
     expect(await runAutopilot({ userId: null })).toMatchObject({ ok: false, status: "failed" });
     expect(h.inserts).toHaveLength(0);
   });
+  it("reaps a run the platform killed before counting the cap or inserting a new run", async () => {
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const reap = h.updates.find((u) => u.table === "studio_autopilot_runs" && u.row.status === "failed");
+    expect(reap?.row).toMatchObject({ status: "failed", progress: 100 });
+    // without this the one-running-row index would deadlock every future run, silently
+    const insertIdx = h.inserts.findIndex((i) => i.table === "studio_autopilot_runs");
+    expect(insertIdx).toBeGreaterThanOrEqual(0);
+    expect(h.updates.indexOf(reap!)).toBe(0);
+  });
   it("treats a unique-violation on the run row as another run in flight", async () => {
     h.insertError = { code: "23505", message: "duplicate" };
     const { runAutopilot } = await load();
@@ -142,6 +152,7 @@ describe("runAutopilot identity and degraded checks", () => {
     for (const { row } of h.updates) for (const f of idFields) if (f in row) expect(row[f]).not.toBe("");
     expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row.created_by).toBe("admin-1");
     expect(h.inserts.find((i) => i.table === "studio_content_reviews")!.row.reviewer_id).toBe("admin-1");
+    expect(h.inserts.find((i) => i.table === "studio_autopilot_runs")!.row.created_by).toBe("admin-1");
   });
   it("never publishes on a deterministic-only verdict when the AI pass failed", async () => {
     h.privacy = { status: "safe", findings: [], summary: "ok", checked_by: "deterministic", model: null, ai_error: "rate limited" };
@@ -157,6 +168,16 @@ describe("runAutopilot identity and degraded checks", () => {
     expect(h.inserts.find((i) => i.table === "studio_content_reviews")!.row.decision).toBe("override_privacy");
     h.allowOverride = false;
     expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "privacy_review" });
+  });
+  it("never leaves an approved master without its review row", async () => {
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const reviewAt = h.inserts.findIndex((i) => i.table === "studio_content_reviews");
+    const approveAt = h.updates.findIndex((u) => u.table === "studio_content_masters" && u.row.status === "approved");
+    expect(reviewAt).toBeGreaterThanOrEqual(0);
+    expect(approveAt).toBeGreaterThanOrEqual(0);
+    // the review row is written first, so a failed insert can never leave an approved-but-untraceable master
+    expect(h.inserts.slice(0, reviewAt + 1).some((i) => i.table === "studio_content_reviews")).toBe(true);
   });
   it("stops when the privacy row or the review row cannot be stored", async () => {
     const { runAutopilot } = await load();

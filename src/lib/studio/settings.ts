@@ -83,6 +83,15 @@ export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
  * from jsonb: booleans are coerced strictly (a stray "no" string must not read
  * as true), enums are whitelisted and numbers are clamped.
  */
+/** These two booleans gate publishing, so a stray jsonb string must not read as true. */
+function normaliseApproval(v: unknown): ApprovalRules {
+  const raw = (v && typeof v === "object" ? v : {}) as Partial<ApprovalRules>;
+  return {
+    require_privacy_safe: typeof raw.require_privacy_safe === "boolean" ? raw.require_privacy_safe : DEFAULT_APPROVAL_RULES.require_privacy_safe,
+    allow_override: typeof raw.allow_override === "boolean" ? raw.allow_override : DEFAULT_APPROVAL_RULES.allow_override,
+  };
+}
+
 function normaliseAutopilot(v: unknown): AutopilotSettings {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
   const bool = (x: unknown, fallback: boolean) => (typeof x === "boolean" ? x : fallback);
@@ -135,7 +144,7 @@ async function loadSettings(strict: boolean): Promise<StudioSettingsRow> {
     brand_voice: { ...DEFAULT_BRAND_VOICE, ...((row?.brand_voice as Partial<BrandVoice> | null) ?? {}) },
     pillars: Array.isArray(row?.pillars) && (row!.pillars as PillarConfig[]).length ? (row!.pillars as PillarConfig[]) : DEFAULT_PILLARS,
     privacy_rules: { ...DEFAULT_PRIVACY_RULES, ...((row?.privacy_rules as Partial<PrivacyRules> | null) ?? {}) },
-    approval_rules: { ...DEFAULT_APPROVAL_RULES, ...((row?.approval_rules as Partial<ApprovalRules> | null) ?? {}) },
+    approval_rules: normaliseApproval(row?.approval_rules),
     media_prefs: { ...DEFAULT_MEDIA_PREFS, ...((row?.media_prefs as Partial<MediaPrefs> | null) ?? {}) },
   };
 }

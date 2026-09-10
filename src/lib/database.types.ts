@@ -2852,6 +2852,7 @@ export type Database = {
       studio_autopilot_runs: {
         Row: {
           created_at: string
+          created_by: string | null
           error: string | null
           finished_at: string | null
           id: string
@@ -2871,6 +2872,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -2890,6 +2892,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -2908,6 +2911,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "studio_autopilot_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "studio_autopilot_runs_idea_id_fkey"
             columns: ["idea_id"]

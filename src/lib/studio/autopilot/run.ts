@@ -69,6 +69,13 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     return { ok: false, runId: null, status: "failed", error: "โหลดการตั้งค่าสตูดิโอไม่สำเร็จ" };
   }
 
+  // Reap a run the platform killed mid-flight, otherwise the one-running-row index blocks every future run.
+  await svc
+    .from("studio_autopilot_runs")
+    .update({ status: "failed", error: "งานหยุดกลางทาง (เกินเวลาที่เซิร์ฟเวอร์อนุญาต)", step: "ล้มเหลว", progress: 100, finished_at: new Date().toISOString() })
+    .eq("status", "running")
+    .lt("started_at", new Date(now.getTime() - 10 * 60_000).toISOString());
+
   const weekAgo = new Date(now.getTime() - 7 * 24 * 3600_000).toISOString();
   const { count: runsThisWeek } = await svc.from("studio_autopilot_runs").select("id", { count: "exact", head: true }).gte("created_at", weekAgo).in("status", ["done", "review", "running", "failed"]);
   const verdict = shouldRun(cfg, { now, runsThisWeek: runsThisWeek ?? 0 });
@@ -82,13 +89,6 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     console.error("[studio:autopilot] no admin profile to act as — refusing to run");
     return { ok: false, runId: null, status: "failed", error: "ไม่พบบัญชีแอดมินสำหรับรันอัตโนมัติ" };
   }
-
-  // Reap a run the platform killed mid-flight, otherwise the one-running-row index blocks every future run.
-  await svc
-    .from("studio_autopilot_runs")
-    .update({ status: "failed", error: "งานหยุดกลางทาง (เกินเวลาที่เซิร์ฟเวอร์อนุญาต)", step: "ล้มเหลว", progress: 100, finished_at: new Date().toISOString() })
-    .eq("status", "running")
-    .lt("started_at", new Date(now.getTime() - 10 * 60_000).toISOString());
 
   const { data: run, error: rErr } = await svc
     .from("studio_autopilot_runs")
@@ -219,7 +219,6 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     }
 
     // ── 7. approve ──────────────────────────────────────────────────────────
-    await svc.from("studio_content_masters").update({ status: "approved", approved_by: actor, approved_at: new Date().toISOString() }).eq("id", masterId);
     const overrode = privacy.status === "review_required";
     const { error: revErr } = await svc.from("studio_content_reviews").insert({
       master_id: masterId,
@@ -228,6 +227,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
       note: overrode ? "Autopilot: อนุมัติทั้งที่ Privacy Check ขอให้ตรวจ (เจ้าของเปิดสวิตช์ไว้)" : "อนุมัติอัตโนมัติโดย Autopilot (ผ่าน Privacy Check)",
     });
     if (revErr) return await stop("review_not_stored", masterId, "failed", revErr.message);
+    await svc.from("studio_content_masters").update({ status: "approved", approved_by: actor, approved_at: new Date().toISOString() }).eq("id", masterId);
     await logAudit({ actorId: actor, action: "STUDIO_CONTENT_APPROVE", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, privacy: privacy.status } });
 
     if (!cfg.auto_publish) {
