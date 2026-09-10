@@ -133,6 +133,18 @@ describe("publishMaster", () => {
     // a failed sibling row keeps the master from flipping
     expect(h.updates.some((u) => u.table === "studio_content_masters")).toBe(false);
   });
+  it("keeps a platform that answers success/id=pending (TikTok processing) as queued, not published", async () => {
+    const provider = fakeProvider({
+      createPost: async (i) => ({ providerPostId: "P7", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "fb1", postUrl: "https://fb/7" }, tiktok: { status: "success", id: "pending" } } }),
+    });
+    const { publishMaster } = await import("./publish");
+    const r = await publishMaster({ master, variants: [], platforms: ["facebook", "tiktok"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+    expect(r.ok).toBe(true);
+    const rows = h.inserts.filter((i) => i.platform);
+    expect(rows.find((x) => x.platform === "facebook")).toMatchObject({ status: "published" });
+    expect(rows.find((x) => x.platform === "tiktok")).toMatchObject({ status: "queued", published_at: null, post_url: null });
+    expect(h.updates.some((u) => u.table === "studio_content_masters")).toBe(false); // waits for the sync to confirm TikTok
+  });
   it("drops non-http urls coming back from the provider", async () => {
     const provider = fakeProvider({
       createPost: async (i) => ({ providerPostId: "P9", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "x", postUrl: "javascript:alert(1)" } } }),
@@ -201,6 +213,17 @@ describe("syncSocialPosts", () => {
     expect(r).toMatchObject({ checked: 1, published: 1, failed: 0 });
     const upd = h.updates.find((u) => u.table === "studio_social_posts");
     expect(upd?.payload).toMatchObject({ status: "published", post_url: "https://fb/9" });
+  });
+  it("leaves a still-pending TikTok row untouched until the platform returns a url", async () => {
+    h.socialRows = [{ id: "sp1", master_id: MASTER, platform: "tiktok", provider_post_id: "P1", status: "queued" }];
+    const provider = fakeProvider({ postStatus: async (id) => ({ providerPostId: id, status: "success", perPlatform: { tiktok: { status: "success", id: "pending" } } }) });
+    const { syncSocialPosts } = await import("./publish");
+    const r = await syncSocialPosts({ provider });
+    expect(r).toMatchObject({ checked: 1, published: 0, failed: 0 });
+    expect(h.updates).toHaveLength(0);
+    const done = fakeProvider({ postStatus: async (id) => ({ providerPostId: id, status: "success", perPlatform: { tiktok: { status: "success", id: "7400", postUrl: "https://www.tiktok.com/@dttp60/video/7400" } } }) });
+    await syncSocialPosts({ provider: done });
+    expect(h.updates.find((u) => u.table === "studio_social_posts")?.payload).toMatchObject({ status: "published", post_url: "https://www.tiktok.com/@dttp60/video/7400" });
   });
   it("marks failures and counts provider lookup errors without aborting", async () => {
     h.socialRows = [
