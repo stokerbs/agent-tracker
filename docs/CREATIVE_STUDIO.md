@@ -238,3 +238,21 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 **Costs (approx., provider list prices Sep 2026).** Gemini Flash image ≈ US$0.04/image; ElevenLabs ≈ US$0.10–0.30 per minute of Thai speech. Logged per call (`duration_ms`, model) so Settings → AI log shows usage.
 
 **Owner must supply.** `GEMINI_API_KEY` and `ELEVENLABS_API_KEY` in Vercel + `.env.local` (and a voice id if the default multilingual voice is not wanted). Everything else is in code.
+
+---
+
+## 14. Publishing — Phase 2: auto-posting via Ayrshare (migration 0118)
+
+**Goal.** From an approved/scheduled content piece the owner posts (now or at the scheduled time) to Facebook Page, Instagram, TikTok and YouTube through one aggregator, without our own Meta/TikTok app review. Owner decision 2026-09-10: pay for Ayrshare; start with FB · IG · TikTok · YouTube. LINE OA broadcast stays a later add-on (we already hold the token).
+
+**Provider.** `lib/studio/publish/provider.ts` (`PublishProvider`: `connectedPlatforms()`, `uploadMedia()`, `createPost()`, `deletePost()`, `postStatus()`) with `AyrsharePublishProvider` over REST (`AYRSHARE_API_KEY`, `Authorization: Bearer`). Media is first uploaded to Ayrshare's media store (`/api/media/upload`, base64) because our bucket is private and signed URLs expire; the returned URL is cached on the asset (`external_url`). Missing key ⇒ honest "not configured" (buttons disabled + reason). The owner links the social accounts in the Ayrshare dashboard; Settings shows which are active (`/api/user`).
+
+**Data.** `studio_social_posts` (one row per master × platform): provider post id/ref, `status queued|scheduled|published|failed|deleted`, `scheduled_at`, `published_at`, `post_url`, `error`, `caption_chars`, `media_asset_ids`. `studio_settings.social_connections` (0109) holds the last connection snapshot + per-platform defaults (YouTube visibility, TikTok privacy level).
+
+**Gates (server, in order).** admin → master status `approved|scheduled` (same rule as manual publish) → fresh deterministic privacy scan of the exact caption per platform (`gateBlocked`) → platform requirements: Instagram needs ≥1 image/video, TikTok needs a video or 1–35 images, YouTube needs a video + title, Facebook may be text-only → assets must be `ready` and belong to the master → provider call → rows + `STUDIO_SOCIAL_POST` audit → master becomes `published` (immediate) or stays `scheduled` (Ayrshare holds the schedule). Caption per platform = the platform variant's caption if present, else master caption + CTA, truncated to platform limits (IG 2,200 · TikTok 2,200 · YouTube title 100 / description 5,000 · FB 63,206).
+
+**Sync.** Cron `/api/cron/studio-social-sync` every 30 min: for rows `queued|scheduled`, ask Ayrshare `/api/history/:id` → mark `published` (post_url) / `failed` (error) and flip the master to `published` once every platform row is published; owner gets a LINE push on the first failure. Deleting a post calls Ayrshare `DELETE /api/post` and marks the row `deleted`.
+
+**Honest limits.** Video generation is Phase 3, so until then TikTok/YouTube buttons stay disabled with "ต้องมีวิดีโอ" while FB/IG work with generated images. Analytics pull-back (`/api/analytics/post`) is prepared as a seam only. Ayrshare request/response shapes were implemented from their public docs and verified against the live API once the owner's key arrived (see PR notes).
+
+**Owner must supply.** Ayrshare account (paid plan), social accounts linked in its dashboard, `AYRSHARE_API_KEY` in Vercel + `.env.local`.

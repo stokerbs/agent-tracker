@@ -28,6 +28,9 @@ vi.mock("@/lib/studio/seed", () => ({
   loadDemoData: vi.fn(async () => h.seed),
   removeDemoData: vi.fn(async () => undefined),
 }));
+vi.mock("@/lib/studio/settings", () => ({
+  getStudioSettings: vi.fn(async () => ({ social_connections: { ayrshare: { checked_at: null, active: [], display_names: {} }, defaults: { youtube_visibility: "public", tiktok_privacy: "PUBLIC_TO_EVERYONE" } } })),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: () => ({
@@ -174,6 +177,18 @@ describe("updateMediaPrefs", () => {
     expect(await updateMediaPrefs(good)).toEqual({ ok: true });
     expect(h.upsertCalls[0]!.row).toMatchObject({ media_prefs: good });
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_SETTINGS_UPDATE");
+  });
+});
+
+describe("updateSocialDefaults", () => {
+  it("rejects unknown values and stores defaults next to the existing connection snapshot", async () => {
+    const { updateSocialDefaults } = await load();
+    expect((await updateSocialDefaults({ youtube_visibility: "everyone", tiktok_privacy: "PUBLIC_TO_EVERYONE" })).ok).toBe(false);
+    expect(h.upsertCalls).toHaveLength(0);
+    expect(await updateSocialDefaults({ youtube_visibility: "unlisted", tiktok_privacy: "SELF_ONLY" })).toEqual({ ok: true });
+    const sc = h.upsertCalls[0]!.row.social_connections as { defaults: Record<string, string>; ayrshare: unknown };
+    expect(sc.defaults).toEqual({ youtube_visibility: "unlisted", tiktok_privacy: "SELF_ONLY" });
+    expect(sc.ayrshare).toBeDefined();
   });
 });
 

@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
 import { PILLARS, PLATFORMS, STUDIO_MODELS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { loadDemoData, removeDemoData, type SeedSummary } from "@/lib/studio/seed";
+import { getStudioSettings } from "@/lib/studio/settings";
 import { IMAGE_ASPECTS, type ActionResult, type ApprovalRules, type BrandVoice, type ImageAspect, type PillarConfig, type PrivacyRules } from "@/lib/studio/types";
 import type { KnowledgePrefs } from "./knowledge-prefs";
 
@@ -159,6 +160,34 @@ export async function updateMediaPrefs(input: unknown): Promise<ActionResult> {
   const res = await saveSettings({ media_prefs: parsed.data }, profile.id, "media_prefs");
   if (!res.ok) return res;
   await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "media_prefs" } });
+  revalidatePath(SETTINGS_PATH);
+  return { ok: true };
+}
+
+// ─── 4c. Publishing (Ayrshare) — connection refresh + platform defaults ─────
+export async function refreshSocialConnections(): Promise<ActionResult<{ active: string[] }>> {
+  const profile = await requireStudioAdmin();
+  const { refreshConnections } = await import("@/lib/studio/publish/publish");
+  const res = await refreshConnections();
+  if (!res.ok) return { ok: false, error: res.error };
+  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "social_connections", active: res.active } });
+  revalidatePath(SETTINGS_PATH);
+  return { ok: true, data: { active: res.active } };
+}
+
+const socialDefaultsSchema = z.object({
+  youtube_visibility: z.enum(["public", "private", "unlisted"]),
+  tiktok_privacy: z.enum(["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "SELF_ONLY"]),
+});
+
+export async function updateSocialDefaults(input: unknown): Promise<ActionResult> {
+  const profile = await requireStudioAdmin();
+  const parsed = socialDefaultsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
+  const current = (await getStudioSettings()).social_connections;
+  const res = await saveSettings({ social_connections: { ...current, defaults: parsed.data } }, profile.id, "social_defaults");
+  if (!res.ok) return res;
+  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "social_defaults", ...parsed.data } });
   revalidatePath(SETTINGS_PATH);
   return { ok: true };
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isAiAvailable, resolveAiConfig } from "@/lib/studio/ai";
 import { getMediaAvailability } from "@/lib/studio/media/provider";
+import { getPublishAvailability } from "@/lib/studio/publish/provider";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { getMasterWithRelations } from "../queries";
 import { ContentEditor } from "./editor";
@@ -32,5 +33,20 @@ export default async function ContentEditorPage({ params }: { params: Promise<{ 
     tts: { available: media.tts.available, reason: media.tts.reason },
   };
 
-  return <ContentEditor data={data} aiAvailable={aiAvailable} aiReason={aiReason} approvalRules={settings.approval_rules} mediaAvailability={mediaAvailability} defaultAspect={settings.media_prefs.default_aspect} />;
+  // Same rule for the publish provider: a boolean + reason cross the boundary, the Ayrshare key stays on the server.
+  const publish = getPublishAvailability();
+  const socialAvailability = { available: publish.available, reason: publish.reason };
+
+  return (
+    <ContentEditor
+      data={data}
+      aiAvailable={aiAvailable}
+      aiReason={aiReason}
+      approvalRules={settings.approval_rules}
+      mediaAvailability={mediaAvailability}
+      defaultAspect={settings.media_prefs.default_aspect}
+      socialAvailability={socialAvailability}
+      socialConnections={settings.social_connections}
+    />
+  );
 }

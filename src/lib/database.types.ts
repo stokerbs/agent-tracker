@@ -3897,6 +3897,88 @@ export type Database = {
           },
         ]
       }
+      studio_social_posts: {
+        Row: {
+          caption_chars: number | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          master_id: string
+          media_asset_ids: string[]
+          platform: string
+          post_url: string | null
+          provider: string
+          provider_post_id: string | null
+          provider_ref: Json
+          published_at: string | null
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          caption_chars?: number | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          master_id: string
+          media_asset_ids?: string[]
+          platform: string
+          post_url?: string | null
+          provider?: string
+          provider_post_id?: string | null
+          provider_ref?: Json
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          caption_chars?: number | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          master_id?: string
+          media_asset_ids?: string[]
+          platform?: string
+          post_url?: string | null
+          provider?: string
+          provider_post_id?: string | null
+          provider_ref?: Json
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_social_posts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_social_posts_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_social_posts_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       target_locations: {
         Row: {
           address_enc: string | null

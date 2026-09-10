@@ -11,7 +11,7 @@ import { ContentStatusBadge, PillarBadge, PrivacyBadge } from "@/components/stud
 import { PILLAR_META, PILLARS, PLATFORM_META, PLATFORMS, VIDEO_PLATFORMS } from "@/lib/studio/constants";
 import { durationFit, estimateSpokenSeconds, formatDuration } from "@/lib/studio/duration";
 import { effectivePrivacy } from "@/lib/studio/privacy/gate";
-import { TARGET_DURATIONS, type ApprovalRules, type ImageAspect, type Pillar, type Platform, type PrivacyStatus } from "@/lib/studio/types";
+import { TARGET_DURATIONS, type ApprovalRules, type ImageAspect, type Pillar, type Platform, type PrivacyStatus, type SocialConnections } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
 import { saveMasterFields } from "../actions";
 import { formatTimeBkk } from "../format";
@@ -20,6 +20,7 @@ import { CreativePlanSection } from "./creative-plan-section";
 import { FieldSection } from "./field-section";
 import { MediaSection, type MediaAvailabilityProps } from "./media-section";
 import { RightPanel, type EditableField } from "./right-panel";
+import { SocialSection, type SocialAvailabilityProps } from "./social-section";
 import { VariantsSection } from "./variants-section";
 import { WorkflowBar } from "./workflow-bar";
 
@@ -31,6 +32,10 @@ export interface ContentEditorProps {
   /** Image / TTS provider status computed server-side (keys never reach the client). */
   mediaAvailability: MediaAvailabilityProps;
   defaultAspect: ImageAspect;
+  /** Publish provider status (boolean + Thai reason) computed server-side — never the key. */
+  socialAvailability: SocialAvailabilityProps;
+  /** Last connection snapshot + per-platform defaults from studio_settings (no tokens are stored). */
+  socialConnections: SocialConnections;
 }
 
 type TextFields = { title: string; hook: string; script: string; caption: string; cta: string; notes: string };
@@ -40,7 +45,7 @@ const AUTOSAVE_MS = 1200;
 const FIT_LABEL = { on_target: "พอดีเป้า", short: "สั้นไป", long: "ยาวไป", unknown: "" } as const;
 const FIT_CLASS = { on_target: "text-emerald-600 dark:text-emerald-400", short: "text-amber-600 dark:text-amber-400", long: "text-amber-600 dark:text-amber-400", unknown: "text-muted-foreground" } as const;
 
-export function ContentEditor({ data, aiAvailable, aiReason, approvalRules, mediaAvailability, defaultAspect }: ContentEditorProps) {
+export function ContentEditor({ data, aiAvailable, aiReason, approvalRules, mediaAvailability, defaultAspect, socialAvailability, socialConnections }: ContentEditorProps) {
   const { master } = data;
   const router = useRouter();
   const editable = !["published"].includes(master.status);
@@ -297,6 +302,17 @@ export function ContentEditor({ data, aiAvailable, aiReason, approvalRules, medi
             hasHook={!!fields.hook.trim()}
             editable={editable}
             flush={flush}
+          />
+          <SocialSection
+            masterId={master.id}
+            status={master.status}
+            scheduledAt={master.scheduled_at}
+            assets={data.assets}
+            assetUrls={data.assetUrls}
+            socialPosts={data.socialPosts}
+            connections={socialConnections}
+            availability={socialAvailability}
+            editable={editable}
           />
         </div>
 
