@@ -73,6 +73,19 @@ export function validGroups<T extends { member_ids: number[] }>(groups: T[], siz
   return ok;
 }
 
+/** PostgREST caps a single request at 1000 rows — page through with .range(). */
+async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<{ rows: T[]; error: string | null }> {
+  const rows: T[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) return { rows, error: error.message };
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return { rows, error: null };
+}
+
 function carriesHighPii(rules: PrivacyRules, ...fields: string[]): boolean {
   return scrubText({ fields: Object.fromEntries(fields.map((f, i) => [`f${i}`, f])), rules }).some((f) => f.severity === "high" || f.kind === "denylist");
 }
@@ -84,20 +97,23 @@ export async function consolidateKnowledge(opts: ConsolidateOptions = {}): Promi
   const rules = (await getStudioSettingsStrict()).privacy_rules;
   const sourceTag = opts.sourceTag ?? "line-import";
 
-  const { data: rows, error } = await svc
-    .from("studio_knowledge_sources")
-    .select("id, title, content, category, tags, member_count, sensitivity")
-    .contains("tags", [sourceTag])
-    .is("superseded_by", null)
-    .eq("approved_for_content", false)
-    .order("category")
-    .order("title")
-    .limit(10_000);
+  const { rows, error } = await fetchAll((from, to) =>
+    svc
+      .from("studio_knowledge_sources")
+      .select("id, title, content, category, tags, member_count, sensitivity")
+      .contains("tags", [sourceTag])
+      .is("superseded_by", null)
+      .eq("approved_for_content", false)
+      .order("category")
+      .order("title")
+      .order("id")
+      .range(from, to),
+  );
   if (error) {
-    res.errors.push(`load: ${error.message}`);
+    res.errors.push(`load: ${error}`);
     return res;
   }
-  const all = (rows ?? []).filter((r) => !opts.categories?.length || opts.categories.includes(r.category));
+  const all = rows.filter((r) => !opts.categories?.length || opts.categories.includes(r.category));
   res.scanned = all.length;
 
   const byCat = new Map<string, typeof all>();
@@ -174,20 +190,23 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
   const res: ConsolidateResult = { target: "questions", scanned: 0, batches: 0, groups: 0, merged: 0, dropped: 0, errors: [] };
   const rules = (await getStudioSettingsStrict()).privacy_rules;
 
-  const { data: rows, error } = await svc
-    .from("studio_customer_questions")
-    .select("id, question, answer_hint, frequency, tags, normalized_key")
-    .in("source", ["import", "line_oa"])
-    .is("superseded_by", null)
-    .eq("approved_for_content", false)
-    .eq("is_demo", false)
-    .order("normalized_key")
-    .limit(10_000);
+  const { rows, error } = await fetchAll((from, to) =>
+    svc
+      .from("studio_customer_questions")
+      .select("id, question, answer_hint, frequency, tags, normalized_key")
+      .in("source", ["import", "line_oa"])
+      .is("superseded_by", null)
+      .eq("approved_for_content", false)
+      .eq("is_demo", false)
+      .order("normalized_key")
+      .order("id")
+      .range(from, to),
+  );
   if (error) {
-    res.errors.push(`load: ${error.message}`);
+    res.errors.push(`load: ${error}`);
     return res;
   }
-  const all = rows ?? [];
+  const all = rows;
   res.scanned = all.length;
   const batches = makeBatches(all, 60);
   log(`questions: ${all.length} rows → ${batches.length} batch(es)`);

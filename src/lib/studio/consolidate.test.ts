@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
     from: () => {
       const st = { op: "select", inIds: null as unknown, payload: null as Row | null };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "contains", "is", "eq", "order", "limit", "in", "maybeSingle"]) b[m] = (...a: unknown[]) => ((m === "in" && (st.inIds = a[1])), b);
+      for (const m of ["select", "contains", "is", "eq", "order", "limit", "in", "maybeSingle", "range"]) b[m] = (...a: unknown[]) => ((m === "in" && (st.inIds = a[1])), b);
       b.single = () => b;
       b.insert = (row: Row) => ((st.op = "insert"), (st.payload = row), h.inserts.push(row), b);
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), b);
