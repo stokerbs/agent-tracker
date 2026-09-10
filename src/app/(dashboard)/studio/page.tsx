@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CalendarDays, Lightbulb, PieChart, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Lightbulb, PieChart, Radar, Sparkles, Wand2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FadeUp } from "@/components/shared/motion";
 import { AiUnavailableBanner } from "@/components/studio/ai-status";
@@ -8,10 +8,12 @@ import { ContentStatusBadge, PillarBadge, PlatformChip, ScoreStrip } from "@/com
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
+import { bangkokDay } from "@/lib/studio/autopilot/plan";
 import { dayKeyInBangkok, formatThaiDayShort, timeInBangkok } from "./calendar/date-utils";
 import { DirectorInput } from "./director-input";
 import { MixPanel } from "./mix-panel";
 import { PipelineTiles } from "./pipeline-tiles";
+import { nextRunLabel } from "./settings/autopilot-format";
 import { getStudioDashboardData } from "./queries";
 
 export const metadata: Metadata = { title: "Creative Studio" };
@@ -55,6 +57,20 @@ export default async function StudioDashboardPage() {
       <FadeUp delay={0.05}>
         <PipelineTiles counts={data.counts} />
       </FadeUp>
+
+      {/* 2b · Autopilot reminder — only when it is actually armed */}
+      {data.autopilot.enabled && (
+        <Link
+          href="/studio/settings#autopilot"
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs transition-colors hover:border-border hover:bg-accent/40"
+        >
+          <Radar className="h-3.5 w-3.5 text-primary" aria-hidden />
+          <span className="font-medium">โหมดอัตโนมัติ: เปิด</span>
+          <span className="text-muted-foreground">· รอบถัดไป {nextRunLabel(data.autopilot.days, bangkokDay(new Date()))}</span>
+          <span className="text-muted-foreground">· {data.autopilot.auto_publish ? "โพสต์เอง" : "รอตรวจก่อนโพสต์"}</span>
+          <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+        </Link>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* 3 · AI recommended ideas */}

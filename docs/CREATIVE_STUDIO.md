@@ -272,3 +272,19 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 **Gates.** admin → master exists and status not `archived` → fresh deterministic privacy scan (hook/script/caption) not blocked → plan has ≥ 1 shot with voice text → ≥ 1 ready image asset → TTS + ffmpeg configured. Costs: TTS only (≈ ฿3–10 per minute of narration); render is CPU time on Vercel.
 
 **Honest limits.** No B-roll motion video (stills with zoom), no music (licensing), one aspect (9:16) in V1, ffmpeg wall-time on a 1 vCPU function ≈ 1–2× the video length; a 60 s clip may take ~2 min. Not browser-verified with an owner session; the pipeline is exercised end-to-end locally with the real providers before merge.
+
+---
+
+## 16. Autopilot — Phase 4: scheduled end-to-end production + posting (migration 0121)
+
+**Goal.** Owner decision 2026-09-10: the studio should produce and post by itself on a schedule, using the **template video** (stills + Thai voice-over), not Veo. One autopilot run = one finished post.
+
+**Pipeline (one cron run, `maxDuration` 300 s).** pick pillar (largest gap vs the mix targets, or fixed) → take the oldest `saved` idea for that pillar, else generate ideas from a brief built from the top unanswered customer questions and save them → create the master → `generateScript` → `generateCreativePlan` → cover image (+ up to `images_per_run − 1` scene images) → template video render (reuse `runRenderJob`) → privacy check (deterministic **and** AI, because no human sees it) → approve → publish to the configured platforms → LINE notification with the links. Every step writes `studio_autopilot_runs.step/progress`; a failure stops the run, records the reason and pings LINE.
+
+**Hard stops (never bypassed).** A `blocked` privacy result stops the run before approval — nothing is published and the master stays `review` for the owner. `review_required` follows `autopilot.publish_on_review_required` (default **false** → stops and asks). Unsupported fact claims from the script generator are recorded as usual; when any claim is `unsupported` the run stops unless `allow_unsupported_claims` is on. Platform posting reuses Phase 2 in full (linked-account check, per-platform captions re-scrubbed, duplicate guard, rate limit).
+
+**Settings** (`studio_settings.autopilot`): `enabled`, `days` (0–6, Bangkok), `platforms`, `pillar_mode` (`rotate|fixed`) + `pillar`, `target_seconds`, `images_per_run`, `auto_publish` (false = produce and leave in review), `publish_on_review_required`, `allow_unsupported_claims`, `max_runs_per_week`. Cron `/api/cron/studio-autopilot` fires daily 02:10 Bangkok (`10 19 * * *` UTC) and exits immediately when disabled, off-day, or the weekly cap is reached.
+
+**Time budget.** The cron route gets 300 s; a measured live run (6 shots, 2 images, 47 s clip) took **207 s** — script 34 s, plan 49 s, images 25 s, render 65 s, AI privacy 11 s. The plan is therefore trimmed to 8 shots and optional scene images are skipped once the run is within 150 s of the budget.
+
+**Cost per run** ≈ AI script/plan (Claude) + `images_per_run` × ฿1.5 + narration ฿5–15 + render CPU ≈ **฿30–60**. Honest limits: template video only (no Veo motion — see §15 notes), one post per run, no A/B testing, no engagement-based scheduling.

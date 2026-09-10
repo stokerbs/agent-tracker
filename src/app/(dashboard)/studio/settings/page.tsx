@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
+  ArrowRight,
   BookOpen,
   Bot,
   CheckCircle2,
@@ -10,6 +12,7 @@ import {
   Link2Off,
   Mic,
   Mic2,
+  Radar,
   ScrollText,
   Share2,
   ShieldCheck,
@@ -21,15 +24,16 @@ import { getStudioSettings } from "@/lib/studio/settings";
 import { isAiAvailable, resolveAiConfig } from "@/lib/studio/ai/provider";
 import { getMediaAvailability } from "@/lib/studio/media/provider";
 import { PLATFORM_LABEL } from "@/lib/studio/publish/captions";
+import { bangkokDay } from "@/lib/studio/autopilot/plan";
 import { getPublishAvailability } from "@/lib/studio/publish/provider";
-import { SOCIAL_PLATFORMS } from "@/lib/studio/types";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/lib/studio/types";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AiModelTag, AiUnavailableBanner } from "@/components/studio/ai-status";
-import { Pill } from "@/components/studio/badges";
+import { Pill, PillarBadge } from "@/components/studio/badges";
 import { BrandVoiceForm } from "./brand-voice-form";
 import { PlatformsForm } from "./platforms-form";
 import { PillarsForm } from "./pillars-form";
@@ -40,6 +44,8 @@ import { ApprovalForm } from "./approval-form";
 import { DemoDataForm, type DemoCounts } from "./demo-data-form";
 import { MediaForm } from "./media-form";
 import { SocialForm } from "./social-form";
+import { AutopilotForm } from "./autopilot-form";
+import { RUN_STATUS_META, formatDays, nextRunLabel, normaliseRunStatus, runReason, runStatsSummary } from "./autopilot-format";
 import { normalizeKnowledgePrefs } from "./knowledge-prefs";
 import { formatDateTimeBkk } from "../content/format";
 
@@ -48,6 +54,23 @@ export const dynamic = "force-dynamic";
 
 const DAY = 24 * 60 * 60 * 1000;
 const LOG_LIMIT = 30;
+const RUN_LIMIT = 5;
+
+/** Columns of studio_autopilot_runs the history list needs (no free text from the content itself). */
+interface AutopilotRunRow {
+  id: string;
+  created_at: string;
+  status: string;
+  step: string | null;
+  stopped_at: string | null;
+  error: string | null;
+  pillar: string | null;
+  platforms: string[];
+  master_id: string | null;
+  published: boolean;
+  trigger: string;
+  stats: unknown;
+}
 
 interface GenerationRow {
   id: string;
@@ -72,7 +95,7 @@ export default async function StudioSettingsPage() {
   const countTagged = (table: "studio_ideas" | "studio_content_masters") =>
     supabase.from(table).select("id", { count: "exact", head: true }).contains("tags", ["demo"]);
 
-  const [settings, aiConfig, kRes, cRes, qRes, iRes, mRes, logRes, tokRes] = await Promise.all([
+  const [settings, aiConfig, kRes, cRes, qRes, iRes, mRes, logRes, tokRes, runRes] = await Promise.all([
     getStudioSettings(),
     resolveAiConfig(),
     countDemo("studio_knowledge_sources"),
@@ -86,9 +109,14 @@ export default async function StudioSettingsPage() {
       .order("created_at", { ascending: false })
       .limit(LOG_LIMIT),
     supabase.from("studio_ai_generations").select("input_tokens, output_tokens, status").gte("created_at", since30).limit(2000),
+    supabase
+      .from("studio_autopilot_runs")
+      .select("id, created_at, status, step, stopped_at, error, pillar, platforms, master_id, published, trigger, stats")
+      .order("created_at", { ascending: false })
+      .limit(RUN_LIMIT),
   ]);
 
-  for (const [label, r] of [["log", logRes], ["tokens", tokRes]] as const) {
+  for (const [label, r] of [["log", logRes], ["tokens", tokRes], ["autopilot runs", runRes]] as const) {
     if (r.error) console.error(`[studio:settings] ${label} query failed:`, r.error.message);
   }
 
@@ -113,12 +141,15 @@ export default async function StudioSettingsPage() {
   // Only the boolean crosses to the client; the Ayrshare key itself never leaves the server.
   const publish = getPublishAvailability();
   const social = settings.social_connections;
+  const autopilot = settings.autopilot;
+  const autopilotRuns = (runRes.data ?? []) as AutopilotRunRow[];
+  const today = bangkokDay(new Date());
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="ตั้งค่าสตูดิโอ"
-        description="น้ำเสียงแบรนด์ · แพลตฟอร์ม · สัดส่วน pillar · AI · สื่อ (รูป/เสียง) · กฎความเป็นส่วนตัว/การอนุมัติ · ข้อมูลตัวอย่าง · บันทึกการเรียก AI"
+        description="น้ำเสียงแบรนด์ · แพลตฟอร์ม · สัดส่วน pillar · AI · สื่อ (รูป/เสียง) · โซเชียล · โหมดอัตโนมัติ · กฎความเป็นส่วนตัว/การอนุมัติ · ข้อมูลตัวอย่าง · บันทึกการเรียก AI"
       >
         {settings.updated_at && new Date(settings.updated_at).getTime() > 0 && (
           <span className="text-xs text-muted-foreground">อัปเดตล่าสุด {formatDate(settings.updated_at)}</span>
@@ -257,6 +288,50 @@ export default async function StudioSettingsPage() {
         <SocialForm initial={social.defaults} configured={publish.available} />
       </Section>
 
+      {/* 4d. Autopilot (scheduled end-to-end production) */}
+      <Section
+        id="autopilot"
+        icon={<Radar className="h-4 w-4" />}
+        title="โหมดอัตโนมัติ (Autopilot)"
+        description="ให้สตูดิโอผลิตและโพสต์เองตามตารางที่ตั้งไว้ — 1 รอบ = คอนเทนต์ 1 ชิ้น ตั้งแต่เลือกหัวข้อ เขียนสคริปต์ สร้างภาพ/เสียง ตัดต่อวิดีโอ ตรวจความเป็นส่วนตัว จนถึงโพสต์"
+        badge={<Pill className="border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400">Phase 4</Pill>}
+      >
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <StatusTile
+            label="สถานะ"
+            value={
+              <Badge variant={autopilot.enabled ? "default" : "secondary"} className="gap-1">
+                {autopilot.enabled ? <CheckCircle2 className="h-3 w-3" /> : null}
+                {autopilot.enabled ? "เปิด" : "ปิด"}
+              </Badge>
+            }
+            hint={autopilot.enabled ? `สูงสุด ${autopilot.max_runs_per_week.toLocaleString("en-GB")} รอบต่อสัปดาห์` : "ระบบจะไม่ผลิตหรือโพสต์เองจนกว่าจะเปิด"}
+          />
+          <StatusTile
+            label="วันที่ทำงาน"
+            value={formatDays(autopilot.days)}
+            hint={autopilot.enabled ? `รอบถัดไป ${nextRunLabel(autopilot.days, today)}` : `ตั้งไว้ ${autopilot.days.length.toLocaleString("en-GB")} วันต่อสัปดาห์`}
+          />
+          <StatusTile
+            label="โหมดโพสต์"
+            value={autopilot.auto_publish ? "โพสต์เอง" : "รอตรวจก่อน"}
+            hint={
+              autopilot.auto_publish
+                ? "โพสต์ขึ้นเพจจริงโดยไม่มีคนอ่านก่อน — ผล Privacy Check blocked หยุดเสมอ"
+                : "ผลิตจนเสร็จแล้วพักไว้ที่สถานะรอตรวจให้เจ้าของกดโพสต์เอง"
+            }
+          />
+        </div>
+
+        <AutopilotForm initial={autopilot} />
+
+        <div className="mt-6 border-t pt-5">
+          <h3 className="text-sm font-medium">รอบล่าสุด</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{RUN_LIMIT.toLocaleString("en-GB")} รอบล่าสุด — อ่านอย่างเดียว · เก็บเฉพาะขั้นตอนและตัวเลข ไม่เก็บข้อความสคริปต์</p>
+          <AutopilotRuns runs={autopilotRuns} />
+        </div>
+      </Section>
+
       {/* 5. Knowledge prefs */}
       <Section
         icon={<BookOpen className="h-4 w-4" />}
@@ -386,6 +461,60 @@ function Section({
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
+  );
+}
+
+/** Read-only history of autopilot runs — server-rendered, no client JS. */
+function AutopilotRuns({ runs }: { runs: AutopilotRunRow[] }) {
+  if (runs.length === 0) {
+    return (
+      <div className="mt-3 flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
+        <Radar className="mb-2 h-6 w-6 text-muted-foreground/50" />
+        <p className="text-sm font-medium text-muted-foreground">ยังไม่เคยมีรอบอัตโนมัติ</p>
+        <p className="mt-1 text-xs text-muted-foreground/70">เมื่อเปิดโหมดอัตโนมัติและถึงวันที่ตั้งไว้ ผลของแต่ละรอบจะแสดงที่นี่</p>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="mt-3 space-y-2">
+      {runs.map((run) => {
+        const meta = RUN_STATUS_META[normaliseRunStatus(run.status)];
+        const stats = runStatsSummary(run.stats);
+        return (
+          <li key={run.id} className="rounded-lg border px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Pill className={meta.className} dot={meta.dot}>
+                {meta.label}
+              </Pill>
+              {run.pillar && <PillarBadge pillar={run.pillar} />}
+              {run.platforms.map((p) => (
+                <Pill key={p} className="border-border bg-muted text-muted-foreground">
+                  {PLATFORM_LABEL[p as SocialPlatform] ?? p}
+                </Pill>
+              ))}
+              {run.trigger === "manual" && <Pill className="border-border bg-muted text-muted-foreground">สั่งเอง</Pill>}
+              <span className="ml-auto whitespace-nowrap text-[11px] text-muted-foreground">{formatDateTimeBkk(run.created_at)}</span>
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {runReason(run)}
+              {run.published && <span className="text-emerald-600 dark:text-emerald-400"> · โพสต์แล้ว</span>}
+            </p>
+            {stats && <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground/80">{stats}</p>}
+            {run.error && (
+              <p className="mt-1 line-clamp-2 text-xs text-destructive" title={run.error}>
+                {run.error}
+              </p>
+            )}
+            {run.master_id && (
+              <Link href={`/studio/content/${run.master_id}`} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                เปิดคอนเทนต์ <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

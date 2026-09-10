@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import type {
   ApprovalRules,
+  AutopilotSettings,
   BrandVoice,
   MediaPrefs,
   PillarConfig,
@@ -31,6 +32,20 @@ export const DEFAULT_PILLARS: PillarConfig[] = [
 
 export const DEFAULT_PRIVACY_RULES: PrivacyRules = { denylist: [], custom_patterns: [], strict_mode: false };
 export const DEFAULT_APPROVAL_RULES: ApprovalRules = { require_privacy_safe: true, allow_override: true };
+export const DEFAULT_AUTOPILOT: AutopilotSettings = {
+  enabled: false,
+  days: [1, 4],
+  platforms: ["facebook", "instagram"],
+  pillar_mode: "rotate",
+  pillar: null,
+  target_seconds: 30,
+  images_per_run: 1,
+  auto_publish: true,
+  publish_on_review_required: false,
+  allow_unsupported_claims: false,
+  max_runs_per_week: 3,
+};
+
 export const DEFAULT_SOCIAL_CONNECTIONS: SocialConnections = {
   ayrshare: { checked_at: null, active: [], display_names: {} },
   defaults: { youtube_visibility: "public", tiktok_privacy: "PUBLIC_TO_EVERYONE" },
@@ -62,6 +77,19 @@ export async function getStudioSettingsStrict(): Promise<StudioSettingsRow> {
   return loadSettings(true);
 }
 
+function normaliseAutopilot(v: unknown): AutopilotSettings {
+  const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
+  const days = Array.isArray(raw.days) ? raw.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : DEFAULT_AUTOPILOT.days;
+  return {
+    ...DEFAULT_AUTOPILOT,
+    ...raw,
+    days: days.length ? Array.from(new Set(days)).sort() : DEFAULT_AUTOPILOT.days,
+    platforms: Array.isArray(raw.platforms) && raw.platforms.length ? raw.platforms : DEFAULT_AUTOPILOT.platforms,
+    images_per_run: Math.max(1, Math.min(6, Math.round(raw.images_per_run ?? DEFAULT_AUTOPILOT.images_per_run))),
+    max_runs_per_week: Math.max(1, Math.min(14, Math.round(raw.max_runs_per_week ?? DEFAULT_AUTOPILOT.max_runs_per_week))),
+  };
+}
+
 function normaliseSocial(v: unknown): SocialConnections {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<{ ayrshare: Partial<SocialConnections["ayrshare"]>; defaults: Partial<SocialConnections["defaults"]> }>;
   return {
@@ -86,6 +114,7 @@ async function loadSettings(strict: boolean): Promise<StudioSettingsRow> {
     ai_model: row?.ai_model ?? null,
     knowledge_prefs: row?.knowledge_prefs ?? {},
     social_connections: normaliseSocial(row?.social_connections),
+    autopilot: normaliseAutopilot(row?.autopilot),
     updated_by: row?.updated_by ?? null,
     created_at: row?.created_at ?? new Date(0).toISOString(),
     updated_at: row?.updated_at ?? new Date(0).toISOString(),
