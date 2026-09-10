@@ -81,6 +81,7 @@ describe("ASS builder", () => {
     expect(assTime(0)).toBe("0:00:00.00");
     expect(assTime(65.5)).toBe("0:01:05.50");
     expect(escapeAss("a{b}\\c\nd")).toBe("ab＼c\\Nd");
+    expect(escapeAss("x\ry\u0000z")).toBe("x\\Nyz"); // bare CR and NUL cannot end the Dialogue line
   });
   it("emits a hook overlay for the first 2.5 s and one dialogue line per cue", () => {
     const shots: TimedShot[] = [

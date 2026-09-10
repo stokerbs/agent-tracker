@@ -18,7 +18,12 @@ export function assTime(sec: number): string {
 
 /** ASS treats `{`, `}` and `\` specially; newlines become \N. */
 export function escapeAss(text: string): string {
-  return text.replace(/\\/g, "＼").replace(/[{}]/g, "").replace(/\r?\n/g, "\\N");
+  // Strip other control chars first: a bare CR/LF or NUL would end the Dialogue line in libass.
+  return text
+    .replace(/[\r\n]+/g, "\\N")
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "")
+    .replace(/\\(?!N)/g, "＼")
+    .replace(/[{}]/g, "");
 }
 
 export function buildAss(input: { shots: TimedShot[]; hook: string | null }): string {

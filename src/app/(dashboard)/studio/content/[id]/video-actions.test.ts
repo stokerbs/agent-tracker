@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   profile: { id: "admin-1", role: "admin" } as { id: string; role: string } | null,
   master: null as Row | null,
   imageCount: 1,
+  activeJobs: 0,
   job: null as Row | null,
   insertError: null as null | { code: string; message: string },
   privacy: { ok: true, check: { status: "safe" } } as Row,
@@ -45,7 +46,7 @@ vi.mock("@/lib/supabase/server", () => ({
       };
       b.then = (r: (v: unknown) => unknown) => {
         if (op === "update") h.updates.push(payload!);
-        return Promise.resolve(r({ data: null, count: h.imageCount, error: null }));
+        return Promise.resolve(r({ data: null, count: table === "studio_render_jobs" ? h.activeJobs : h.imageCount, error: null }));
       };
       return b;
     },
@@ -58,6 +59,7 @@ beforeEach(() => {
   h.profile = { id: "admin-1", role: "admin" };
   h.master = { id: MASTER, status: "approved", creative_plan: plan };
   h.imageCount = 1;
+  h.activeJobs = 0;
   h.job = { id: JOB, master_id: MASTER, status: "queued", started_at: null };
   h.insertError = null;
   h.privacy = { ok: true, check: { status: "safe" } };
@@ -104,6 +106,9 @@ describe("createRenderJob", () => {
     h.privacy = { ok: true, check: { status: "safe" } };
     h.insertError = { code: "23505", message: "duplicate" };
     expect(await createRenderJob({ masterId: MASTER })).toMatchObject({ ok: false, code: "busy" });
+    h.insertError = null;
+    h.activeJobs = 2;
+    expect(await createRenderJob({ masterId: MASTER })).toMatchObject({ ok: false, code: "busy", error: expect.stringContaining("2 งาน") });
     expect(h.audit).toHaveLength(0);
   });
 });

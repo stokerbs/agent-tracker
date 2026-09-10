@@ -56,7 +56,15 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
     return { ok: false, jobId, error: message };
   };
 
-  await svc.from("studio_render_jobs").update({ status: "running", started_at: new Date().toISOString(), progress: 2, step: "กำลังเตรียมข้อมูล" }).eq("id", jobId);
+  // Atomic claim: only one runner may move queued → running (double POST / retry must not render twice).
+  const { data: claimed } = await svc
+    .from("studio_render_jobs")
+    .update({ status: "running", started_at: new Date().toISOString(), progress: 2, step: "กำลังเตรียมข้อมูล" })
+    .eq("id", jobId)
+    .eq("status", "queued")
+    .select("id")
+    .maybeSingle();
+  if (!claimed) return { ok: false, jobId, error: "งานนี้ถูกเริ่มไปแล้ว" };
   let tmp: string | null = null;
   const started = Date.now();
   try {

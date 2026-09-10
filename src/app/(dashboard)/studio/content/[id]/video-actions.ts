@@ -21,6 +21,8 @@ const idSchema = z.string().uuid();
 const STALE_RUNNING_MS = 8 * 60_000;
 /** A queued job the client never started (tab closed before the POST) is expired after this. */
 const STALE_QUEUED_MS = 3 * 60_000;
+/** Renders are CPU-heavy 300 s functions + paid TTS — cap concurrent jobs across all masters. */
+const MAX_ACTIVE_JOBS = 2;
 
 export type CreateRenderJobResult = { ok: true; jobId: string } | { ok: false; error: string; code: "unauthorized" | "invalid" | "not_found" | "status" | "blocked" | "requirements" | "not_configured" | "busy" | "failed" };
 
@@ -69,6 +71,10 @@ export async function createRenderJob(input: unknown): Promise<CreateRenderJobRe
     .eq("master_id", masterId)
     .eq("status", "running")
     .lt("started_at", new Date(Date.now() - STALE_RUNNING_MS).toISOString());
+
+  const { count: active, error: cErr } = await rls.from("studio_render_jobs").select("id", { count: "exact", head: true }).in("status", ["queued", "running"]);
+  if (cErr) return { ok: false, error: "ตรวจสอบงาน render ไม่สำเร็จ", code: "failed" };
+  if ((active ?? 0) >= MAX_ACTIVE_JOBS) return { ok: false, error: `มีงาน render ทำงานอยู่ ${active} งาน — รอให้เสร็จก่อน (สูงสุด ${MAX_ACTIVE_JOBS} งานพร้อมกัน)`, code: "busy" };
 
   const { data: job, error: jErr } = await rls
     .from("studio_render_jobs")
