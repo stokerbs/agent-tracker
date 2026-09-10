@@ -41,7 +41,7 @@ export const DEFAULT_MEDIA_PREFS: MediaPrefs = {
   default_aspect: "9:16",
   image_model: "",
   tts_voice_id: "",
-  tts_model: "eleven_multilingual_v2",
+  tts_model: "eleven_v3",
 };
 
 /**

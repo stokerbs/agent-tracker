@@ -82,7 +82,7 @@ describe("provider seam", () => {
     expect(none.tts.reason).toContain("ELEVENLABS_API_KEY");
     const both = getMediaAvailability({ ...DEFAULT_MEDIA_PREFS, image_model: "custom-model", tts_voice_id: "voice9" }, { GEMINI_API_KEY: "a", ELEVENLABS_API_KEY: "b" } as unknown as NodeJS.ProcessEnv);
     expect(both.image).toMatchObject({ available: true, model: "custom-model" });
-    expect(both.tts).toMatchObject({ available: true, voiceId: "voice9", model: "eleven_multilingual_v2" });
+    expect(both.tts).toMatchObject({ available: true, voiceId: "voice9", model: "eleven_v3" });
     expect(() => getImageProvider({} as unknown as NodeJS.ProcessEnv)).toThrow(MediaNotConfiguredError);
     expect(() => getTtsProvider({} as unknown as NodeJS.ProcessEnv)).toThrow(MediaNotConfiguredError);
     expect(getImageProvider({ GEMINI_API_KEY: "k" } as unknown as NodeJS.ProcessEnv).name).toBe("gemini");

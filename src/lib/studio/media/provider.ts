@@ -60,7 +60,8 @@ export interface TtsProvider {
 }
 
 export const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
-export const DEFAULT_TTS_MODEL = "eleven_multilingual_v2";
+/** eleven_v3 is the only ElevenLabs model that speaks Thai reliably: multilingual_v2 auto-detects (and often mis-detects) the language, turbo/flash v2.5 reject th. */
+export const DEFAULT_TTS_MODEL = "eleven_v3";
 /** ElevenLabs "Sarah" — multilingual v2 voice that handles Thai acceptably; owner can override in Settings. */
 export const DEFAULT_TTS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
