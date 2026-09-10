@@ -275,6 +275,10 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 
 ---
 
+## 15b. Bulk approval of consolidated knowledge
+
+`scripts/studio-approve-knowledge.ts [--dry-run] [--user <uuid>] [--limit N] [--category a,b]` approves canonical rows (tag `consolidated`) for AI content use. It only touches rows that are still active, unapproved, not `restricted`, carry neither review flag (`ต้องตรวจ privacy`, `ต้องยืนยัน`), and pass a **fresh** deterministic scrub with no high/medium finding — anything else is counted and left for the owner. First run 2026-09-10: 919 canonical rows unapproved → 388 approved (services 114, investigator_knowledge 114, cases 78, gps 54, osint 28), 531 skipped as flagged, 0 caught by the fresh scan. Case lessons stay `confidential`; retrieval excludes only `restricted`, so they are usable — un-approve individually in the UI if that is not wanted.
+
 ## 16. Autopilot — Phase 4: scheduled end-to-end production + posting (migration 0121)
 
 **Goal.** Owner decision 2026-09-10: the studio should produce and post by itself on a schedule, using the **template video** (stills + Thai voice-over), not Veo. One autopilot run = one finished post.
