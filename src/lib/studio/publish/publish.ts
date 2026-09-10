@@ -164,7 +164,10 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
       for (const p of group) {
         const r = created?.perPlatform[p];
         const failed = !created || r?.status === "error";
-        const published = !!created && !scheduleAt && (r?.status === "success" || (!r && created.status === "success"));
+        // TikTok (and sometimes others) answer "success" with id "pending" while the platform still processes
+        // the upload — that is queued, not published; the sync cron fills the url once the platform confirms.
+        const stillPending = r?.status === "pending" || r?.id === "pending" || (r?.status === "success" && !safeHttpUrl(r.postUrl) && p === "tiktok");
+        const published = !!created && !scheduleAt && !stillPending && (r?.status === "success" || (!r && created.status === "success"));
         if (failed && created && r?.error) failures[p] = r.error;
         rows.push({
           master_id: master.id,
@@ -300,7 +303,8 @@ export async function syncSocialPosts(deps: { provider?: PublishProvider; limit?
       const per = status.perPlatform[p];
       const overall = status.status;
       let patch: Partial<SocialPost> | null = null;
-      if (per?.status === "success" || (!per && overall === "success")) {
+      const perPending = per?.id === "pending" || (per?.status === "success" && p === "tiktok" && !safeHttpUrl(per.postUrl));
+      if (!perPending && (per?.status === "success" || (!per && overall === "success"))) {
         patch = { status: "published", published_at: new Date().toISOString(), post_url: safeHttpUrl(per?.postUrl), error: null };
         res.published += 1;
       } else if (per?.status === "error" || overall === "error") {
