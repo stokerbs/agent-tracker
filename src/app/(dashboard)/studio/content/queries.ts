@@ -16,6 +16,7 @@ import type {
   PrivacyFinding,
   PrivacyStatus,
   CreativeAsset,
+  RenderJob,
   SocialPost,
 } from "@/lib/studio/types";
 
@@ -72,6 +73,8 @@ export interface MasterWithRelations {
   assetUrls: Record<string, string | null>;
   /** Posts sent through the publishing provider (newest first). */
   socialPosts: SocialPost[];
+  /** Template-video render jobs (newest first, last 10). */
+  renderJobs: RenderJob[];
 }
 
 function asCreativePlan(v: unknown): CreativePlan | null {
@@ -180,7 +183,7 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
   }
   if (!masterRow) return null;
 
-  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes] = await Promise.all([
+  const [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes, jobsRes] = await Promise.all([
     supabase.from("studio_content_variants").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_sources").select("*").eq("master_id", id).order("created_at", { ascending: true }),
     supabase.from("studio_content_claims").select("*").eq("master_id", id).order("created_at", { ascending: true }),
@@ -188,8 +191,9 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
     supabase.from("studio_content_reviews").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(50),
     supabase.from("studio_creative_assets").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(100),
     supabase.from("studio_social_posts").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(50),
+    supabase.from("studio_render_jobs").select("*").eq("master_id", id).order("created_at", { ascending: false }).limit(10),
   ]);
-  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes]) {
+  for (const r of [variantsRes, sourcesRes, claimsRes, checksRes, reviewsRes, assetsRes, socialRes, jobsRes]) {
     if (r.error) console.error("[studio:content] relation load failed:", r.error.message);
   }
 
@@ -230,5 +234,6 @@ export async function getMasterWithRelations(id: string): Promise<MasterWithRela
     assets,
     assetUrls,
     socialPosts: socialRes.data ?? [],
+    renderJobs: jobsRes.data ?? [],
   };
 }

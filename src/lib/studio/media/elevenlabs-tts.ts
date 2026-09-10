@@ -54,6 +54,9 @@ export class ElevenLabsTtsProvider implements TtsProvider {
       if (status === "content_moderation" || status === "text_moderation" || status === "banned_content") {
         throw new MediaRefusedError(`ElevenLabs refused the text (${detail})`);
       }
+      if (res.status === 402 || status === "paid_plan_required") {
+        throw new Error(`voice นี้ต้องใช้แพ็กเกจ ElevenLabs แบบเสียเงิน (library voice) — เลือก voice มาตรฐานใน Studio Settings → สื่อ หรืออัปเกรดแพ็กเกจ (${detail})`);
+      }
       throw new Error(`ElevenLabs HTTP ${res.status}: ${String(detail).slice(0, 300)}`);
     }
     const bytes = new Uint8Array(await res.arrayBuffer());

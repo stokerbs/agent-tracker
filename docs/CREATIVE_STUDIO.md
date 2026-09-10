@@ -256,3 +256,19 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 **Honest limits.** Video generation is Phase 3, so until then TikTok/YouTube buttons stay disabled with "ต้องมีวิดีโอ" while FB/IG work with generated images. Analytics pull-back (`/api/analytics/post`) is prepared as a seam only. Ayrshare request/response shapes follow their public docs; `/api/user` was verified live with the owner's key on 2026-09-10 (Facebook Page + Instagram linked). `/api/post`, `/api/media/upload` and `/api/history` are exercised by the first real post — check Settings → AI log / the post list if a shape differs.
 
 **Owner must supply.** Ayrshare account (paid plan), social accounts linked in its dashboard, `AYRSHARE_API_KEY` in Vercel + `.env.local`.
+
+---
+
+## 15. Video — Phase 3: template short-video rendering (migration 0120)
+
+**Goal.** Turn a content piece into a vertical short video without a video-generation model: per-shot image (already generated in Phase 1) + per-shot Thai voice-over (ElevenLabs) + hook overlay + burned-in subtitles, rendered with ffmpeg into 1080×1920 H.264/AAC. Output is a `video` asset that Phase 2 can post to TikTok / Reels / YouTube Shorts.
+
+**Why ffmpeg-static, not a video model or Remotion.** Deterministic, cheap (only TTS costs), no Chromium, no third-party render farm. `ffmpeg-static` ships a Linux binary (~45 MB, libass + freetype + libx264) that fits Vercel's 5 GB function limit; the route handler declares `maxDuration = 300`. Thai subtitles use libass (ASS file) with the bundled OFL font **Sarabun** (`src/lib/studio/video/fonts`), because libass shapes Thai combining marks correctly where `drawtext` does not.
+
+**Timeline.** `creative_plan.shots[]` drive the cut: each shot's `voice` text is synthesised separately (mp3 128 kbps CBR, duration derived from bytes) so the shot lasts exactly its narration + 0.35 s pad; its image is the asset the owner generated for that shot (`meta.target = {kind:"scene", index}`), else the cover, else any image. Ken-Burns zoom on every still. Shot 1 shows the hook as a large overlay for its first 2.5 s. Subtitles: each shot's voice text is split at Thai clause markers / ~28 chars and timed proportionally to the narration. Per-shot audio is cached as `audio` assets keyed by `meta.shot_hash` (text + voice id) so re-renders don't pay TTS twice.
+
+**Job model.** `studio_render_jobs` (status `queued|running|done|failed`, `step`, `progress`, `error`, `asset_id`, `params`). The editor creates a job (server action, admin + master not privacy-blocked) and then POSTs to `/api/studio/render/[jobId]` (route handler, admin session, `maxDuration 300`) which runs the pipeline and updates the job; the UI polls `getRenderJob` every 3 s. Concurrency: one running job per master. Output mp4 → bucket `studio-media` (mime allowlist gains `video/mp4`, size limit 200 MB) → `studio_creative_assets` row kind `video` with duration/dimensions.
+
+**Gates.** admin → master exists and status not `archived` → fresh deterministic privacy scan (hook/script/caption) not blocked → plan has ≥ 1 shot with voice text → ≥ 1 ready image asset → TTS + ffmpeg configured. Costs: TTS only (≈ ฿3–10 per minute of narration); render is CPU time on Vercel.
+
+**Honest limits.** No B-roll motion video (stills with zoom), no music (licensing), one aspect (9:16) in V1, ffmpeg wall-time on a 1 vCPU function ≈ 1–2× the video length; a 60 s clip may take ~2 min. Not browser-verified with an owner session; the pipeline is exercised end-to-end locally with the real providers before merge.

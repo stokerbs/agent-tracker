@@ -22,6 +22,7 @@ import { MediaSection, type MediaAvailabilityProps } from "./media-section";
 import { RightPanel, type EditableField } from "./right-panel";
 import { SocialSection, type SocialAvailabilityProps } from "./social-section";
 import { VariantsSection } from "./variants-section";
+import { VideoSection } from "./video-section";
 import { WorkflowBar } from "./workflow-bar";
 
 export interface ContentEditorProps {
@@ -303,6 +304,7 @@ export function ContentEditor({ data, aiAvailable, aiReason, approvalRules, medi
             editable={editable}
             flush={flush}
           />
+          <VideoSection masterId={master.id} plan={master.creative_plan} hook={master.hook ?? ""} assets={data.assets} assetUrls={data.assetUrls} renderJobs={data.renderJobs} ttsAvailability={mediaAvailability.tts} editable={editable} />
           <SocialSection
             masterId={master.id}
             status={master.status}

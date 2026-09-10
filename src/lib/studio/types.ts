@@ -222,6 +222,8 @@ export type StudioSettingsRow = Omit<
   social_connections: SocialConnections;
 };
 export type SocialPost = Row<"studio_social_posts">;
+export type RenderJob = Row<"studio_render_jobs">;
+export type RenderJobStatus = "queued" | "running" | "done" | "failed";
 
 export type KnowledgeSource = Row<"studio_knowledge_sources">;
 export type KnowledgeSourceInsert = Insert<"studio_knowledge_sources">;
