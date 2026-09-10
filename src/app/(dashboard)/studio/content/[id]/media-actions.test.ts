@@ -78,6 +78,16 @@ describe("generateImage", () => {
     expect(h.image).toHaveBeenCalledWith(expect.objectContaining({ master: expect.objectContaining({ id: MASTER, title: "T" }), target: { kind: "scene", index: 0 }, aspect: "1:1", userId: "admin-1" }));
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_MEDIA_GENERATE");
   });
+  it("locks media on published content (generate + delete) server-side", async () => {
+    h.rows.studio_content_masters = { ...(h.rows.studio_content_masters as Row), status: "published" };
+    const { generateImage, generateVoiceover, deleteMediaAsset } = await import("./media-actions");
+    expect(await generateImage({ masterId: MASTER, target: { kind: "thumbnail" }, aspect: "9:16" })).toMatchObject({ ok: false, code: "invalid" });
+    expect(await generateVoiceover({ masterId: MASTER, source: { kind: "script" } })).toMatchObject({ ok: false, code: "invalid" });
+    expect((await deleteMediaAsset({ assetId: ASSET })).ok).toBe(false);
+    expect(h.image).not.toHaveBeenCalled();
+    expect(h.voice).not.toHaveBeenCalled();
+    expect(h.deletes).toHaveLength(0);
+  });
   it("returns not_found when the master is invisible to the caller", async () => {
     h.rows.studio_content_masters = null;
     const { generateImage } = await import("./media-actions");

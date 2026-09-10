@@ -18,6 +18,7 @@ import { IMAGE_ASPECTS, type CreativeAsset, type CreativePlan, type ImageAspect 
  */
 
 const UNAUTHORIZED = "ไม่มีสิทธิ์ดำเนินการ";
+const PUBLISHED_LOCK = "คอนเทนต์ที่เผยแพร่แล้วล็อกการแก้ไขสื่อ — เก็บถาวรแล้วนำกลับมาเป็นร่างก่อน";
 const idSchema = z.string().uuid();
 
 export type MediaActionResult = { ok: true; asset: CreativeAsset } | { ok: false; error: string; code: MediaErrorCode | "unauthorized" | "invalid" | "not_found" };
@@ -39,6 +40,7 @@ export async function generateImage(input: unknown): Promise<MediaActionResult> 
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง", code: "invalid" };
   const master = await loadMaster(parsed.data.masterId);
   if (!master) return { ok: false, error: "ไม่พบคอนเทนต์", code: "not_found" };
+  if (master.status === "published") return { ok: false, error: PUBLISHED_LOCK, code: "invalid" };
 
   const res = await generateImageAsset({ master, target: parsed.data.target, aspect: parsed.data.aspect, userId: profile.id });
   if (res.ok) {
@@ -64,6 +66,7 @@ export async function generateVoiceover(input: unknown): Promise<MediaActionResu
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง", code: "invalid" };
   const master = await loadMaster(parsed.data.masterId);
   if (!master) return { ok: false, error: "ไม่พบคอนเทนต์", code: "not_found" };
+  if (master.status === "published") return { ok: false, error: PUBLISHED_LOCK, code: "invalid" };
 
   // Voice text is read server-side from the saved copy (the editor flushes autosave first) — never trusted from the client.
   let text = "";
@@ -104,6 +107,8 @@ export async function deleteMediaAsset(input: unknown): Promise<{ ok: true } | {
   const { data: asset, error } = await supabase.from("studio_creative_assets").select("id, master_id, storage_path").eq("id", parsed.data.assetId).maybeSingle();
   if (error) return { ok: false, error: "โหลดสื่อไม่สำเร็จ" };
   if (!asset) return { ok: false, error: "ไม่พบสื่อรายการนี้" };
+  const owner = await loadMaster(asset.master_id);
+  if (owner?.status === "published") return { ok: false, error: PUBLISHED_LOCK };
   const { error: dErr } = await supabase.from("studio_creative_assets").delete().eq("id", asset.id);
   if (dErr) {
     console.error("[studio:media] asset delete failed:", dErr.message);
@@ -115,7 +120,7 @@ export async function deleteMediaAsset(input: unknown): Promise<{ ok: true } | {
   return { ok: true };
 }
 
-async function loadMaster(id: string): Promise<{ id: string; title: string; script: string | null; hook: string | null; creative_plan: CreativePlan | null } | null> {
+async function loadMaster(id: string): Promise<{ id: string; title: string; status: string; script: string | null; hook: string | null; creative_plan: CreativePlan | null } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("studio_content_masters").select("id, title, script, hook, creative_plan, status").eq("id", id).maybeSingle();
   if (error) {
@@ -123,5 +128,5 @@ async function loadMaster(id: string): Promise<{ id: string; title: string; scri
     return null;
   }
   if (!data) return null;
-  return { id: data.id, title: data.title, script: data.script, hook: data.hook, creative_plan: (data.creative_plan as CreativePlan | null) ?? null };
+  return { id: data.id, title: data.title, status: data.status, script: data.script, hook: data.hook, creative_plan: (data.creative_plan as CreativePlan | null) ?? null };
 }

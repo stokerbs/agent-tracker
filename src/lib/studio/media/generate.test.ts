@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
   uploads: [] as { path: string; type: string; size: number }[],
   uploadError: null as null | { message: string },
   gens: [] as Row[],
+  recentGens: 0,
+  countError: null as null | { message: string },
 }));
 
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
@@ -42,10 +44,14 @@ vi.mock("./provider", async (orig) => {
 });
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
-    from: () => {
+    from: (table: string) => {
       const st = { op: "select", payload: null as Row | null };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "single"]) b[m] = () => b;
+      for (const m of ["select", "eq", "single", "in", "gte"]) b[m] = () => b;
+      if (table === "studio_ai_generations") {
+        b.then = (resolve: (v: unknown) => unknown) => Promise.resolve(resolve({ count: h.recentGens, data: null, error: h.countError }));
+        return b;
+      }
       b.insert = (row: Row) => ((st.op = "insert"), (st.payload = row), h.inserts.push(row), b);
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), h.updates.push(row), b);
       b.then = (resolve: (v: unknown) => unknown) => {
@@ -79,6 +85,8 @@ beforeEach(() => {
   h.uploads = [];
   h.gens = [];
   h.uploadError = null;
+  h.recentGens = 0;
+  h.countError = null;
   h.imageProvider = { name: "gemini", generate: async () => ({ bytes: new Uint8Array([1, 2, 3]), mime: "image/png", width: 10, height: 20, provider: "gemini", model: "m-img", durationMs: 50 }) };
   h.ttsProvider = { name: "elevenlabs", synthesize: async () => ({ bytes: new Uint8Array(16000), mime: "audio/mpeg", durationMs: 1000, provider: "elevenlabs", model: "m-tts", voiceId: "v", durationMsCall: 70 }) };
 });
@@ -112,6 +120,25 @@ describe("generateImageAsset", () => {
     expect(b).toMatchObject({ ok: false, code: "blocked" });
     expect(gen).not.toHaveBeenCalled();
     expect(h.inserts).toHaveLength(0);
+  });
+  it("scans B-roll and mood lines too, not only the scene", async () => {
+    const gen = vi.fn();
+    h.imageProvider!.generate = gen;
+    const { generateImageAsset } = await import("./generate");
+    const dirty = { ...master, creative_plan: { ...master.creative_plan, broll: ["ทะเบียน กข 1234 ขับผ่าน"] } };
+    expect(await generateImageAsset({ master: dirty, target: { kind: "thumbnail" }, aspect: "1:1", userId: "u1" })).toMatchObject({ ok: false, code: "blocked" });
+    expect(gen).not.toHaveBeenCalled();
+  });
+  it("refuses beyond the per-user rate limit and fails closed when the count query errors", async () => {
+    const gen = vi.fn();
+    h.imageProvider!.generate = gen;
+    const { generateImageAsset, MEDIA_RATE_LIMIT } = await import("./generate");
+    h.recentGens = MEDIA_RATE_LIMIT;
+    expect(await generateImageAsset({ master, target: { kind: "thumbnail" }, aspect: "1:1", userId: "u1" })).toMatchObject({ ok: false, code: "rate_limited" });
+    h.recentGens = 0;
+    h.countError = { message: "boom" };
+    expect(await generateImageAsset({ master, target: { kind: "thumbnail" }, aspect: "1:1", userId: "u1" })).toMatchObject({ ok: false, code: "failed" });
+    expect(gen).not.toHaveBeenCalled();
   });
   it("returns no_source for a shot without a visual and not_configured without a key", async () => {
     const { generateImageAsset } = await import("./generate");

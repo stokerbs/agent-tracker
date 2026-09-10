@@ -7,6 +7,8 @@ import { getMasterWithRelations } from "../queries";
 import { ContentEditor } from "./editor";
 
 export const dynamic = "force-dynamic";
+// Media generation server actions (Gemini ≤ 90 s, ElevenLabs ≤ 120 s) run under this segment's limit.
+export const maxDuration = 150;
 
 export default async function ContentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole(["admin"]);

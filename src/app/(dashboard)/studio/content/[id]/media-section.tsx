@@ -402,7 +402,7 @@ function AssetCard({ asset, url, editable, onRefresh }: { asset: CreativeAsset; 
         </div>
       ) : family === "audio" ? (
         <div className="flex flex-col gap-1.5 bg-muted/30 px-3 py-4">
-          <audio controls preload="none" src={url} className="w-full" aria-label={label} />
+          <audio controls preload="none" src={url} className="w-full" aria-label={label} onError={() => setBroken(true)} />
           <p className="text-[11px] text-muted-foreground tabular-nums">ความยาว {formatMmSs(asset.duration_ms)}</p>
         </div>
       ) : (
@@ -448,7 +448,7 @@ function AssetCard({ asset, url, editable, onRefresh }: { asset: CreativeAsset; 
               </Button>
             </span>
           ) : (
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirm(true)} disabled={!editable || pending || asset.status === "pending"} aria-label={`ลบ ${label}`} title={!editable ? LOCK_HINT : "ลบสื่อ"}>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirm(true)} disabled={!editable || pending} aria-label={`ลบ ${label}`} title={!editable ? LOCK_HINT : "ลบสื่อ"}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}

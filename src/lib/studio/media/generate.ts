@@ -22,7 +22,11 @@ import { getImageProvider, getTtsProvider, MediaNotConfiguredError, MediaRefused
  * Generation log rows keep ids + char counts only.
  */
 
-export type MediaErrorCode = "not_configured" | "blocked" | "refused" | "failed" | "no_source";
+export type MediaErrorCode = "not_configured" | "blocked" | "refused" | "failed" | "no_source" | "rate_limited";
+
+/** Paid provider calls: at most this many image/TTS generations per user per window. */
+export const MEDIA_RATE_LIMIT = 10;
+export const MEDIA_RATE_WINDOW_MS = 5 * 60_000;
 export type MediaResult = { ok: true; asset: CreativeAsset } | { ok: false; error: string; code: MediaErrorCode };
 
 export interface MasterMediaContext {
@@ -47,9 +51,14 @@ export async function generateImageAsset(input: { master: MasterMediaContext; ta
 
   const scene = sceneText(target, master.creative_plan, master.title);
   if (!scene) return { ok: false, error: "ยังไม่มีคำบรรยายภาพสำหรับเป้าหมายนี้ — สร้าง creative plan หรือพิมพ์คำบรรยายเอง", code: "no_source" };
-  const prompt = buildImagePrompt({ style: prefs.image_style, scene, aspect, broll: master.creative_plan?.broll, musicMood: master.creative_plan?.music_mood });
-  const blocked = blockingFinding(rules, scene);
-  if (blocked) return { ok: false, error: `คำบรรยายภาพมีข้อมูลที่ระบุตัวตนได้ (${blocked}) — ลบออกก่อนสร้างภาพ`, code: "blocked" };
+  const broll = (master.creative_plan?.broll ?? []).slice(0, 3);
+  const musicMood = master.creative_plan?.music_mood ?? null;
+  const prompt = buildImagePrompt({ style: prefs.image_style, scene, aspect, broll, musicMood });
+  // Every variable part of the prompt (scene, B-roll lines, mood) must pass the privacy scan — not only the scene.
+  const blocked = blockingFinding(rules, [scene, ...broll, musicMood ?? ""].join("\n"));
+  if (blocked) return { ok: false, error: `คำบรรยายภาพ/แผนภาพมีข้อมูลที่ระบุตัวตนได้ (${blocked}) — ลบออกก่อนสร้างภาพ`, code: "blocked" };
+  const limited = await overRateLimit(userId);
+  if (limited) return limited;
 
   let provider;
   try {
@@ -116,6 +125,8 @@ export async function generateVoiceoverAsset(input: { master: MasterMediaContext
   }
   const blocked = blockingFinding(rules, text);
   if (blocked) return { ok: false, error: `สคริปต์ยังมีข้อมูลที่ระบุตัวตนได้ (${blocked}) — แก้ให้ผ่าน Privacy Check ก่อนพากย์`, code: "blocked" };
+  const limited = await overRateLimit(userId);
+  if (limited) return limited;
 
   let provider;
   try {
@@ -187,6 +198,27 @@ export async function removeAssetObject(storagePath: string | null): Promise<voi
 }
 
 // ─── internals ───────────────────────────────────────────────────────────────
+
+/** Sliding-window guard against runaway spend; fails closed when the count query errors. */
+async function overRateLimit(userId: string): Promise<MediaResult | null> {
+  const svc = createServiceClient();
+  const since = new Date(Date.now() - MEDIA_RATE_WINDOW_MS).toISOString();
+  const { count, error } = await svc
+    .from("studio_ai_generations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("purpose", ["image_generation", "tts"])
+    .gte("created_at", since);
+  if (error) {
+    console.error("[studio:media] rate-limit lookup failed:", error.message);
+    return { ok: false, error: "ตรวจสอบโควตาการสร้างสื่อไม่สำเร็จ — ลองใหม่อีกครั้ง", code: "failed" };
+  }
+  if ((count ?? 0) >= MEDIA_RATE_LIMIT) {
+    console.warn(`[studio:media] rate limit hit user=${userId} count=${count}`);
+    return { ok: false, error: `สร้างสื่อครบ ${MEDIA_RATE_LIMIT} ครั้งใน 5 นาทีแล้ว — รอสักครู่ก่อนสร้างเพิ่ม (กันค่าใช้จ่ายพุ่ง)`, code: "rate_limited" };
+  }
+  return null;
+}
 
 function blockingFinding(rules: PrivacyRules, text: string): string | null {
   const findings = scrubText({ fields: { text }, rules });

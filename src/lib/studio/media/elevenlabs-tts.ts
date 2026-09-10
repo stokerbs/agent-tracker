@@ -49,7 +49,9 @@ export class ElevenLabsTtsProvider implements TtsProvider {
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { detail?: { status?: string; message?: string } | string } | null;
       const detail = typeof body?.detail === "string" ? body.detail : body?.detail?.message ?? body?.detail?.status ?? res.statusText;
-      if (res.status === 422 || body?.detail === "content_moderation" || (typeof body?.detail === "object" && body?.detail?.status === "content_moderation")) {
+      // Only moderation is a "refusal"; other 4xx (bad voice/model id, quota) are plain errors so the owner sees the real cause.
+      const status = typeof body?.detail === "string" ? body.detail : body?.detail?.status;
+      if (status === "content_moderation" || status === "text_moderation" || status === "banned_content") {
         throw new MediaRefusedError(`ElevenLabs refused the text (${detail})`);
       }
       throw new Error(`ElevenLabs HTTP ${res.status}: ${String(detail).slice(0, 300)}`);
