@@ -43,6 +43,8 @@ export const RATE_LIMITS = {
   osint_analyze: { limit: 20, windowMs: 3_600_000 },
   /** 40 OSINT contact lookups per hour per user — PII lookups, audited + bounded. */
   contact_lookup: { limit: 40, windowMs: 3_600_000 },
+  /** 10 social publish requests per hour per admin — each one posts publicly and uploads media to the aggregator. */
+  studio_publish: { limit: 10, windowMs: 3_600_000 },
   /** 100 manual AirTag ping entries per hour per user — evidentiary data entry, generous but bounded. */
   air_tag_ping: { limit: 100, windowMs: 3_600_000 },
   /** 10 AirTag CSV imports per hour per user — each import can carry up to 5,000 rows. */

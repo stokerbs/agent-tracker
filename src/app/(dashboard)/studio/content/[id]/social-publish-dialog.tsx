@@ -171,7 +171,7 @@ export function SocialPublishDialog({ open, onOpenChange, masterId, scheduledAt,
                 onSelect={setWhen}
                 disabled={pending || !scheduledAt}
                 label="ตามเวลาที่ตั้งไว้"
-                hint={scheduledAt ? `${formatDateTimeBkk(scheduledAt)} — Ayrshare ถือคิวและโพสต์เมื่อถึงเวลา` : "ยังไม่ได้ตั้งเวลา — ใช้ปุ่ม “ตั้งเวลาโพสต์” ด้านบนก่อน"}
+                hint={scheduledAt ? (new Date(scheduledAt).getTime() <= Date.now() + 60_000 ? `${formatDateTimeBkk(scheduledAt)} — เวลาผ่านไปแล้ว ตั้งเวลาใหม่ก่อน หรือเลือกโพสต์ทันที` : `${formatDateTimeBkk(scheduledAt)} — Ayrshare ถือคิวและโพสต์เมื่อถึงเวลา`) : "ยังไม่ได้ตั้งเวลา — ใช้ปุ่ม “ตั้งเวลาโพสต์” ด้านบนก่อน"}
               />
             </div>
           </fieldset>

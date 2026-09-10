@@ -2,10 +2,11 @@
 
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioAdmin } from "@/lib/studio/auth";
 import { buildCaption, buildYoutubeTitle, PLATFORM_LIMITS } from "@/lib/studio/publish/captions";
-import { deleteProviderPost, publishMaster, type PublishErrorCode } from "@/lib/studio/publish/publish";
+import { deleteProviderPost, publishMaster, SCHEDULE_MIN_LEAD_MS, type PublishErrorCode } from "@/lib/studio/publish/publish";
 import { SOCIAL_PLATFORMS, type SocialPlatform, type SocialPost } from "@/lib/studio/types";
 import { revalidateContentPaths, runAndStorePrivacyCheck } from "./privacy-check";
 
@@ -21,7 +22,7 @@ const platformSchema = z.enum(SOCIAL_PLATFORMS as [SocialPlatform, ...SocialPlat
 
 export type PublishActionResult =
   | { ok: true; posts: SocialPost[]; scheduled: boolean }
-  | { ok: false; error: string; code: PublishErrorCode | "unauthorized" | "invalid" | "not_found" | "status"; details?: Partial<Record<SocialPlatform, string>> };
+  | { ok: false; error: string; code: PublishErrorCode | "unauthorized" | "invalid" | "not_found" | "status" | "rate_limited"; details?: Partial<Record<SocialPlatform, string>> };
 
 const publishSchema = z.object({
   masterId: idSchema,
@@ -38,6 +39,8 @@ export async function publishToSocial(input: unknown): Promise<PublishActionResu
   const parsed = publishSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง", code: "invalid" };
   const d = parsed.data;
+  const rl = await checkRateLimit("studio_publish", profile.id);
+  if (!rl.allowed) return { ok: false, error: `ส่งโพสต์ครบโควตาแล้ว — รออีก ${Math.ceil(rl.retryAfterMs / 60_000).toLocaleString("en-GB")} นาที`, code: "rate_limited" };
 
   const rls = await createClient();
   const { data: master, error } = await rls.from("studio_content_masters").select("id, title, status, caption, cta, hook, scheduled_at").eq("id", d.masterId).maybeSingle();
@@ -47,6 +50,9 @@ export async function publishToSocial(input: unknown): Promise<PublishActionResu
     return { ok: false, error: "โพสต์ได้เฉพาะคอนเทนต์ที่อนุมัติหรือตั้งเวลาแล้ว", code: "status" };
   }
   if (d.when === "scheduled" && !master.scheduled_at) return { ok: false, error: "ยังไม่ได้ตั้งเวลาโพสต์ — ตั้งเวลาก่อน หรือเลือกโพสต์ทันที", code: "invalid" };
+  if (d.when === "scheduled" && new Date(master.scheduled_at!).getTime() <= Date.now() + SCHEDULE_MIN_LEAD_MS) {
+    return { ok: false, error: "เวลาที่ตั้งไว้ผ่านไปแล้ว — ตั้งเวลาใหม่ หรือเลือกโพสต์ทันที", code: "invalid" };
+  }
 
   // Same defence-in-depth as manual publish: the stored copy must still pass the deterministic scrub.
   const fresh = await runAndStorePrivacyCheck(rls, master.id, { useAi: false, userId: profile.id });

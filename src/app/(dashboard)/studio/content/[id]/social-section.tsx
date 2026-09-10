@@ -208,7 +208,7 @@ function PostRow({ post, onChanged }: { post: SocialPost; onChanged: () => void 
 
       {confirm ? (
         <span className="inline-flex items-center gap-1">
-          <span className="text-[11px] text-amber-600 dark:text-amber-400">ลบโพสต์บนแพลตฟอร์มด้วย?</span>
+          <span className="text-[11px] text-amber-600 dark:text-amber-400">ลบที่ Ayrshare ด้วย — ทุกแพลตฟอร์มที่ส่งพร้อมกันในรอบนี้จะถูกลบ?</span>
           <Button size="sm" variant="destructive" className="h-7 px-2 text-[11px]" onClick={remove} disabled={pending}>
             {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "ยืนยัน"}
           </Button>

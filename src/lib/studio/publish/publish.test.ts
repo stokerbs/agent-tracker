@@ -21,7 +21,9 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       const st = { op: "select", payload: null as Row | null, eq: [] as [string, unknown][], in: [] as [string, unknown[]][] };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "order", "limit", "not", "neq"]) b[m] = () => b;
+      for (const m of ["select", "order", "limit", "not"]) b[m] = () => b;
+      const neq: [string, unknown][] = [];
+      b.neq = (c: string, v: unknown) => (neq.push([c, v]), b);
       b.eq = (c: string, v: unknown) => (st.eq.push([c, v]), b);
       b.in = (c: string, v: unknown[]) => (st.in.push([c, v]), b);
       b.insert = (rows: Row[] | Row) => ((st.op = "insert"), (st.payload = rows as Row), h.inserts.push(...(Array.isArray(rows) ? rows : [rows])), b);
@@ -29,12 +31,17 @@ vi.mock("@/lib/supabase/server", () => ({
       b.then = (resolve: (v: unknown) => unknown) => {
         if (st.op === "update") {
           h.updates.push({ table, payload: st.payload!, eq: st.eq, in: st.in });
+          // Apply row patches to the social fixture so follow-up reads (flip check) see the DB as it would be.
+          if (table === "studio_social_posts") {
+            for (const r of h.socialRows) if (st.eq.every(([c, v]) => r[c] === v)) Object.assign(r, st.payload);
+          }
           return Promise.resolve(resolve({ data: null, error: null }));
         }
         if (st.op === "insert") return Promise.resolve(resolve({ data: (Array.isArray(st.payload) ? st.payload : [st.payload]).map((r, i) => ({ ...(r as Row), id: `sp-${i}` })), error: null }));
         let data: Row[] = table === "studio_creative_assets" ? h.assets : table === "studio_social_posts" ? h.socialRows : [];
         for (const [c, v] of st.eq) data = data.filter((r) => r[c] === v);
         for (const [c, v] of st.in) data = data.filter((r) => (v as unknown[]).includes(r[c]));
+        for (const [c, v] of neq) data = data.filter((r) => r[c] !== v);
         return Promise.resolve(resolve({ data, error: null }));
       };
       return b;
@@ -70,22 +77,70 @@ beforeEach(() => {
 });
 
 describe("publishMaster", () => {
-  it("uploads uncached media, posts to every platform, records rows and flips the master", async () => {
+  it("uploads uncached media once, sends one request per distinct caption, records rows and flips the master", async () => {
     const provider = fakeProvider();
     const { publishMaster } = await import("./publish");
-    const r = await publishMaster({ master, variants: [{ id: "v1", platform: "instagram_reel", caption: "IG เฉพาะ", hook: null }], platforms: ["facebook", "instagram"], assetIds: ["a1", "a2"], scheduleAt: null, userId: "u1" }, { provider });
+    const r = await publishMaster({ master, variants: [{ id: "v1", platform: "instagram_reel", caption: "IG เฉพาะ", hook: null }], platforms: ["facebook", "instagram", "tiktok"], assetIds: ["a1", "a2"], scheduleAt: null, userId: "u1" }, { provider });
     expect(r.ok).toBe(true);
     expect(h.downloads).toEqual([`${MASTER}/a1.png`]); // a2 already cached
-    const post = provider.calls.find((c) => c.post)!.post as { mediaUrls: string[]; platforms: string[]; text: string };
-    expect(post.mediaUrls).toEqual(["https://ayr/a1.png", "https://ayr/cached.png"]);
-    expect(post.platforms).toEqual(["facebook", "instagram"]);
+    const posts = provider.calls.filter((c) => c.post).map((c) => c.post as { mediaUrls: string[]; platforms: string[]; text: string });
+    expect(posts).toHaveLength(2); // facebook+tiktok share the master caption, instagram has its own
+    expect(posts[0]).toMatchObject({ platforms: ["facebook", "tiktok"], text: "แคปชันปลอดภัย\n\nปรึกษาทาง LINE" });
+    expect(posts[1]).toMatchObject({ platforms: ["instagram"], text: "IG เฉพาะ" });
+    expect(posts[0].mediaUrls).toEqual(["https://ayr/a1.png", "https://ayr/cached.png"]);
     const rows = h.inserts.filter((i) => i.platform);
-    expect(rows.map((x) => [x.platform, x.status])).toEqual([["facebook", "published"], ["instagram", "published"]]);
-    expect(rows[1].caption_chars).toBe("IG เฉพาะ".length);
+    expect(rows.map((x) => [x.platform, x.status])).toEqual([["facebook", "published"], ["tiktok", "published"], ["instagram", "published"]]);
+    expect(rows.find((x) => x.platform === "instagram")).toMatchObject({ caption_chars: "IG เฉพาะ".length, variant_id: "v1" });
+    expect(rows[0].variant_id).toBeNull();
     expect(rows[0].media_asset_ids).toEqual(["a1", "a2"]);
     expect(JSON.stringify(rows)).not.toContain("แคปชัน"); // captions never stored
-    const cache = h.updates.find((u) => u.table === "studio_creative_assets");
-    expect(cache?.payload.external_url).toBe("https://ayr/a1.png");
+    expect(h.updates.find((u) => u.table === "studio_creative_assets")?.payload.external_url).toBe("https://ayr/a1.png");
+  });
+  it("refuses a platform that already has a live/queued post for this master", async () => {
+    h.socialRows = [{ id: "sp0", master_id: MASTER, platform: "facebook", status: "published" }];
+    const provider = fakeProvider();
+    const { publishMaster } = await import("./publish");
+    const r = await publishMaster({ master, variants: [], platforms: ["facebook", "instagram"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+    expect(r).toMatchObject({ ok: false, code: "duplicate" });
+    if (!r.ok) expect(r.details?.facebook).toMatch(/โพสต์ไปแล้ว/);
+    expect(provider.calls).toHaveLength(0);
+  });
+  it("rejects oversized media before any download or upload", async () => {
+    h.assets.push(img("big", { bytes: 30 * 1024 * 1024 }));
+    const provider = fakeProvider();
+    const { publishMaster } = await import("./publish");
+    const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["big"], scheduleAt: null, userId: "u1" }, { provider });
+    expect(r).toMatchObject({ ok: false, code: "requirements" });
+    if (!r.ok) expect(r.error).toMatch(/25 MB/);
+    expect(h.downloads).toHaveLength(0);
+    expect(provider.calls).toHaveLength(0);
+  });
+  it("records a rejected caption group as failed rows while the other group proceeds", async () => {
+    const { PublishRejectedError } = await import("./provider");
+    const provider = fakeProvider();
+    const base = provider.createPost;
+    provider.createPost = async (i) => {
+      if (i.platforms.includes("instagram")) throw new PublishRejectedError("nope", { instagram: "media required" });
+      return base(i);
+    };
+    const { publishMaster } = await import("./publish");
+    const r = await publishMaster({ master, variants: [{ id: "v1", platform: "instagram_reel", caption: "IG", hook: null }], platforms: ["facebook", "instagram"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.failures).toEqual({ instagram: "media required" });
+    const rows = h.inserts.filter((i) => i.platform);
+    expect(rows.find((x) => x.platform === "instagram")).toMatchObject({ status: "failed", error: "media required", provider_post_id: null });
+    expect(rows.find((x) => x.platform === "facebook")).toMatchObject({ status: "published" });
+    // a failed sibling row keeps the master from flipping
+    expect(h.updates.some((u) => u.table === "studio_content_masters")).toBe(false);
+  });
+  it("drops non-http urls coming back from the provider", async () => {
+    const provider = fakeProvider({
+      createPost: async (i) => ({ providerPostId: "P9", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "x", postUrl: "javascript:alert(1)" } } }),
+    });
+    const { publishMaster } = await import("./publish");
+    const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: [], scheduleAt: null, userId: "u1" }, { provider });
+    expect(r.ok).toBe(true);
+    expect(h.inserts[0].post_url).toBeNull();
   });
   it("keeps rows scheduled when the provider holds the schedule and does not flip the master", async () => {
     const provider = fakeProvider();
@@ -163,6 +218,28 @@ describe("syncSocialPosts", () => {
     expect(r.failed).toBe(1);
     expect(r.errors).toHaveLength(1);
     expect(h.updates.find((u) => u.table === "studio_social_posts")?.payload).toMatchObject({ status: "failed", error: "rejected by platform" });
+  });
+});
+
+describe("master flip rules (via sync)", () => {
+  it("does not flip while a sibling row is failed; ignores deleted rows; flips when the rest are published", async () => {
+    const { syncSocialPosts } = await import("./publish");
+    // scheduled fb → published by provider; ig failed sibling → no flip
+    h.socialRows = [
+      { id: "sp1", master_id: MASTER, platform: "facebook", provider_post_id: "P1", status: "scheduled", post_url: null, published_at: null },
+      { id: "sp2", master_id: MASTER, platform: "instagram", provider_post_id: "P2", status: "failed", post_url: null, published_at: null },
+    ];
+    await syncSocialPosts({ provider: fakeProvider() });
+    expect(h.updates.some((u) => u.table === "studio_content_masters")).toBe(false);
+    // deleted sibling is ignored → flips
+    h.updates = [];
+    h.socialRows = [
+      { id: "sp1", master_id: MASTER, platform: "facebook", provider_post_id: "P1", status: "scheduled", post_url: null, published_at: null },
+      { id: "sp3", master_id: MASTER, platform: "tiktok", provider_post_id: "P3", status: "deleted", post_url: null, published_at: null },
+    ];
+    await syncSocialPosts({ provider: fakeProvider() });
+    const flip = h.updates.find((u) => u.table === "studio_content_masters");
+    expect(flip?.payload).toMatchObject({ status: "published", published_url: "https://fb/9" });
   });
 });
 

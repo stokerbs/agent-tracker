@@ -1,5 +1,5 @@
 import { assetMediaKind, platformRequirement, type MediaKind } from "@/lib/studio/publish/captions";
-import type { ContentStatus, CreativeAsset, SocialPlatform, SocialPost, TiktokPrivacy, YoutubeVisibility } from "@/lib/studio/types";
+import type { ContentStatus, CreativeAsset, SocialPlatform, SocialPost, SocialPostStatus, TiktokPrivacy, YoutubeVisibility } from "@/lib/studio/types";
 
 /**
  * Pure UI helpers for the social publishing section (phase 2). No I/O, no
@@ -8,8 +8,8 @@ import type { ContentStatus, CreativeAsset, SocialPlatform, SocialPost, TiktokPr
  * requirements and the privacy scrub on the server.
  */
 
-export const SOCIAL_POST_STATUSES = ["queued", "scheduled", "published", "failed", "deleted"] as const;
-export type SocialPostStatus = (typeof SOCIAL_POST_STATUSES)[number];
+export const SOCIAL_POST_STATUSES: SocialPostStatus[] = ["queued", "scheduled", "published", "failed", "deleted"];
+export type { SocialPostStatus };
 
 export interface SocialStatusMeta {
   label: string;

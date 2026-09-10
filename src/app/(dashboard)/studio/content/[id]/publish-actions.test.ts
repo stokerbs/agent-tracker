@@ -16,12 +16,15 @@ const h = vi.hoisted(() => ({
   privacy: { ok: true, check: { status: "safe" } } as Row,
   updates: [] as { table: string; payload: Row }[],
   audit: [] as { action: string }[],
+  rate: { allowed: true, remaining: 9, retryAfterMs: 0 } as Row,
 }));
 
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(async (e: { action: string }) => void h.audit.push(e)) }));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(async () => h.rate) }));
 vi.mock("@/lib/studio/auth", () => ({ getStudioAdmin: vi.fn(async () => h.profile) }));
 vi.mock("./privacy-check", () => ({ revalidateContentPaths: vi.fn(), runAndStorePrivacyCheck: vi.fn(async () => h.privacy) }));
 vi.mock("@/lib/studio/publish/publish", () => ({
+  SCHEDULE_MIN_LEAD_MS: 60_000,
   publishMaster: (i: unknown) => h.publish(i),
   deleteProviderPost: (id: string) => h.deleteProvider(id),
 }));
@@ -54,6 +57,7 @@ beforeEach(() => {
   h.privacy = { ok: true, check: { status: "safe" } };
   h.updates = [];
   h.audit = [];
+  h.rate = { allowed: true, remaining: 9, retryAfterMs: 0 };
   h.publish.mockReset().mockResolvedValue({ ok: true, posts: [{ id: "sp1" }], providerPostId: "P1", scheduled: false });
   h.deleteProvider.mockReset().mockResolvedValue({ ok: true });
 });
@@ -83,10 +87,23 @@ describe("publishToSocial", () => {
     expect(h.publish).toHaveBeenCalledWith(expect.objectContaining({ platforms: ["facebook", "instagram"], scheduleAt: "2030-01-01T00:00:00.000Z", variants: [{ id: "v1", platform: "instagram_reel", caption: "IG", hook: null }], userId: "admin-1" }));
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_SOCIAL_POST");
   });
-  it("requires a scheduled_at when posting 'scheduled' and forwards core failures", async () => {
+  it("enforces the per-admin rate limit before touching the master", async () => {
+    h.rate = { allowed: false, remaining: 0, retryAfterMs: 120_000 };
+    const { publishToSocial } = await import("./publish-actions");
+    const r = await publishToSocial({ masterId: MASTER, platforms: ["facebook"] });
+    expect(r).toMatchObject({ ok: false, code: "rate_limited" });
+    if (!r.ok) expect(r.error).toContain("2 นาที");
+    expect(h.publish).not.toHaveBeenCalled();
+  });
+  it("requires a future scheduled_at when posting 'scheduled' and forwards core failures", async () => {
     const { publishToSocial } = await import("./publish-actions");
     h.rows.studio_content_masters = { ...(h.rows.studio_content_masters as Row), scheduled_at: null };
     expect(await publishToSocial({ masterId: MASTER, platforms: ["facebook"], when: "scheduled" })).toMatchObject({ ok: false, code: "invalid" });
+    h.rows.studio_content_masters = { ...(h.rows.studio_content_masters as Row), scheduled_at: "2020-01-01T00:00:00.000Z" };
+    const past = await publishToSocial({ masterId: MASTER, platforms: ["facebook"], when: "scheduled" });
+    expect(past).toMatchObject({ ok: false, code: "invalid" });
+    if (!past.ok) expect(past.error).toContain("ผ่านไปแล้ว");
+    expect(h.publish).not.toHaveBeenCalled();
     h.rows.studio_content_masters = { ...(h.rows.studio_content_masters as Row), scheduled_at: "2030-01-01T00:00:00.000Z" };
     h.publish.mockResolvedValue({ ok: false, error: "x", code: "not_connected" });
     expect(await publishToSocial({ masterId: MASTER, platforms: ["facebook"] })).toMatchObject({ ok: false, code: "not_connected" });

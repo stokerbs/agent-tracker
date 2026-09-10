@@ -64,11 +64,11 @@ describe("AyrsharePublishProvider", () => {
     const { f } = mockFetch([{ status: 500, body: { message: "boom" } }]);
     await expect(new AyrsharePublishProvider("SECRET", f).deletePost("P1")).rejects.toThrow(/HTTP 500.*boom/);
     await expect(new AyrsharePublishProvider("SECRET", f).deletePost("P1")).rejects.not.toThrow(/SECRET/);
-    const slow = vi.fn((_u: string, init: RequestInit) => new Promise<Response>((_, rej) => init.signal?.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" }))))) as unknown as typeof fetch;
-    const p = new AyrsharePublishProvider("K", slow);
-    // Private timeout is fixed; exercise via a very small timer by racing the abort manually is not possible — assert the message shape instead.
-    const pr = p.connectedPlatforms();
-    await expect(Promise.race([pr, new Promise((res) => setTimeout(() => res("pending"), 20))])).resolves.toBe("pending");
+    // An aborted fetch (what the internal timer triggers) surfaces as a "timed out" error, never as a raw AbortError.
+    const aborting = vi.fn(async () => {
+      throw Object.assign(new Error("The operation was aborted"), { name: "AbortError" });
+    }) as unknown as typeof fetch;
+    await expect(new AyrsharePublishProvider("K", aborting).connectedPlatforms()).rejects.toThrow(/timed out after \d+ ms/);
   });
 });
 
