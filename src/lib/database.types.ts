@@ -3383,37 +3383,76 @@ export type Database = {
       }
       studio_creative_assets: {
         Row: {
+          bytes: number | null
           created_at: string
           created_by: string | null
+          duration_ms: number | null
+          error: string | null
           external_url: string | null
+          generation_id: string | null
+          height: number | null
           id: string
           kind: string
+          label: string | null
           master_id: string
           meta: Json
+          mime: string | null
+          model: string | null
+          prompt: string | null
+          provider: string | null
+          status: string
           storage_path: string | null
           updated_at: string
+          variant_id: string | null
+          width: number | null
         }
         Insert: {
+          bytes?: number | null
           created_at?: string
           created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
           external_url?: string | null
+          generation_id?: string | null
+          height?: number | null
           id?: string
           kind?: string
+          label?: string | null
           master_id: string
           meta?: Json
+          mime?: string | null
+          model?: string | null
+          prompt?: string | null
+          provider?: string | null
+          status?: string
           storage_path?: string | null
           updated_at?: string
+          variant_id?: string | null
+          width?: number | null
         }
         Update: {
+          bytes?: number | null
           created_at?: string
           created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
           external_url?: string | null
+          generation_id?: string | null
+          height?: number | null
           id?: string
           kind?: string
+          label?: string | null
           master_id?: string
           meta?: Json
+          mime?: string | null
+          model?: string | null
+          prompt?: string | null
+          provider?: string | null
+          status?: string
           storage_path?: string | null
           updated_at?: string
+          variant_id?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -3424,10 +3463,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "studio_creative_assets_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "studio_ai_generations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "studio_creative_assets_master_id_fkey"
             columns: ["master_id"]
             isOneToOne: false
             referencedRelation: "studio_content_masters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_creative_assets_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "studio_content_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -3793,6 +3846,7 @@ export type Database = {
           default_platforms: string[]
           id: string
           knowledge_prefs: Json
+          media_prefs: Json
           pillars: Json
           privacy_rules: Json
           social_connections: Json
@@ -3809,6 +3863,7 @@ export type Database = {
           default_platforms?: string[]
           id?: string
           knowledge_prefs?: Json
+          media_prefs?: Json
           pillars?: Json
           privacy_rules?: Json
           social_connections?: Json
@@ -3825,6 +3880,7 @@ export type Database = {
           default_platforms?: string[]
           id?: string
           knowledge_prefs?: Json
+          media_prefs?: Json
           pillars?: Json
           privacy_rules?: Json
           social_connections?: Json

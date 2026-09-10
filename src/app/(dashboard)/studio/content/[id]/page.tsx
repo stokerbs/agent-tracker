@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isAiAvailable, resolveAiConfig } from "@/lib/studio/ai";
+import { getMediaAvailability } from "@/lib/studio/media/provider";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { getMasterWithRelations } from "../queries";
 import { ContentEditor } from "./editor";
@@ -22,5 +23,12 @@ export default async function ContentEditorPage({ params }: { params: Promise<{ 
       ? "เลือก provider OpenAI ไว้ แต่ V1 รองรับเฉพาะ Anthropic"
       : "ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY บนเซิร์ฟเวอร์";
 
-  return <ContentEditor data={data} aiAvailable={aiAvailable} aiReason={aiReason} approvalRules={settings.approval_rules} />;
+  // Only booleans + Thai reasons cross to the client — never the key material itself.
+  const media = getMediaAvailability(settings.media_prefs);
+  const mediaAvailability = {
+    image: { available: media.image.available, reason: media.image.reason },
+    tts: { available: media.tts.available, reason: media.tts.reason },
+  };
+
+  return <ContentEditor data={data} aiAvailable={aiAvailable} aiReason={aiReason} approvalRules={settings.approval_rules} mediaAvailability={mediaAvailability} defaultAspect={settings.media_prefs.default_aspect} />;
 }

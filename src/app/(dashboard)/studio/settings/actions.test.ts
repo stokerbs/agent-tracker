@@ -160,6 +160,23 @@ describe("updateAiProvider", () => {
   });
 });
 
+describe("updateMediaPrefs", () => {
+  const good = { image_style: "Cinematic Bangkok night", default_aspect: "9:16", image_model: "gemini-2.5-flash-image", tts_voice_id: "EXAVITQu4vr4xnSDxMaL", tts_model: "eleven_multilingual_v2" };
+  it("rejects an unknown aspect and unsafe model / voice ids", async () => {
+    const { updateMediaPrefs } = await load();
+    expect((await updateMediaPrefs({ ...good, default_aspect: "3:2" })).ok).toBe(false);
+    expect((await updateMediaPrefs({ ...good, image_model: "model;drop" })).ok).toBe(false);
+    expect((await updateMediaPrefs({ ...good, tts_voice_id: "../x" })).ok).toBe(false);
+    expect(h.upsertCalls).toHaveLength(0);
+  });
+  it("stores media_prefs and audits", async () => {
+    const { updateMediaPrefs } = await load();
+    expect(await updateMediaPrefs(good)).toEqual({ ok: true });
+    expect(h.upsertCalls[0]!.row).toMatchObject({ media_prefs: good });
+    expect(h.audit.map((a) => a.action)).toContain("STUDIO_SETTINGS_UPDATE");
+  });
+});
+
 describe("demo data", () => {
   it("loadDemo returns the seed summary and audits", async () => {
     const { loadDemo } = await load();
