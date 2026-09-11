@@ -36,17 +36,28 @@ export interface CaptionSource {
   variants: { platform: string; caption: string | null; hook: string | null }[];
 }
 
+/**
+ * Social platforms reached through Ayrshare refuse a post (error 159) when the same @mention was already used
+ * that day, and nearly every caption carries "LINE @detectivepluse". Captions posted there therefore drop the @
+ * of a handle. Emails and URLs keep theirs, and a handle glued to Thai text gets a space instead.
+ */
+const MENTION = /(^|[^A-Za-z0-9_.%+\-/@])@(?=[A-Za-z0-9_])/g;
+export function stripMentions(text: string): string {
+  return text.replace(MENTION, (_m, pre: string) => (pre && /[\p{L}\p{M}\p{N}]/u.test(pre) ? `${pre} ` : pre));
+}
+
 /** Platform caption = the matching variant's caption, else master caption + CTA. Trimmed to the platform limit on a word/line boundary. */
 export function buildCaption(platform: SocialPlatform, src: CaptionSource): string {
   const variant = src.variants.find((v) => VARIANT_PLATFORM_FOR[platform].includes(v.platform) && v.caption?.trim());
   const base = variant?.caption?.trim() || [src.master.caption?.trim(), src.master.cta?.trim()].filter(Boolean).join("\n\n");
-  return truncateAtBoundary(base, PLATFORM_LIMITS[platform].caption);
+  // LINE OA is not posted through the aggregator, and there the @ is how people find the account.
+  return truncateAtBoundary(platform === "line_oa" ? base : stripMentions(base), PLATFORM_LIMITS[platform].caption);
 }
 
 /** YouTube title = hook (short, no hashtags) or master title, ≤ 100 chars. */
 export function buildYoutubeTitle(src: CaptionSource): string {
-  const hook = src.master.hook?.replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
-  const title = hook && hook.length >= 8 ? hook : src.master.title.trim();
+  const hook = stripMentions(src.master.hook ?? "").replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
+  const title = hook.length >= 8 ? hook : stripMentions(src.master.title).trim();
   return truncateAtBoundary(title, PLATFORM_LIMITS.youtube.title ?? 100);
 }
 
