@@ -20,6 +20,14 @@ export interface FfmpegPlan {
 /** Shot-to-shot transitions, used in rotation. Each overlaps the start of the next shot by XFADE_SEC. */
 export const TRANSITIONS = ["slideleft", "zoomin", "slideup", "smoothleft", "circleopen"] as const;
 export const XFADE_SEC = 0.25;
+/**
+ * Render speed on one vCPU (Docker linux/arm64 --cpus=1, first 20 s of a real clip): a 2x zoompan canvas with the
+ * veryfast preset took 34 s; a 1.5x canvas with superfast takes 27 s. A 75 s clip took 216 s at the old settings,
+ * close to the 240 s ffmpeg timeout, so the lighter settings buy headroom for long manual renders.
+ */
+export const ZOOM_CANVAS_W = Math.round(OUTPUT_W * 1.5);
+export const ZOOM_CANVAS_H = Math.round(OUTPUT_H * 1.5);
+export const X264_PRESET = "superfast";
 /** Storyteller: one soft cross-fade between every shot (presenter ↔ b-roll), instead of the rotating set. */
 export const STORY_FADE_SEC = 0.35;
 /** Accent yellow of the progress bar (matches ACCENT_ASS in ass.ts). */
@@ -68,7 +76,7 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
     const zoom = presenter ? PRESENTER_ZOOM : punchIn;
     const x = i % 2 && !presenter ? "min(iw/2-(iw/zoom/2)+on*0.6,iw-iw/zoom)" : "iw/2-(iw/zoom/2)";
     filters.push(
-      `[${i}:v]scale=${OUTPUT_W * 2}:${OUTPUT_H * 2}:force_original_aspect_ratio=increase,crop=${OUTPUT_W * 2}:${OUTPUT_H * 2},` +
+      `[${i}:v]scale=${ZOOM_CANVAS_W}:${ZOOM_CANVAS_H}:force_original_aspect_ratio=increase,crop=${ZOOM_CANVAS_W}:${ZOOM_CANVAS_H},` +
         `zoompan=z='${zoom}':x='${x}':y='ih/2-(ih/zoom/2)':d=${frames}:s=${OUTPUT_W}x${OUTPUT_H}:fps=${FPS},` +
         // fps= restores a constant frame rate after trim/setpts: ffmpeg 7 (the Linux binary Vercel runs) refuses xfade inputs
         // whose rate reads 1/0, while the macOS 6.0 build accepted them.
@@ -116,7 +124,7 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
   // shaping, which draws a Thai tone mark on top of an upper vowel (ที่ reads ที, เรื่อง reads เรือง).
   filters.push(`[${captioned}]ass='${escapeFilterPath(input.assPath)}':fontsdir='${escapeFilterPath(input.fontsDir)}':shaping=complex[vout]`);
   args.push("-filter_complex", filters.join(";"), "-map", "[vout]", "-map", `[${audioOut}]`);
-  args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart");
+  args.push("-c:v", "libx264", "-preset", X264_PRESET, "-crf", "22", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart");
   args.push("-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-shortest", input.outPath);
   const counts = `${shots.length} shots, ${audioInputs} narration tracks, ${Math.max(0, shots.length - 1)} transitions`;
   const summary = story ? `storyteller: ${counts}, ${windows.length} presenter shots → ${input.outPath}` : `template: ${counts} → ${input.outPath}`;

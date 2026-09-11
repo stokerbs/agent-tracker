@@ -280,6 +280,9 @@ describe("ffmpeg args (viral template)", () => {
     for (const len of ["4.600", "3.250", "2.500"]) expect(fc).toContain(`trim=duration=${len},`);
     // xfade in ffmpeg 7 (Linux/Vercel) needs a constant frame rate on every input
     for (let i = 0; i < 3; i++) expect(fc).toContain(`setsar=1,fps=30[v${i}]`);
+    // lighter zoompan canvas + x264 preset keep long renders inside the 240 s ffmpeg timeout on one vCPU
+    expect(fc).toContain("scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=");
+    expect(args[args.indexOf("-preset") + 1]).toBe("superfast");
     expect(fc).toContain(`[v0][v1]xfade=transition=${TRANSITIONS[0]}:duration=${XFADE_SEC}:offset=4.350[x1]`);
     expect(fc).toContain(`[x1][v2]xfade=transition=${TRANSITIONS[1]}:duration=${XFADE_SEC}:offset=7.350[x2]`);
     expect(fc).toContain("[x2]eq=saturation=1.18:contrast=1.06");
