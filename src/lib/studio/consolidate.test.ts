@@ -9,22 +9,24 @@ const h = vi.hoisted(() => ({
   updates: [] as { table: string; payload: Row; ids: unknown; eqId: unknown }[],
   filters: [] as Filter[],
   /** Error returned by the next insert (once). */
-  insertError: null as null | { code: string; message: string },
+  insertError: null as null | { code?: string; message: string },
   /** Row returned by .maybeSingle() lookups. */
   lookup: null as Row | null,
   ranges: [] as [number, number][],
-  ai: null as null | { ok: true; data: Row; generationId: string; model: string } | { ok: false; error: string; code: string; generationId: null },
+  ai: null as null | { ok: true; data: Row; generationId: string; model: string } | { ok: false; error: string; code: string; generationId: null; transient?: boolean },
+  /** Per-call AI results consumed before falling back to `ai`. */
+  aiQueue: [] as unknown[],
   aiCalls: 0,
 }));
 
 vi.mock("@/lib/studio/ai/actions/consolidate", () => ({
   consolidateKnowledgeBatch: vi.fn(async () => {
     h.aiCalls += 1;
-    return h.ai;
+    return h.aiQueue.length ? h.aiQueue.shift() : h.ai;
   }),
   consolidateQuestionsBatch: vi.fn(async () => {
     h.aiCalls += 1;
-    return h.ai;
+    return h.aiQueue.length ? h.aiQueue.shift() : h.ai;
   }),
 }));
 vi.mock("@/lib/studio/settings", () => ({ getStudioSettingsStrict: vi.fn(async () => ({ privacy_rules: { denylist: [], custom_patterns: [], strict_mode: false } })) }));
@@ -88,6 +90,7 @@ beforeEach(() => {
   h.lookup = null;
   h.aiCalls = 0;
   h.ai = { ok: true, data: { groups: [] }, generationId: "g1", model: "m" };
+  h.aiQueue = [];
 });
 
 describe("makeBatches / validGroups", () => {
@@ -227,5 +230,106 @@ describe("consolidateQuestions", () => {
     const r = await consolidateQuestions({});
     expect(r.dropped).toBe(1);
     expect(h.inserts).toHaveLength(0);
+  });
+});
+
+describe("resilience", () => {
+  const policy = { attempts: 4, baseDelayMs: 1, maxDelayMs: 2 };
+  const noSleep = async () => {};
+  const mergeGroup = { ok: true as const, generationId: "g9", model: "m", data: { groups: [{ member_ids: [0, 1], title: "ยืนยันตัวเป้าหมายก่อนเริ่มติดตาม", content: "ก่อนเริ่มติดตามต้องยืนยันตัวเป้าหมายด้วยรูปและการแต่งกายของวันนั้น เพื่อไม่ตามผิดคน", category: "surveillance", tags: [], confidence: "high" }] } };
+
+  it("retries a transient settings load and still fails closed on a permanent one", async () => {
+    const settings = await import("@/lib/studio/settings");
+    const { consolidateKnowledge } = await import("./consolidate");
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    vi.mocked(settings.getStudioSettingsStrict).mockRejectedValueOnce(new Error("studio settings unavailable: TypeError: fetch failed"));
+    expect((await consolidateKnowledge({ dryRun: true, retry: policy, sleep: noSleep })).scanned).toBe(2);
+    vi.mocked(settings.getStudioSettingsStrict).mockRejectedValueOnce(new Error("studio settings unavailable: permission denied for table studio_settings"));
+    await expect(consolidateKnowledge({ dryRun: true, retry: policy, sleep: noSleep })).rejects.toThrow(/permission denied/);
+  });
+
+  it("passes the retry policy through to the AI batch call", async () => {
+    const ai = await import("@/lib/studio/ai/actions/consolidate");
+    const { consolidateKnowledge } = await import("./consolidate");
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    await consolidateKnowledge({ retry: policy, sleep: noSleep });
+    expect(vi.mocked(ai.consolidateKnowledgeBatch).mock.calls.at(-1)?.[0]).toMatchObject({ retry: policy });
+  });
+
+  it("stops after consecutive batches fail on network errors and keeps the partial result", async () => {
+    const { consolidateKnowledge, ConsolidateAbortedError } = await import("./consolidate");
+    h.tables[KT] = Array.from({ length: 140 }, (_, i) => K(i, `t${String(i).padStart(3, "0")}`));
+    h.ai = { ok: false, error: "สร้างด้วย AI ไม่สำเร็จ", code: "failed", generationId: null, transient: true };
+    const err = await consolidateKnowledge({ retry: policy, sleep: noSleep }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConsolidateAbortedError);
+    expect(h.aiCalls).toBe(3); // 4 batches, stopped on the 3rd
+    expect((err as InstanceType<typeof ConsolidateAbortedError>).result.errors).toHaveLength(3);
+  });
+
+  it("does not stop on model errors, and a success resets the network-error streak", async () => {
+    const { consolidateKnowledge } = await import("./consolidate");
+    h.tables[KT] = Array.from({ length: 140 }, (_, i) => K(i, `t${String(i).padStart(3, "0")}`));
+    const net = { ok: false, error: "x", code: "failed", generationId: null, transient: true };
+    h.aiQueue = [net, net, { ok: true, data: { groups: [] }, generationId: "g", model: "m" }, net];
+    expect((await consolidateKnowledge({ retry: policy, sleep: noSleep })).errors).toHaveLength(3);
+    h.aiQueue = [];
+    h.ai = { ok: false, error: "parse", code: "failed", generationId: null, transient: false };
+    expect((await consolidateKnowledge({ retry: policy, sleep: noSleep })).errors).toHaveLength(4);
+  });
+
+  it("adopts a knowledge row whose insert committed before the connection dropped", async () => {
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    h.ai = mergeGroup;
+    h.insertError = { message: "TypeError: fetch failed" };
+    h.lookup = { id: "k-committed" };
+    const { consolidateKnowledge } = await import("./consolidate");
+    const r = await consolidateKnowledge({ retry: policy, sleep: noSleep });
+    expect(r.groups).toBe(1);
+    expect(h.inserts).toHaveLength(0); // never written twice
+    expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("k-committed");
+    expect(h.filters.some((f) => f.table === KT && f.m === "eq" && f.args[0] === "origin_ref")).toBe(true);
+  });
+
+  it("inserts again only after the lookup confirms nothing was committed", async () => {
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    h.ai = mergeGroup;
+    h.insertError = { message: "TypeError: fetch failed" };
+    h.lookup = null;
+    const { consolidateKnowledge } = await import("./consolidate");
+    const r = await consolidateKnowledge({ retry: policy, sleep: noSleep });
+    expect(r.groups).toBe(1);
+    expect(h.inserts).toHaveLength(1);
+    expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("canon-1");
+  });
+
+  it("without a retry policy a transient insert failure is recorded, not repeated", async () => {
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    h.ai = mergeGroup;
+    h.insertError = { message: "TypeError: fetch failed" };
+    const { consolidateKnowledge } = await import("./consolidate");
+    const r = await consolidateKnowledge({});
+    expect(r.groups).toBe(0);
+    expect(h.inserts).toHaveLength(0);
+    expect(r.errors[0]).toContain("insert");
+  });
+
+  it("adopts a question canonical only when the active row matches what was written", async () => {
+    const { consolidateQuestions } = await import("./consolidate");
+    h.tables[QT] = [Q(1, "ราคาเท่าไหร่", 3), Q(2, "ค่าบริการเท่าไร", 2, 4)];
+    h.ai = GROUP_Q([0, 1]);
+    h.insertError = { message: "TypeError: fetch failed" };
+    h.lookup = { id: "q-committed", frequency: 5, member_count: 5, tags: ["line-import", "consolidated"] };
+    const r = await consolidateQuestions({ retry: policy, sleep: noSleep });
+    expect(r.groups).toBe(1);
+    expect(h.inserts).toHaveLength(0);
+    expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("q-committed");
+
+    // a different active row with the same key is not ours: insert again (the unique index guards the rest)
+    h.inserts = [];
+    h.updates = [];
+    h.insertError = { message: "TypeError: fetch failed" };
+    h.lookup = { id: "someone-else", frequency: 9, member_count: 2, tags: [] };
+    await consolidateQuestions({ retry: policy, sleep: noSleep });
+    expect(h.inserts).toHaveLength(1);
   });
 });

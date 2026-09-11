@@ -4,6 +4,7 @@ import type { z } from "zod/v4";
 import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/server";
 import { AiNotConfiguredError, AiRefusedError, getAiProvider, type Effort } from "./provider";
+import { isTransientError, withRetry, type RetryPolicy } from "@/lib/studio/retry";
 
 /**
  * Runs one structured AI generation and records it in studio_ai_generations.
@@ -29,13 +30,20 @@ export interface RunOptions<T> {
   storeOutput?: boolean;
   /** Per-call HTTP timeout (default 120 s); long transcript windows need more. */
   timeoutMs?: number;
+  /**
+   * Retry transient provider failures (network drop, 429, 5xx, overloaded)
+   * with backoff before giving up. Off by default: interactive UI calls should
+   * fail fast. Long offline jobs opt in. Timeouts and bad model output are not
+   * retried here (the request may have been billed; the SDK retries twice).
+   */
+  retry?: RetryPolicy;
 }
 
 export type RunErrorCode = "not_configured" | "refused" | "failed";
 
 export type RunResult<T> =
   | { ok: true; data: T; generationId: string | null; model: string }
-  | { ok: false; error: string; code: RunErrorCode; generationId: string | null };
+  | { ok: false; error: string; code: RunErrorCode; generationId: string | null; transient?: boolean };
 
 export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T>> {
   const started = Date.now();
@@ -46,17 +54,27 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
     return { ok: false, error: describe(err), code: "not_configured", generationId: null };
   }
 
+  const active = provider;
   try {
-    const result = await provider.generateStructured<T>({
-      purpose: opts.purpose,
-      schema: opts.schema,
-      system: opts.system,
-      user: opts.user,
-      maxTokens: opts.maxTokens,
-      effort: opts.effort,
-      model: opts.model,
-      timeoutMs: opts.timeoutMs,
-    });
+    const call = () =>
+      active.generateStructured<T>({
+        purpose: opts.purpose,
+        schema: opts.schema,
+        system: opts.system,
+        user: opts.user,
+        maxTokens: opts.maxTokens,
+        effort: opts.effort,
+        model: opts.model,
+        timeoutMs: opts.timeoutMs,
+      });
+    const policy = opts.retry;
+    const result = policy
+      ? await withRetry(call, {
+          policy,
+          onRetry: ({ attempt, delayMs, error }) =>
+            console.warn(`[studio:ai] ${opts.purpose} transient failure (attempt ${attempt}/${policy.attempts}), retrying in ${Math.round(delayMs / 1000)}s: ${describe(error)}`),
+        })
+      : await call();
     const generationId = await recordGeneration({
       purpose: opts.purpose,
       provider: result.provider,
@@ -76,8 +94,10 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
     const code: RunErrorCode =
       err instanceof AiNotConfiguredError ? "not_configured" : err instanceof AiRefusedError ? "refused" : "failed";
     const message = describe(err);
-    console.error(`[studio:ai] ${opts.purpose} ${code}:`, message);
-    if (code === "failed") Sentry.captureException(err, { tags: { module: "studio-ai", purpose: opts.purpose } });
+    const transient = code === "failed" && isTransientError(err);
+    console.error(`[studio:ai] ${opts.purpose} ${code}${transient ? " (transient)" : ""}:`, message);
+    // A network drop or provider overload is environmental, not a code defect: keep it out of Sentry.
+    if (code === "failed" && !transient) Sentry.captureException(err, { tags: { module: "studio-ai", purpose: opts.purpose } });
     const generationId = await recordGeneration({
       purpose: opts.purpose,
       provider: provider.name,
@@ -91,7 +111,7 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
       error: message.slice(0, 1000),
       user_id: opts.userId,
     });
-    return { ok: false, error: userFacing(code, message), code, generationId };
+    return { ok: false, error: userFacing(code, message), code, generationId, transient };
   }
 }
 
