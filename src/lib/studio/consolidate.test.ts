@@ -13,6 +13,10 @@ const h = vi.hoisted(() => ({
   /** Row returned by .maybeSingle() lookups. */
   lookup: null as Row | null,
   ranges: [] as [number, number][],
+  /** Errors returned by successive updates (the update is still recorded as attempted). */
+  updateErrors: [] as { code?: string; message: string }[],
+  /** Errors returned by successive .maybeSingle() lookups before falling back to `lookup`. */
+  lookupErrors: [] as { code?: string; message: string }[],
   ai: null as null | { ok: true; data: Row; generationId: string; model: string } | { ok: false; error: string; code: string; generationId: null; transient?: boolean },
   /** Per-call AI results consumed before falling back to `ai`. */
   aiQueue: [] as unknown[],
@@ -64,8 +68,10 @@ vi.mock("@/lib/supabase/server", () => ({
           }
         } else if (st.op === "update") {
           h.updates.push({ table, payload: st.payload!, ids: st.inIds, eqId: st.eqId });
+          if (h.updateErrors.length) error = h.updateErrors.shift();
         } else if (st.op === "maybeSingle") {
-          data = h.lookup;
+          if (h.lookupErrors.length) error = h.lookupErrors.shift();
+          else data = h.lookup;
         }
         return Promise.resolve(resolve({ data, error }));
       };
@@ -87,6 +93,8 @@ beforeEach(() => {
   h.filters = [];
   h.ranges = [];
   h.insertError = null;
+  h.updateErrors = [];
+  h.lookupErrors = [];
   h.lookup = null;
   h.aiCalls = 0;
   h.ai = { ok: true, data: { groups: [] }, generationId: "g1", model: "m" };
@@ -325,7 +333,13 @@ describe("resilience", () => {
     expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("q-committed");
     // the lookup is pinned to this group's own write and never to an approved row
     expect(h.filters.some((f) => f.table === QT && f.m === "eq" && f.args[0] === "last_seen_at")).toBe(true);
-    expect(h.filters.some((f) => f.table === QT && f.m === "eq" && f.args[0] === "approved_for_content" && f.args[1] === false)).toBe(true);
+    // Check the lookup's own chain: the page query also filters approved_for_content=false.
+    const pinned = h.filters.findIndex((f) => f.table === QT && f.m === "eq" && f.args[0] === "last_seen_at");
+    let start = pinned;
+    while (start > 0 && h.filters[start].m !== "select") start -= 1;
+    expect(h.filters[start].args[0]).toContain("tags");
+    const lookupChain = h.filters.slice(start, pinned);
+    expect(lookupChain.some((f) => f.m === "eq" && f.args[0] === "approved_for_content" && f.args[1] === false)).toBe(true);
 
     // a different active row with the same key is not ours: insert again (the unique index guards the rest)
     h.inserts = [];
@@ -334,6 +348,69 @@ describe("resilience", () => {
     h.lookup = { id: "someone-else", frequency: 9, member_count: 2, tags: [] };
     await consolidateQuestions({ retry: policy, sleep: noSleep });
     expect(h.inserts).toHaveLength(1);
+  });
+
+  it("keeps checking for a committed insert when the lookup itself hits a network error", async () => {
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    h.ai = mergeGroup;
+    h.insertError = { message: "TypeError: fetch failed" };
+    h.lookupErrors = [{ message: "TypeError: fetch failed" }];
+    h.lookup = { id: "k-committed" };
+    const { consolidateKnowledge } = await import("./consolidate");
+    const r = await consolidateKnowledge({ retry: policy, sleep: noSleep });
+    expect(h.inserts).toHaveLength(0);
+    expect(r.groups).toBe(1);
+    expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("k-committed");
+  });
+
+  it("retries a knowledge supersede update that failed on a dropped connection", async () => {
+    h.tables[KT] = [K(1, "a"), K(2, "b")];
+    h.ai = mergeGroup;
+    h.updateErrors = [{ message: "TypeError: fetch failed" }];
+    const { consolidateKnowledge } = await import("./consolidate");
+    const r = await consolidateKnowledge({ retry: policy, sleep: noSleep });
+    const sup = h.updates.filter((u) => u.payload.superseded_by);
+    expect(sup).toHaveLength(2);
+    expect(sup[1].payload.superseded_by).toBe("canon-1");
+    expect(r.errors).toHaveLength(0);
+    expect(r.groups).toBe(1);
+  });
+
+  it("retries a question supersede update that failed on a dropped connection", async () => {
+    h.tables[QT] = [Q(1, "ราคาเท่าไหร่", 3), Q(2, "ค่าบริการเท่าไร", 2)];
+    h.ai = GROUP_Q([0, 1]);
+    h.updateErrors = [{ message: "TypeError: fetch failed" }];
+    const { consolidateQuestions } = await import("./consolidate");
+    const r = await consolidateQuestions({ retry: policy, sleep: noSleep });
+    const sup = h.updates.filter((u) => u.payload.superseded_by);
+    expect(sup).toHaveLength(2);
+    expect(sup[1].payload.superseded_by).toBe("canon-1");
+    expect(sup[1].ids).toEqual(["q1", "q2"]);
+    expect(r.errors).toHaveLength(0);
+    expect(r.groups).toBe(1);
+  });
+
+  it("never repeats the non-idempotent collision merge after a dropped response", async () => {
+    h.tables[QT] = [Q(1, "a", 1), Q(2, "b", 1)];
+    h.ai = GROUP_Q([0, 1]);
+    h.insertError = { code: "23505", message: "duplicate key" };
+    h.lookup = { id: "q-winner", frequency: 4, member_count: 2, approved_for_content: false };
+    h.updateErrors = [{ message: "TypeError: fetch failed" }];
+    const { consolidateQuestions } = await import("./consolidate");
+    const r = await consolidateQuestions({ retry: policy, sleep: noSleep });
+    expect(h.updates.filter((u) => u.eqId === "q-winner")).toHaveLength(1); // frequency is added once, never twice
+    expect(h.updates.filter((u) => u.payload.superseded_by)).toHaveLength(0);
+    expect(r.groups).toBe(0);
+    expect(r.errors[0]).toContain("collision merge");
+  });
+
+  it("stops the questions pass too after consecutive network failures", async () => {
+    const { consolidateQuestions, ConsolidateAbortedError } = await import("./consolidate");
+    h.tables[QT] = Array.from({ length: 400 }, (_, i) => Q(i, `คำถามทดสอบข้อ ${String(i).padStart(3, "0")}`));
+    h.ai = { ok: false, error: "สร้างด้วย AI ไม่สำเร็จ", code: "failed", generationId: null, transient: true };
+    const err = await consolidateQuestions({ retry: policy, sleep: noSleep }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConsolidateAbortedError);
+    expect(h.aiCalls).toBe(3);
   });
 });
 
