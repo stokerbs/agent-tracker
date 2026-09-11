@@ -142,15 +142,17 @@ describe("runStructured retry", () => {
     expect(h.inserted[0]).toMatchObject({ status: "error" });
   });
 
-  it("keeps transient failures out of Sentry but still reports real defects", async () => {
+  it("keeps an offline job's transient failures out of Sentry, but interactive calls and real defects still report", async () => {
     const Sentry = await import("@sentry/nextjs");
     vi.mocked(Sentry.captureException).mockClear();
     const { runStructured } = await import("./run");
     h.generate.mockRejectedValue(new Error("Connection error."));
-    await runStructured(base);
+    await runStructured({ ...base, retry: { attempts: 1 } });
     expect(Sentry.captureException).not.toHaveBeenCalled();
-    h.generate.mockRejectedValue(new Error("boom: internal stack"));
-    await runStructured(base);
+    await runStructured(base); // interactive: no retry policy, so the outage still alerts
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+    h.generate.mockRejectedValue(new Error("boom: internal stack"));
+    await runStructured({ ...base, retry: { attempts: 1 } });
+    expect(Sentry.captureException).toHaveBeenCalledTimes(2);
   });
 });

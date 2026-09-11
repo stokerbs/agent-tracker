@@ -96,8 +96,9 @@ export async function runStructured<T>(opts: RunOptions<T>): Promise<RunResult<T
     const message = describe(err);
     const transient = code === "failed" && isTransientError(err);
     console.error(`[studio:ai] ${opts.purpose} ${code}${transient ? " (transient)" : ""}:`, message);
-    // A network drop or provider overload is environmental, not a code defect: keep it out of Sentry.
-    if (code === "failed" && !transient) Sentry.captureException(err, { tags: { module: "studio-ai", purpose: opts.purpose } });
+    // Offline jobs that retry already log every attempt and stop early on a sustained outage, so their transient
+    // failures stay out of Sentry. Interactive callers (no retry) keep full visibility: a DNS or egress fault still alerts.
+    if (code === "failed" && !(transient && opts.retry)) Sentry.captureException(err, { tags: { module: "studio-ai", purpose: opts.purpose, ...(transient ? { transient: "true" } : {}) } });
     const generationId = await recordGeneration({
       purpose: opts.purpose,
       provider: provider.name,

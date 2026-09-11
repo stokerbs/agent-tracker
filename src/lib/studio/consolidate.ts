@@ -182,8 +182,11 @@ async function insertOnce(ctx: RunCtx, insert: () => PromiseLike<IdResult>, look
       const found = await lookup();
       if (found.data) return { id: found.data.id, error: null };
       if (found.error) {
-        lastError = found.error;
-        if (!dbRetryable(found.error) || attempt === ctx.policy.attempts) return { id: null, error: lastError };
+        if (!dbRetryable(found.error) || attempt === ctx.policy.attempts) {
+          // Report the real (transient) insert failure so the batch still counts toward the stop-early streak.
+          const cause = lastError;
+          return { id: null, error: cause ? { message: `${cause.message} (could not verify the insert: ${found.error.message})`, code: cause.code } : found.error };
+        }
         await backoff(ctx, attempt, found.error);
         continue;
       }
@@ -395,11 +398,15 @@ export async function consolidateQuestions(opts: ConsolidateOptions = {}): Promi
           .select("id, frequency, member_count, tags")
           .eq("normalized_key", key)
           .eq("is_demo", false)
+          // last_seen_at is stamped once per group (ms), so a different consolidated row with coincidentally equal
+          // counts cannot match; and an approved row is never adopted (the merge rule refuses those).
+          .eq("approved_for_content", false)
+          .eq("last_seen_at", row.last_seen_at)
           .is("superseded_by", null)
           .limit(1)
           .maybeSingle()
           .then((r) => ({
-            // One active row per key (0116): it is ours only if it carries exactly what this group wrote.
+            // One active row per key (0116): ours only if it also carries the counts this group wrote.
             data: r.data && (r.data.tags ?? []).includes(CONSOLIDATED_TAG) && r.data.frequency === freq && r.data.member_count === memberCount ? { id: r.data.id } : null,
             error: r.error,
           }));

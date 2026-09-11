@@ -323,6 +323,9 @@ describe("resilience", () => {
     expect(r.groups).toBe(1);
     expect(h.inserts).toHaveLength(0);
     expect(h.updates.find((u) => u.payload.superseded_by)?.payload.superseded_by).toBe("q-committed");
+    // the lookup is pinned to this group's own write and never to an approved row
+    expect(h.filters.some((f) => f.table === QT && f.m === "eq" && f.args[0] === "last_seen_at")).toBe(true);
+    expect(h.filters.some((f) => f.table === QT && f.m === "eq" && f.args[0] === "approved_for_content" && f.args[1] === false)).toBe(true);
 
     // a different active row with the same key is not ours: insert again (the unique index guards the rest)
     h.inserts = [];
@@ -331,5 +334,19 @@ describe("resilience", () => {
     h.lookup = { id: "someone-else", frequency: 9, member_count: 2, tags: [] };
     await consolidateQuestions({ retry: policy, sleep: noSleep });
     expect(h.inserts).toHaveLength(1);
+  });
+});
+
+describe("resilience: questions without a normalized key", () => {
+  it("never re-inserts blindly and keeps the original network error so the streak still counts it", async () => {
+    const { consolidateQuestions } = await import("./consolidate");
+    h.tables[QT] = [Q(1, "a", 1), Q(2, "b", 1)];
+    h.ai = GROUP_Q([0, 1], "???"); // punctuation only: normalizeQuestionKey returns an empty key
+    h.insertError = { message: "TypeError: fetch failed" };
+    const r = await consolidateQuestions({ retry: { attempts: 4, baseDelayMs: 1, maxDelayMs: 2 }, sleep: async () => {} });
+    expect(h.inserts).toHaveLength(0);
+    expect(r.groups).toBe(0);
+    expect(r.errors[0]).toContain("fetch failed");
+    expect(r.errors[0]).toContain("could not verify the insert");
   });
 });
