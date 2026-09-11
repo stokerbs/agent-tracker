@@ -93,7 +93,7 @@ function normaliseApproval(v: unknown): ApprovalRules {
  * from jsonb: booleans are coerced strictly (a stray "no" string must not read
  * as true), enums are whitelisted and numbers are clamped.
  */
-function normaliseAutopilot(v: unknown): AutopilotSettings {
+export function normaliseAutopilot(v: unknown): AutopilotSettings {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
   const bool = (x: unknown, fallback: boolean) => (typeof x === "boolean" ? x : fallback);
   const days = Array.isArray(raw.days) ? raw.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
