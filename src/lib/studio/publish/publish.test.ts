@@ -178,6 +178,21 @@ describe("publishMaster", () => {
     expect(d).toMatchObject({ ok: false, code: "blocked" });
     expect(provider.calls).toHaveLength(0);
   });
+  it("scans the caption before the @ is stripped, and lets our own CTA through in strict mode", async () => {
+    const { publishMaster } = await import("./publish");
+    h.settings.privacy_rules.strict_mode = true;
+    try {
+      const own = await publishMaster({ master: { ...master, cta: "ปรึกษาเบื้องต้นได้ทาง LINE @detectivepluse" }, variants: [], platforms: ["facebook"], assetIds: [], scheduleAt: null, userId: "u1" }, { provider: fakeProvider() });
+      expect(own).toMatchObject({ ok: true });
+      const provider = fakeProvider();
+      const foreign = await publishMaster({ master: { ...master, caption: "ทักมาที่ @somchai_real99 ได้เลย" }, variants: [], platforms: ["facebook"], assetIds: [], scheduleAt: null, userId: "u1" }, { provider });
+      expect(foreign).toMatchObject({ ok: false, code: "blocked" });
+      expect(provider.calls).toHaveLength(0);
+    } finally {
+      h.settings.privacy_rules.strict_mode = false;
+    }
+  });
+
   it("enforces platform media requirements and asset ownership", async () => {
     const provider = fakeProvider();
     const { publishMaster } = await import("./publish");

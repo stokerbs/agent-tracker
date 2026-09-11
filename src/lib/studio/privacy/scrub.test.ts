@@ -24,6 +24,9 @@ describe("scrubText", () => {
   it("flags LINE handles but allows @detectivepluse", () => {
     expect(scan("ทัก LINE @somchai_k").some((f) => f.kind === "line_id")).toBe(true);
     expect(scan("ปรึกษาได้ทาง LINE @detectivepluse").some((f) => f.kind === "line_id")).toBe(false);
+    // social captions drop the @ (Ayrshare error 159): our handle stays allowed, a stranger's is still flagged
+    expect(scan("ปรึกษาได้ทาง LINE detectivepluse").some((f) => f.kind === "line_id")).toBe(false);
+    expect(scan("ทัก LINE somchai_k").some((f) => f.kind === "line_id")).toBe(true);
   });
   it("flags addresses and dates", () => {
     expect(scan("บ้านเลขที่ 99/12 ซอยสุขุมวิท 49").some((f) => f.kind === "address")).toBe(true);

@@ -7,7 +7,7 @@ import { STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { privacyStatusFromFindings, scrubText } from "@/lib/studio/privacy/scrub";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { CreativeAsset, PrivacyRules, SocialConnections, SocialPlatform, SocialPost } from "@/lib/studio/types";
-import { assetMediaKind, buildCaption, buildYoutubeTitle, platformRequirement, type CaptionSource } from "./captions";
+import { assetMediaKind, buildCaption, buildYoutubeTitle, captionSource, platformRequirement, type CaptionSource } from "./captions";
 import { getPublishProvider, PublishNotConfiguredError, PublishRejectedError, type CreatedPost, type PublishProvider } from "./provider";
 
 /**
@@ -93,7 +93,10 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
   const captions = new Map<SocialPlatform, string>();
   for (const p of platforms) {
     const text = buildCaption(p, src);
-    const findings = scrubText({ fields: { caption: text }, rules });
+    // Scan what goes public and what it was built from: stripMentions removes the @ the handle detector keys on.
+    const fields: Record<string, string | null> = { caption: text, caption_source: captionSource(p, src) };
+    if (p === "youtube") Object.assign(fields, { youtube_title: buildYoutubeTitle(src), hook: src.master.hook, title: src.master.title });
+    const findings = scrubText({ fields, rules });
     if (privacyStatusFromFindings(findings, rules.strict_mode) === "blocked" || findings.some((f) => f.kind === "denylist")) {
       const why = findings.find((f) => f.severity === "high" || f.kind === "denylist")?.reason ?? findings[0]?.reason ?? "พบข้อมูลที่ต้องตรวจ";
       return { ok: false, error: `แคปชันสำหรับ ${p} ยังมีข้อมูลที่ระบุตัวตนได้ (${why}) — แก้ก่อนโพสต์`, code: "blocked" };

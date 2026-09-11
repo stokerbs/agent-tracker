@@ -46,10 +46,15 @@ export function stripMentions(text: string): string {
   return text.replace(MENTION, (_m, pre: string) => (pre && /[\p{L}\p{M}\p{N}]/u.test(pre) ? `${pre} ` : pre));
 }
 
-/** Platform caption = the matching variant's caption, else master caption + CTA. Trimmed to the platform limit on a word/line boundary. */
-export function buildCaption(platform: SocialPlatform, src: CaptionSource): string {
+/** Caption text as written, before platform clean-up: the matching variant's caption, else master caption + CTA. */
+export function captionSource(platform: SocialPlatform, src: CaptionSource): string {
   const variant = src.variants.find((v) => VARIANT_PLATFORM_FOR[platform].includes(v.platform) && v.caption?.trim());
-  const base = variant?.caption?.trim() || [src.master.caption?.trim(), src.master.cta?.trim()].filter(Boolean).join("\n\n");
+  return variant?.caption?.trim() || [src.master.caption?.trim(), src.master.cta?.trim()].filter(Boolean).join("\n\n");
+}
+
+/** Platform caption = captionSource, mentions stripped for aggregator platforms, trimmed to the platform limit on a word/line boundary. */
+export function buildCaption(platform: SocialPlatform, src: CaptionSource): string {
+  const base = captionSource(platform, src);
   // LINE OA is not posted through the aggregator, and there the @ is how people find the account.
   return truncateAtBoundary(platform === "line_oa" ? base : stripMentions(base), PLATFORM_LIMITS[platform].caption);
 }

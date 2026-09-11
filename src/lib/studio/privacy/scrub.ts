@@ -44,7 +44,7 @@ const NAME_CUE_RE = /(?:ชื่อเล่นว่า|ชื่อเล่�
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
 const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.
-const ALLOWLIST = new Set(["@detectivepluse", "detectivepluse@gmail.com", "096-846-1406", "0968461406", "096 846 1406"]);
+const ALLOWLIST = new Set(["@detectivepluse", "detectivepluse", "detectivepluse@gmail.com", "096-846-1406", "0968461406", "096 846 1406"]);
 const ALLOWLIST_URL_HOSTS = ["detectivepulse.com", "lin.ee", "line.me"];
 
 function pushFinding(list: PrivacyFinding[], f: PrivacyFinding) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetMediaKind, buildCaption, buildYoutubeTitle, platformRequirement, stripMentions, truncateAtBoundary } from "./captions";
+import { assetMediaKind, buildCaption, buildYoutubeTitle, captionSource, platformRequirement, stripMentions, truncateAtBoundary } from "./captions";
 
 const master = { title: "GPS บอกอะไรได้บ้าง", caption: "แคปชันหลัก #สืบสวน", cta: "ปรึกษาทาง LINE @detectivepluse", hook: "สิ่งแรกที่นักสืบดูไม่ใช่รถ แต่คือเวลา" };
 
@@ -30,6 +30,10 @@ describe("stripMentions (Ayrshare error 159: the same @mention only once a day)"
     const variant = buildCaption("tiktok", { master, variants: [{ platform: "tiktok", caption: "ทักมาที่ LINE @detectivepluse #นักสืบ", hook: null }] });
     expect(variant).toBe("ทักมาที่ LINE detectivepluse #นักสืบ");
     expect(buildYoutubeTitle({ master: { ...master, hook: "ถามได้ที่ @detectivepluse ทุกวัน" }, variants: [] })).toBe("ถามได้ที่ detectivepluse ทุกวัน");
+    // short hook → title fallback is stripped too
+    expect(buildYoutubeTitle({ master: { ...master, hook: "สั้น", title: "ถาม @detectivepluse" }, variants: [] })).toBe("ถาม detectivepluse");
+    // the privacy scan also reads the source, which keeps the @
+    expect(captionSource("tiktok", { master, variants: [] })).toContain("LINE @detectivepluse");
   });
   it("leaves emails, URLs and a lone @ alone and spaces a handle glued to Thai text", () => {
     expect(stripMentions("@a และ @b_c")).toBe("a และ b_c");

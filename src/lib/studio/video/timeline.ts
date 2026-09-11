@@ -22,6 +22,9 @@ export const SUBTITLE_LINE_TARGET = 24;
 /** Hard per-line ceiling: about 720 px of Sarabun Bold 64, inside the 920 px safe area. */
 export const SUBTITLE_LINE_MAX = 40;
 export const SUBTITLE_MAX_LINES = 2;
+/** Hook overlay lines (Sarabun Bold 92 in a 900 px area): the Sub limits scaled by 64/92. */
+export const HOOK_LINE_TARGET = 18;
+export const HOOK_LINE_MAX = 30;
 
 export interface ShotSource {
   index: number;
@@ -119,22 +122,33 @@ function gluesToPrevious(segment: string): boolean {
  * is the only thing ever cut between graphemes, and never inside one.
  */
 function splitPhrase(phrase: string, max: number): string[] {
-  const width = (parts: string[]) => subtitleWidth(parts.join(""));
+  // Word boundaries are grapheme boundaries, so segment widths add up: keep running sums instead of
+  // re-measuring the joined line for every segment (that was quadratic on long runs of glue characters).
   const out: string[] = [];
   let cur: string[] = [];
+  let widths: number[] = [];
+  let curWidth = 0;
   for (const segment of thaiWords(phrase)) {
-    if (cur.length > 0 && width([...cur, segment]) > max && !gluesToPrevious(segment)) {
+    const w = subtitleWidth(segment);
+    // Glue (ๆ, closing punctuation) stays with the word before it, but a run of glue may not grow a line past 2 × max.
+    if (cur.length > 0 && curWidth + w > max && (!gluesToPrevious(segment) || curWidth + w > max * 2)) {
       let cut = cur.length;
+      let prefix = curWidth;
       for (let i = cur.length - 1; i >= 1; i--) {
-        if (BREAK_BEFORE.has(cur[i]) && width(cur.slice(0, i)) >= max * 0.4) {
+        prefix -= widths[i];
+        if (BREAK_BEFORE.has(cur[i]) && prefix >= max * 0.4) {
           cut = i;
           break;
         }
       }
       out.push(cur.slice(0, cut).join(""));
       cur = cur.slice(cut);
+      widths = widths.slice(cut);
+      curWidth = widths.reduce((n, x) => n + x, 0);
     }
     cur.push(segment);
+    widths.push(w);
+    curWidth += w;
   }
   if (cur.length) out.push(cur.join(""));
   return out.flatMap((part) => {
@@ -152,7 +166,9 @@ function splitPhrase(phrase: string, max: number): string[] {
  * or as the line break itself. A phrase is only split internally when it is
  * wider than SUBTITLE_LINE_MAX, and such pieces never re-join with a fake space.
  */
-export function subtitleLines(text: string): string[] {
+export function subtitleLines(text: string, opts: { target?: number; max?: number } = {}): string[] {
+  const target = opts.target ?? SUBTITLE_LINE_TARGET;
+  const max = opts.max ?? SUBTITLE_LINE_MAX;
   const clean = protectSpaces(text.replace(/\s+/g, " ").trim());
   if (!clean) return [];
   const pieces: { text: string; afterSpace: boolean }[] = [];
@@ -160,19 +176,19 @@ export function subtitleLines(text: string): string[] {
     .split(" ")
     .filter(Boolean)
     .forEach((phrase, pi) => {
-      const parts = subtitleWidth(phrase) > SUBTITLE_LINE_MAX ? splitPhrase(phrase, SUBTITLE_LINE_MAX) : [phrase];
+      const parts = subtitleWidth(phrase) > max ? splitPhrase(phrase, max) : [phrase];
       parts.forEach((part, i) => pieces.push({ text: part, afterSpace: pi > 0 && i === 0 }));
     });
   const lines: { text: string; afterSpace: boolean }[] = [];
   for (const piece of pieces) {
     const last = lines[lines.length - 1];
-    if (last && piece.afterSpace && subtitleWidth(`${last.text} ${piece.text}`) <= SUBTITLE_LINE_TARGET) last.text = `${last.text} ${piece.text}`;
+    if (last && piece.afterSpace && subtitleWidth(`${last.text} ${piece.text}`) <= target) last.text = `${last.text} ${piece.text}`;
     else lines.push({ ...piece });
   }
   // A lone short word on the last line reads like a stray fragment: pull it up when the line above has room.
   const tail = lines[lines.length - 1];
   const prev = lines[lines.length - 2];
-  if (tail && prev && tail.afterSpace && subtitleWidth(tail.text) <= 6 && subtitleWidth(`${prev.text} ${tail.text}`) <= SUBTITLE_LINE_MAX) {
+  if (tail && prev && tail.afterSpace && subtitleWidth(tail.text) <= 6 && subtitleWidth(`${prev.text} ${tail.text}`) <= max) {
     prev.text = `${prev.text} ${tail.text}`;
     lines.pop();
   }

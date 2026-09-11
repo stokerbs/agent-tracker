@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assTime, buildAss, escapeAss } from "./ass";
 import { buildFfmpegArgs, escapeFilterPath, runFfmpeg } from "./ffmpeg";
-import { chunkSubtitle, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, SUBTITLE_MAX_LINES, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
+import { chunkSubtitle, HOOK_LINE_MAX, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, SUBTITLE_MAX_LINES, subtitleLines, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 import type { CreativePlan } from "@/lib/studio/types";
 
 const plan: CreativePlan = {
@@ -157,6 +157,15 @@ describe("ASS builder", () => {
     expect(ass.match(/Dialogue: 0,/g)?.length).toBe(timeSubtitles(shots[0]).length + timeSubtitles(shots[1]).length);
     expect(buildAss({ shots, hook: null })).not.toContain("Hook,,");
   });
+  it("wraps a long hook itself, since libass auto-wrap is off", () => {
+    const shots: TimedShot[] = [{ index: 0, voice: "ข้อความ", visual: "", imageAssetId: "c", voiceSec: 3, audioPath: null, imagePath: "/c.png", start: 0, duration: 3.35 }];
+    const hook = "สิ่งที่นักสืบไม่เคยบอกลูกค้าตรง ๆ คือหลักฐานที่ดีที่สุดมักมาจากเรื่องเล็ก ๆ ที่ทุกคนมองข้าม";
+    const line = buildAss({ shots, hook }).split("\n").find((l) => l.includes(",Hook,,"))!;
+    const parts = line.split(",Hook,,0,0,0,,")[1].split("\\N");
+    expect(parts.length).toBeGreaterThan(1);
+    for (const p of parts) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
+    expect(parts.join("").replace(/\s+/g, "")).toBe(hook.replace(/\s+/g, ""));
+  });
 });
 
 describe("ffmpeg args", () => {
@@ -189,5 +198,40 @@ describe("runFfmpeg error mapping", () => {
     await expect(runFfmpeg(["5"], { bin: "/bin/sleep", timeoutMs: 50 })).rejects.toThrow(/timed out after 50 ms/);
     await expect(runFfmpeg([], { bin: "/definitely/not/here" })).rejects.toThrow(/failed to start/);
     await expect(runFfmpeg(["-c", "exit 0"], { bin: "/bin/sh" })).resolves.toMatchObject({ durationMs: expect.any(Number) });
+  });
+});
+
+describe("subtitle breaker edge cases", () => {
+  it("keeps the space when a short last word is pulled up onto the line above", () => {
+    expect(subtitleLines("ตรวจสอบข้อมูลทุกอย่างอย่างละเอียด ครับ")).toEqual(["ตรวจสอบข้อมูลทุกอย่างอย่างละเอียด ครับ"]);
+  });
+  it("hard-splits a single token wider than a line between graphemes (WrapStyle 2 would let it overflow)", () => {
+    expect(subtitleLines("a".repeat(90))).toEqual(["a".repeat(40), "a".repeat(40), "a".repeat(10)]);
+    const url = `https://example.com/${"x".repeat(70)}`;
+    const lines = subtitleLines(url);
+    expect(lines.join("")).toBe(url);
+    for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+  });
+  it("stays fast on a long run of glue characters", () => {
+    const text = `หลักฐาน${",".repeat(20_000)}`;
+    const t0 = performance.now();
+    const lines = subtitleLines(text);
+    expect(performance.now() - t0).toBeLessThan(2_000);
+    expect(lines.join("")).toBe(text);
+    for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+  });
+  it("times cues by visible width, not string length", () => {
+    const voice = "ที่นี่ไม่ใช่เรื่องที่น่ากลัวเลยสักนิดเดียวนะครับ ถ้าอยากรู้ว่าเคสของคุณควรเริ่มตรงไหน ปรึกษาเบื้องต้นได้ทาง LINE detectivepluse";
+    const shot: TimedShot = { index: 0, voice, visual: "", imageAssetId: "c", voiceSec: 12, audioPath: null, imagePath: "", start: 0, duration: 12.35 };
+    const cues = timeSubtitles(shot);
+    expect(cues.length).toBeGreaterThan(1);
+    const visible = (s: string) => subtitleWidth(s.replace(/\s+/g, ""));
+    const chars = (s: string) => s.replace(/\s+/g, "").length;
+    const total = cues.reduce((n, c) => n + visible(c.text), 0);
+    const totalChars = cues.reduce((n, c) => n + chars(c.text), 0);
+    const first = cues[0];
+    expect(first.end - first.start).toBeCloseTo((visible(first.text) / total) * 12, 2);
+    // the fixture is mark-heavy enough that timing by .length would give a visibly different cut
+    expect(Math.abs((chars(first.text) / totalChars) * 12 - (first.end - first.start))).toBeGreaterThan(0.05);
   });
 });

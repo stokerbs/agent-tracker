@@ -1,4 +1,4 @@
-import { HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, timeSubtitles, type TimedShot } from "./timeline";
+import { HOOK_LINE_MAX, HOOK_LINE_TARGET, HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, subtitleLines, timeSubtitles, type TimedShot } from "./timeline";
 
 /**
  * Advanced SubStation Alpha (ASS) builder for libass. Two styles: `Sub` for
@@ -51,7 +51,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const hook = input.hook?.trim();
   if (hook && input.shots.length) {
     const end = Math.min(HOOK_OVERLAY_SEC, input.shots[0].duration);
-    lines.push(`Dialogue: 1,${assTime(0)},${assTime(end)},Hook,,0,0,0,,${escapeAss(hook)}`);
+    // WrapStyle 2 means libass never wraps, so the hook gets the same breaker with its own (larger font) widths.
+    const hookText = subtitleLines(hook, { target: HOOK_LINE_TARGET, max: HOOK_LINE_MAX }).join("\n");
+    lines.push(`Dialogue: 1,${assTime(0)},${assTime(end)},Hook,,0,0,0,,${escapeAss(hookText)}`);
   }
   for (const shot of input.shots) {
     for (const cue of timeSubtitles(shot)) {
