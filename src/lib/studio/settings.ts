@@ -45,6 +45,7 @@ export const DEFAULT_AUTOPILOT: AutopilotSettings = {
   publish_on_review_required: false,
   allow_unsupported_claims: false,
   max_runs_per_week: 3,
+  video_format: "template",
 };
 
 export const DEFAULT_SOCIAL_CONNECTIONS: SocialConnections = {
@@ -110,6 +111,7 @@ function normaliseAutopilot(v: unknown): AutopilotSettings {
     publish_on_review_required: bool(raw.publish_on_review_required, DEFAULT_AUTOPILOT.publish_on_review_required),
     allow_unsupported_claims: bool(raw.allow_unsupported_claims, DEFAULT_AUTOPILOT.allow_unsupported_claims),
     max_runs_per_week: num(raw.max_runs_per_week, DEFAULT_AUTOPILOT.max_runs_per_week, 1, 14),
+    video_format: raw.video_format === "storyteller" || raw.video_format === "alternate" ? raw.video_format : "template",
   };
 }
 

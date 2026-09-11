@@ -25,6 +25,7 @@ const BASE: AutopilotSettings = {
   publish_on_review_required: false,
   allow_unsupported_claims: false,
   max_runs_per_week: 3,
+  video_format: "template",
 };
 
 const cfg = (over: Partial<AutopilotSettings> = {}): AutopilotSettings => ({ ...BASE, ...over });

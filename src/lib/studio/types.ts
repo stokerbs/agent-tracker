@@ -124,6 +124,13 @@ export interface ApprovalRules {
   allow_override: boolean;
 }
 
+// ─── Video formats ───────────────────────────────────────────────────────────
+/** template = scene stills with viral captions; storyteller = the anonymous silhouette presenter carries the clip. */
+export type VideoFormat = "template" | "storyteller";
+export const VIDEO_FORMATS: VideoFormat[] = ["template", "storyteller"];
+/** The autopilot may also alternate between the two formats run by run. */
+export type AutopilotVideoFormat = VideoFormat | "alternate";
+
 // ─── Autopilot (phase 4: scheduled end-to-end production) ────────────────────
 export interface AutopilotSettings {
   enabled: boolean;
@@ -142,6 +149,8 @@ export interface AutopilotSettings {
   /** Publish even when the script carries unsupported fact claims. */
   allow_unsupported_claims: boolean;
   max_runs_per_week: number;
+  /** Which clip format the run renders. */
+  video_format: AutopilotVideoFormat;
 }
 export type AutopilotRun = Row<"studio_autopilot_runs">;
 export type AutopilotRunStatus = "running" | "done" | "failed" | "skipped" | "review";
