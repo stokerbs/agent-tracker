@@ -26,12 +26,13 @@ export function escapeAss(text: string): string {
     .replace(/[{}]/g, "");
 }
 
+/** WrapStyle 2 turns libass auto-wrapping off: lines break only where subtitleLines put an explicit \N. */
 export function buildAss(input: { shots: TimedShot[]; hook: string | null }): string {
   const header = `[Script Info]
 ScriptType: v4.00+
 PlayResX: ${OUTPUT_W}
 PlayResY: ${OUTPUT_H}
-WrapStyle: 0
+WrapStyle: 2
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]

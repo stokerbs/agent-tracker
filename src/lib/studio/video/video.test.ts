@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assTime, buildAss, escapeAss } from "./ass";
 import { buildFfmpegArgs, escapeFilterPath, runFfmpeg } from "./ffmpeg";
-import { chunkSubtitle, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
+import { chunkSubtitle, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, SUBTITLE_MAX_LINES, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 import type { CreativePlan } from "@/lib/studio/types";
 
 const plan: CreativePlan = {
@@ -57,14 +57,73 @@ describe("layoutShots / durations", () => {
 });
 
 describe("subtitles", () => {
-  it("chunks Thai narration at clause markers within the limit and hard-splits long runs", () => {
-    const chunks = chunkSubtitle("สิ่งแรกที่เปลี่ยนคือตารางเวลา, ไม่ใช่คำพูด ที่คุณได้ยินทุกวัน");
-    expect(chunks.length).toBeGreaterThanOrEqual(2);
-    for (const c of chunks) expect(c.length).toBeLessThanOrEqual(28 * 1.4);
-    expect(chunks.join(" ").replace(/\s/g, "")).toBe("สิ่งแรกที่เปลี่ยนคือตารางเวลา,ไม่ใช่คำพูดที่คุณได้ยินทุกวัน");
-    const run = chunkSubtitle("ก".repeat(70));
-    expect(run.length).toBe(3);
-    expect(run.every((c) => c.length <= 28)).toBe(true);
+  // Narration from clips the studio actually produced, where the old chunker dropped spaces and cut words.
+  const REAL = [
+    "ความรู้สึกไม่ใช่หลักฐาน แต่เป็นจุดเริ่มต้นที่ควรเก็บข้อมูลอย่างมีระบบ",
+    "ข้อแรก ตารางเวลาที่เปลี่ยนไป โดยไม่มีเหตุผลใหม่รองรับ",
+    "ข้อสาม เรื่องเล่าที่รายละเอียดไม่เท่ากันในแต่ละครั้ง นักสืบจะจดทุกเวอร์ชันแล้วเทียบกัน",
+    "เราไม่เคยรับปากลูกค้าว่าจะเจอหลักฐานแน่นอน และนั่นเป็นเรื่องที่เราตั้งใจ",
+    'คนที่ทักมาส่วนใหญ่ อยากได้คำตอบเดียว คือ "ใช่หรือไม่ใช่"',
+    "แต่บางเคส เป้าหมายไม่มีอะไรให้เจอจริง ๆ เราเฝ้าดู เราตรวจสอบ แล้วผลออกมาว่าปกติ",
+    "ใครที่การันตีว่าจะเจอ เท่ากับกำลังบอกว่าเขารู้คำตอบก่อนลงพื้นที่ ซึ่งไม่มีใครรู้ สิ่งที่เราขายคือกระบวนการตรวจสอบ และรายงานตามข้อเท็จจริงที่เห็น ไม่ใช่คำรับประกันผลลัพธ์",
+    "ถ้าอยากรู้ว่าเคสของคุณควรเริ่มตรงไหน ปรึกษาเบื้องต้นได้ทาง LINE @detectivepluse",
+  ];
+  it.each(REAL)("keeps every word and space of real narration: %s", (voice) => {
+    const cues = chunkSubtitle(voice);
+    // nothing lost or reordered, and every original space is still a space or a line break
+    expect(cues.map((c) => c.replace(/\n/g, " ")).join(" ")).toBe(voice);
+    for (const cue of cues) {
+      const lines = cue.split("\n");
+      expect(lines.length).toBeLessThanOrEqual(SUBTITLE_MAX_LINES);
+      for (const line of lines) {
+        expect(subtitleWidth(line)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+        expect(line).not.toMatch(/^[ๆ,.!?;:)"]/);
+      }
+    }
+    for (const whole of ["หลักฐาน", "แต่ละ", "พื้นที่", "จริง ๆ", "LINE @detectivepluse", '"ใช่หรือไม่ใช่"']) {
+      if (voice.includes(whole)) expect(cues.some((c) => c.split("\n").some((l) => l.includes(whole)))).toBe(true);
+    }
+  });
+  it("puts a short lead-in and its phrase in one two-line cue", () => {
+    expect(chunkSubtitle(REAL[2])).toEqual(["ข้อสาม\nเรื่องเล่าที่รายละเอียดไม่เท่ากันในแต่ละครั้ง", "นักสืบจะจดทุกเวอร์ชันแล้วเทียบกัน"]);
+  });
+  it("splits a phrase wider than a line just before a clause opener, adding no spaces", () => {
+    const phrase = "เราตรวจสอบข้อมูลทุกอย่างอย่างละเอียดและรายงานผลตามข้อเท็จจริงที่พบจริงเท่านั้นเสมอ";
+    expect(subtitleWidth(phrase)).toBeGreaterThan(SUBTITLE_LINE_MAX);
+    const lines = chunkSubtitle(phrase).flatMap((c) => c.split("\n"));
+    expect(lines.join("")).toBe(phrase);
+    expect(lines.some((l) => l.startsWith("และ"))).toBe(true);
+    for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+  });
+  it("cuts only between graphemes when a single token is wider than a line, and ignores blank input", () => {
+    const token = "ก".repeat(90);
+    const lines = chunkSubtitle(token).flatMap((c) => c.split("\n"));
+    expect(lines.join("")).toBe(token);
+    for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+    expect(chunkSubtitle("   ")).toEqual([]);
+  });
+  it("keeps ๆ with its word even when the line before it is already full", () => {
+    const lead = "ตรวจสอบข้อมูลอย่างละเอียดจริง";
+    // precondition: joining " ๆ" onto this line would overflow the target, so only space protection can keep ๆ attached
+    expect(subtitleWidth(`${lead} ๆ`)).toBeGreaterThan(SUBTITLE_LINE_TARGET);
+    const text = `${lead} ๆ ก่อนสรุปผลทุกครั้ง`;
+    const lines = chunkSubtitle(text).flatMap((c) => c.split("\n"));
+    for (const l of lines) expect(l).not.toMatch(/^ๆ/);
+    expect(lines.some((l) => l.endsWith("จริง ๆ"))).toBe(true);
+    expect(lines.join(" ")).toBe(text);
+    expect(lines.join("")).not.toContain("\u00A0");
+  });
+  it("keeps a call to action with its channel instead of flashing the handle alone", () => {
+    expect(chunkSubtitle(REAL[7])).toEqual(["ถ้าอยากรู้ว่าเคสของคุณควรเริ่มตรงไหน", "ปรึกษาเบื้องต้นได้ทาง\nLINE @detectivepluse"]);
+  });
+  it("starts a cue at a clause opener instead of stranding it at the bottom of the previous cue", () => {
+    expect(chunkSubtitle("การไม่เจออะไร ก็เป็นคำตอบ และสำหรับหลายคน มันคือคำตอบที่ทำให้หยุดคิดวนได้จริง")).toEqual([
+      "การไม่เจออะไร ก็เป็นคำตอบ",
+      "และสำหรับหลายคน\nมันคือคำตอบที่ทำให้หยุดคิดวนได้จริง",
+    ]);
+  });
+  it("never leaves a short lead-in alone on screen", () => {
+    expect(chunkSubtitle("ข้อสอง โทรศัพท์ที่ต้องอยู่ใกล้มือมากกว่าเดิม และหันหน้าจอลงเสมอ")[0]).toBe("ข้อสอง\nโทรศัพท์ที่ต้องอยู่ใกล้มือมากกว่าเดิม");
   });
   it("times cues proportionally inside the narration window", () => {
     const shot: TimedShot = { index: 0, voice: "สั้น สั้น สั้น, ยาวกว่าเดิมมากหน่อยนะครับผม", visual: "", imageAssetId: "c", voiceSec: 6, audioPath: "/a.mp3", imagePath: "/c.png", start: 10, duration: 6.35 };
@@ -91,7 +150,8 @@ describe("ASS builder", () => {
     const ass = buildAss({ shots, hook: "ความรู้สึกไม่ใช่หลักฐาน" });
     expect(ass).toContain("Style: Sub,Sarabun");
     expect(ass).toContain("Dialogue: 1,0:00:00.00,0:00:02.50,Hook,,0,0,0,,ความรู้สึกไม่ใช่หลักฐาน");
-    expect(ass.match(/Dialogue: 0,/g)?.length).toBe(2);
+    expect(ass).toContain("WrapStyle: 2");
+    expect(ass.match(/Dialogue: 0,/g)?.length).toBe(timeSubtitles(shots[0]).length + timeSubtitles(shots[1]).length);
     expect(buildAss({ shots, hook: null })).not.toContain("Hook,,");
   });
 });
