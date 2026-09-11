@@ -65,7 +65,10 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   for (const m of text.matchAll(PHONE_RE)) {
     if (!isAllowlisted(m[0])) push("phone", m[0], "พบหมายเลขโทรศัพท์ที่ไม่ใช่ช่องทางติดต่อของบริษัท", "high");
   }
+  // [start, end) of every email — the LINE handle rule must not re-flag an email's "@domain".
+  const emailRanges: Array<[number, number]> = [];
   for (const m of text.matchAll(EMAIL_RE)) {
+    emailRanges.push([m.index, m.index + m[0].length]);
     if (!isAllowlisted(m[0])) push("email", m[0], "พบอีเมลส่วนบุคคล", "high");
   }
   for (const m of text.matchAll(THAI_ID_RE)) push("id_number", m[0], "พบเลข 13 หลักคล้ายเลขบัตรประชาชน", "high");
@@ -74,6 +77,10 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (m[0].replace(/\D/g, "").length >= 2) push("plate", m[0], "พบรูปแบบคล้ายทะเบียนรถ", "high");
   }
   for (const m of text.matchAll(LINE_ID_RE)) {
+    // "@gmail.com" inside "detectivepluse@gmail.com" is a domain, not a handle; the email rule
+    // above already reported (or allowlisted) the whole address. A handle after an email still flags.
+    const at = m[0].indexOf("@");
+    if (at >= 0 && emailRanges.some(([s, e]) => m.index + at >= s && m.index + at < e)) continue;
     if (!isAllowlisted(m[0].replace(/^LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*/i, ""))) push("line_id", m[0], "พบ LINE ID / handle ที่ไม่ใช่ของบริษัท", "medium");
   }
   for (const m of text.matchAll(URL_RE)) {
