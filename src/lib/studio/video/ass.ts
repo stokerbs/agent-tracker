@@ -1,12 +1,30 @@
-import { HOOK_LINE_MAX, HOOK_LINE_TARGET, HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, subtitleLines, timeSubtitles, type TimedShot } from "./timeline";
+import { HOOK_LINE_MAX, HOOK_LINE_TARGET, HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, subtitleLines, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 
 /**
- * Advanced SubStation Alpha (ASS) builder for libass. Two styles: `Sub` for
- * the burned-in subtitles (bottom third, Sarabun Bold, dark box) and `Hook`
- * for the opening overlay (centre, large). Pure — unit-tested.
+ * Advanced SubStation Alpha (ASS) builder for libass — "viral" template (v2), chosen by the owner on 2026-09-11:
+ * - `Cap`: one short line at a time in the lower-middle of the frame, white with a heavy outline, popping in,
+ *   key words and numbers in the accent yellow.
+ * - `Hook`: the opening line on a yellow card that slams in.
+ * - `Tag`: a small brand label under the progress bar (Latin text only).
+ * Pure — unit-tested. Every style that renders Thai keeps Spacing 0: letter spacing makes libass drop tone marks.
  */
 
 export const SUB_FONT = "Sarabun";
+/** Vertical centre of the caption line: clear of the TikTok/Reels bottom UI and the right-hand buttons. */
+export const CAPTION_Y = 1230;
+export const HOOK_Y = 640;
+/** Accent yellow #FFD400 in ASS &HBBGGRR& order. */
+export const ACCENT_ASS = "&H00D4FF&";
+const WHITE_ASS = "&HFFFFFF&";
+
+/** Words the eye should land on; numbers are always highlighted. */
+export const EMPHASIS_WORDS = ["หลักฐาน", "นักสืบ", "ไม่ใช่", "ความจริง", "จริง", "เงิน", "ห้าม", "ตำรวจ", "กฎหมาย", "GPS", "ลับ", "เคส", "นอกใจ", "ตามหา", "ทรัพย์สิน", "OSINT"];
+// Longest word first so "ความจริง" wins over "จริง". Never start right after a Thai leading vowel (เ แ โ ใ ไ belong to
+// the next syllable) and never end before a combining mark, so a colour change cannot split a syllable.
+const EMPHASIS_RE = new RegExp(
+  `(?<![\\u0E40-\\u0E44])(\\d+(?:[.,:]\\d+)*|${[...EMPHASIS_WORDS].sort((a, b) => b.length - a.length).join("|")})(?!\\p{M})`,
+  "gu",
+);
 
 export function assTime(sec: number): string {
   const s = Math.max(0, sec);
@@ -26,10 +44,15 @@ export function escapeAss(text: string): string {
     .replace(/[{}]/g, "");
 }
 
+/** Colour key words in already-escaped text. One replace pass, so nothing inside an inserted tag is matched again. */
+export function emphasize(escaped: string): string {
+  return escaped.replace(EMPHASIS_RE, `{\\c${ACCENT_ASS}}$1{\\c${WHITE_ASS}}`);
+}
+
 /**
  * WrapStyle 2 turns libass auto-wrapping off: lines break only where subtitleLines put an explicit \N.
- * BorderStyle 4 (libass) draws one translucent BackColour box per event. BorderStyle 3 boxed every glyph,
- * so a Thai tone mark stacked over an upper vowel poked a black notch out under the box.
+ * The hook card is BorderStyle 4 (one box per event) with a fully transparent outline, so stacked tone marks
+ * cannot poke an outline blob out of the card.
  */
 export function buildAss(input: { shots: TimedShot[]; hook: string | null }): string {
   const header = `[Script Info]
@@ -41,23 +64,28 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Sub,${SUB_FONT},64,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,4,5,0,2,80,80,300,1
-Style: Hook,${SUB_FONT},92,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,4,8,0,5,90,90,0,1
+Style: Cap,${SUB_FONT},92,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,9,4,5,40,40,0,1
+Style: Hook,${SUB_FONT},88,&H00141414,&H000000FF,&HFF000000,&H0000D4FF,-1,0,0,0,100,100,0,0,4,24,0,5,60,60,0,1
+Style: Tag,${SUB_FONT},34,&H40FFFFFF,&H000000FF,&H80000000,&H00000000,-1,0,0,0,100,100,6,0,1,2,0,8,0,0,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
   const lines: string[] = [];
+  const total = totalDuration(input.shots);
+  if (total > 0) lines.push(`Dialogue: 0,${assTime(0)},${assTime(total)},Tag,,0,0,0,,{\\an8\\pos(540,34)}DETECTIVE PULSE`);
   const hook = input.hook?.trim();
   if (hook && input.shots.length) {
     const end = Math.min(HOOK_OVERLAY_SEC, input.shots[0].duration);
     // WrapStyle 2 means libass never wraps, so the hook gets the same breaker with its own (larger font) widths.
     const hookText = subtitleLines(hook, { target: HOOK_LINE_TARGET, max: HOOK_LINE_MAX }).join("\n");
-    lines.push(`Dialogue: 1,${assTime(0)},${assTime(end)},Hook,,0,0,0,,${escapeAss(hookText)}`);
+    lines.push(`Dialogue: 2,${assTime(0)},${assTime(end)},Hook,,0,0,0,,{\\an5\\pos(540,${HOOK_Y})\\fscx135\\fscy135\\frz-4\\t(0,170,\\fscx100\\fscy100\\frz-2)}${escapeAss(hookText)}`);
   }
   for (const shot of input.shots) {
     for (const cue of timeSubtitles(shot)) {
-      lines.push(`Dialogue: 0,${assTime(cue.start)},${assTime(cue.end)},Sub,,0,0,0,,${escapeAss(cue.text)}`);
+      lines.push(
+        `Dialogue: 1,${assTime(cue.start)},${assTime(cue.end)},Cap,,0,0,0,,{\\an5\\pos(540,${CAPTION_Y})\\fscx72\\fscy72\\t(0,90,\\fscx108\\fscy108)\\t(90,170,\\fscx100\\fscy100)}${emphasize(escapeAss(cue.text))}`,
+      );
     }
   }
   return header + lines.join("\n") + "\n";
