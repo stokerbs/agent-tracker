@@ -9,7 +9,7 @@ import { generateImageAsset } from "@/lib/studio/media/generate";
 import { publishMaster } from "@/lib/studio/publish/publish";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import { runRenderJob } from "@/lib/studio/video/render";
-import type { AutopilotSettings, CreativePlan, Pillar, Platform, SocialPlatform } from "@/lib/studio/types";
+import type { AutopilotSettings, AutopilotVideoFormat, CreativePlan, Pillar, Platform, SocialPlatform, VideoFormat } from "@/lib/studio/types";
 import { buildBrief, choosePillar, shouldRun, STOP_REASON_TH, type SkipReason } from "./plan";
 
 /**
@@ -32,6 +32,8 @@ const PLATFORM_FOR_VARIANT: Record<SocialPlatform, Platform> = {
   youtube: "youtube_short",
   line_oa: "line_oa",
 };
+/** Why a storyteller run rendered as a template clip instead (recorded as stats.format_fallback). */
+type FormatFallback = "presenter_failed" | "budget";
 
 export interface AutopilotResult {
   ok: boolean;
@@ -101,6 +103,8 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     return { ok: false, runId: null, status: "failed", error: "สร้างงานอัตโนมัติไม่สำเร็จ" };
   }
   const runId = run.id;
+  /** Set once a clip is rendered: stats.format is the format that actually went out, not the configured one. */
+  let rendered: { format: VideoFormat; format_fallback?: FormatFallback } | null = null;
   const step = async (progress: number, label: string) => {
     await svc.from("studio_autopilot_runs").update({ progress, step: label }).eq("id", runId);
   };
@@ -110,7 +114,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
   const stop = async (reason: string, masterId: string | null, status: "review" | "failed" = "review", detail?: string): Promise<AutopilotResult> => {
     const th = STOP_REASON_TH[reason] ?? reason;
     console.warn(`[studio:autopilot] run=${runId} stopped: ${reason}${detail ? ` (${detail})` : ""}`);
-    await finish({ status, stopped_at: reason, error: detail?.slice(0, 900) ?? null, master_id: masterId, step: th, progress: 100 });
+    await finish({ status, stopped_at: reason, error: detail?.slice(0, 900) ?? null, master_id: masterId, step: th, progress: 100, ...(rendered ? { stats: rendered } : {}) });
     await notify(`⏸️ Autopilot หยุดไว้: ${th}${masterId ? `\nตรวจและแก้ต่อได้ที่ ${APP_URL}/studio/content/${masterId}` : ""}`);
     return { ok: false, runId, status, masterId, stopReason: reason, error: detail };
   };
@@ -179,10 +183,29 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
 
     // ── 4. images ───────────────────────────────────────────────────────────
     await step(40, "กำลังสร้างภาพ");
+    let format = await resolveRunFormat(svc, cfg.video_format, runId);
     const ctx = { id: mid, title: master.title, creative_plan: trimmed };
     const cover = await generateImageAsset({ master: ctx, target: { kind: "thumbnail" }, aspect: "9:16", userId: actor });
     if (!cover.ok) return await stop("image_failed", masterId, "failed", `${cover.code}: ${cover.error}`);
     let images = 1;
+    let formatFallback: FormatFallback | null = null;
+    if (format === "storyteller") {
+      // The presenter carries a storyteller clip. Without it the run still ships — as a template clip, never a failed run.
+      if (Date.now() > deadline - 150_000) {
+        formatFallback = "budget";
+      } else {
+        const presenter = await generateImageAsset({ master: ctx, target: { kind: "presenter" }, aspect: "9:16", userId: actor });
+        if (presenter.ok) images += 1;
+        else {
+          formatFallback = "presenter_failed";
+          console.warn(`[studio:autopilot] run=${runId} presenter image failed: ${presenter.code}`);
+        }
+      }
+      if (formatFallback) {
+        console.warn(`[studio:autopilot] run=${runId} storyteller → template for this run (${formatFallback})`);
+        format = "template";
+      }
+    }
     for (let i = 0; i < Math.min(trimmed.shots.length, cfg.images_per_run - 1); i++) {
       // Scene images are optional polish — drop them rather than run out of function time before the video.
       if (Date.now() > deadline - 150_000) {
@@ -199,12 +222,14 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     await step(55, "กำลังสร้างวิดีโอ");
     const { data: job, error: jErr } = await svc
       .from("studio_render_jobs")
-      .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", shots: trimmed.shots.length, source: "autopilot" } as never, created_by: actor })
+      .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", shots: trimmed.shots.length, source: "autopilot", format } as never, created_by: actor })
       .select("id")
       .single();
     if (jErr || !job) throw new Error(`render job: ${jErr?.message ?? "no row"}`);
     const render = await runRenderJob(job.id, { userId: actor });
     if (!render.ok) return await stop("video_failed", masterId, "failed", render.error);
+    const formatStats = { format, ...(formatFallback ? { format_fallback: formatFallback } : {}) };
+    rendered = formatStats;
 
     // ── 6. privacy (deterministic + AI: no human will read this before it goes out) ──
     await step(75, "กำลังตรวจความเป็นส่วนตัว");
@@ -231,7 +256,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     await logAudit({ actorId: actor, action: "STUDIO_CONTENT_APPROVE", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, privacy: privacy.status } });
 
     if (!cfg.auto_publish) {
-      await finish({ status: "review", stopped_at: "manual_review", step: "รอตรวจก่อนโพสต์", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null } as never });
+      await finish({ status: "review", stopped_at: "manual_review", step: "รอตรวจก่อนโพสต์", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null, ...formatStats } as never });
       await notify(`✅ Autopilot ผลิตคอนเทนต์ใหม่แล้ว (รอคุณกดโพสต์)\n"${master.title}"\n${APP_URL}/studio/content/${masterId}`);
       return { ok: true, runId, status: "review", masterId, stopReason: "manual_review" };
     }
@@ -252,8 +277,8 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     await logAudit({ actorId: actor, action: "STUDIO_SOCIAL_POST", entity: "studio_content_masters", entityId: masterId, metadata: { autopilot: true, run_id: runId, platforms: cfg.platforms, provider_post_id: published.providerPostId } });
 
     const urls = published.posts.map((p) => p.post_url).filter((u): u is string => !!u);
-    await finish({ status: "done", published: true, step: "เสร็จแล้ว", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null, posts: published.posts.length } as never });
-    console.info(`[studio:autopilot] run=${runId} done master=${masterId} platforms=${cfg.platforms.join(",")} images=${images}`);
+    await finish({ status: "done", published: true, step: "เสร็จแล้ว", progress: 100, stats: { images, shots: trimmed.shots.length, video_sec: render.durationSec ?? null, posts: published.posts.length, ...formatStats } as never });
+    console.info(`[studio:autopilot] run=${runId} done master=${masterId} platforms=${cfg.platforms.join(",")} images=${images} format=${format}`);
     await notify(
       `🤖 Autopilot โพสต์คอนเทนต์ใหม่แล้ว\n"${master.title}"\nแพลตฟอร์ม: ${cfg.platforms.join(", ")}\n${urls.slice(0, 3).join("\n") || `${APP_URL}/studio/content/${masterId}`}`,
     );
@@ -276,6 +301,31 @@ async function notify(text: string): Promise<void> {
   } catch (e) {
     console.error("[studio:autopilot] LINE notify failed:", e instanceof Error ? e.message : e);
   }
+}
+
+/**
+ * The clip format this run renders. `alternate` flips the format of the most recent finished (done/review) run
+ * that recorded one; with no history — or when the lookup fails — it uses template and the run carries on.
+ */
+async function resolveRunFormat(svc: Svc, setting: AutopilotVideoFormat, runId: string): Promise<VideoFormat> {
+  if (setting !== "alternate") return setting;
+  const { data, error } = await svc
+    .from("studio_autopilot_runs")
+    .select("stats")
+    .in("status", ["done", "review"])
+    .not("stats->>format", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn(`[studio:autopilot] run=${runId} last clip format lookup failed, using template: ${error.message}`);
+    return "template";
+  }
+  const stats = data?.stats;
+  const last = stats && typeof stats === "object" && !Array.isArray(stats) ? stats.format : undefined;
+  const next: VideoFormat = last === "template" ? "storyteller" : "template";
+  console.info(`[studio:autopilot] run=${runId} alternate format: last=${typeof last === "string" ? last : "none"} → ${next}`);
+  return next;
 }
 
 async function countPublishedByPillar(svc: Svc): Promise<Record<string, number>> {

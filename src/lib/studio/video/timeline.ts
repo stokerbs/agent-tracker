@@ -1,4 +1,4 @@
-import type { CreativePlan, CreativeShot } from "@/lib/studio/types";
+import type { CreativePlan, CreativeShot, VideoFormat } from "@/lib/studio/types";
 
 /**
  * Pure timeline maths for the template video: which image each shot uses,
@@ -31,12 +31,16 @@ export const CAPTION_LINE_MAX = 30;
 export const HOOK_LINE_TARGET = 14;
 export const HOOK_LINE_MAX = 30;
 
+/** Storyteller shots are either the anonymous presenter or a cut-away to the scene (b-roll). Template shots have no role. */
+export type ShotRole = "presenter" | "broll";
+
 export interface ShotSource {
   index: number;
   voice: string;
   visual: string;
   /** Asset id of the still to show. */
   imageAssetId: string;
+  role?: ShotRole;
 }
 
 export interface ImageCandidate {
@@ -45,18 +49,44 @@ export interface ImageCandidate {
   meta: unknown;
 }
 
-/** Resolve the image for every shot: explicit scene image → cover (thumbnail) → any image, in that order. */
-export function resolveShotImages(plan: CreativePlan, images: ImageCandidate[]): ShotSource[] | { error: string } {
+/** Render-job params are untrusted JSON: only the exact string "storyteller" selects it, anything else is the template. */
+export function parseVideoFormat(v: unknown): VideoFormat {
+  return v === "storyteller" ? "storyteller" : "template";
+}
+
+/** The storyteller presenter image (generated with target kind "presenter"). */
+export function isPresenterImage(img: { meta: unknown }): boolean {
+  return (img.meta as { target?: { kind?: string } } | null)?.target?.kind === "presenter";
+}
+
+/**
+ * Resolve the image for every shot.
+ * - template: explicit scene image → cover (thumbnail) → any image. Presenter images are never used.
+ * - storyteller: the presenter opens, closes and carries every other shot; the shots between cut away to that
+ *   scene's image, else the cover, else stay on the presenter.
+ */
+export function resolveShotImages(plan: CreativePlan, images: ImageCandidate[], opts: { format?: VideoFormat } = {}): ShotSource[] | { error: string } {
   const shots = (plan.shots ?? []).slice(0, MAX_SHOTS);
   if (!shots.length) return { error: "creative plan ยังไม่มี shot list — สร้างแผนภาพก่อน" };
-  if (!images.length) return { error: "ยังไม่มีรูปที่พร้อมใช้ — สร้างภาพปกหรือภาพฉากก่อน" };
+  const presenter = images.find(isPresenterImage)?.id ?? null;
+  const pool = images.filter((i) => !isPresenterImage(i));
+  const storyteller = opts.format === "storyteller";
+  if (storyteller && !presenter) return { error: "ยังไม่มีภาพนักสืบนิรนาม — สร้างภาพ \"นักสืบนิรนาม (คนเล่าเรื่อง)\" ก่อน" };
+  if (!storyteller && !pool.length) return { error: "ยังไม่มีรูปที่พร้อมใช้ — สร้างภาพปกหรือภาพฉากก่อน" };
   const byScene = new Map<number, string>();
-  for (const img of images) {
+  for (const img of pool) {
     const t = (img.meta as { target?: { kind?: string; index?: number } } | null)?.target;
     if (t?.kind === "scene" && typeof t.index === "number" && !byScene.has(t.index)) byScene.set(t.index, img.id);
   }
-  const cover = images.find((i) => i.kind === "thumbnail")?.id ?? images[0].id;
-  return shots.map((s, i) => ({ index: i, voice: (s.voice ?? "").trim(), visual: (s.visual ?? "").trim(), imageAssetId: byScene.get(i) ?? cover }));
+  const cover = pool.find((i) => i.kind === "thumbnail")?.id ?? pool[0]?.id ?? null;
+  const base = (s: CreativeShot, i: number) => ({ index: i, voice: (s.voice ?? "").trim(), visual: (s.visual ?? "").trim() });
+  if (storyteller) {
+    return shots.map((s, i) => {
+      const cutaway = i % 2 === 1 && i !== shots.length - 1 ? (byScene.get(i) ?? cover) : null;
+      return cutaway ? { ...base(s, i), imageAssetId: cutaway, role: "broll" as const } : { ...base(s, i), imageAssetId: presenter!, role: "presenter" as const };
+    });
+  }
+  return shots.map((s, i) => ({ ...base(s, i), imageAssetId: byScene.get(i) ?? cover! }));
 }
 
 export interface TimedShot extends ShotSource {

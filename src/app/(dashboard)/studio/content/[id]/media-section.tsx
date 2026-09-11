@@ -52,7 +52,7 @@ const SETTINGS_MEDIA_HREF = "/studio/settings#media";
 const LOCK_HINT = "คอนเทนต์ที่เผยแพร่แล้วล็อกการแก้ไข — เก็บถาวรแล้วนำกลับมาเป็นร่างหากต้องการสร้างหรือลบสื่อ";
 const EYE_CHECK = "ภาพที่สร้างตรวจ PII อัตโนมัติไม่ได้ — ตรวจด้วยตาก่อนโพสต์";
 
-type ImageTargetValue = "thumbnail" | "custom" | `scene:${number}`;
+type ImageTargetValue = "thumbnail" | "presenter" | "custom" | `scene:${number}`;
 type VoiceSourceValue = "script" | "hook" | `variant:${string}`;
 type PendingJob = { kind: "image" | "audio"; label: string };
 type InlineError = { kind: "image" | "audio"; message: string; retry: () => void };
@@ -108,9 +108,22 @@ export function MediaSection({ masterId, title, plan, variants, assets, assetUrl
 
   function runImage() {
     if (imageDisabled) return;
-    const label = effectiveTarget === "thumbnail" ? "กำลังสร้างภาพปก…" : effectiveTarget === "custom" ? "กำลังสร้างภาพจากคำบรรยาย…" : `กำลังสร้างภาพฉาก ${Number(effectiveTarget.slice(6)) + 1}…`;
+    const label =
+      effectiveTarget === "thumbnail"
+        ? "กำลังสร้างภาพปก…"
+        : effectiveTarget === "presenter"
+          ? "กำลังสร้างภาพนักสืบนิรนาม…"
+          : effectiveTarget === "custom"
+            ? "กำลังสร้างภาพจากคำบรรยาย…"
+            : `กำลังสร้างภาพฉาก ${Number(effectiveTarget.slice(6)) + 1}…`;
     const target =
-      effectiveTarget === "thumbnail" ? ({ kind: "thumbnail" } as const) : effectiveTarget === "custom" ? ({ kind: "custom", text: customText.trim() } as const) : ({ kind: "scene", index: Number(effectiveTarget.slice(6)) } as const);
+      effectiveTarget === "thumbnail"
+        ? ({ kind: "thumbnail" } as const)
+        : effectiveTarget === "presenter"
+          ? ({ kind: "presenter" } as const)
+          : effectiveTarget === "custom"
+            ? ({ kind: "custom", text: customText.trim() } as const)
+            : ({ kind: "scene", index: Number(effectiveTarget.slice(6)) } as const);
     setJobs((j) => [...j, { kind: "image", label }]);
     startImage(async () => {
       try {
@@ -180,6 +193,9 @@ export function MediaSection({ masterId, title, plan, variants, assets, assetUrl
                     <SelectItem value="thumbnail" className="text-xs">
                       ปก (thumbnail){plan?.thumbnail_concept ? ` · ${truncate(plan.thumbnail_concept, 40)}` : ` · ${truncate(title, 40)}`}
                     </SelectItem>
+                    <SelectItem value="presenter" className="text-xs">
+                      นักสืบนิรนาม (คนเล่าเรื่อง)
+                    </SelectItem>
                     {shots.map((s, i) => (
                       <SelectItem key={i} value={`scene:${i}`} className="text-xs">
                         ฉาก {i + 1} ({formatSeconds(s.start_sec)}–{formatSeconds(s.end_sec)}){s.visual.trim() ? ` · ${truncate(s.visual, 40)}` : ""}
@@ -204,6 +220,11 @@ export function MediaSection({ masterId, title, plan, variants, assets, assetUrl
                 </Select>
               </div>
               {shots.length === 0 && <p className="text-[11px] text-muted-foreground">ยังไม่มี shot ในแผนวิดีโอ — สร้างแผนวิดีโอด้านบนก่อน จึงจะสร้างภาพต่อฉากได้ (ภาพปกและกำหนดเองใช้ได้เลย)</p>}
+              {effectiveTarget === "presenter" && (
+                <p className="text-[11px] text-muted-foreground">
+                  ภาพเงาดำนักสืบนั่งหันหน้าเข้ากล้อง (ไม่เห็นใบหน้า) ใช้เป็นคนเล่าเรื่องในวิดีโอแบบ “นักสืบเล่าเรื่อง” — แนะนำสัดส่วน 9:16{aspect !== "9:16" ? " (ตอนนี้เลือกสัดส่วนอื่นอยู่)" : ""}
+                </p>
+              )}
               {effectiveTarget === "custom" && (
                 <div className="space-y-1">
                   <Textarea

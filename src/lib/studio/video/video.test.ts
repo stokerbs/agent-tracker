@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ACCENT_ASS, assTime, buildAss, CAPTION_Y, emphasize, escapeAss } from "./ass";
-import { buildFfmpegArgs, escapeFilterPath, runFfmpeg, TRANSITIONS, XFADE_SEC } from "./ffmpeg";
-import { CAPTION_LINE_MAX, captionChunks, HOOK_LINE_MAX, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, subtitleLines, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
+import { ACCENT_ASS, assTime, buildAss, CAPTION_Y, emphasize, escapeAss, nameCardWindow } from "./ass";
+import { buildFfmpegArgs, escapeFilterPath, PRESENTER_ZOOM, runFfmpeg, STORY_FADE_SEC, TRANSITIONS, XFADE_SEC } from "./ffmpeg";
+import { CAPTION_LINE_MAX, captionChunks, HOOK_LINE_MAX, layoutShots, mp3DurationSec, parseVideoFormat, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, subtitleLines, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 import type { CreativePlan } from "@/lib/studio/types";
 
 const plan: CreativePlan = {
@@ -30,6 +30,61 @@ describe("resolveShotImages", () => {
   it("explains missing shots / images", () => {
     expect(resolveShotImages({ shots: [], broll: [], text_overlays: [] }, images)).toMatchObject({ error: expect.stringContaining("shot list") });
     expect(resolveShotImages(plan, [])).toMatchObject({ error: expect.stringContaining("รูป") });
+  });
+});
+
+describe("resolveShotImages (storyteller)", () => {
+  const presenterImg = { id: "presenter", kind: "image", meta: { target: { kind: "presenter" } } };
+  const planOf = (n: number): CreativePlan => ({
+    shots: Array.from({ length: n }, (_, i) => ({ start_sec: i, end_sec: i + 1, voice: `ฉาก ${i}`, visual: "", text_overlay: null })),
+    broll: [],
+    text_overlays: [],
+  });
+  const story = { format: "storyteller" as const };
+  it("the presenter opens, closes and carries the even shots; odd shots cut away", () => {
+    const r5 = resolveShotImages(planOf(5), [...images, presenterImg], story);
+    if ("error" in r5) throw new Error(r5.error);
+    expect(r5.map((s) => s.role)).toEqual(["presenter", "broll", "presenter", "broll", "presenter"]);
+    // the last shot is always the presenter, even on an odd index
+    const r4 = resolveShotImages(planOf(4), [...images, presenterImg], story);
+    if ("error" in r4) throw new Error(r4.error);
+    expect(r4.map((s) => s.role)).toEqual(["presenter", "broll", "presenter", "presenter"]);
+    expect(r4.filter((s) => s.role === "presenter").every((s) => s.imageAssetId === "presenter")).toBe(true);
+  });
+  it("a cut-away uses that scene's image, else the cover, else stays on the presenter", () => {
+    const s3 = { id: "s3", kind: "image", meta: { target: { kind: "scene", index: 3 } } };
+    const r = resolveShotImages(planOf(5), [presenterImg, images[0], images[1], s3], story);
+    if ("error" in r) throw new Error(r.error);
+    // shot 2 has a scene image, but even shots belong to the presenter
+    expect(r.map((s) => s.imageAssetId)).toEqual(["presenter", "cover", "presenter", "s3", "presenter"]);
+    const alone = resolveShotImages(planOf(3), [presenterImg], story);
+    if ("error" in alone) throw new Error(alone.error);
+    expect(alone.map((s) => [s.imageAssetId, s.role])).toEqual([["presenter", "presenter"], ["presenter", "presenter"], ["presenter", "presenter"]]);
+  });
+  it("refuses a storyteller render without a presenter image", () => {
+    expect(resolveShotImages(planOf(3), images, story)).toMatchObject({ error: expect.stringContaining("นักสืบนิรนาม") });
+  });
+  it("the template never uses a presenter image, even first in the list or as the only thumbnail", () => {
+    const first = resolveShotImages(plan, [presenterImg, images[1]]);
+    if ("error" in first) throw new Error(first.error);
+    expect(first.map((s) => s.imageAssetId)).toEqual(["s2", "s2", "s2"]);
+    expect(first.every((s) => s.role === undefined)).toBe(true);
+    const thumbPresenter = { id: "p-thumb", kind: "thumbnail", meta: { target: { kind: "presenter" } } };
+    const fallback = resolveShotImages(plan, [thumbPresenter, { id: "plain", kind: "image", meta: null }], { format: "template" });
+    if ("error" in fallback) throw new Error(fallback.error);
+    expect(fallback.map((s) => s.imageAssetId)).toEqual(["plain", "plain", "plain"]);
+  });
+  it("the template explains the missing images when only presenter images exist", () => {
+    expect(resolveShotImages(plan, [presenterImg, { ...presenterImg, id: "p2", kind: "thumbnail" }])).toMatchObject({ error: expect.stringContaining("รูป") });
+  });
+});
+
+describe("parseVideoFormat", () => {
+  it("accepts only the exact string storyteller", () => {
+    expect(parseVideoFormat("storyteller")).toBe("storyteller");
+    for (const v of ["template", "Storyteller", " storyteller", "", "alternate", undefined, null, 1, true, ["storyteller"], { format: "storyteller" }]) {
+      expect(parseVideoFormat(v)).toBe("template");
+    }
   });
 });
 
@@ -225,6 +280,9 @@ describe("ffmpeg args (viral template)", () => {
     for (const len of ["4.600", "3.250", "2.500"]) expect(fc).toContain(`trim=duration=${len},`);
     // xfade in ffmpeg 7 (Linux/Vercel) needs a constant frame rate on every input
     for (let i = 0; i < 3; i++) expect(fc).toContain(`setsar=1,fps=30[v${i}]`);
+    // lighter zoompan canvas + x264 preset keep long renders inside the 240 s ffmpeg timeout on one vCPU
+    expect(fc).toContain("scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=");
+    expect(args[args.indexOf("-preset") + 1]).toBe("superfast");
     expect(fc).toContain(`[v0][v1]xfade=transition=${TRANSITIONS[0]}:duration=${XFADE_SEC}:offset=4.350[x1]`);
     expect(fc).toContain(`[x1][v2]xfade=transition=${TRANSITIONS[1]}:duration=${XFADE_SEC}:offset=7.350[x2]`);
     expect(fc).toContain("[x2]eq=saturation=1.18:contrast=1.06");
@@ -248,6 +306,130 @@ describe("ffmpeg args (viral template)", () => {
   });
   it("escapes filter-sensitive characters in paths", () => {
     expect(escapeFilterPath("C:/x'y")).toBe("C\\:/x\\'y");
+  });
+});
+
+const roleShot = (i: number, start: number, duration: number, audioPath: string | null, role?: "presenter" | "broll"): TimedShot => ({
+  index: i,
+  voice: audioPath ? "x" : "",
+  visual: "",
+  imageAssetId: role ?? "c",
+  role,
+  voiceSec: audioPath ? duration - 0.35 : 0,
+  audioPath,
+  imagePath: `/t/img-${role ?? "c"}.png`,
+  start,
+  duration,
+});
+const filterGraph = (args: string[]) => args[args.indexOf("-filter_complex") + 1];
+const inputChain = (fc: string, i: number) => fc.split(";").find((f) => f.startsWith(`[${i}:v]`))!;
+const PUNCH_IN = "z='if(lte(on,15),1+0.12*(1-pow(1-on/15,3)),min(1.12+0.0007*(on-15),1.3))'";
+
+describe("ffmpeg args (storyteller)", () => {
+  const shots = [roleShot(0, 0, 4.35, "/t/vo-0.mp3", "presenter"), roleShot(1, 4.35, 3, null, "broll"), roleShot(2, 7.35, 2.5, "/t/vo-2.mp3", "presenter")];
+  const build = (s: TimedShot[]) => buildFfmpegArgs({ shots: s, assPath: "/t/subs.ass", fontsDir: "/f/fonts", outPath: "/t/out.mp4", format: "storyteller" });
+  it("fades between shots with the same padding and offsets as the template", () => {
+    const { args, summary } = build(shots);
+    expect(STORY_FADE_SEC).toBe(0.35);
+    expect(args.flatMap((a, i) => (a === "-t" ? [args[i + 1]] : []))).toEqual([(4.35 + STORY_FADE_SEC).toFixed(3), (3 + STORY_FADE_SEC).toFixed(3), "2.500"]);
+    const fc = filterGraph(args);
+    expect(fc).toContain("[v0][v1]xfade=transition=fade:duration=0.35:offset=4.350[x1]");
+    expect(fc).toContain("[x1][v2]xfade=transition=fade:duration=0.35:offset=7.350[x2]");
+    for (const t of TRANSITIONS) expect(fc).not.toContain(`transition=${t}`);
+    expect(fc).toContain("[x2]eq=saturation=1.05:contrast=1.08,drawbox=x=0:y=0:w=1080:h=14:color=black@0.35:t=fill[graded]");
+    expect(fc).toContain("color=c=0xFFD400:s=1080x14:r=30:d=9.850[bar]");
+    expect(fc).toContain("[graded][bar]overlay=x='-w+w*t/9.850':y=0:eval=frame[barred]");
+    expect(summary).toContain("storyteller");
+    expect(summary).toContain("3 shots, 2 narration tracks, 2 transitions, 2 presenter shots");
+  });
+  it("pushes in slowly on the presenter and keeps the drifting punch-in on b-roll", () => {
+    const fc = filterGraph(build(shots).args);
+    for (const i of [0, 2]) {
+      expect(inputChain(fc, i)).toContain(`zoompan=z='${PRESENTER_ZOOM}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'`);
+      expect(inputChain(fc, i)).not.toContain(PUNCH_IN);
+    }
+    expect(PRESENTER_ZOOM).toBe("min(1+0.0004*on,1.08)");
+    expect(inputChain(fc, 0)).toContain(`d=${Math.round((4.35 + STORY_FADE_SEC) * 30)}:`);
+    expect(inputChain(fc, 1)).toContain(`${PUNCH_IN}:x='min(iw/2-(iw/zoom/2)+on*0.6,iw-iw/zoom)'`);
+  });
+  it("splits the narration into a waveform shown only over the presenter shots, then captions it", () => {
+    const { args } = build(shots);
+    const fc = filterGraph(args);
+    expect(fc).toContain("[a0][a1][a2]concat=n=3:v=0:a=1,asplit=2[aout][aw]");
+    expect(fc).toContain("[aw]showwaves=s=900x150:mode=cline:rate=30:colors=0xFFD400:scale=sqrt,format=rgba,colorchannelmixer=aa=0.85[wave]");
+    expect(fc).toContain("[barred][wave]overlay=x=90:y=1340:enable='between(t,0.00,4.35)+between(t,7.35,9.85)'[waved]");
+    expect(fc).toContain("[waved]ass='/t/subs.ass':fontsdir='/f/fonts':shaping=complex[vout]");
+    expect(fc).not.toContain("[barred]ass=");
+    expect(fc).not.toContain("[acat]");
+    expect(args.flatMap((a, i) => (a === "-map" ? [args[i + 1]] : []))).toEqual(["[vout]", "[aout]"]);
+  });
+  it("leaves the waveform branch out when no shot is a presenter", () => {
+    const { args, summary } = build([roleShot(0, 0, 4.35, "/t/vo-0.mp3", "broll"), roleShot(1, 4.35, 3, null)]);
+    const fc = filterGraph(args);
+    for (const part of ["showwaves", "asplit", "[waved]", "[aout]", PRESENTER_ZOOM]) expect(fc).not.toContain(part);
+    expect(fc).toContain("[a0][a1]concat=n=2:v=0:a=1[acat]");
+    expect(fc).toContain("[barred]ass='/t/subs.ass'");
+    expect(fc).toContain("xfade=transition=fade:duration=0.35:offset=4.350[x1]");
+    expect(args.flatMap((a, i) => (a === "-map" ? [args[i + 1]] : []))).toEqual(["[vout]", "[acat]"]);
+    expect(summary).toContain("0 presenter shots");
+  });
+  it("keeps the template graph unchanged, even for shots that carry presenter roles", () => {
+    const base = { shots, assPath: "/t/subs.ass", fontsDir: "/f/fonts", outPath: "/t/out.mp4" };
+    const implicit = buildFfmpegArgs(base);
+    expect(buildFfmpegArgs({ ...base, format: "template" }).args).toEqual(implicit.args);
+    const fc = filterGraph(implicit.args);
+    for (const part of ["showwaves", "asplit", "[waved]", "[aout]", "transition=fade", PRESENTER_ZOOM]) expect(fc).not.toContain(part);
+    expect(inputChain(fc, 0)).toContain(PUNCH_IN);
+    expect(fc).toContain(`[v0][v1]xfade=transition=${TRANSITIONS[0]}:duration=${XFADE_SEC}:offset=4.350[x1]`);
+    expect(fc).toContain("[x2]eq=saturation=1.18:contrast=1.06");
+    expect(fc).toContain("[a0][a1][a2]concat=n=3:v=0:a=1[acat];[barred]ass=");
+    expect(implicit.summary).toContain("template");
+  });
+});
+
+describe("ASS builder (storyteller)", () => {
+  const hook = "ความรู้สึกไม่ใช่หลักฐาน";
+  const shots = [roleShot(0, 0, 8, "/t/vo-0.mp3", "presenter"), roleShot(1, 8, 3, null, "broll"), roleShot(2, 11, 5, "/t/vo-2.mp3", "presenter")].map((s) => ({ ...s, voice: s.audioPath ? "ข้อแรก ตารางเวลาที่เปลี่ยนไป โดยไม่มีเหตุผลใหม่รองรับ" : "" }));
+  const nameEvents = (ass: string) => ass.split("\n").filter((l) => l.includes(",Name,,"));
+  it("adds the Name style and a slide-in name card with its accent bar after the hook", () => {
+    const ass = buildAss({ shots, hook, format: "storyteller" });
+    const style = ass.match(/^Style: Name,(.*)$/m)![1].split(",");
+    expect(style[0]).toBe("Sarabun");
+    expect(style[1]).toBe("64");
+    expect(style[4]).toBe("&HFF000000"); // transparent outline
+    expect(style[5]).toBe("&H59000000");
+    expect(style[12]).toBe("0"); // letter spacing drops Thai tone marks
+    expect(style[14]).toBe("4");
+    expect(style[15]).toBe("22");
+    expect(style[17]).toBe("4");
+    const [card, bar, ...rest] = nameEvents(ass);
+    expect(rest).toEqual([]);
+    expect(card).toBe("Dialogue: 2,0:00:02.60,0:00:06.10,Name,,0,0,0,,{\\an4\\move(-420,1040,110,1040,0,260)\\fad(0,200)}นักสืบนิรนาม\\N{\\fs34\\c&H00D4FF&}DETECTIVE PULSE");
+    expect(bar).toBe("Dialogue: 2,0:00:02.60,0:00:06.10,Name,,0,0,0,,{\\an4\\move(-460,1040,70,1040,0,260)\\fad(0,200)\\bord0\\shad0\\1c&H00D4FF&\\1a&H00&\\p1}m 0 -70 l 12 -70 l 12 70 l 0 70{\\p0}");
+    // everything else (hook card, captions, brand tag, other styles) is the template's
+    const withoutName = ass
+      .split("\n")
+      .filter((l) => !l.startsWith("Style: Name,") && !l.includes(",Name,,"))
+      .join("\n");
+    expect(withoutName).toBe(buildAss({ shots, hook }));
+  });
+  it("times the card on the first presenter shot, capped at its end, and skips it when under 1.5 s fits", () => {
+    expect(nameCardWindow([roleShot(0, 0, 4, null, "broll"), roleShot(1, 4, 6, null, "presenter")])).toEqual({ start: 4, end: 7.5 });
+    expect(nameCardWindow([roleShot(0, 0, 5, null, "presenter")])).toEqual({ start: 2.6, end: 5 });
+    expect(nameCardWindow([roleShot(0, 0, 4.1, null, "presenter")])).toEqual({ start: 2.6, end: 4.1 }); // exactly 1.5 s fits
+    expect(nameCardWindow([roleShot(0, 0, 4, null, "presenter"), roleShot(1, 4, 10, null, "presenter")])).toBeNull(); // only the first presenter shot counts
+    expect(nameCardWindow([roleShot(0, 0, 10, null, "broll"), roleShot(1, 10, 3, null)])).toBeNull();
+    const short = buildAss({ shots: [roleShot(0, 0, 4, null, "presenter")], hook, format: "storyteller" });
+    expect(short).toContain("Style: Name,");
+    expect(nameEvents(short)).toEqual([]);
+    const late = buildAss({ shots: [roleShot(0, 0, 4, null, "broll"), roleShot(1, 4, 2, null, "presenter")], hook, format: "storyteller" });
+    expect(nameEvents(late)[0]).toMatch(/^Dialogue: 2,0:00:04\.00,0:00:06\.00,Name,/);
+  });
+  it("emits no Name style or events for the template", () => {
+    const ass = buildAss({ shots, hook });
+    expect(ass).not.toContain("Name,Sarabun");
+    expect(nameEvents(ass)).toEqual([]);
+    expect(buildAss({ shots, hook, format: "template" })).toBe(ass);
   });
 });
 

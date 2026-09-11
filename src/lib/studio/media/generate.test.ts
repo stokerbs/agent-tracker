@@ -110,6 +110,29 @@ describe("generateImageAsset", () => {
     expect(h.gens[0]).toMatchObject({ purpose: "image_generation", status: "ok", input_refs: { master_id: master.id, target: "thumbnail", aspect: "9:16" } });
     expect(JSON.stringify(h.gens[0].input_refs)).not.toContain("ปกมืด");
   });
+  it("stores the storyteller presenter as an image tagged target=presenter, prompted from the fixed silhouette scene", async () => {
+    let seen: { prompt: string } | null = null;
+    h.imageProvider!.generate = async (i: unknown) => {
+      seen = i as { prompt: string };
+      return { bytes: new Uint8Array([1, 2, 3]), mime: "image/png", width: 9, height: 16, provider: "gemini", model: "m-img", durationMs: 50 };
+    };
+    const { generateImageAsset } = await import("./generate");
+    const { IMAGE_SAFETY_NEGATIVES, PRESENTER_SCENE } = await import("./prompts");
+    const r = await generateImageAsset({ master, target: { kind: "presenter" }, aspect: "9:16", userId: "u1" });
+    expect(r.ok).toBe(true);
+    expect(seen!.prompt).toContain(PRESENTER_SCENE);
+    expect(seen!.prompt).toContain(IMAGE_SAFETY_NEGATIVES);
+    expect(h.inserts[0]).toMatchObject({ kind: "image", label: "นักสืบนิรนาม (คนเล่าเรื่อง)", meta: { aspect: "9:16", target: { kind: "presenter" }, review: "manual" } });
+    expect(h.gens[0]).toMatchObject({ purpose: "image_generation", status: "ok", input_refs: { target: "presenter" } });
+  });
+  it("keeps the rate limit on presenter generations", async () => {
+    const gen = vi.fn();
+    h.imageProvider!.generate = gen;
+    const { generateImageAsset, MEDIA_RATE_LIMIT } = await import("./generate");
+    h.recentGens = MEDIA_RATE_LIMIT;
+    expect(await generateImageAsset({ master, target: { kind: "presenter" }, aspect: "9:16", userId: "u1" })).toMatchObject({ ok: false, code: "rate_limited" });
+    expect(gen).not.toHaveBeenCalled();
+  });
   it("refuses when the scene text carries a denylisted term or a phone number — provider never called", async () => {
     const gen = vi.fn();
     h.imageProvider!.generate = gen;

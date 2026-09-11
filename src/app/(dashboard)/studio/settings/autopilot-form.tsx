@@ -14,9 +14,20 @@ import { useSafeTransition } from "@/components/studio/use-safe-transition";
 import { bangkokDay } from "@/lib/studio/autopilot/plan";
 import { PILLARS, PILLAR_META } from "@/lib/studio/constants";
 import { PLATFORM_LABEL } from "@/lib/studio/publish/captions";
-import { SOCIAL_PLATFORMS, TARGET_DURATIONS, type AutopilotSettings, type Pillar, type SocialPlatform, type TargetDuration } from "@/lib/studio/types";
+import { SOCIAL_PLATFORMS, TARGET_DURATIONS, type AutopilotSettings, type AutopilotVideoFormat, type Pillar, type SocialPlatform, type TargetDuration } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
-import { CRON_TIME_TH, DAY_INDEXES, IMAGE_COST_THB, THAI_DAYS_LONG, THAI_DAYS_SHORT, autopilotIssues, imageCostHint, nextRunLabel } from "./autopilot-format";
+import {
+  AUTOPILOT_FORMATS,
+  AUTOPILOT_FORMAT_META,
+  CRON_TIME_TH,
+  DAY_INDEXES,
+  IMAGE_COST_THB,
+  THAI_DAYS_LONG,
+  THAI_DAYS_SHORT,
+  autopilotIssues,
+  imageCostHint,
+  nextRunLabel,
+} from "./autopilot-format";
 import { updateAutopilot } from "./actions";
 
 /**
@@ -29,6 +40,13 @@ import { updateAutopilot } from "./actions";
 const PLATFORM_HINT: Partial<Record<SocialPlatform, string>> = {
   youtube: "ต้องมีวิดีโอและบัญชี YouTube ที่เชื่อมต่อแล้ว",
   tiktok: "ต้องมีวิดีโอ — รอบอัตโนมัติสร้างวิดีโอเทมเพลตให้เสมอ",
+};
+
+/** Appended to the image cost hint: the storyteller presenter is one more image. */
+const PRESENTER_COST_NOTE: Record<AutopilotVideoFormat, string> = {
+  template: "",
+  storyteller: " รวมภาพนักสืบ",
+  alternate: " บางรอบรวมภาพนักสืบ",
 };
 
 const PILLAR_MODE_LABEL: Record<AutopilotSettings["pillar_mode"], string> = {
@@ -230,6 +248,23 @@ export function AutopilotForm({ initial }: { initial: AutopilotSettings }) {
         </div>
 
         <div className="space-y-1.5">
+          <Label htmlFor="autopilot-format">รูปแบบคลิป</Label>
+          <Select value={cfg.video_format} onValueChange={(v) => set("video_format", v as AutopilotVideoFormat)} disabled={pending}>
+            <SelectTrigger id="autopilot-format" className="h-9" aria-label="รูปแบบคลิป">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AUTOPILOT_FORMATS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {AUTOPILOT_FORMAT_META[f].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{AUTOPILOT_FORMAT_META[cfg.video_format].hint}</p>
+        </div>
+
+        <div className="space-y-1.5">
           <Label htmlFor="autopilot-images">จำนวนภาพต่อรอบ</Label>
           <Input
             id="autopilot-images"
@@ -243,7 +278,8 @@ export function AutopilotForm({ initial }: { initial: AutopilotSettings }) {
             inputMode="numeric"
           />
           <p className="text-xs text-muted-foreground">
-            1 = ภาพปกอย่างเดียว · มากกว่านั้นคือภาพประกอบรายช็อต — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ {imageCostHint(cfg.images_per_run)})
+            1 = ภาพปกอย่างเดียว · มากกว่านั้นคือภาพประกอบรายช็อต — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ {imageCostHint(cfg.images_per_run, cfg.video_format)}
+            {PRESENTER_COST_NOTE[cfg.video_format]})
           </p>
         </div>
 

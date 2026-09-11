@@ -1,5 +1,5 @@
 import { STOP_REASON_TH } from "@/lib/studio/autopilot/plan";
-import type { AutopilotRunStatus, AutopilotSettings } from "@/lib/studio/types";
+import type { AutopilotRunStatus, AutopilotSettings, AutopilotVideoFormat, VideoFormat } from "@/lib/studio/types";
 
 /**
  * Pure UI helpers for the autopilot section (phase 4). No I/O, no React —
@@ -17,6 +17,21 @@ export const THAI_DAYS_LONG = ["อาทิตย์", "จันทร์", "�
 export const CRON_TIME_TH = "02:10 น. (เวลาไทย)";
 /** Image cost used in the settings hint — the real invoice comes from Gemini. */
 export const IMAGE_COST_THB = 1.5;
+
+/** Select order for the clip format in the autopilot form. */
+export const AUTOPILOT_FORMATS: AutopilotVideoFormat[] = ["template", "storyteller", "alternate"];
+
+export const AUTOPILOT_FORMAT_META: Record<AutopilotVideoFormat, { label: string; hint: string }> = {
+  template: { label: "ภาพประกอบ (ไวรัล)", hint: "ภาพประกอบรายช็อตพร้อมซับไตเติลแบบไวรัล" },
+  storyteller: {
+    label: "นักสืบนิรนามเล่าเรื่อง",
+    hint: "นักสืบเงาดำนิรนามเป็นคนเล่า แล้วตัดไปภาพประกอบ — สร้างภาพนักสืบเพิ่มรอบละ 1 ภาพ ถ้าสร้างไม่ทันหรือไม่สำเร็จ รอบนั้นจะใช้แบบภาพประกอบแทน",
+  },
+  alternate: { label: "สลับกันทุกครั้ง", hint: "สลับภาพประกอบกับนักสืบเล่าเรื่องทีละรอบ ต่อจากรอบล่าสุดที่ผลิตเสร็จ (ยังไม่มีประวัติจะเริ่มที่ภาพประกอบ)" },
+};
+
+/** Short name of the clip a run actually rendered, for the run history line. */
+const RENDERED_FORMAT_SHORT: Record<VideoFormat, string> = { template: "ภาพประกอบ", storyteller: "นักสืบเล่าเรื่อง" };
 
 export function dayNameLong(day: number): string {
   return THAI_DAYS_LONG[day] ?? String(day);
@@ -80,7 +95,7 @@ export function runReason(run: { step: string | null; stopped_at: string | null 
   return stopReasonTh(run.stopped_at) ?? run.step ?? "—";
 }
 
-/** "ภาพ 2 · ช็อต 5 · วิดีโอ 30 วิ · โพสต์ 2" from the jsonb counters — "" when empty/malformed. */
+/** "ภาพ 2 · ช็อต 5 · วิดีโอ 30 วิ · โพสต์ 2 · คลิปนักสืบเล่าเรื่อง" from the jsonb counters — "" when empty/malformed. */
 export function runStatsSummary(stats: unknown): string {
   if (!stats || typeof stats !== "object" || Array.isArray(stats)) return "";
   const s = stats as Record<string, unknown>;
@@ -94,13 +109,23 @@ export function runStatsSummary(stats: unknown): string {
   if (shots !== null) parts.push(`ช็อต ${shots.toLocaleString("en-GB")}`);
   if (videoSec !== null) parts.push(`วิดีโอ ${videoSec.toLocaleString("en-GB")} วิ`);
   if (posts !== null) parts.push(`โพสต์ ${posts.toLocaleString("en-GB")}`);
+  if (s.format === "template" || s.format === "storyteller") {
+    // A fallback only ever goes storyteller → template, so say what it replaced.
+    parts.push(`คลิป${RENDERED_FORMAT_SHORT[s.format]}${typeof s.format_fallback === "string" ? " (แทนนักสืบเล่าเรื่อง)" : ""}`);
+  }
   return parts.join(" · ");
 }
 
-/** "~฿3" — image spend per run at the current setting. */
-export function imageCostHint(imagesPerRun: number): string {
-  const total = Math.max(0, imagesPerRun) * IMAGE_COST_THB;
-  return `~฿${total.toLocaleString("en-GB", { maximumFractionDigits: 2 })}`;
+/**
+ * "~฿3" — image spend per run at the current setting. Storyteller adds the
+ * presenter image; alternate adds it every other run, so it shows a range ("~฿1.5–3").
+ */
+export function imageCostHint(imagesPerRun: number, format: AutopilotVideoFormat = "template"): string {
+  const base = Math.max(0, imagesPerRun);
+  const thb = (n: number) => (n * IMAGE_COST_THB).toLocaleString("en-GB", { maximumFractionDigits: 2 });
+  if (format === "storyteller") return `~฿${thb(base + 1)}`;
+  if (format === "alternate") return `~฿${thb(base)}–${thb(base + 1)}`;
+  return `~฿${thb(base)}`;
 }
 
 /**

@@ -45,6 +45,7 @@ export const DEFAULT_AUTOPILOT: AutopilotSettings = {
   publish_on_review_required: false,
   allow_unsupported_claims: false,
   max_runs_per_week: 3,
+  video_format: "template",
 };
 
 export const DEFAULT_SOCIAL_CONNECTIONS: SocialConnections = {
@@ -92,7 +93,7 @@ function normaliseApproval(v: unknown): ApprovalRules {
  * from jsonb: booleans are coerced strictly (a stray "no" string must not read
  * as true), enums are whitelisted and numbers are clamped.
  */
-function normaliseAutopilot(v: unknown): AutopilotSettings {
+export function normaliseAutopilot(v: unknown): AutopilotSettings {
   const raw = (v && typeof v === "object" ? v : {}) as Partial<AutopilotSettings>;
   const bool = (x: unknown, fallback: boolean) => (typeof x === "boolean" ? x : fallback);
   const days = Array.isArray(raw.days) ? raw.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
@@ -110,6 +111,7 @@ function normaliseAutopilot(v: unknown): AutopilotSettings {
     publish_on_review_required: bool(raw.publish_on_review_required, DEFAULT_AUTOPILOT.publish_on_review_required),
     allow_unsupported_claims: bool(raw.allow_unsupported_claims, DEFAULT_AUTOPILOT.allow_unsupported_claims),
     max_runs_per_week: num(raw.max_runs_per_week, DEFAULT_AUTOPILOT.max_runs_per_week, 1, 14),
+    video_format: raw.video_format === "storyteller" || raw.video_format === "alternate" ? raw.video_format : "template",
   };
 }
 
