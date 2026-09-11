@@ -165,6 +165,18 @@ describe("ASS builder", () => {
     expect(parts.length).toBeGreaterThan(1);
     for (const p of parts) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
     expect(parts.join("").replace(/\s+/g, "")).toBe(hook.replace(/\s+/g, ""));
+    // one phrase wider than a hook line but narrower than a subtitle line: only the hook limit splits it
+    const phrase = "ความรู้สึกไม่ใช่หลักฐานแต่เป็นจุดเริ่มต้นที่ควรจดไว้";
+    expect(subtitleWidth(phrase)).toBeGreaterThan(HOOK_LINE_MAX);
+    expect(subtitleWidth(phrase)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
+    const hookLine = buildAss({ shots, hook: phrase }).split("\n").find((l) => l.includes(",Hook,,"))!;
+    const hookParts = hookLine.split(",Hook,,0,0,0,,")[1].split("\\N");
+    expect(hookParts.length).toBeGreaterThan(1);
+    for (const p of hookParts) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
+  });
+  it("joins phrases up to the target it is given", () => {
+    expect(subtitleLines("ข้อหนึ่ง ข้อสอง ข้อสาม")).toHaveLength(1);
+    expect(subtitleLines("ข้อหนึ่ง ข้อสอง ข้อสาม", { target: 6 }).length).toBeGreaterThan(1);
   });
 });
 

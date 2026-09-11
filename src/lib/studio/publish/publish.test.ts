@@ -193,6 +193,22 @@ describe("publishMaster", () => {
     }
   });
 
+  it("scans the YouTube title and hook, not only the caption", async () => {
+    const { publishMaster } = await import("./publish");
+    const conn = h.settings.social_connections.ayrshare;
+    const active = conn.active;
+    conn.active = [...active, "youtube"];
+    try {
+      const provider = fakeProvider({ connectedPlatforms: async () => ({ active: ["facebook", "youtube"], displayNames: {}, checkedAt: "now" }) });
+      // clean caption; the phone number only appears in the hook, which becomes the public YouTube title
+      const r = await publishMaster({ master: { ...master, hook: "โทรหาเราได้ที่ 081-234-5678 ทุกวัน" }, variants: [], platforms: ["youtube"], assetIds: [], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: false, code: "blocked" });
+      expect(provider.calls).toHaveLength(0);
+    } finally {
+      conn.active = active;
+    }
+  });
+
   it("enforces platform media requirements and asset ownership", async () => {
     const provider = fakeProvider();
     const { publishMaster } = await import("./publish");
