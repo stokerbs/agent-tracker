@@ -55,7 +55,9 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
   });
   const concatIn = shots.map((_, i) => `[v${i}][a${i}]`).join("");
   filters.push(`${concatIn}concat=n=${shots.length}:v=1:a=1[vcat][acat]`);
-  filters.push(`[vcat]subtitles='${escapeFilterPath(input.assPath)}':fontsdir='${escapeFilterPath(input.fontsDir)}'[vout]`);
+  // Force HarfBuzz shaping: with libass's "auto" some builds (the macOS ffmpeg-static binary) fall back to simple
+  // shaping, which draws a Thai tone mark on top of an upper vowel (ที่ reads ที, เรื่อง reads เรือง).
+  filters.push(`[vcat]ass='${escapeFilterPath(input.assPath)}':fontsdir='${escapeFilterPath(input.fontsDir)}':shaping=complex[vout]`);
   args.push("-filter_complex", filters.join(";"), "-map", "[vout]", "-map", "[acat]");
   args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart");
   args.push("-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-shortest", input.outPath);

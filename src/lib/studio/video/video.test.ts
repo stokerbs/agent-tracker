@@ -151,6 +151,9 @@ describe("ASS builder", () => {
     expect(ass).toContain("Style: Sub,Sarabun");
     expect(ass).toContain("Dialogue: 1,0:00:00.00,0:00:02.50,Hook,,0,0,0,,ความรู้สึกไม่ใช่หลักฐาน");
     expect(ass).toContain("WrapStyle: 2");
+    // one box per cue (BorderStyle 4), not per glyph: per-glyph boxes notch under stacked Thai tone marks
+    expect(ass).toMatch(/^Style: Sub,(?:[^,]*,){14}4,/m);
+    expect(ass).toMatch(/^Style: Hook,(?:[^,]*,){14}4,/m);
     expect(ass.match(/Dialogue: 0,/g)?.length).toBe(timeSubtitles(shots[0]).length + timeSubtitles(shots[1]).length);
     expect(buildAss({ shots, hook: null })).not.toContain("Hook,,");
   });
@@ -170,7 +173,7 @@ describe("ffmpeg args", () => {
     expect(fc).toContain("[2:a]aresample=44100,apad=whole_dur=4.350");
     expect(fc).toContain("anullsrc=r=44100:cl=stereo,atrim=duration=3.000");
     expect(fc).toContain("concat=n=2:v=1:a=1[vcat][acat]");
-    expect(fc).toContain("subtitles='/t/subs.ass':fontsdir='/f/fonts'");
+    expect(fc).toContain("ass='/t/subs.ass':fontsdir='/f/fonts':shaping=complex[vout]"); // tone marks need HarfBuzz
     expect(args).toEqual(expect.arrayContaining(["libx264", "aac", "/t/out.mp4", "-nostdin"]));
     expect(args.indexOf("-y")).toBeLessThan(args.indexOf("-i"));
     expect(summary).toContain("2 shots, 1 narration");

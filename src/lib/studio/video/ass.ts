@@ -26,7 +26,11 @@ export function escapeAss(text: string): string {
     .replace(/[{}]/g, "");
 }
 
-/** WrapStyle 2 turns libass auto-wrapping off: lines break only where subtitleLines put an explicit \N. */
+/**
+ * WrapStyle 2 turns libass auto-wrapping off: lines break only where subtitleLines put an explicit \N.
+ * BorderStyle 4 (libass) draws one translucent BackColour box per event. BorderStyle 3 boxed every glyph,
+ * so a Thai tone mark stacked over an upper vowel poked a black notch out under the box.
+ */
 export function buildAss(input: { shots: TimedShot[]; hook: string | null }): string {
   const header = `[Script Info]
 ScriptType: v4.00+
@@ -37,8 +41,8 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Sub,${SUB_FONT},64,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,6,0,2,80,80,300,1
-Style: Hook,${SUB_FONT},92,&H00FFFFFF,&H000000FF,&H00000000,&HB4000000,-1,0,0,0,100,100,0,0,3,10,0,5,90,90,0,1
+Style: Sub,${SUB_FONT},64,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,4,5,0,2,80,80,300,1
+Style: Hook,${SUB_FONT},92,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,4,8,0,5,90,90,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
