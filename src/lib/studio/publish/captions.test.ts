@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetMediaKind, buildCaption, buildYoutubeTitle, platformRequirement, truncateAtBoundary } from "./captions";
+import { assetMediaKind, buildCaption, buildYoutubeTitle, captionSource, platformRequirement, stripMentions, truncateAtBoundary } from "./captions";
 
 const master = { title: "GPS บอกอะไรได้บ้าง", caption: "แคปชันหลัก #สืบสวน", cta: "ปรึกษาทาง LINE @detectivepluse", hook: "สิ่งแรกที่นักสืบดูไม่ใช่รถ แต่คือเวลา" };
 
@@ -10,7 +10,7 @@ describe("buildCaption", () => {
   });
   it("falls back to master caption + CTA and ignores variants without caption", () => {
     const text = buildCaption("facebook", { master, variants: [{ platform: "facebook", caption: "   ", hook: null }] });
-    expect(text).toBe("แคปชันหลัก #สืบสวน\n\nปรึกษาทาง LINE @detectivepluse");
+    expect(text).toBe("แคปชันหลัก #สืบสวน\n\nปรึกษาทาง LINE detectivepluse");
   });
   it("truncates to the platform limit on a boundary with an ellipsis", () => {
     const long = Array.from({ length: 600 }, (_, i) => `คำ${i}`).join(" ");
@@ -18,6 +18,30 @@ describe("buildCaption", () => {
     expect(text.length).toBeLessThanOrEqual(2200);
     expect(text.endsWith("…")).toBe(true);
     expect(text).toMatch(/ คำ\d+…$/); // whole token kept before the ellipsis — cut on the space, not mid-word
+  });
+});
+
+describe("stripMentions (Ayrshare error 159: the same @mention only once a day)", () => {
+  it("drops the @ of handles on every aggregator platform but keeps it for LINE OA", () => {
+    for (const p of ["facebook", "instagram", "tiktok", "youtube"] as const) {
+      expect(buildCaption(p, { master, variants: [] })).not.toContain("@");
+    }
+    expect(buildCaption("line_oa", { master, variants: [] })).toContain("LINE @detectivepluse");
+    const variant = buildCaption("tiktok", { master, variants: [{ platform: "tiktok", caption: "ทักมาที่ LINE @detectivepluse #นักสืบ", hook: null }] });
+    expect(variant).toBe("ทักมาที่ LINE detectivepluse #นักสืบ");
+    expect(buildYoutubeTitle({ master: { ...master, hook: "ถามได้ที่ @detectivepluse ทุกวัน" }, variants: [] })).toBe("ถามได้ที่ detectivepluse ทุกวัน");
+    // short hook → title fallback is stripped too
+    expect(buildYoutubeTitle({ master: { ...master, hook: "สั้น", title: "ถาม @detectivepluse" }, variants: [] })).toBe("ถาม detectivepluse");
+    // the privacy scan also reads the source, which keeps the @
+    expect(captionSource("tiktok", { master, variants: [] })).toContain("LINE @detectivepluse");
+  });
+  it("leaves emails, URLs and a lone @ alone and spaces a handle glued to Thai text", () => {
+    expect(stripMentions("@a และ @b_c")).toBe("a และ b_c");
+    expect(stripMentions("อีเมล detectivepluse@gmail.com")).toBe("อีเมล detectivepluse@gmail.com");
+    expect(stripMentions("https://line.me/R/ti/p/@detectivepluse")).toBe("https://line.me/R/ti/p/@detectivepluse");
+    expect(stripMentions("ทักไลน์@detectivepluse")).toBe("ทักไลน์ detectivepluse");
+    expect(stripMentions("(@detectivepluse)\n@x")).toBe("(detectivepluse)\nx");
+    expect(stripMentions("นัดเจอ @ 5 โมง")).toBe("นัดเจอ @ 5 โมง");
   });
 });
 

@@ -17,6 +17,14 @@ export const HOOK_OVERLAY_SEC = 2.5;
 export const MAX_SHOTS = 24;
 export const MAX_TOTAL_SEC = 180;
 export const SUBTITLE_MAX_CHARS = 28;
+/** Soft per-line target, in graphemes (Thai vowels and tone marks stack, so .length overstates width). */
+export const SUBTITLE_LINE_TARGET = 24;
+/** Hard per-line ceiling: about 720 px of Sarabun Bold 64, inside the 920 px safe area. */
+export const SUBTITLE_LINE_MAX = 40;
+export const SUBTITLE_MAX_LINES = 2;
+/** Hook overlay lines (Sarabun Bold 92 in a 900 px area): the Sub limits scaled by 64/92. */
+export const HOOK_LINE_TARGET = 18;
+export const HOOK_LINE_MAX = 30;
 
 export interface ShotSource {
   index: number;
@@ -74,43 +82,171 @@ export interface SubtitleCue {
   text: string;
 }
 
+let graphemeSegmenter: Intl.Segmenter | null = null;
+let wordSegmenter: Intl.Segmenter | null = null;
+function graphemes(text: string): string[] {
+  graphemeSegmenter ??= new Intl.Segmenter("th", { granularity: "grapheme" });
+  return Array.from(graphemeSegmenter.segment(text), (x) => x.segment);
+}
+function thaiWords(text: string): string[] {
+  wordSegmenter ??= new Intl.Segmenter("th", { granularity: "word" });
+  return Array.from(wordSegmenter.segment(text), (x) => x.segment);
+}
+
+/** Visual width of a subtitle line in graphemes. */
+export function subtitleWidth(text: string): number {
+  return graphemes(text).length;
+}
+
+const NBSP = "\u00A0";
+/** Thai clause openers: breaking a line just before one never changes the meaning. */
+const BREAK_BEFORE = new Set(["และ", "แต่", "หรือ", "ว่า", "ซึ่ง", "เพราะ", "ถ้า", "หาก", "โดย", "เมื่อ", "จึง", "แล้ว", "เพื่อ", "จน", "ส่วน", "ก็"]);
+
+/** Spaces that must never become a line break: before ๆ, before closing punctuation, after opening brackets, before a handle. */
+function protectSpaces(text: string): string {
+  return text
+    .replace(/ +(?=ๆ)/g, NBSP)
+    .replace(/ +(?=[,.!?;:)\]}”’…"])/g, NBSP)
+    .replace(/(?<=[(\[{“‘]) +/g, NBSP)
+    .replace(/ +(?=@)/g, NBSP);
+}
+
+function gluesToPrevious(segment: string): boolean {
+  return segment === "ๆ" || segment.startsWith(NBSP) || /^[,.!?;:)\]}”’…"]/.test(segment);
+}
+
 /**
- * Split narration into subtitle chunks at Thai clause boundaries (space, comma,
- * Thai danda-like breaks) up to ~28 chars, and time them proportionally to
- * their length across the narration window.
+ * Split a space-free phrase wider than `max`. Thai writes words without spaces,
+ * so cut only at word boundaries from the ICU segmenter, preferring the spot
+ * just before a clause opener. A single token wider than a line (a long URL)
+ * is the only thing ever cut between graphemes, and never inside one.
  */
-export function chunkSubtitle(text: string, max = SUBTITLE_MAX_CHARS): string[] {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (!clean) return [];
-  const words = clean.split(/(?<=[ ,;:!?…])|(?=[ ,;:!?…])/).filter((w) => w.trim().length);
-  const chunks: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    const candidate = (cur + w).replace(/\s+/g, " ");
-    if (candidate.trim().length > max && cur.trim()) {
-      chunks.push(cur.trim());
-      cur = w;
-    } else cur = candidate;
+function splitPhrase(phrase: string, max: number): string[] {
+  // Word boundaries are grapheme boundaries, so segment widths add up: keep running sums instead of
+  // re-measuring the joined line for every segment (that was quadratic on long runs of glue characters).
+  const out: string[] = [];
+  let cur: string[] = [];
+  let widths: number[] = [];
+  let curWidth = 0;
+  for (const segment of thaiWords(phrase)) {
+    const w = subtitleWidth(segment);
+    // Glue (ๆ, closing punctuation) stays with the word before it, but a run of glue may not grow a line past 2 × max.
+    if (cur.length > 0 && curWidth + w > max && (!gluesToPrevious(segment) || curWidth + w > max * 2)) {
+      let cut = cur.length;
+      let prefix = curWidth;
+      for (let i = cur.length - 1; i >= 1; i--) {
+        prefix -= widths[i];
+        if (BREAK_BEFORE.has(cur[i]) && prefix >= max * 0.4) {
+          cut = i;
+          break;
+        }
+      }
+      out.push(cur.slice(0, cut).join(""));
+      cur = cur.slice(cut);
+      widths = widths.slice(cut);
+      curWidth = widths.reduce((n, x) => n + x, 0);
+    }
+    cur.push(segment);
+    widths.push(w);
+    curWidth += w;
   }
-  if (cur.trim()) chunks.push(cur.trim());
-  // Thai has no spaces inside clauses — hard-split anything still too long on grapheme clusters.
-  const seg = new Intl.Segmenter("th", { granularity: "grapheme" });
-  return chunks.flatMap((c) => {
-    if (c.length <= max * 1.4) return [c];
-    const graphemes = Array.from(seg.segment(c), (s) => s.segment);
+  if (cur.length) out.push(cur.join(""));
+  return out.flatMap((part) => {
+    if (subtitleWidth(part) <= max) return [part];
+    const g = graphemes(part);
     const parts: string[] = [];
-    for (let i = 0; i < graphemes.length; i += max) parts.push(graphemes.slice(i, i + max).join(""));
+    for (let i = 0; i < g.length; i += max) parts.push(g.slice(i, i + max).join(""));
     return parts;
   });
+}
+
+/**
+ * Break narration into subtitle lines. Spaces are Thai phrase boundaries, so
+ * lines break there first and every original space survives, either as a space
+ * or as the line break itself. A phrase is only split internally when it is
+ * wider than SUBTITLE_LINE_MAX, and such pieces never re-join with a fake space.
+ */
+export function subtitleLines(text: string, opts: { target?: number; max?: number } = {}): string[] {
+  const target = opts.target ?? SUBTITLE_LINE_TARGET;
+  const max = opts.max ?? SUBTITLE_LINE_MAX;
+  const clean = protectSpaces(text.replace(/\s+/g, " ").trim());
+  if (!clean) return [];
+  const pieces: { text: string; afterSpace: boolean }[] = [];
+  clean
+    .split(" ")
+    .filter(Boolean)
+    .forEach((phrase, pi) => {
+      const parts = subtitleWidth(phrase) > max ? splitPhrase(phrase, max) : [phrase];
+      parts.forEach((part, i) => pieces.push({ text: part, afterSpace: pi > 0 && i === 0 }));
+    });
+  const lines: { text: string; afterSpace: boolean }[] = [];
+  for (const piece of pieces) {
+    const last = lines[lines.length - 1];
+    if (last && piece.afterSpace && subtitleWidth(`${last.text} ${piece.text}`) <= target) last.text = `${last.text} ${piece.text}`;
+    else lines.push({ ...piece });
+  }
+  // A lone short word on the last line reads like a stray fragment: pull it up when the line above has room.
+  const tail = lines[lines.length - 1];
+  const prev = lines[lines.length - 2];
+  if (tail && prev && tail.afterSpace && subtitleWidth(tail.text) <= 6 && subtitleWidth(`${prev.text} ${tail.text}`) <= max) {
+    prev.text = `${prev.text} ${tail.text}`;
+    lines.pop();
+  }
+  return lines.map((l) => l.text.replace(/\u00A0/g, " "));
+}
+
+/** At the end of a line these leave the thought hanging, so the next line should not flash up as a separate cue. */
+const DANGLING_END = new Set(["ทาง", "กับ", "ของ", "จาก", "ด้วย", "ตาม", "ถึง", "และ", "แต่", "หรือ", "โดย", "เพื่อ"]);
+/** A cue this narrow (in graphemes) on its own flashes by too fast to read. */
+const SHORT_CUE = 12;
+
+function edgeWords(line: string): { first: string; last: string } {
+  const words = thaiWords(line.trim()).filter((w) => w.trim());
+  return { first: words[0] ?? "", last: words[words.length - 1] ?? "" };
+}
+
+/**
+ * Group lines into cues of up to SUBTITLE_MAX_LINES. A tiny dynamic program
+ * picks the grouping with the fewest reading problems: a lone short fragment,
+ * a cue that ends on a dangling word ("…ได้ทาง" then "LINE @…" alone), or a
+ * clause opener that starts the second line and then spills into the next
+ * cue. Ties keep lines paired, which means fewer cue changes.
+ */
+export function chunkSubtitle(text: string): string[] {
+  const lines = subtitleLines(text);
+  const n = lines.length;
+  const best = new Array<number>(n + 1).fill(0);
+  const take = new Array<number>(n + 1).fill(1);
+  for (let i = n - 1; i >= 0; i--) {
+    let bestCost = Infinity;
+    for (let size = Math.min(SUBTITLE_MAX_LINES, n - i); size >= 1; size--) {
+      const cue = lines.slice(i, i + size);
+      const hasNext = i + size < n;
+      let cost = 1 + best[i + size];
+      if (size === 1 && subtitleWidth(cue[0]) < SHORT_CUE) cost += 3;
+      if (hasNext && DANGLING_END.has(edgeWords(cue[size - 1]).last)) cost += 4;
+      if (hasNext && size > 1 && BREAK_BEFORE.has(edgeWords(cue[size - 1]).first)) cost += 2;
+      if (cost < bestCost) {
+        bestCost = cost;
+        take[i] = size;
+      }
+    }
+    best[i] = bestCost;
+  }
+  const cues: string[] = [];
+  for (let i = 0; i < n; i += take[i]) cues.push(lines.slice(i, i + take[i]).join("\n"));
+  return cues;
 }
 
 export function timeSubtitles(shot: TimedShot): SubtitleCue[] {
   const chunks = chunkSubtitle(shot.voice);
   if (!chunks.length || shot.voiceSec <= 0) return [];
-  const total = chunks.reduce((n, c) => n + c.length, 0);
+  // Time by visible width, not string length: stacked Thai marks take no reading time.
+  const weight = (c: string) => Math.max(1, subtitleWidth(c.replace(/\s+/g, "")));
+  const total = chunks.reduce((n, c) => n + weight(c), 0);
   let t = shot.start;
   return chunks.map((c, i) => {
-    const dur = (c.length / total) * shot.voiceSec;
+    const dur = (weight(c) / total) * shot.voiceSec;
     const start = t;
     const end = i === chunks.length - 1 ? shot.start + shot.voiceSec : t + dur;
     t = end;
