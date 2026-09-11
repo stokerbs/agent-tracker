@@ -27,6 +27,18 @@ describe("scrubText", () => {
     // social captions drop the @ (Ayrshare error 159): our handle stays allowed, a stranger's is still flagged
     expect(scan("ปรึกษาได้ทาง LINE detectivepluse").some((f) => f.kind === "line_id")).toBe(false);
     expect(scan("ทัก LINE somchai_k").some((f) => f.kind === "line_id")).toBe(true);
+    expect(scan("ติดต่อ @somchai_real99").some((f) => f.kind === "line_id")).toBe(true);
+  });
+  it("does not read an email's @domain as a LINE handle", () => {
+    // company email in a strict-mode caption/CTA must not be blocked at publish/approval
+    expect(privacyStatusFromFindings(scan("อีเมล detectivepluse@gmail.com"), true)).toBe("safe");
+    expect(privacyStatusFromFindings(scan("ปรึกษาได้ทาง LINE @detectivepluse หรืออีเมล detectivepluse@gmail.com"), true)).toBe("safe");
+    // a foreign email is reported once, by the email rule only
+    expect(scan("ติดต่อ somchai.k@gmail.com").map((f) => f.kind)).toEqual(["email"]);
+    // a real handle right after an email is still flagged
+    const f = scan("a@b.com @somchai_k");
+    expect(f.filter((x) => x.kind === "line_id").map((x) => x.excerpt)).toEqual(["@somchai_k"]);
+    expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
   it("flags addresses and dates", () => {
     expect(scan("บ้านเลขที่ 99/12 ซอยสุขุมวิท 49").some((f) => f.kind === "address")).toBe(true);
