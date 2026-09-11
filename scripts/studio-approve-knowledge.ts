@@ -96,3 +96,6 @@ main().catch((e) => {
   console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });
+
+// Module marker: without a static import/export, TypeScript treats this file as a global script and top-level names (e.g. main) collide across scripts.
+export {};
