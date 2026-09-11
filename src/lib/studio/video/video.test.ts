@@ -97,6 +97,12 @@ describe("captions (viral template: one line at a time)", () => {
     // a negation starts the next part instead of dangling at the end of this one
     expect(captionChunks("เรื่องเล่าที่รายละเอียดไม่เท่ากันในแต่ละครั้ง")).toEqual(["เรื่องเล่าที่รายละเอียด", "ไม่เท่ากันในแต่ละครั้ง"]);
   });
+  it("keeps the 30-grapheme caption ceiling and finds clause openers ahead of the balanced cut", () => {
+    // With a lower ceiling this narration became "คือกระบวนการตรวจ" / "สอบ".
+    expect(captionChunks(REAL[6])).toEqual(["ใครที่การันตีว่าจะเจอ", "เท่ากับกำลังบอกว่าเขารู้คำตอบก่อนลงพื้นที่", "ซึ่งไม่มีใครรู้", "สิ่งที่เราขายคือกระบวนการตรวจสอบ", "และรายงานตามข้อเท็จจริงที่เห็น", "ไม่ใช่คำรับประกันผลลัพธ์"]);
+    // The same words without spaces go through splitPhrase, whose look-ahead lands the cuts on และ and ไม่.
+    expect(captionChunks("สิ่งที่เราขายคือกระบวนการตรวจสอบและรายงานตามข้อเท็จจริงที่เห็นไม่ใช่คำรับประกันผลลัพธ์")).toEqual(["สิ่งที่เราขายคือกระบวนการตรวจสอบ", "และรายงานตามข้อเท็จจริงที่เห็น", "ไม่ใช่คำรับประกันผลลัพธ์"]);
+  });
   it("splits a phrase wider than a line just before a clause opener, adding no spaces", () => {
     const phrase = "เราตรวจสอบข้อมูลทุกอย่างอย่างละเอียดและรายงานผลตามข้อเท็จจริงที่พบจริงเท่านั้นเสมอ";
     expect(subtitleWidth(phrase)).toBeGreaterThan(SUBTITLE_LINE_MAX);
@@ -174,10 +180,11 @@ describe("ASS builder (viral template)", () => {
   });
   it("highlights key words and numbers without splitting a Thai syllable or re-matching its own tags", () => {
     expect(emphasize("3 สิ่งที่นักสืบดู")).toBe(`${on}3${off} สิ่งที่${on}นักสืบ${off}ดู`);
-    expect(emphasize("นี่คือความจริง")).toBe(`นี่คือ${on}ความจริง${off}`); // the longest word wins
-    expect(emphasize("เงินเดือน")).toBe(`${on}เงิน${off}เดือน`);
-    expect(emphasize("แลับ")).toBe("แลับ"); // never right after a leading vowel
-    expect(emphasize("จริง่")).toBe("จริง่"); // never before a combining mark
+    expect(emphasize("นี่คือความจริง")).toBe(`นี่คือ${on}ความจริง${off}`); // ความ|จริง joined: the longest key word wins over จริง
+    expect(emphasize("ไม่ใช่หลักฐาน")).toBe(`${on}ไม่ใช่${off}${on}หลักฐาน${off}`); // หลัก|ฐาน joined back
+    expect(emphasize("ค่าบริการ 1,500 บาท")).toBe(`ค่าบริการ ${on}1,500${off} บาท`);
+    // a key word inside another word is never coloured, so no colour change can split a syllable
+    for (const word of ["โทรกลับมา", "สลับ", "ตลับ", "จริงจัง", "แลับ", "จริง่"]) expect(emphasize(word)).toBe(word);
     // text that tries to smuggle an override tag is escaped first, so no user tag survives
     expect(emphasize(escapeAss("{\\c&H0000FF&}ปลอม"))).not.toContain("{\\c&H0000FF&}");
   });
@@ -214,6 +221,10 @@ describe("ffmpeg args (viral template)", () => {
     expect(args.flatMap((a, i) => (a === "-t" ? [args[i + 1]] : []))).toEqual([(4.35 + XFADE_SEC).toFixed(3), (3 + XFADE_SEC).toFixed(3), "2.500"]);
     const fc = args[args.indexOf("-filter_complex") + 1];
     expect(fc).toContain("zoompan=");
+    // each padded input is also trimmed to its padded length, or the picture would run short of the narration
+    for (const len of ["4.600", "3.250", "2.500"]) expect(fc).toContain(`trim=duration=${len},`);
+    // xfade in ffmpeg 7 (Linux/Vercel) needs a constant frame rate on every input
+    for (let i = 0; i < 3; i++) expect(fc).toContain(`setsar=1,fps=30[v${i}]`);
     expect(fc).toContain(`[v0][v1]xfade=transition=${TRANSITIONS[0]}:duration=${XFADE_SEC}:offset=4.350[x1]`);
     expect(fc).toContain(`[x1][v2]xfade=transition=${TRANSITIONS[1]}:duration=${XFADE_SEC}:offset=7.350[x2]`);
     expect(fc).toContain("[x2]eq=saturation=1.18:contrast=1.06");

@@ -19,12 +19,11 @@ const WHITE_ASS = "&HFFFFFF&";
 
 /** Words the eye should land on; numbers are always highlighted. */
 export const EMPHASIS_WORDS = ["หลักฐาน", "นักสืบ", "ไม่ใช่", "ความจริง", "จริง", "เงิน", "ห้าม", "ตำรวจ", "กฎหมาย", "GPS", "ลับ", "เคส", "นอกใจ", "ตามหา", "ทรัพย์สิน", "OSINT"];
-// Longest word first so "ความจริง" wins over "จริง". Never start right after a Thai leading vowel (เ แ โ ใ ไ belong to
-// the next syllable) and never end before a combining mark, so a colour change cannot split a syllable.
-const EMPHASIS_RE = new RegExp(
-  `(?<![\\u0E40-\\u0E44])(\\d+(?:[.,:]\\d+)*|${[...EMPHASIS_WORDS].sort((a, b) => b.length - a.length).join("|")})(?!\\p{M})`,
-  "gu",
-);
+const EMPHASIS = new Set(EMPHASIS_WORDS);
+/** ICU splits some key words (หลัก|ฐาน, ความ|จริง, ตาม|หา): up to this many consecutive words are joined back. */
+const MAX_EMPHASIS_WORDS = 3;
+const NUMBER_RE = /^\d+(?:[.,:]\d+)*$/;
+let wordSegmenter: Intl.Segmenter | null = null;
 
 export function assTime(sec: number): string {
   const s = Math.max(0, sec);
@@ -44,9 +43,33 @@ export function escapeAss(text: string): string {
     .replace(/[{}]/g, "");
 }
 
-/** Colour key words in already-escaped text. One replace pass, so nothing inside an inserted tag is matched again. */
+/**
+ * Colour key words and numbers in already-escaped text. Matching works on whole ICU words, joining up to
+ * MAX_EMPHASIS_WORDS and preferring the longest, so a key word inside another word (ลับ in กลับ, จริง in จริงจัง)
+ * is never coloured and a colour change can never split a Thai syllable. Tags only wrap matched words.
+ */
 export function emphasize(escaped: string): string {
-  return escaped.replace(EMPHASIS_RE, `{\\c${ACCENT_ASS}}$1{\\c${WHITE_ASS}}`);
+  wordSegmenter ??= new Intl.Segmenter("th", { granularity: "word" });
+  const words = Array.from(wordSegmenter.segment(escaped), (x) => x.segment);
+  let out = "";
+  for (let i = 0; i < words.length; ) {
+    let take = 0;
+    for (let n = Math.min(MAX_EMPHASIS_WORDS, words.length - i); n >= 1; n--) {
+      const joined = words.slice(i, i + n).join("");
+      if (EMPHASIS.has(joined) || (n === 1 && NUMBER_RE.test(joined))) {
+        take = n;
+        break;
+      }
+    }
+    if (take) {
+      out += `{\\c${ACCENT_ASS}}${words.slice(i, i + take).join("")}{\\c${WHITE_ASS}}`;
+      i += take;
+    } else {
+      out += words[i];
+      i += 1;
+    }
+  }
+  return out;
 }
 
 /**

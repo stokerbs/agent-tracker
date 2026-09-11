@@ -51,7 +51,9 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
     filters.push(
       `[${i}:v]scale=${OUTPUT_W * 2}:${OUTPUT_H * 2}:force_original_aspect_ratio=increase,crop=${OUTPUT_W * 2}:${OUTPUT_H * 2},` +
         `zoompan=z='${zoom}':x='${x}':y='ih/2-(ih/zoom/2)':d=${frames}:s=${OUTPUT_W}x${OUTPUT_H}:fps=${FPS},` +
-        `trim=duration=${lens[i].toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v${i}]`,
+        // fps= restores a constant frame rate after trim/setpts: ffmpeg 7 (the Linux binary Vercel runs) refuses xfade inputs
+        // whose rate reads 1/0, while the macOS 6.0 build accepted them.
+        `trim=duration=${lens[i].toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p,setsar=1,fps=${FPS}[v${i}]`,
     );
   });
   let video = "v0";
