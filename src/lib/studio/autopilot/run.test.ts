@@ -11,6 +11,12 @@ const h = vi.hoisted(() => ({
   script: { ok: true, data: { hook: "h", script: "สคริปต์", caption: "แคปชัน", cta: "cta", estimated_duration_sec: 30, ai_notes: "", source_refs: [], claims: [] as Row[] } } as Row,
   plan: { ok: true, data: { shots: [{ start_sec: 0, end_sec: 4, voice: "พูด", visual: "ภาพ", text_overlay: null }], broll: [], text_overlays: [] } } as Row,
   image: { ok: true, asset: { id: "img1" } } as Row,
+  presenterImage: { ok: true, asset: { id: "presenter1" } } as Row,
+  /** Most recent finished run the alternate-format lookup sees. */
+  lastRun: null as Row | null,
+  lastRunError: null as null | { message: string },
+  /** Query filters per table, so tests can assert what a lookup asked for. */
+  filters: [] as { table: string; m: string; args: unknown[] }[],
   render: { ok: true, jobId: "j1", assetId: "vid1", durationSec: 30 } as Row,
   publish: { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false } as Row,
   privacy: { status: "safe", findings: [], summary: "ok", checked_by: "ai", model: "m" } as Row,
@@ -43,7 +49,9 @@ vi.mock("@/lib/studio/ai", () => ({
   generateCreativePlan: vi.fn(async () => h.plan),
   runPrivacyCheck: vi.fn(async () => h.privacy),
 }));
-vi.mock("@/lib/studio/media/generate", () => ({ generateImageAsset: vi.fn(async () => h.image) }));
+vi.mock("@/lib/studio/media/generate", () => ({
+  generateImageAsset: vi.fn(async (input: { target: { kind: string } }) => (input.target.kind === "presenter" ? h.presenterImage : h.image)),
+}));
 vi.mock("@/lib/studio/video/render", () => ({ runRenderJob: vi.fn(async () => h.render) }));
 vi.mock("@/lib/studio/publish/publish", () => ({ publishMaster: vi.fn(async () => h.publish) }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -51,7 +59,7 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       const st = { op: "select", row: null as Row | null };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "gte", "lt", "is", "order", "limit", "neq"]) b[m] = () => b;
+      for (const m of ["select", "eq", "in", "gte", "lt", "is", "not", "order", "limit", "neq"]) b[m] = (...args: unknown[]) => (h.filters.push({ table, m, args }), b);
       b.insert = (row: Row | Row[]) => ((st.op = "insert"), (st.row = Array.isArray(row) ? row[0] : row), h.inserts.push(...(Array.isArray(row) ? row : [row]).map((r) => ({ table, row: r }))), h.writes.push({ op: "insert", table, row: Array.isArray(row) ? row[0] : row }), b);
       b.update = (row: Row) => ((st.op = "update"), (st.row = row), h.updates.push({ table, row }), h.writes.push({ op: "update", table, row }), b);
       const result = () => {
@@ -63,6 +71,7 @@ vi.mock("@/lib/supabase/server", () => ({
         if (st.op === "update") return { data: null, error: null };
         if (table === "profiles") return { data: h.admin, error: null };
         if (table === "studio_ideas") return { data: h.savedIdea, error: null };
+        if (table === "studio_autopilot_runs") return { data: h.lastRun, error: h.lastRunError };
         if (table === "studio_content_masters") return { data: { title: "หัวข้อ", hook: "h", script: "s", caption: "c", cta: "x" }, error: null };
         return { data: null, error: null };
       };
@@ -94,6 +103,11 @@ beforeEach(() => {
   h.admin = { id: "admin-1" };
   h.render = { ok: true, jobId: "j1", assetId: "vid1", durationSec: 30 };
   h.publish = { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false };
+  h.image = { ok: true, asset: { id: "img1" } };
+  h.presenterImage = { ok: true, asset: { id: "presenter1" } };
+  h.lastRun = null;
+  h.lastRunError = null;
+  h.filters = [];
   h.inserts = [];
   h.updates = [];
   h.writes = [];
@@ -258,5 +272,131 @@ describe("runAutopilot pipeline", () => {
     expect(ai.generateIdeas).not.toHaveBeenCalled();
     expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-9", title: "ไอเดียที่บันทึกไว้" });
     expect(h.updates.some((u) => u.table === "studio_ideas" && u.row.status === "generated")).toBe(true);
+  });
+});
+
+describe("runAutopilot clip format", () => {
+  const imageMock = async () => vi.mocked((await import("@/lib/studio/media/generate")).generateImageAsset);
+  const imageKinds = async () => (await imageMock()).mock.calls.map(([i]) => i.target.kind);
+  const renderParams = () => h.inserts.filter((i) => i.table === "studio_render_jobs").at(-1)!.row.params as Row;
+  const lastRunPatch = () => h.updates.filter((u) => u.table === "studio_autopilot_runs").at(-1)!.row;
+  const silenceWarn = () => vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+  it("storyteller generates the presenter after the cover, before scene images, and renders with format=storyteller", async () => {
+    h.cfg = { video_format: "storyteller", images_per_run: 2 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(await imageKinds()).toEqual(["thumbnail", "presenter", "scene"]);
+    const presenter = (await imageMock()).mock.calls.find(([i]) => i.target.kind === "presenter")![0];
+    expect(presenter).toMatchObject({ target: { kind: "presenter" }, aspect: "9:16", userId: "u1" });
+    expect(presenter.master).toMatchObject({ id: "studio_content_masters-1" });
+    expect(renderParams()).toEqual({ aspect: "9:16", shots: 1, source: "autopilot", format: "storyteller" });
+    const stats = lastRunPatch().stats as Row;
+    expect(stats).toMatchObject({ format: "storyteller", images: 3 });
+    expect(stats).not.toHaveProperty("format_fallback");
+  });
+
+  it("template never generates a presenter image", async () => {
+    h.cfg = { video_format: "template", images_per_run: 2 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(await imageKinds()).toEqual(["thumbnail", "scene"]);
+    expect(renderParams()).toMatchObject({ source: "autopilot", format: "template" });
+    expect(lastRunPatch().stats).toMatchObject({ format: "template", images: 2 });
+    // no history lookup when the format is fixed
+    expect(h.filters.some((f) => f.table === "studio_autopilot_runs" && f.m === "not")).toBe(false);
+  });
+
+  it("alternate flips the last finished run's stats.format and starts at template with no history", async () => {
+    h.cfg = { video_format: "alternate" };
+    const { runAutopilot } = await load();
+
+    await runAutopilot({ userId: "u1" });
+    expect(renderParams().format).toBe("template");
+    expect(await imageKinds()).not.toContain("presenter");
+    const runFilters = h.filters.filter((f) => f.table === "studio_autopilot_runs");
+    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "in", args: ["status", ["done", "review"]] });
+    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "not", args: ["stats->>format", "is", null] });
+
+    h.lastRun = { stats: { images: 1, format: "template" } };
+    await runAutopilot({ userId: "u1" });
+    expect(renderParams().format).toBe("storyteller");
+    expect(await imageKinds()).toContain("presenter");
+    expect(lastRunPatch().stats).toMatchObject({ format: "storyteller" });
+
+    h.lastRun = { stats: { images: 2, format: "storyteller" } };
+    await runAutopilot({ userId: "u1" });
+    expect(renderParams().format).toBe("template");
+  });
+
+  it("alternate falls back to template and still runs when the history lookup errors", async () => {
+    h.cfg = { video_format: "alternate" };
+    h.lastRun = { stats: { format: "template" } };
+    h.lastRunError = { message: "permission denied" };
+    const warn = silenceWarn();
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+      expect(renderParams().format).toBe("template");
+      expect(warn.mock.calls.some(([m]) => String(m).includes("lookup failed"))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("falls back to template with format_fallback when the presenter image fails, without failing the run", async () => {
+    h.cfg = { video_format: "storyteller" };
+    h.presenterImage = { ok: false, code: "failed", error: "quota" };
+    const warn = silenceWarn();
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ ok: true, status: "done" });
+      expect(renderParams().format).toBe("template");
+      expect(lastRunPatch().stats).toMatchObject({ format: "template", format_fallback: "presenter_failed", images: 1 });
+      expect(warn.mock.calls.some(([m]) => String(m).includes("storyteller → template"))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("skips the presenter and falls back to template when the time budget is too low", async () => {
+    h.cfg = { video_format: "storyteller" };
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const warn = silenceWarn();
+    const media = await imageMock();
+    // the cover takes 2 minutes: past the image budget, still inside the render budget
+    media.mockImplementationOnce(async () => ((clock += 120_000), h.image as never));
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+      expect(await imageKinds()).toEqual(["thumbnail"]);
+      expect(renderParams().format).toBe("template");
+      expect(lastRunPatch().stats).toMatchObject({ format: "template", format_fallback: "budget" });
+    } finally {
+      now.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it("records stats.format on a review finish and on a stop after render, but not on a stop before render", async () => {
+    h.cfg = { video_format: "storyteller", auto_publish: false };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "manual_review" });
+    expect(lastRunPatch().stats).toMatchObject({ format: "storyteller" });
+
+    h.cfg = { video_format: "storyteller" };
+    h.privacy = { status: "blocked", findings: [{}], summary: "x", checked_by: "ai", model: "m" };
+    const warn = silenceWarn();
+    try {
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "privacy_blocked" });
+      expect(lastRunPatch()).toMatchObject({ stopped_at: "privacy_blocked", stats: { format: "storyteller" } });
+
+      h.script = { ok: false, error: "AI ล่ม" };
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "failed", stopReason: "script_failed" });
+      expect(lastRunPatch()).not.toHaveProperty("stats");
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

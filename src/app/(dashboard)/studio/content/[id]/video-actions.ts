@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudioAdmin } from "@/lib/studio/auth";
 import { getMediaAvailability } from "@/lib/studio/media/provider";
 import { getStudioSettings } from "@/lib/studio/settings";
-import { MAX_SHOTS } from "@/lib/studio/video/timeline";
-import type { CreativePlan, RenderJob } from "@/lib/studio/types";
+import { MAX_SHOTS, resolveShotImages } from "@/lib/studio/video/timeline";
+import type { CreativePlan, RenderJob, VideoFormat } from "@/lib/studio/types";
 import { revalidateContentPaths, runAndStorePrivacyCheck } from "./privacy-check";
 
 /**
@@ -26,12 +26,15 @@ const MAX_ACTIVE_JOBS = 2;
 
 export type CreateRenderJobResult = { ok: true; jobId: string } | { ok: false; error: string; code: "unauthorized" | "invalid" | "not_found" | "status" | "blocked" | "requirements" | "not_configured" | "busy" | "failed" };
 
+const createRenderJobSchema = z.object({ masterId: idSchema, format: z.enum(["template", "storyteller"]).default("template") });
+
 export async function createRenderJob(input: unknown): Promise<CreateRenderJobResult> {
   const profile = await getStudioAdmin();
   if (!profile) return { ok: false, error: UNAUTHORIZED, code: "unauthorized" };
-  const parsed = z.object({ masterId: idSchema }).safeParse(input);
+  const parsed = createRenderJobSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "ข้อมูลไม่ถูกต้อง", code: "invalid" };
   const masterId = parsed.data.masterId;
+  const format: VideoFormat = parsed.data.format;
 
   const rls = await createClient();
   const { data: master, error } = await rls.from("studio_content_masters").select("id, status, creative_plan").eq("id", masterId).maybeSingle();
@@ -41,13 +44,16 @@ export async function createRenderJob(input: unknown): Promise<CreateRenderJobRe
 
   const plan = (master.creative_plan as CreativePlan | null) ?? null;
   const shots = plan?.shots ?? [];
-  if (!shots.length) return { ok: false, error: "ยังไม่มี shot list — สร้าง creative plan ก่อน", code: "requirements" };
+  if (!plan || !shots.length) return { ok: false, error: "ยังไม่มี shot list — สร้าง creative plan ก่อน", code: "requirements" };
   if (!shots.some((s) => s.voice?.trim())) return { ok: false, error: "shot list ยังไม่มีข้อความพากย์ (voice) — เติมก่อนสร้างวิดีโอ", code: "requirements" };
   if (shots.length > MAX_SHOTS) return { ok: false, error: `shot list เกิน ${MAX_SHOTS} ฉาก — รวมฉากให้สั้นลง`, code: "requirements" };
 
-  const { count, error: aErr } = await rls.from("studio_creative_assets").select("id", { count: "exact", head: true }).eq("master_id", masterId).eq("status", "ready").in("kind", ["thumbnail", "image"]);
+  // Newest first, like the editor's asset list, so the storyboard preview and this gate pick the same presenter.
+  const { data: images, error: aErr } = await rls.from("studio_creative_assets").select("id, kind, meta").eq("master_id", masterId).eq("status", "ready").in("kind", ["thumbnail", "image"]).order("created_at", { ascending: false });
   if (aErr) return { ok: false, error: "โหลดสื่อไม่สำเร็จ", code: "failed" };
-  if (!count) return { ok: false, error: "ยังไม่มีรูปที่พร้อมใช้ — สร้างภาพปกหรือภาพฉากในส่วน “สื่อ” ก่อน", code: "requirements" };
+  // Same resolver as the renderer: the template needs a scene/cover still (never the presenter); the storyteller needs the presenter.
+  const resolved = resolveShotImages(plan, images ?? [], { format });
+  if ("error" in resolved) return { ok: false, error: resolved.error, code: "requirements" };
 
   const settings = await getStudioSettings();
   const avail = getMediaAvailability(settings.media_prefs);
@@ -78,7 +84,7 @@ export async function createRenderJob(input: unknown): Promise<CreateRenderJobRe
 
   const { data: job, error: jErr } = await rls
     .from("studio_render_jobs")
-    .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", shots: shots.length, voice_id: settings.media_prefs.tts_voice_id || "default" } as never, created_by: profile.id })
+    .insert({ master_id: masterId, status: "queued", step: "รอเริ่ม", params: { aspect: "9:16", format, shots: shots.length, voice_id: settings.media_prefs.tts_voice_id || "default" } as never, created_by: profile.id })
     .select("id")
     .single();
   if (jErr || !job) {
@@ -86,8 +92,8 @@ export async function createRenderJob(input: unknown): Promise<CreateRenderJobRe
     console.error("[studio:video] job insert failed:", jErr?.message);
     return { ok: false, error: "สร้างงาน render ไม่สำเร็จ", code: "failed" };
   }
-  await logAudit({ actorId: profile.id, action: "STUDIO_VIDEO_RENDER", entity: "studio_render_jobs", entityId: job.id, metadata: { master_id: masterId, shots: shots.length } });
-  console.info(`[studio:video] job created ${job.id} master=${masterId} shots=${shots.length}`);
+  await logAudit({ actorId: profile.id, action: "STUDIO_VIDEO_RENDER", entity: "studio_render_jobs", entityId: job.id, metadata: { master_id: masterId, shots: shots.length, format } });
+  console.info(`[studio:video] job created ${job.id} master=${masterId} shots=${shots.length} format=${format}`);
   return { ok: true, jobId: job.id };
 }
 

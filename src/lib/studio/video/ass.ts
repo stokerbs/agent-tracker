@@ -1,3 +1,4 @@
+import type { VideoFormat } from "@/lib/studio/types";
 import { HOOK_LINE_MAX, HOOK_LINE_TARGET, HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, subtitleLines, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 
 /**
@@ -6,6 +7,7 @@ import { HOOK_LINE_MAX, HOOK_LINE_TARGET, HOOK_OVERLAY_SEC, OUTPUT_H, OUTPUT_W, 
  *   key words and numbers in the accent yellow.
  * - `Hook`: the opening line on a yellow card that slams in.
  * - `Tag`: a small brand label under the progress bar (Latin text only).
+ * - `Name` (storyteller only): the presenter's lower-third name card that slides in on the first presenter shot.
  * Pure — unit-tested. Every style that renders Thai keeps Spacing 0: letter spacing makes libass drop tone marks.
  */
 
@@ -16,6 +18,11 @@ export const HOOK_Y = 640;
 /** Accent yellow #FFD400 in ASS &HBBGGRR& order. */
 export const ACCENT_ASS = "&H00D4FF&";
 const WHITE_ASS = "&HFFFFFF&";
+/** Storyteller name card: lands after the hook card is gone, stays a few seconds, never outlives its shot. */
+export const NAME_CARD_START_SEC = 2.6;
+export const NAME_CARD_SEC = 3.5;
+export const NAME_CARD_MIN_SEC = 1.5;
+export const NAME_CARD_TEXT = "นักสืบนิรนาม";
 
 /** Words the eye should land on; numbers are always highlighted. */
 export const EMPHASIS_WORDS = ["หลักฐาน", "นักสืบ", "ไม่ใช่", "ความจริง", "จริง", "เงิน", "ห้าม", "ตำรวจ", "กฎหมาย", "GPS", "ลับ", "เคส", "นอกใจ", "ตามหา", "ทรัพย์สิน", "OSINT"];
@@ -77,7 +84,10 @@ export function emphasize(escaped: string): string {
  * The hook card is BorderStyle 4 (one box per event) with a fully transparent outline, so stacked tone marks
  * cannot poke an outline blob out of the card.
  */
-export function buildAss(input: { shots: TimedShot[]; hook: string | null }): string {
+export function buildAss(input: { shots: TimedShot[]; hook: string | null; format?: VideoFormat }): string {
+  const story = input.format === "storyteller";
+  // BorderStyle 4 box with a transparent outline, like the hook card; Spacing 0 or libass drops the Thai tone marks.
+  const nameStyle = story ? `Style: Name,${SUB_FONT},64,&H00FFFFFF,&H000000FF,&HFF000000,&H59000000,-1,0,0,0,100,100,0,0,4,22,0,4,0,0,0,1\n` : "";
   const header = `[Script Info]
 ScriptType: v4.00+
 PlayResX: ${OUTPUT_W}
@@ -90,7 +100,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Style: Cap,${SUB_FONT},92,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,9,4,5,40,40,0,1
 Style: Hook,${SUB_FONT},88,&H00141414,&H000000FF,&HFF000000,&H0000D4FF,-1,0,0,0,100,100,0,0,4,24,0,5,60,60,0,1
 Style: Tag,${SUB_FONT},34,&H40FFFFFF,&H000000FF,&H80000000,&H00000000,-1,0,0,0,100,100,6,0,1,2,0,8,0,0,0,1
-
+${nameStyle}
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
@@ -104,6 +114,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const hookText = subtitleLines(hook, { target: HOOK_LINE_TARGET, max: HOOK_LINE_MAX }).join("\n");
     lines.push(`Dialogue: 2,${assTime(0)},${assTime(end)},Hook,,0,0,0,,{\\an5\\pos(540,${HOOK_Y})\\fscx135\\fscy135\\frz-4\\t(0,170,\\fscx100\\fscy100\\frz-2)}${escapeAss(hookText)}`);
   }
+  const card = story ? nameCardWindow(input.shots) : null;
+  if (card) {
+    const [a, b] = [assTime(card.start), assTime(card.end)];
+    lines.push(`Dialogue: 2,${a},${b},Name,,0,0,0,,{\\an4\\move(-420,1040,110,1040,0,260)\\fad(0,200)}${NAME_CARD_TEXT}\\N{\\fs34\\c${ACCENT_ASS}}DETECTIVE PULSE`);
+    // Yellow accent bar on the same layer, sliding in with the card.
+    lines.push(`Dialogue: 2,${a},${b},Name,,0,0,0,,{\\an4\\move(-460,1040,70,1040,0,260)\\fad(0,200)\\bord0\\shad0\\1c${ACCENT_ASS}\\1a&H00&\\p1}m 0 -70 l 12 -70 l 12 70 l 0 70{\\p0}`);
+  }
   for (const shot of input.shots) {
     for (const cue of timeSubtitles(shot)) {
       lines.push(
@@ -112,4 +129,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }
   }
   return header + lines.join("\n") + "\n";
+}
+
+/**
+ * When the storyteller name card shows: on the first presenter shot, from max(shot start, NAME_CARD_START_SEC)
+ * for NAME_CARD_SEC, capped at the shot end. Null when there is no presenter shot or less than NAME_CARD_MIN_SEC fits.
+ */
+export function nameCardWindow(shots: TimedShot[]): { start: number; end: number } | null {
+  const shot = shots.find((s) => s.role === "presenter");
+  if (!shot) return null;
+  const start = Math.max(shot.start, NAME_CARD_START_SEC);
+  const end = Math.min(start + NAME_CARD_SEC, shot.start + shot.duration);
+  // Millisecond rounding so 4.1 - 2.6 counts as 1.5, not 1.4999999999999996.
+  return Math.round((end - start) * 1000) < NAME_CARD_MIN_SEC * 1000 ? null : { start, end };
 }

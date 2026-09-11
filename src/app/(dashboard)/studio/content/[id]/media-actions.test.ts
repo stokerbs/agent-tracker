@@ -78,6 +78,13 @@ describe("generateImage", () => {
     expect(h.image).toHaveBeenCalledWith(expect.objectContaining({ master: expect.objectContaining({ id: MASTER, title: "T" }), target: { kind: "scene", index: 0 }, aspect: "1:1", userId: "admin-1" }));
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_MEDIA_GENERATE");
   });
+  it("accepts the storyteller presenter target and strips any client-supplied prompt text", async () => {
+    const { generateImage } = await import("./media-actions");
+    const r = await generateImage({ masterId: MASTER, target: { kind: "presenter", text: "หน้าคนจริง" }, aspect: "9:16" });
+    expect(r.ok).toBe(true);
+    expect(h.image).toHaveBeenCalledWith(expect.objectContaining({ target: { kind: "presenter" }, aspect: "9:16" }));
+    expect(h.audit.at(-1)).toMatchObject({ action: "STUDIO_MEDIA_GENERATE", metadata: { target: "presenter" } });
+  });
   it("locks media on published content (generate + delete) server-side", async () => {
     h.rows.studio_content_masters = { ...(h.rows.studio_content_masters as Row), status: "published" };
     const { generateImage, generateVoiceover, deleteMediaAsset } = await import("./media-actions");

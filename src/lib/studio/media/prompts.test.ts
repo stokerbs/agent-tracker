@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildImagePrompt, describeImageTarget, IMAGE_SAFETY_NEGATIVES, MAX_CUSTOM_PROMPT_CHARS, sceneText } from "./prompts";
+import { buildImagePrompt, describeImageTarget, IMAGE_SAFETY_NEGATIVES, MAX_CUSTOM_PROMPT_CHARS, PRESENTER_SCENE, sceneText } from "./prompts";
 import type { CreativePlan } from "@/lib/studio/types";
 
 const plan: CreativePlan = {
@@ -27,6 +27,12 @@ describe("sceneText", () => {
     expect(sceneText({ kind: "scene", index: 1 }, plan, "T")).toBeNull();
     expect(sceneText({ kind: "scene", index: 9 }, plan, "T")).toBeNull();
   });
+  it("uses the fixed silhouette scene for the presenter, regardless of the plan", () => {
+    expect(sceneText({ kind: "presenter" }, plan, "T")).toBe(PRESENTER_SCENE);
+    expect(sceneText({ kind: "presenter" }, null, "T")).toBe(PRESENTER_SCENE);
+    expect(PRESENTER_SCENE).toMatch(/silhouette/i);
+    expect(PRESENTER_SCENE).toMatch(/no facial features/i);
+  });
   it("trims custom text to the cap", () => {
     expect(sceneText({ kind: "custom", text: "x".repeat(MAX_CUSTOM_PROMPT_CHARS + 50) }, null, "T")!.length).toBe(MAX_CUSTOM_PROMPT_CHARS);
     expect(sceneText({ kind: "custom", text: "   " }, null, "T")).toBeNull();
@@ -48,5 +54,9 @@ describe("describeImageTarget", () => {
   it("labels scenes with their time range", () => {
     expect(describeImageTarget({ kind: "scene", index: 0 }, plan)).toBe("ฉาก 1 (00:00–00:03)");
     expect(describeImageTarget({ kind: "thumbnail" }, plan)).toBe("ปก");
+  });
+  it("labels the storyteller presenter the same with or without a plan", () => {
+    expect(describeImageTarget({ kind: "presenter" }, plan)).toBe("นักสืบนิรนาม (คนเล่าเรื่อง)");
+    expect(describeImageTarget({ kind: "presenter" }, null)).toBe("นักสืบนิรนาม (คนเล่าเรื่อง)");
   });
 });

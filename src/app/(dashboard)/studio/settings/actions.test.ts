@@ -205,6 +205,7 @@ describe("updateAutopilot", () => {
     publish_on_review_required: false,
     allow_unsupported_claims: false,
     max_runs_per_week: 3,
+    video_format: "storyteller",
   };
   it("refuses a non-admin before touching the database", async () => {
     h.profile = { id: "u", role: "supervisor" };
@@ -219,6 +220,8 @@ describe("updateAutopilot", () => {
     expect((await updateAutopilot({ ...good, days: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, platforms: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, target_seconds: 42 })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, video_format: "vlog" })).ok).toBe(false);
+    expect((await updateAutopilot(Object.fromEntries(Object.entries(good).filter(([k]) => k !== "video_format")))).ok).toBe(false);
     expect(h.upsertCalls).toHaveLength(0);
   });
   it("stores the config with days de-duplicated and sorted, and audits", async () => {
@@ -226,7 +229,17 @@ describe("updateAutopilot", () => {
     expect(await updateAutopilot(good)).toEqual({ ok: true });
     expect((h.upsertCalls[0]!.row.autopilot as Record<string, unknown>).days).toEqual([1, 4]);
     expect((h.upsertCalls[0]!.row.autopilot as Record<string, unknown>).auto_publish).toBe(true);
+    expect((h.upsertCalls[0]!.row.autopilot as Record<string, unknown>).video_format).toBe("storyteller");
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_SETTINGS_UPDATE");
+  });
+  it("accepts every clip format, persists it and audits the choice", async () => {
+    const { updateAutopilot } = await load();
+    for (const video_format of ["template", "storyteller", "alternate"]) {
+      expect(await updateAutopilot({ ...good, video_format })).toEqual({ ok: true });
+      expect((h.upsertCalls.at(-1)!.row.autopilot as Record<string, unknown>).video_format).toBe(video_format);
+    }
+    expect(h.upsertCalls).toHaveLength(3);
+    expect(h.audit.at(-1)!.metadata).toMatchObject({ section: "autopilot", video_format: "alternate" });
   });
 });
 

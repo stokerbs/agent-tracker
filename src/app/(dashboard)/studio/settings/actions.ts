@@ -205,6 +205,7 @@ const autopilotSchema = z.object({
   publish_on_review_required: z.boolean(),
   allow_unsupported_claims: z.boolean(),
   max_runs_per_week: z.number().int().min(1).max(14),
+  video_format: z.enum(["template", "storyteller", "alternate"], { message: "รูปแบบคลิปไม่ถูกต้อง" }),
 });
 
 export async function updateAutopilot(input: unknown): Promise<ActionResult> {
@@ -215,7 +216,7 @@ export async function updateAutopilot(input: unknown): Promise<ActionResult> {
   if (d.pillar_mode === "fixed" && !d.pillar) return { ok: false, error: "เลือกเสาเนื้อหาเมื่อใช้โหมดกำหนดเอง" };
   const res = await saveSettings({ autopilot: { ...d, days: Array.from(new Set(d.days)).sort() } }, profile.id, "autopilot");
   if (!res.ok) return res;
-  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "autopilot", enabled: d.enabled, auto_publish: d.auto_publish, days: d.days, platforms: d.platforms } });
+  await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "autopilot", enabled: d.enabled, auto_publish: d.auto_publish, days: d.days, platforms: d.platforms, video_format: d.video_format } });
   revalidatePath(SETTINGS_PATH);
   return { ok: true };
 }

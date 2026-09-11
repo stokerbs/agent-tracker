@@ -85,6 +85,7 @@ export async function generateImageAsset(input: { master: MasterMediaContext; ta
     });
     const asset = await storeAsset({
       masterId: master.id,
+      // scene / presenter / custom are all "image" rows; meta.target tells them apart (the storyteller finds its narrator by target.kind === "presenter").
       kind: target.kind === "thumbnail" ? "thumbnail" : "image",
       label,
       bytes: img.bytes,

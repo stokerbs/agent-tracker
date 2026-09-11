@@ -49,6 +49,11 @@ export interface ImageCandidate {
   meta: unknown;
 }
 
+/** Render-job params are untrusted JSON: only the exact string "storyteller" selects it, anything else is the template. */
+export function parseVideoFormat(v: unknown): VideoFormat {
+  return v === "storyteller" ? "storyteller" : "template";
+}
+
 /** The storyteller presenter image (generated with target kind "presenter"). */
 export function isPresenterImage(img: { meta: unknown }): boolean {
   return (img.meta as { target?: { kind?: string } } | null)?.target?.kind === "presenter";

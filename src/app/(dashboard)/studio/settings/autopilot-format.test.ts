@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AutopilotSettings } from "@/lib/studio/types";
 import {
+  AUTOPILOT_FORMAT_META,
+  AUTOPILOT_FORMATS,
   autopilotIssues,
   formatDays,
   imageCostHint,
@@ -88,12 +90,31 @@ describe("runStatsSummary", () => {
     expect(runStatsSummary(null)).toBe("");
     expect(runStatsSummary([1, 2])).toBe("");
   });
+  it("names the rendered clip format and flags a storyteller fallback", () => {
+    expect(runStatsSummary({ images: 2, format: "storyteller" })).toBe("ภาพ 2 · คลิปนักสืบเล่าเรื่อง");
+    expect(runStatsSummary({ images: 1, format: "template", format_fallback: "presenter_failed" })).toBe("ภาพ 1 · คลิปภาพประกอบ (แทนนักสืบเล่าเรื่อง)");
+    expect(runStatsSummary({ images: 1, format: "alternate" })).toBe("ภาพ 1");
+  });
+});
+
+describe("AUTOPILOT_FORMAT_META", () => {
+  it("labels every autopilot clip format in select order", () => {
+    expect(AUTOPILOT_FORMATS).toEqual(["template", "storyteller", "alternate"]);
+    expect(AUTOPILOT_FORMATS.map((f) => AUTOPILOT_FORMAT_META[f].label)).toEqual(["ภาพประกอบ (ไวรัล)", "นักสืบนิรนามเล่าเรื่อง", "สลับกันทุกครั้ง"]);
+  });
 });
 
 describe("imageCostHint", () => {
   it("multiplies by the per-image cost", () => {
     expect(imageCostHint(1)).toBe("~฿1.5");
     expect(imageCostHint(4)).toBe("~฿6");
+    expect(imageCostHint(1, "template")).toBe("~฿1.5");
+  });
+  it("adds the presenter image for storyteller and shows a range for alternate", () => {
+    expect(imageCostHint(1, "storyteller")).toBe("~฿3");
+    expect(imageCostHint(3, "storyteller")).toBe("~฿6");
+    expect(imageCostHint(1, "alternate")).toBe("~฿1.5–3");
+    expect(imageCostHint(4, "alternate")).toBe("~฿6–7.5");
   });
 });
 

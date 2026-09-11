@@ -3,24 +3,44 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clapperboard, Download, ExternalLink, ImageOff, Loader2, Lock, RefreshCw, Trash2, TriangleAlert, VolumeX } from "lucide-react";
+import { Clapperboard, Download, ExternalLink, ImageOff, Loader2, Lock, RefreshCw, Trash2, TriangleAlert, User, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Pill } from "@/components/studio/badges";
 import { useSafeTransition } from "@/components/studio/use-safe-transition";
-import type { CreativeAsset, CreativePlan, RenderJob } from "@/lib/studio/types";
+import { VIDEO_FORMATS, type CreativeAsset, type CreativePlan, type RenderJob, type VideoFormat } from "@/lib/studio/types";
 import { MAX_SHOTS, SILENT_SHOT_SEC } from "@/lib/studio/video/timeline";
 import { cn } from "@/lib/utils";
 import { formatDateTimeBkk } from "../format";
-import { deleteMediaAsset } from "./media-actions";
+import { deleteMediaAsset, generateImage } from "./media-actions";
 import { formatBytes, formatMmSs, formatSeconds, truncate } from "./media-format";
 import { createRenderJob, getRenderJob } from "./video-actions";
-import { buildStoryboard, clampProgress, formatElapsed, isActiveRenderStatus, LOCK_HINT, plannedTotalSec, readyImages, RENDER_MAX_WAIT_MS, RENDER_POLL_MS, renderBlockedReason, renderStatusMeta, videoAssets, type StoryboardRow } from "./video-format";
+import {
+  buildStoryboard,
+  clampProgress,
+  formatElapsed,
+  imageReadiness,
+  isActiveRenderStatus,
+  jobVideoFormat,
+  LOCK_HINT,
+  plannedTotalSec,
+  PRESENTER_MISSING_REASON,
+  RENDER_MAX_WAIT_MS,
+  RENDER_POLL_MS,
+  renderBlockedReason,
+  renderStatusMeta,
+  SHOT_ROLE_LABEL,
+  VIDEO_FORMAT_META,
+  videoAssets,
+  type StoryboardRow,
+} from "./video-format";
 
 /**
- * Video (phase 3): template 9:16 render — per-shot still + Thai voice-over +
- * hook overlay + burned-in subtitles. The client creates a job (server action),
+ * Video (phase 3): 9:16 render in one of two formats — the template (per-shot
+ * still + viral captions + hook overlay) or the storyteller (the anonymous
+ * silhouette detective narrates, cutting away to scene stills). Both use Thai
+ * voice-over + burned-in subtitles. The client creates a job (server action),
  * fires the long-running route handler without awaiting it, and polls the job
  * every 3 s. All gates are re-checked server-side; the reasons shown here are
  * UX only.
@@ -52,7 +72,9 @@ type RenderRouteResponse = { ok: boolean; assetId?: string; durationSec?: number
 export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJobs, ttsAvailability, editable }: VideoSectionProps) {
   const router = useRouter();
   const [pending, start] = useSafeTransition();
+  const [presenterPending, startPresenter] = useSafeTransition();
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [presenterError, setPresenterError] = useState<string | null>(null);
 
   // Resume polling a job that was queued/running when the page loaded (reload mid-render).
   const initialActive = renderJobs.find((j) => isActiveRenderStatus(j.status)) ?? null;
@@ -62,16 +84,22 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
   const [now, setNow] = useState(() => Date.now());
   const activeJobIdRef = useRef<string | null>(activeJobId);
   activeJobIdRef.current = activeJobId;
+  // Template by default; a reload mid-render keeps showing the running job's format.
+  const [format, setFormat] = useState<VideoFormat>(() => (initialActive ? jobVideoFormat(initialActive.params) : "template"));
 
   const shots = plan?.shots ?? [];
-  const storyboard = useMemo(() => buildStoryboard(plan, assets), [plan, assets]);
-  const images = useMemo(() => readyImages(assets), [assets]);
+  const storyboard = useMemo(() => buildStoryboard(plan, assets, format), [plan, assets, format]);
+  const readiness = useMemo(() => imageReadiness(assets), [assets]);
   const videos = useMemo(() => videoAssets(assets), [assets]);
   const history = useMemo(() => renderJobs.slice(0, HISTORY_LIMIT), [renderJobs]);
   const hasVoice = shots.some((s) => s.voice?.trim());
   const jobActive = activeJobId != null;
+  const needsPresenter = format === "storyteller" && !readiness.hasPresenter;
 
-  const blocked = renderBlockedReason({ ttsAvailable: ttsAvailability.available, ttsReason: ttsAvailability.reason, shotCount: shots.length, hasVoice, hasImage: images.length > 0, editable, jobActive });
+  const blocked = renderBlockedReason(
+    { ttsAvailable: ttsAvailability.available, ttsReason: ttsAvailability.reason, shotCount: shots.length, hasVoice, hasImage: readiness.hasSceneImage, hasPresenter: readiness.hasPresenter, editable, jobActive },
+    format,
+  );
   const disabled = pending || !!blocked;
 
   /** Stop tracking a job (either finished or errored) and surface the outcome. */
@@ -140,7 +168,7 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
     if (disabled) return;
     setInlineError(null);
     start(async () => {
-      const res = await createRenderJob({ masterId });
+      const res = await createRenderJob({ masterId, format });
       if (!res.ok) {
         if (res.code === "busy") {
           toast.info(res.error);
@@ -169,20 +197,51 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
     });
   }
 
+  function changeFormat(next: VideoFormat) {
+    if (next === format) return;
+    setFormat(next);
+    setInlineError(null);
+  }
+
+  /** Storyteller narrator: same server action as the media section (fixed prompt server-side), 9:16 for the vertical clip. */
+  function runPresenter() {
+    if (presenterPending || !editable) return;
+    setPresenterError(null);
+    startPresenter(async () => {
+      const res = await generateImage({ masterId, target: { kind: "presenter" }, aspect: "9:16" });
+      if (!res.ok) {
+        toast.error(res.error);
+        setPresenterError(res.error);
+        return;
+      }
+      toast.success("สร้างภาพนักสืบนิรนามแล้ว — ตรวจภาพด้วยตาก่อนโพสต์");
+      router.refresh();
+    });
+  }
+
   return (
     <section className="rounded-lg border border-border/70 bg-card" aria-labelledby="video-title">
       <header className="space-y-1.5 border-b border-border/60 px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="video-title" className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Clapperboard className="h-3.5 w-3.5" /> วิดีโอ (เทมเพลต 9:16)
+            <Clapperboard className="h-3.5 w-3.5" /> วิดีโอ (9:16)
           </h2>
-          <Button size="sm" onClick={runRender} disabled={disabled} title={blocked ?? "สร้างวิดีโอ 1080×1920 จาก shot list — ใช้เวลาประมาณ 1–3 นาที"}>
-            {pending || jobActive ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} สร้างวิดีโอ
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <FormatToggle value={format} onChange={changeFormat} disabled={pending || jobActive} />
+            <Button size="sm" onClick={runRender} disabled={disabled} title={blocked ?? `สร้างวิดีโอ 1080×1920 แบบ “${VIDEO_FORMAT_META[format].label}” จาก shot list — ใช้เวลาประมาณ 1–3 นาที`}>
+              {pending || jobActive ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} สร้างวิดีโอ
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          ต่อ<span className="font-medium text-foreground/80">ภาพนิ่งต่อฉาก</span> + <span className="font-medium text-foreground/80">เสียงพากย์ไทยต่อฉาก</span> + ซับไตเติล + hook overlay เป็น MP4 แนวตั้ง — ยังไม่มีเพลงและวิดีโอเคลื่อนไหว
-        </p>
+        {format === "storyteller" ? (
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground/80">นักสืบนิรนาม (เงาดำ ไม่เห็นหน้า)</span> เปิด–ปิดคลิปและเล่าเรื่อง ตัดสลับกับ<span className="font-medium text-foreground/80">ภาพประกอบฉาก</span> + เสียงพากย์ไทยต่อฉาก + ซับไตเติล เป็น MP4 แนวตั้ง
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            ต่อ<span className="font-medium text-foreground/80">ภาพนิ่งต่อฉาก</span> + <span className="font-medium text-foreground/80">เสียงพากย์ไทยต่อฉาก</span> + ซับไตเติล + hook overlay เป็น MP4 แนวตั้ง — ยังไม่มีเพลงและวิดีโอเคลื่อนไหว
+          </p>
+        )}
       </header>
 
       <div className="space-y-4 p-3">
@@ -191,7 +250,8 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
             <Lock className="h-3.5 w-3.5 shrink-0" /> {LOCK_HINT}
           </p>
         )}
-        {blocked && editable && !jobActive && <GateNotice reason={blocked} showSettingsLink={!ttsAvailability.available} />}
+        {blocked && editable && !jobActive && !(needsPresenter && blocked === PRESENTER_MISSING_REASON) && <GateNotice reason={blocked} showSettingsLink={!ttsAvailability.available} />}
+        {needsPresenter && editable && !jobActive && <PresenterNeeded pending={presenterPending} error={presenterError} onGenerate={runPresenter} onDismissError={() => setPresenterError(null)} />}
 
         {jobActive && <ProgressCard job={liveJob} elapsedMs={Math.max(0, now - startedAtMs)} shotCount={shots.length} />}
 
@@ -215,7 +275,7 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
         {storyboard.length === 0 ? (
           <EmptyVideo hasPlan={false} />
         ) : (
-          <Storyboard rows={storyboard} hook={hook} assetUrls={assetUrls} plannedSec={plannedTotalSec(plan)} onRefresh={() => router.refresh()} />
+          <Storyboard rows={storyboard} format={format} hook={hook} assetUrls={assetUrls} plannedSec={plannedTotalSec(plan)} onRefresh={() => router.refresh()} />
         )}
 
         {/* ── Results ── */}
@@ -263,6 +323,69 @@ function GateNotice({ reason, showSettingsLink }: { reason: string; showSettings
   );
 }
 
+/** Segmented control: two toggle buttons (aria-pressed) — the selection is local until "สร้างวิดีโอ" sends it. */
+function FormatToggle({ value, onChange, disabled }: { value: VideoFormat; onChange: (f: VideoFormat) => void; disabled: boolean }) {
+  return (
+    <div role="group" aria-label="รูปแบบวิดีโอ" className="inline-flex items-center gap-0.5 rounded-md border border-border/70 bg-muted/40 p-0.5">
+      {VIDEO_FORMATS.map((f) => {
+        const active = value === f;
+        return (
+          <Button
+            key={f}
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-pressed={active}
+            onClick={() => onChange(f)}
+            disabled={disabled}
+            title={VIDEO_FORMAT_META[f].hint}
+            className={cn("h-7 px-2.5 text-xs", active ? "bg-background text-foreground shadow-sm hover:bg-background" : "text-muted-foreground")}
+          >
+            {f === "storyteller" && <User className="h-3 w-3" />}
+            {VIDEO_FORMAT_META[f].label}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PresenterNeeded({ pending, error, onGenerate, onDismissError }: { pending: boolean; error: string | null; onGenerate: () => void; onDismissError: () => void }) {
+  return (
+    <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="inline-flex min-w-0 items-start gap-1.5 text-amber-700 dark:text-amber-300">
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0">{PRESENTER_MISSING_REASON} · ภาพเงาดำไม่เห็นหน้า สร้างครั้งเดียวใช้ได้ทุกครั้งที่ render คอนเทนต์นี้</span>
+        </span>
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerate} disabled={pending}>
+          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <User className="h-3 w-3" />} สร้างภาพนักสืบนิรนาม
+        </Button>
+      </div>
+      {pending && (
+        <p className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground" role="status" aria-live="polite">
+          <Loader2 className="h-3 w-3 animate-spin text-violet-500" /> กำลังสร้างภาพนักสืบนิรนาม (9:16)… ปกติ 10–60 วินาที
+        </p>
+      )}
+      {error && !pending && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5" role="alert">
+          <span className="inline-flex items-start gap-1.5 text-destructive">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerate}>
+              <RefreshCw className="h-3 w-3" /> ลองอีกครั้ง
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDismissError}>
+              ปิด
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProgressCard({ job, elapsedMs, shotCount }: { job: RenderJob | null; elapsedMs: number; shotCount: number }) {
   const progress = clampProgress(job?.progress);
   const step = job?.step?.trim() || (job?.status === "running" ? "กำลังทำ…" : "รอเริ่ม…");
@@ -284,7 +407,7 @@ function ProgressCard({ job, elapsedMs, shotCount }: { job: RenderJob | null; el
   );
 }
 
-function Storyboard({ rows, hook, assetUrls, plannedSec, onRefresh }: { rows: StoryboardRow[]; hook: string; assetUrls: Record<string, string | null>; plannedSec: number; onRefresh: () => void }) {
+function Storyboard({ rows, format, hook, assetUrls, plannedSec, onRefresh }: { rows: StoryboardRow[]; format: VideoFormat; hook: string; assetUrls: Record<string, string | null>; plannedSec: number; onRefresh: () => void }) {
   const noImages = rows.every((r) => r.imageAssetId == null);
   const kept = rows.filter((r) => !r.dropped).length;
   return (
@@ -302,9 +425,15 @@ function Storyboard({ rows, hook, assetUrls, plannedSec, onRefresh }: { rows: St
       ) : (
         <p className="text-[11px] text-muted-foreground">ไม่มี hook — จะไม่แสดง overlay บนฉากแรก</p>
       )}
+      {format === "storyteller" && !noImages && (
+        <p className="text-[11px] text-muted-foreground">นักสืบเปิดและปิดคลิป เล่าสลับทุกฉาก — ฉากระหว่างนั้นตัดไปภาพประกอบของฉาก (ไม่มีภาพฉากใช้ภาพปก ไม่มีภาพเลยอยู่ที่นักสืบ)</p>
+      )}
       {noImages && (
         <p className="inline-flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-          <ImageOff className="mt-0.5 h-3 w-3 shrink-0" /> ยังไม่มีภาพที่พร้อมใช้เลย — สร้างภาพปกหรือภาพฉากในส่วน “สื่อ” ก่อน จึงจะสร้างวิดีโอได้
+          <ImageOff className="mt-0.5 h-3 w-3 shrink-0" />
+          {format === "storyteller"
+            ? "ยังไม่มีภาพนักสืบนิรนามที่พร้อมใช้ — สร้างภาพ “นักสืบนิรนาม (คนเล่าเรื่อง)” ก่อน จึงจะเห็นภาพต่อฉากและสร้างวิดีโอแบบนักสืบเล่าเรื่องได้"
+            : "ยังไม่มีภาพที่พร้อมใช้เลย — สร้างภาพปกหรือภาพฉากในส่วน “สื่อ” ก่อน จึงจะสร้างวิดีโอได้"}
         </p>
       )}
       <ol className="divide-y divide-border/60 overflow-hidden rounded-md border border-border/70" aria-label="Storyboard">
@@ -334,7 +463,7 @@ function StoryboardRowView({ row, url, onRefresh }: { row: StoryboardRow; url: s
           </button>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from a private bucket; next/image cannot cache it
-          <img src={url} alt={`ภาพฉาก ${row.index + 1}`} className="h-full w-full object-cover" loading="lazy" onError={() => setBroken(true)} />
+          <img src={url} alt={row.role === "presenter" ? `ภาพนักสืบนิรนาม ฉาก ${row.index + 1}` : `ภาพฉาก ${row.index + 1}`} className="h-full w-full object-cover" loading="lazy" onError={() => setBroken(true)} />
         )}
       </div>
 
@@ -344,6 +473,13 @@ function StoryboardRowView({ row, url, onRefresh }: { row: StoryboardRow; url: s
           <span className="text-muted-foreground tabular-nums">
             {formatSeconds(row.start_sec)}–{formatSeconds(row.end_sec)}
           </span>
+          {/* role is only set in storyteller mode */}
+          {row.role && !row.dropped && (
+            <Pill className={row.role === "presenter" ? "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300" : "border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400"}>
+              {row.role === "presenter" ? <User className="h-3 w-3" /> : null}
+              {SHOT_ROLE_LABEL[row.role]}
+            </Pill>
+          )}
           {row.dropped && <Pill className="border-border bg-muted text-muted-foreground">เกิน {MAX_SHOTS.toLocaleString("en-GB")} ฉาก — ไม่ถูกใช้</Pill>}
           {row.silent && !row.dropped && (
             <Pill className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
@@ -481,6 +617,7 @@ function JobHistory({ jobs }: { jobs: RenderJob[] }) {
                 <p className="truncate text-muted-foreground" title={j.step ?? undefined}>
                   {j.step?.trim() || "—"}
                   {typeof shots === "number" ? ` · ${shots.toLocaleString("en-GB")} ฉาก` : ""}
+                  {` · ${VIDEO_FORMAT_META[jobVideoFormat(j.params)].label}`}
                   {isActiveRenderStatus(j.status) ? ` · ${clampProgress(j.progress).toLocaleString("en-GB")}%` : ""}
                 </p>
                 {j.status === "failed" && j.error?.trim() && (

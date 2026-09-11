@@ -14,7 +14,7 @@ import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { CreativeAsset, CreativePlan } from "@/lib/studio/types";
 import { buildAss } from "./ass";
 import { buildFfmpegArgs, runFfmpeg } from "./ffmpeg";
-import { layoutShots, mp3DurationSec, OUTPUT_H, OUTPUT_W, resolveShotImages, totalDuration, type ShotSource } from "./timeline";
+import { layoutShots, mp3DurationSec, OUTPUT_H, OUTPUT_W, parseVideoFormat, resolveShotImages, totalDuration, type ShotSource } from "./timeline";
 
 /**
  * Template video pipeline (phase 3): per-shot still + per-shot narration →
@@ -70,7 +70,8 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
   try {
     const [{ data: master, error: mErr }, { data: assets, error: aErr }, settings] = await Promise.all([
       svc.from("studio_content_masters").select("id, title, hook, script, caption, creative_plan, status").eq("id", job.master_id).maybeSingle(),
-      svc.from("studio_creative_assets").select("*").eq("master_id", job.master_id).eq("status", "ready"),
+      // Newest first, like the editor storyboard and createRenderJob, so the presenter picked here is the one previewed.
+      svc.from("studio_creative_assets").select("*").eq("master_id", job.master_id).eq("status", "ready").order("created_at", { ascending: false }),
       getStudioSettingsStrict(),
     ]);
     if (mErr || !master) return await fail("โหลดคอนเทนต์ไม่สำเร็จ");
@@ -84,7 +85,9 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
 
     const plan = (master.creative_plan as CreativePlan | null) ?? { shots: [], broll: [], text_overlays: [] };
     const images = (assets ?? []).filter((a) => a.kind === "thumbnail" || a.kind === "image");
-    const resolved = resolveShotImages(plan, images);
+    // Job params are stored JSON: anything but exactly "storyteller" renders the template.
+    const format = parseVideoFormat((job.params as { format?: unknown } | null)?.format);
+    const resolved = resolveShotImages(plan, images, { format });
     if ("error" in resolved) return await fail(resolved.error);
     const shotsWithVoice = resolved.filter((s) => s.voice);
     if (!shotsWithVoice.length) return await fail("ยังไม่มีข้อความพากย์ใน shot list (ช่อง voice ว่างทุกฉาก)");
@@ -142,10 +145,10 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
 
     await step(60, "กำลังตัดต่อวิดีโอ");
     const assPath = path.join(tmp, "subs.ass");
-    await writeFile(assPath, buildAss({ shots: laid, hook: master.hook }), "utf8");
+    await writeFile(assPath, buildAss({ shots: laid, hook: master.hook, format }), "utf8");
     const outPath = path.join(tmp, "out.mp4");
-    const plan2 = buildFfmpegArgs({ shots: laid, assPath, fontsDir: FONTS_DIR, outPath });
-    console.info(`[studio:video] job=${jobId} ffmpeg ${plan2.summary} (${durationSec}s, tts_calls=${ttsCalls})`);
+    const plan2 = buildFfmpegArgs({ shots: laid, assPath, fontsDir: FONTS_DIR, outPath, format });
+    console.info(`[studio:video] job=${jobId} format=${format} ffmpeg ${plan2.summary} (${durationSec}s, tts_calls=${ttsCalls})`);
     const run = await runFfmpeg(plan2.args, { timeoutMs: FFMPEG_TIMEOUT_MS });
 
     await step(88, "กำลังอัปโหลดวิดีโอ");
@@ -156,7 +159,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
         master_id: master.id,
         kind: "video",
         status: "pending",
-        label: `วิดีโอ 9:16 (${Math.round(durationSec)} วิ)`,
+        label: format === "storyteller" ? `วิดีโอเล่าเรื่อง 9:16 (${Math.round(durationSec)} วิ)` : `วิดีโอ 9:16 (${Math.round(durationSec)} วิ)`,
         mime: "video/mp4",
         bytes: mp4.byteLength,
         width: OUTPUT_W,
@@ -165,7 +168,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
         prompt: null,
         provider: "ffmpeg",
         model: "template-v2",
-        meta: { aspect: "9:16", style: "viral", shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
+        meta: { aspect: "9:16", format, style: format === "storyteller" ? "storyteller" : "viral", shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
         created_by: opts.userId,
       })
       .select("*")
@@ -183,7 +186,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
       purpose: "video_render",
       provider: "ffmpeg",
       model: "template-v2",
-      input_refs: { master_id: master.id, job_id: jobId, shots: laid.length, tts_calls: ttsCalls },
+      input_refs: { master_id: master.id, job_id: jobId, format, shots: laid.length, tts_calls: ttsCalls },
       output: { asset_id: row.id, duration_sec: durationSec, bytes: mp4.byteLength, render_ms: run.durationMs },
       input_tokens: null,
       output_tokens: null,

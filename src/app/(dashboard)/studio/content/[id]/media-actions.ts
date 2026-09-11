@@ -28,6 +28,8 @@ const imageSchema = z.object({
   target: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("thumbnail") }),
     z.object({ kind: z.literal("scene"), index: z.number().int().min(0).max(60) }),
+    // Storyteller narrator: the prompt is the fixed PRESENTER_SCENE server-side — nothing client-supplied reaches the provider.
+    z.object({ kind: z.literal("presenter") }),
     z.object({ kind: z.literal("custom"), text: z.string().trim().min(3, "พิมพ์คำบรรยายภาพอย่างน้อย 3 ตัวอักษร").max(MAX_CUSTOM_PROMPT_CHARS) }),
   ]),
   aspect: z.enum(IMAGE_ASPECTS as [ImageAspect, ...ImageAspect[]]),
