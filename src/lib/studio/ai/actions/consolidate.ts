@@ -12,12 +12,15 @@ import {
   type ConsolidateQuestionsOutput,
 } from "../prompts/consolidate";
 import { runStructured, type RunResult } from "../run";
+import type { RetryPolicy } from "@/lib/studio/retry";
 
 export async function consolidateKnowledgeBatch(input: {
   items: { n: number; title: string; content: string; category: string }[];
   batchLabel: string;
   userId: string | null;
   model?: string;
+  /** Offline jobs retry transient network/provider failures (see lib/studio/retry). */
+  retry?: RetryPolicy;
 }): Promise<RunResult<ConsolidateKnowledgeOutput>> {
   const settings = await getStudioSettings();
   return runStructured({
@@ -34,6 +37,7 @@ export async function consolidateKnowledgeBatch(input: {
     maxTokens: 20000,
     timeoutMs: 600_000,
     model: input.model,
+    retry: input.retry,
   });
 }
 
@@ -42,6 +46,8 @@ export async function consolidateQuestionsBatch(input: {
   batchLabel: string;
   userId: string | null;
   model?: string;
+  /** Offline jobs retry transient network/provider failures (see lib/studio/retry). */
+  retry?: RetryPolicy;
 }): Promise<RunResult<ConsolidateQuestionsOutput>> {
   const settings = await getStudioSettings();
   return runStructured({
@@ -56,5 +62,6 @@ export async function consolidateQuestionsBatch(input: {
     maxTokens: 12000,
     timeoutMs: 600_000,
     model: input.model,
+    retry: input.retry,
   });
 }

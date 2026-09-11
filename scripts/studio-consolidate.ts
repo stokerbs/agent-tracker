@@ -34,18 +34,19 @@ async function main() {
     process.exit(1);
   }
   const { consolidateKnowledge, consolidateQuestions } = await import("../src/lib/studio/consolidate");
+  const { OFFLINE_RETRY } = await import("../src/lib/studio/retry");
   console.log(`target=${target} passes=${passes} ${dryRun ? "DRY RUN" : `model=${model ?? "(studio setting)"}`}${categories?.length ? ` categories=${categories.join(",")}` : ""}`);
   const started = Date.now();
   for (let p = 1; p <= (dryRun ? 1 : passes); p++) {
     console.log(`\n=== pass ${p} ===`);
     if (target !== "questions") {
-      const r = await consolidateKnowledge({ dryRun, model, userId, categories, onProgress: (m) => console.log(m) });
+      const r = await consolidateKnowledge({ dryRun, model, userId, categories, retry: OFFLINE_RETRY, onProgress: (m) => console.log(m) });
       console.log(`knowledge: scanned=${r.scanned} batches=${r.batches} groups=${r.groups} merged=${r.merged} dropped=${r.dropped} errors=${r.errors.length}`);
       for (const e of r.errors.slice(0, 10)) console.log(`  ! ${e}`);
       if (!dryRun && r.groups === 0) console.log("knowledge: nothing left to merge");
     }
     if (target !== "knowledge") {
-      const r = await consolidateQuestions({ dryRun, model, userId, onProgress: (m) => console.log(m) });
+      const r = await consolidateQuestions({ dryRun, model, userId, retry: OFFLINE_RETRY, onProgress: (m) => console.log(m) });
       console.log(`questions: scanned=${r.scanned} batches=${r.batches} groups=${r.groups} merged=${r.merged} dropped=${r.dropped} errors=${r.errors.length}`);
       for (const e of r.errors.slice(0, 10)) console.log(`  ! ${e}`);
     }
@@ -54,6 +55,21 @@ async function main() {
 }
 
 main().catch((e) => {
+  // Both are "the network or a provider stayed down": say so plainly and how to resume, instead of a stack trace.
+  if (e instanceof Error && e.name === "ConsolidateAbortedError") {
+    const r = (e as Error & { result?: { target: string; scanned: number; batches: number; groups: number; merged: number; errors: string[] } }).result;
+    console.error(`\nSTOPPED EARLY: ${e.message}`);
+    if (r) console.error(`${r.target}: scanned=${r.scanned} batches=${r.batches} groups=${r.groups} merged=${r.merged} errors=${r.errors.length}`);
+    console.error("Nothing is lost: merged rows are saved and a re-run only reads rows that are still active. Check the connection, then run the same command again.");
+    process.exit(2);
+  }
+  if (e instanceof Error && /studio settings unavailable/.test(e.message)) {
+    console.error(`\nSTOPPED: could not load the privacy rules after retrying (${e.message}). Nothing ran without them; re-run when the connection is back.`);
+    process.exit(2);
+  }
   console.error(e);
   process.exit(1);
 });
+
+// Module marker: without a static import/export, TypeScript treats this file as a global script and top-level names (e.g. main) collide across scripts.
+export {};
