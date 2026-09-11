@@ -164,8 +164,8 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
         duration_ms: Math.round(durationSec * 1000),
         prompt: null,
         provider: "ffmpeg",
-        model: "template-v1",
-        meta: { aspect: "9:16", shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
+        model: "template-v2",
+        meta: { aspect: "9:16", style: "viral", shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
         created_by: opts.userId,
       })
       .select("*")
@@ -182,7 +182,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
     await recordGeneration({
       purpose: "video_render",
       provider: "ffmpeg",
-      model: "template-v1",
+      model: "template-v2",
       input_refs: { master_id: master.id, job_id: jobId, shots: laid.length, tts_calls: ttsCalls },
       output: { asset_id: row.id, duration_sec: durationSec, bytes: mp4.byteLength, render_ms: run.durationMs },
       input_tokens: null,

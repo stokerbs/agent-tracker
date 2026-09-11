@@ -16,14 +16,19 @@ export const SILENT_SHOT_SEC = 3;
 export const HOOK_OVERLAY_SEC = 2.5;
 export const MAX_SHOTS = 24;
 export const MAX_TOTAL_SEC = 180;
-export const SUBTITLE_MAX_CHARS = 28;
 /** Soft per-line target, in graphemes (Thai vowels and tone marks stack, so .length overstates width). */
 export const SUBTITLE_LINE_TARGET = 24;
 /** Hard per-line ceiling: about 720 px of Sarabun Bold 64, inside the 920 px safe area. */
 export const SUBTITLE_LINE_MAX = 40;
-export const SUBTITLE_MAX_LINES = 2;
-/** Hook overlay lines (Sarabun Bold 92 in a 900 px area): the Sub limits scaled by 64/92. */
-export const HOOK_LINE_TARGET = 18;
+/**
+ * Viral captions (template v2) show one line at a time in Sarabun Bold 92 (about 780 px at the maximum).
+ * Lines are short, but a phrase up to CAPTION_LINE_MAX stays whole: a smaller ceiling would make the breaker
+ * split more phrases on ICU word boundaries, and ICU over-splits compounds such as หลัก|ฐาน and ลงพื้น|ที่.
+ */
+export const CAPTION_LINE_TARGET = 14;
+export const CAPTION_LINE_MAX = 30;
+/** Hook card lines (Sarabun Bold 88 on the yellow card). */
+export const HOOK_LINE_TARGET = 14;
 export const HOOK_LINE_MAX = 30;
 
 export interface ShotSource {
@@ -100,7 +105,7 @@ export function subtitleWidth(text: string): number {
 
 const NBSP = "\u00A0";
 /** Thai clause openers: breaking a line just before one never changes the meaning. */
-const BREAK_BEFORE = new Set(["และ", "แต่", "หรือ", "ว่า", "ซึ่ง", "เพราะ", "ถ้า", "หาก", "โดย", "เมื่อ", "จึง", "แล้ว", "เพื่อ", "จน", "ส่วน", "ก็"]);
+const BREAK_BEFORE = new Set(["และ", "แต่", "หรือ", "ว่า", "ซึ่ง", "เพราะ", "ถ้า", "หาก", "โดย", "เมื่อ", "จึง", "แล้ว", "เพื่อ", "จน", "ส่วน", "ก็", "ไม่", "คือ"]);
 
 /** Spaces that must never become a line break: before ๆ, before closing punctuation, after opening brackets, before a handle. */
 function protectSpaces(text: string): string {
@@ -121,36 +126,52 @@ function gluesToPrevious(segment: string): boolean {
  * just before a clause opener. A single token wider than a line (a long URL)
  * is the only thing ever cut between graphemes, and never inside one.
  */
-function splitPhrase(phrase: string, max: number): string[] {
-  // Word boundaries are grapheme boundaries, so segment widths add up: keep running sums instead of
-  // re-measuring the joined line for every segment (that was quadratic on long runs of glue characters).
-  const out: string[] = [];
-  let cur: string[] = [];
-  let widths: number[] = [];
-  let curWidth = 0;
-  for (const segment of thaiWords(phrase)) {
-    const w = subtitleWidth(segment);
-    // Glue (ๆ, closing punctuation) stays with the word before it, but a run of glue may not grow a line past 2 × max.
-    if (cur.length > 0 && curWidth + w > max && (!gluesToPrevious(segment) || curWidth + w > max * 2)) {
-      let cut = cur.length;
-      let prefix = curWidth;
-      for (let i = cur.length - 1; i >= 1; i--) {
-        prefix -= widths[i];
-        if (BREAK_BEFORE.has(cur[i]) && prefix >= max * 0.4) {
-          cut = i;
-          break;
-        }
-      }
-      out.push(cur.slice(0, cut).join(""));
-      cur = cur.slice(cut);
-      widths = widths.slice(cut);
-      curWidth = widths.reduce((n, x) => n + x, 0);
-    }
-    cur.push(segment);
-    widths.push(w);
-    curWidth += w;
+/** Where a part that overflowed at segment `i` should end: just before a nearby clause opener, else at `i`. */
+function clauseCut(segs: string[], widths: number[], start: number, i: number, width: number, limit: number, max: number): number {
+  let prefix = width;
+  for (let k = i - 1; k > start; k--) {
+    prefix -= widths[k];
+    if (BREAK_BEFORE.has(segs[k]) && prefix >= limit * 0.4) return k;
   }
-  if (cur.length) out.push(cur.join(""));
+  let ahead = width;
+  for (let k = i; k + 1 < segs.length; k++) {
+    ahead += widths[k];
+    if (ahead > max) break;
+    if (BREAK_BEFORE.has(segs[k + 1])) return k + 1;
+  }
+  return i;
+}
+
+function splitPhrase(phrase: string, max: number): string[] {
+  // Word boundaries are grapheme boundaries, so segment widths add up: running sums keep this linear.
+  const segs = thaiWords(phrase);
+  const widths = segs.map((x) => subtitleWidth(x));
+  const total = widths.reduce((n, w) => n + w, 0);
+  // Aim for parts of equal width instead of filling each line to the brim, so a long phrase never ends on a
+  // one-word stub ("…อย่าง" then "เดียว" alone). A little slack lets the cut land on a word boundary; max stays the ceiling.
+  const limit = Math.min(max, Math.ceil(total / Math.max(1, Math.ceil(total / max))) + 3);
+  const out: string[] = [];
+  let start = 0;
+  let width = 0;
+  for (let i = 0; i < segs.length; i++) {
+    // Glue (ๆ, closing punctuation) stays with the word before it, but a run of glue may not grow a part past 2 × max.
+    if (i > start && width + widths[i] > limit && (!gluesToPrevious(segs[i]) || width + widths[i] > max * 2)) {
+      const cut = clauseCut(segs, widths, start, i, width, limit, max);
+      out.push(segs.slice(start, cut).join(""));
+      if (cut > i) {
+        // The cut looked ahead to a clause opener: segments i..cut-1 already went into this part.
+        start = cut;
+        width = 0;
+        i = cut - 1;
+        continue;
+      }
+      width = 0;
+      for (let k = cut; k < i; k++) width += widths[k];
+      start = cut;
+    }
+    width += widths[i];
+  }
+  if (start < segs.length) out.push(segs.slice(start).join(""));
   return out.flatMap((part) => {
     if (subtitleWidth(part) <= max) return [part];
     const g = graphemes(part);
@@ -195,51 +216,13 @@ export function subtitleLines(text: string, opts: { target?: number; max?: numbe
   return lines.map((l) => l.text.replace(/\u00A0/g, " "));
 }
 
-/** At the end of a line these leave the thought hanging, so the next line should not flash up as a separate cue. */
-const DANGLING_END = new Set(["ทาง", "กับ", "ของ", "จาก", "ด้วย", "ตาม", "ถึง", "และ", "แต่", "หรือ", "โดย", "เพื่อ"]);
-/** A cue this narrow (in graphemes) on its own flashes by too fast to read. */
-const SHORT_CUE = 12;
-
-function edgeWords(line: string): { first: string; last: string } {
-  const words = thaiWords(line.trim()).filter((w) => w.trim());
-  return { first: words[0] ?? "", last: words[words.length - 1] ?? "" };
-}
-
-/**
- * Group lines into cues of up to SUBTITLE_MAX_LINES. A tiny dynamic program
- * picks the grouping with the fewest reading problems: a lone short fragment,
- * a cue that ends on a dangling word ("…ได้ทาง" then "LINE @…" alone), or a
- * clause opener that starts the second line and then spills into the next
- * cue. Ties keep lines paired, which means fewer cue changes.
- */
-export function chunkSubtitle(text: string): string[] {
-  const lines = subtitleLines(text);
-  const n = lines.length;
-  const best = new Array<number>(n + 1).fill(0);
-  const take = new Array<number>(n + 1).fill(1);
-  for (let i = n - 1; i >= 0; i--) {
-    let bestCost = Infinity;
-    for (let size = Math.min(SUBTITLE_MAX_LINES, n - i); size >= 1; size--) {
-      const cue = lines.slice(i, i + size);
-      const hasNext = i + size < n;
-      let cost = 1 + best[i + size];
-      if (size === 1 && subtitleWidth(cue[0]) < SHORT_CUE) cost += 3;
-      if (hasNext && DANGLING_END.has(edgeWords(cue[size - 1]).last)) cost += 4;
-      if (hasNext && size > 1 && BREAK_BEFORE.has(edgeWords(cue[size - 1]).first)) cost += 2;
-      if (cost < bestCost) {
-        bestCost = cost;
-        take[i] = size;
-      }
-    }
-    best[i] = bestCost;
-  }
-  const cues: string[] = [];
-  for (let i = 0; i < n; i += take[i]) cues.push(lines.slice(i, i + take[i]).join("\n"));
-  return cues;
+/** Caption lines for the viral template: one line on screen at a time. */
+export function captionChunks(text: string): string[] {
+  return subtitleLines(text, { target: CAPTION_LINE_TARGET, max: CAPTION_LINE_MAX });
 }
 
 export function timeSubtitles(shot: TimedShot): SubtitleCue[] {
-  const chunks = chunkSubtitle(shot.voice);
+  const chunks = captionChunks(shot.voice);
   if (!chunks.length || shot.voiceSec <= 0) return [];
   // Time by visible width, not string length: stacked Thai marks take no reading time.
   const weight = (c: string) => Math.max(1, subtitleWidth(c.replace(/\s+/g, "")));

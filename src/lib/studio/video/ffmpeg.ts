@@ -16,33 +16,57 @@ export interface FfmpegPlan {
   summary: string;
 }
 
+/** Shot-to-shot transitions, used in rotation. Each overlaps the start of the next shot by XFADE_SEC. */
+export const TRANSITIONS = ["slideleft", "zoomin", "slideup", "smoothleft", "circleopen"] as const;
+export const XFADE_SEC = 0.25;
+/** Accent yellow of the progress bar (matches ACCENT_ASS in ass.ts). */
+const ACCENT = "0xFFD400";
+const BAR_H = 14;
+
 /**
- * Inputs: one looping still per shot (+ its narration mp3 when present), then
- * per-shot scale/crop/zoompan → concat → ASS subtitles → libx264/aac.
- * Silent shots get generated silence so the audio concat stays aligned.
+ * "Viral" template (v2). Inputs: one looping still per shot (+ its narration mp3 when present).
+ * Video: per-shot cover-fit + punch-in zoom → xfade transitions → light grade → progress bar → ASS captions.
+ * Audio: narration padded to each shot, concatenated; silent shots get generated silence.
+ * Every shot but the last runs XFADE_SEC longer and each transition starts exactly where the next shot's
+ * narration starts (offset = sum of the previous shot durations), so picture and audio stay aligned.
  */
 export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fontsDir: string; outPath: string }): FfmpegPlan {
   const { shots } = input;
   const args: string[] = ["-hide_banner", "-loglevel", "error", "-y", "-nostdin"];
   const filters: string[] = [];
   let audioInputs = 0;
-  for (const s of shots) args.push("-loop", "1", "-framerate", String(FPS), "-t", s.duration.toFixed(3), "-i", s.imagePath);
+  const lens = shots.map((s, i) => s.duration + (i < shots.length - 1 ? XFADE_SEC : 0));
+  shots.forEach((s, i) => args.push("-loop", "1", "-framerate", String(FPS), "-t", lens[i].toFixed(3), "-i", s.imagePath));
   shots.forEach((s) => {
     if (s.audioPath) {
       args.push("-i", s.audioPath);
       audioInputs += 1;
     }
   });
-  // Video chain per shot: cover-fit to 1080x1920, gentle Ken Burns zoom, constant fps, yuv420p.
+  // Punch-in: ease out to 1.12x in half a second, then a slow creep; odd shots also drift sideways.
+  const zoom = "if(lte(on,15),1+0.12*(1-pow(1-on/15,3)),min(1.12+0.0007*(on-15),1.3))";
   shots.forEach((s, i) => {
-    const frames = Math.max(1, Math.round(s.duration * FPS));
-    const zoomDir = i % 2 === 0 ? "min(zoom+0.0006,1.18)" : "if(eq(on,1),1.18,max(zoom-0.0006,1.0))";
+    const frames = Math.max(1, Math.round(lens[i] * FPS));
+    const x = i % 2 ? "min(iw/2-(iw/zoom/2)+on*0.6,iw-iw/zoom)" : "iw/2-(iw/zoom/2)";
     filters.push(
       `[${i}:v]scale=${OUTPUT_W * 2}:${OUTPUT_H * 2}:force_original_aspect_ratio=increase,crop=${OUTPUT_W * 2}:${OUTPUT_H * 2},` +
-        `zoompan=z='${zoomDir}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${OUTPUT_W}x${OUTPUT_H}:fps=${FPS},` +
-        `trim=duration=${s.duration.toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p[v${i}]`,
+        `zoompan=z='${zoom}':x='${x}':y='ih/2-(ih/zoom/2)':d=${frames}:s=${OUTPUT_W}x${OUTPUT_H}:fps=${FPS},` +
+        // fps= restores a constant frame rate after trim/setpts: ffmpeg 7 (the Linux binary Vercel runs) refuses xfade inputs
+        // whose rate reads 1/0, while the macOS 6.0 build accepted them.
+        `trim=duration=${lens[i].toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p,setsar=1,fps=${FPS}[v${i}]`,
     );
   });
+  let video = "v0";
+  let offset = 0;
+  for (let i = 1; i < shots.length; i++) {
+    offset += shots[i - 1].duration;
+    filters.push(`[${video}][v${i}]xfade=transition=${TRANSITIONS[(i - 1) % TRANSITIONS.length]}:duration=${XFADE_SEC}:offset=${offset.toFixed(3)}[x${i}]`);
+    video = `x${i}`;
+  }
+  const total = shots.reduce((n, s) => n + s.duration, 0).toFixed(3);
+  filters.push(`[${video}]eq=saturation=1.18:contrast=1.06,drawbox=x=0:y=0:w=${OUTPUT_W}:h=${BAR_H}:color=black@0.35:t=fill[graded]`);
+  filters.push(`color=c=${ACCENT}:s=${OUTPUT_W}x${BAR_H}:r=${FPS}:d=${total}[bar]`);
+  filters.push(`[graded][bar]overlay=x='-w+w*t/${total}':y=0:eval=frame[barred]`);
   // Audio chain: narration padded to the shot length, or pure silence.
   let audioIdx = shots.length;
   shots.forEach((s, i) => {
@@ -53,15 +77,14 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
       filters.push(`anullsrc=r=44100:cl=stereo,atrim=duration=${s.duration.toFixed(3)},asetpts=PTS-STARTPTS[a${i}]`);
     }
   });
-  const concatIn = shots.map((_, i) => `[v${i}][a${i}]`).join("");
-  filters.push(`${concatIn}concat=n=${shots.length}:v=1:a=1[vcat][acat]`);
+  filters.push(`${shots.map((_, i) => `[a${i}]`).join("")}concat=n=${shots.length}:v=0:a=1[acat]`);
   // Force HarfBuzz shaping: with libass's "auto" some builds (the macOS ffmpeg-static binary) fall back to simple
   // shaping, which draws a Thai tone mark on top of an upper vowel (ที่ reads ที, เรื่อง reads เรือง).
-  filters.push(`[vcat]ass='${escapeFilterPath(input.assPath)}':fontsdir='${escapeFilterPath(input.fontsDir)}':shaping=complex[vout]`);
+  filters.push(`[barred]ass='${escapeFilterPath(input.assPath)}':fontsdir='${escapeFilterPath(input.fontsDir)}':shaping=complex[vout]`);
   args.push("-filter_complex", filters.join(";"), "-map", "[vout]", "-map", "[acat]");
   args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart");
   args.push("-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-shortest", input.outPath);
-  return { args, summary: `${shots.length} shots, ${audioInputs} narration tracks → ${input.outPath}` };
+  return { args, summary: `${shots.length} shots, ${audioInputs} narration tracks, ${Math.max(0, shots.length - 1)} transitions → ${input.outPath}` };
 }
 
 /** ffmpeg filter args treat `:`, `'` and `\` specially. */

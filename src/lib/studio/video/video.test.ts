@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { assTime, buildAss, escapeAss } from "./ass";
-import { buildFfmpegArgs, escapeFilterPath, runFfmpeg } from "./ffmpeg";
-import { chunkSubtitle, HOOK_LINE_MAX, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, SUBTITLE_MAX_LINES, subtitleLines, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
+import { ACCENT_ASS, assTime, buildAss, CAPTION_Y, emphasize, escapeAss } from "./ass";
+import { buildFfmpegArgs, escapeFilterPath, runFfmpeg, TRANSITIONS, XFADE_SEC } from "./ffmpeg";
+import { CAPTION_LINE_MAX, captionChunks, HOOK_LINE_MAX, layoutShots, mp3DurationSec, resolveShotImages, SHOT_PAD_SEC, SILENT_SHOT_SEC, SUBTITLE_LINE_MAX, SUBTITLE_LINE_TARGET, subtitleLines, subtitleWidth, timeSubtitles, totalDuration, type TimedShot } from "./timeline";
 import type { CreativePlan } from "@/lib/studio/types";
 
 const plan: CreativePlan = {
@@ -56,8 +56,8 @@ describe("layoutShots / durations", () => {
   });
 });
 
-describe("subtitles", () => {
-  // Narration from clips the studio actually produced, where the old chunker dropped spaces and cut words.
+describe("captions (viral template: one line at a time)", () => {
+  // Narration from clips the studio actually produced, where the first chunker dropped spaces and cut words.
   const REAL = [
     "ความรู้สึกไม่ใช่หลักฐาน แต่เป็นจุดเริ่มต้นที่ควรเก็บข้อมูลอย่างมีระบบ",
     "ข้อแรก ตารางเวลาที่เปลี่ยนไป โดยไม่มีเหตุผลใหม่รองรับ",
@@ -68,66 +68,71 @@ describe("subtitles", () => {
     "ใครที่การันตีว่าจะเจอ เท่ากับกำลังบอกว่าเขารู้คำตอบก่อนลงพื้นที่ ซึ่งไม่มีใครรู้ สิ่งที่เราขายคือกระบวนการตรวจสอบ และรายงานตามข้อเท็จจริงที่เห็น ไม่ใช่คำรับประกันผลลัพธ์",
     "ถ้าอยากรู้ว่าเคสของคุณควรเริ่มตรงไหน ปรึกษาเบื้องต้นได้ทาง LINE @detectivepluse",
   ];
-  it.each(REAL)("keeps every word and space of real narration: %s", (voice) => {
-    const cues = chunkSubtitle(voice);
-    // nothing lost or reordered, and every original space is still a space or a line break
-    expect(cues.map((c) => c.replace(/\n/g, " ")).join(" ")).toBe(voice);
+  it.each(REAL)("keeps every word and space of real narration, one short line per cue: %s", (voice) => {
+    const cues = captionChunks(voice);
+    // in order and contiguous: an original space may only disappear where one cue ends and the next begins
+    let pos = 0;
     for (const cue of cues) {
-      const lines = cue.split("\n");
-      expect(lines.length).toBeLessThanOrEqual(SUBTITLE_MAX_LINES);
-      for (const line of lines) {
-        expect(subtitleWidth(line)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
-        expect(line).not.toMatch(/^[ๆ,.!?;:)"]/);
-      }
+      if (voice[pos] === " ") pos += 1;
+      expect(voice.slice(pos, pos + cue.length)).toBe(cue);
+      pos += cue.length;
+      expect(cue).not.toContain("\n");
+      expect(subtitleWidth(cue)).toBeLessThanOrEqual(CAPTION_LINE_MAX);
+      expect(cue).not.toMatch(/^[ๆ,.!?;:)"]/);
     }
+    expect(pos).toBe(voice.length);
     for (const whole of ["หลักฐาน", "แต่ละ", "พื้นที่", "จริง ๆ", "LINE @detectivepluse", '"ใช่หรือไม่ใช่"']) {
-      if (voice.includes(whole)) expect(cues.some((c) => c.split("\n").some((l) => l.includes(whole)))).toBe(true);
+      if (voice.includes(whole)) expect(cues.some((c) => c.includes(whole))).toBe(true);
     }
   });
-  it("puts a short lead-in and its phrase in one two-line cue", () => {
-    expect(chunkSubtitle(REAL[2])).toEqual(["ข้อสาม\nเรื่องเล่าที่รายละเอียดไม่เท่ากันในแต่ละครั้ง", "นักสืบจะจดทุกเวอร์ชันแล้วเทียบกัน"]);
+  it("splits a long phrase into balanced parts, never leaving a one-word stub", () => {
+    // The hook and captions of a real clip: filling each line to the brim left "…อย่าง" / "เดียว" and "…เรื่อง" / "คน".
+    const hook = "คนส่วนใหญ่รู้จักนักสืบจากเคสนอกใจอย่างเดียว ทั้งที่งานอีกครึ่งหนึ่งเป็นเรื่องเงินกับเรื่องคน";
+    for (const lines of [subtitleLines(hook, { target: 14, max: HOOK_LINE_MAX }), captionChunks(hook)]) {
+      expect(lines.join("").replace(/\s+/g, "")).toBe(hook.replace(/\s+/g, ""));
+      for (const l of lines) expect(subtitleWidth(l)).toBeGreaterThanOrEqual(8);
+      expect(lines).not.toContain("เดียว");
+      expect(lines).not.toContain("คน");
+    }
+    // a negation starts the next part instead of dangling at the end of this one
+    expect(captionChunks("เรื่องเล่าที่รายละเอียดไม่เท่ากันในแต่ละครั้ง")).toEqual(["เรื่องเล่าที่รายละเอียด", "ไม่เท่ากันในแต่ละครั้ง"]);
+  });
+  it("keeps the 30-grapheme caption ceiling and finds clause openers ahead of the balanced cut", () => {
+    // With a lower ceiling this narration became "คือกระบวนการตรวจ" / "สอบ".
+    expect(captionChunks(REAL[6])).toEqual(["ใครที่การันตีว่าจะเจอ", "เท่ากับกำลังบอกว่าเขารู้คำตอบก่อนลงพื้นที่", "ซึ่งไม่มีใครรู้", "สิ่งที่เราขายคือกระบวนการตรวจสอบ", "และรายงานตามข้อเท็จจริงที่เห็น", "ไม่ใช่คำรับประกันผลลัพธ์"]);
+    // The same words without spaces go through splitPhrase, whose look-ahead lands the cuts on และ and ไม่.
+    expect(captionChunks("สิ่งที่เราขายคือกระบวนการตรวจสอบและรายงานตามข้อเท็จจริงที่เห็นไม่ใช่คำรับประกันผลลัพธ์")).toEqual(["สิ่งที่เราขายคือกระบวนการตรวจสอบ", "และรายงานตามข้อเท็จจริงที่เห็น", "ไม่ใช่คำรับประกันผลลัพธ์"]);
   });
   it("splits a phrase wider than a line just before a clause opener, adding no spaces", () => {
     const phrase = "เราตรวจสอบข้อมูลทุกอย่างอย่างละเอียดและรายงานผลตามข้อเท็จจริงที่พบจริงเท่านั้นเสมอ";
     expect(subtitleWidth(phrase)).toBeGreaterThan(SUBTITLE_LINE_MAX);
-    const lines = chunkSubtitle(phrase).flatMap((c) => c.split("\n"));
+    const lines = subtitleLines(phrase);
     expect(lines.join("")).toBe(phrase);
     expect(lines.some((l) => l.startsWith("และ"))).toBe(true);
     for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
   });
   it("cuts only between graphemes when a single token is wider than a line, and ignores blank input", () => {
     const token = "ก".repeat(90);
-    const lines = chunkSubtitle(token).flatMap((c) => c.split("\n"));
+    const lines = subtitleLines(token);
     expect(lines.join("")).toBe(token);
     for (const l of lines) expect(subtitleWidth(l)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
-    expect(chunkSubtitle("   ")).toEqual([]);
+    expect(captionChunks("   ")).toEqual([]);
   });
   it("keeps ๆ with its word even when the line before it is already full", () => {
     const lead = "ตรวจสอบข้อมูลอย่างละเอียดจริง";
     // precondition: joining " ๆ" onto this line would overflow the target, so only space protection can keep ๆ attached
     expect(subtitleWidth(`${lead} ๆ`)).toBeGreaterThan(SUBTITLE_LINE_TARGET);
     const text = `${lead} ๆ ก่อนสรุปผลทุกครั้ง`;
-    const lines = chunkSubtitle(text).flatMap((c) => c.split("\n"));
+    const lines = subtitleLines(text);
     for (const l of lines) expect(l).not.toMatch(/^ๆ/);
     expect(lines.some((l) => l.endsWith("จริง ๆ"))).toBe(true);
     expect(lines.join(" ")).toBe(text);
     expect(lines.join("")).not.toContain("\u00A0");
   });
-  it("keeps a call to action with its channel instead of flashing the handle alone", () => {
-    expect(chunkSubtitle(REAL[7])).toEqual(["ถ้าอยากรู้ว่าเคสของคุณควรเริ่มตรงไหน", "ปรึกษาเบื้องต้นได้ทาง\nLINE @detectivepluse"]);
-  });
-  it("starts a cue at a clause opener instead of stranding it at the bottom of the previous cue", () => {
-    expect(chunkSubtitle("การไม่เจออะไร ก็เป็นคำตอบ และสำหรับหลายคน มันคือคำตอบที่ทำให้หยุดคิดวนได้จริง")).toEqual([
-      "การไม่เจออะไร ก็เป็นคำตอบ",
-      "และสำหรับหลายคน\nมันคือคำตอบที่ทำให้หยุดคิดวนได้จริง",
-    ]);
-  });
-  it("never leaves a short lead-in alone on screen", () => {
-    expect(chunkSubtitle("ข้อสอง โทรศัพท์ที่ต้องอยู่ใกล้มือมากกว่าเดิม และหันหน้าจอลงเสมอ")[0]).toBe("ข้อสอง\nโทรศัพท์ที่ต้องอยู่ใกล้มือมากกว่าเดิม");
-  });
-  it("times cues proportionally inside the narration window", () => {
+  it("times one cue per caption line inside the narration window", () => {
     const shot: TimedShot = { index: 0, voice: "สั้น สั้น สั้น, ยาวกว่าเดิมมากหน่อยนะครับผม", visual: "", imageAssetId: "c", voiceSec: 6, audioPath: "/a.mp3", imagePath: "/c.png", start: 10, duration: 6.35 };
     const cues = timeSubtitles(shot);
+    expect(cues.map((c) => c.text)).toEqual(captionChunks(shot.voice));
     expect(cues[0].start).toBe(10);
     expect(cues[cues.length - 1].end).toBeCloseTo(16, 2);
     for (let i = 1; i < cues.length; i++) expect(cues[i].start).toBeGreaterThanOrEqual(cues[i - 1].end - 0.001);
@@ -135,33 +140,59 @@ describe("subtitles", () => {
   });
 });
 
-describe("ASS builder", () => {
+describe("ASS builder (viral template)", () => {
+  const on = `{\\c${ACCENT_ASS}}`;
+  const off = "{\\c&HFFFFFF&}";
   it("formats times and escapes braces/backslashes", () => {
     expect(assTime(0)).toBe("0:00:00.00");
-    expect(assTime(65.5)).toBe("0:01:05.50");
+    expect(assTime(3725.456)).toBe("1:02:05.46");
     expect(escapeAss("a{b}\\c\nd")).toBe("ab＼c\\Nd");
     expect(escapeAss("x\ry\u0000z")).toBe("x\\Nyz"); // bare CR and NUL cannot end the Dialogue line
   });
-  it("emits a hook overlay for the first 2.5 s and one dialogue line per cue", () => {
+  it("emits a brand tag, a slamming hook card and one popping caption line per cue", () => {
     const shots: TimedShot[] = [
-      { index: 0, voice: "ประโยคแรกที่ยาวพอจะแยกเป็นสองบรรทัด, ประโยคสองซึ่งยาวเช่นกัน", visual: "", imageAssetId: "c", voiceSec: 4, audioPath: "/a.mp3", imagePath: "/c.png", start: 0, duration: 4.35 },
+      { index: 0, voice: "ความรู้สึกไม่ใช่หลักฐาน แต่เป็นจุดเริ่มต้นที่ควรเก็บข้อมูลอย่างมีระบบ", visual: "", imageAssetId: "c", voiceSec: 4, audioPath: "/a.mp3", imagePath: "/c.png", start: 0, duration: 4.35 },
       { index: 1, voice: "", visual: "", imageAssetId: "c", voiceSec: 0, audioPath: null, imagePath: "/c.png", start: 4.35, duration: 3 },
     ];
     const ass = buildAss({ shots, hook: "ความรู้สึกไม่ใช่หลักฐาน" });
-    expect(ass).toContain("Style: Sub,Sarabun");
-    expect(ass).toContain("Dialogue: 1,0:00:00.00,0:00:02.50,Hook,,0,0,0,,ความรู้สึกไม่ใช่หลักฐาน");
     expect(ass).toContain("WrapStyle: 2");
-    // one box per cue (BorderStyle 4), not per glyph: per-glyph boxes notch under stacked Thai tone marks
-    expect(ass).toMatch(/^Style: Sub,(?:[^,]*,){14}4,/m);
-    expect(ass).toMatch(/^Style: Hook,(?:[^,]*,){14}4,/m);
-    expect(ass.match(/Dialogue: 0,/g)?.length).toBe(timeSubtitles(shots[0]).length + timeSubtitles(shots[1]).length);
-    expect(buildAss({ shots, hook: null })).not.toContain("Hook,,");
+    const fields = (style: string) => ass.match(new RegExp(`^Style: ${style},(.*)$`, "m"))![1].split(",");
+    for (const style of ["Cap", "Hook", "Tag"]) expect(fields(style)[0]).toBe("Sarabun");
+    // letter spacing makes libass drop Thai tone marks: every style that renders Thai keeps Spacing 0
+    expect(fields("Cap")[12]).toBe("0");
+    expect(fields("Hook")[12]).toBe("0");
+    // the hook card is one box per event with a transparent outline (no blob above stacked marks)
+    expect(fields("Hook")[14]).toBe("4");
+    expect(fields("Hook")[4]).toBe("&HFF000000");
+    expect(ass).toContain("Dialogue: 0,0:00:00.00,0:00:07.35,Tag,,0,0,0,,{\\an8\\pos(540,34)}DETECTIVE PULSE");
+    const hookLine = ass.split("\n").find((l) => l.includes(",Hook,,"))!;
+    expect(hookLine).toMatch(/^Dialogue: 2,0:00:00\.00,0:00:02\.50,Hook,/);
+    expect(hookLine).toContain("\\t(0,170,\\fscx100\\fscy100\\frz-2)}ความรู้สึกไม่ใช่หลักฐาน");
+    const caps = ass.split("\n").filter((l) => l.includes(",Cap,,"));
+    expect(caps).toHaveLength(timeSubtitles(shots[0]).length + timeSubtitles(shots[1]).length);
+    expect(caps.length).toBeGreaterThan(1);
+    for (const c of caps) {
+      expect(c).toContain(`\\pos(540,${CAPTION_Y})`);
+      expect(c.split(",Cap,,0,0,0,,")[1]).not.toContain("\\N"); // one line at a time
+    }
+    expect(caps[0]).toContain(`${on}ไม่ใช่${off}${on}หลักฐาน${off}`);
+    expect(buildAss({ shots, hook: null })).not.toContain(",Hook,,");
+  });
+  it("highlights key words and numbers without splitting a Thai syllable or re-matching its own tags", () => {
+    expect(emphasize("3 สิ่งที่นักสืบดู")).toBe(`${on}3${off} สิ่งที่${on}นักสืบ${off}ดู`);
+    expect(emphasize("นี่คือความจริง")).toBe(`นี่คือ${on}ความจริง${off}`); // ความ|จริง joined: the longest key word wins over จริง
+    expect(emphasize("ไม่ใช่หลักฐาน")).toBe(`${on}ไม่ใช่${off}${on}หลักฐาน${off}`); // หลัก|ฐาน joined back
+    expect(emphasize("ค่าบริการ 1,500 บาท")).toBe(`ค่าบริการ ${on}1,500${off} บาท`);
+    // a key word inside another word is never coloured, so no colour change can split a syllable
+    for (const word of ["โทรกลับมา", "สลับ", "ตลับ", "จริงจัง", "แลับ", "จริง่"]) expect(emphasize(word)).toBe(word);
+    // text that tries to smuggle an override tag is escaped first, so no user tag survives
+    expect(emphasize(escapeAss("{\\c&H0000FF&}ปลอม"))).not.toContain("{\\c&H0000FF&}");
   });
   it("wraps a long hook itself, since libass auto-wrap is off", () => {
     const shots: TimedShot[] = [{ index: 0, voice: "ข้อความ", visual: "", imageAssetId: "c", voiceSec: 3, audioPath: null, imagePath: "/c.png", start: 0, duration: 3.35 }];
+    const hookParts = (hook: string) => buildAss({ shots, hook }).split("\n").find((l) => l.includes(",Hook,,"))!.split(",Hook,,0,0,0,,")[1].replace(/^\{[^}]*\}/, "").split("\\N");
     const hook = "สิ่งที่นักสืบไม่เคยบอกลูกค้าตรง ๆ คือหลักฐานที่ดีที่สุดมักมาจากเรื่องเล็ก ๆ ที่ทุกคนมองข้าม";
-    const line = buildAss({ shots, hook }).split("\n").find((l) => l.includes(",Hook,,"))!;
-    const parts = line.split(",Hook,,0,0,0,,")[1].split("\\N");
+    const parts = hookParts(hook);
     expect(parts.length).toBeGreaterThan(1);
     for (const p of parts) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
     expect(parts.join("").replace(/\s+/g, "")).toBe(hook.replace(/\s+/g, ""));
@@ -169,10 +200,9 @@ describe("ASS builder", () => {
     const phrase = "ความรู้สึกไม่ใช่หลักฐานแต่เป็นจุดเริ่มต้นที่ควรจดไว้";
     expect(subtitleWidth(phrase)).toBeGreaterThan(HOOK_LINE_MAX);
     expect(subtitleWidth(phrase)).toBeLessThanOrEqual(SUBTITLE_LINE_MAX);
-    const hookLine = buildAss({ shots, hook: phrase }).split("\n").find((l) => l.includes(",Hook,,"))!;
-    const hookParts = hookLine.split(",Hook,,0,0,0,,")[1].split("\\N");
-    expect(hookParts.length).toBeGreaterThan(1);
-    for (const p of hookParts) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
+    const split = hookParts(phrase);
+    expect(split.length).toBeGreaterThan(1);
+    for (const p of split) expect(subtitleWidth(p)).toBeLessThanOrEqual(HOOK_LINE_MAX);
   });
   it("joins phrases up to the target it is given", () => {
     expect(subtitleLines("ข้อหนึ่ง ข้อสอง ข้อสาม")).toHaveLength(1);
@@ -180,24 +210,41 @@ describe("ASS builder", () => {
   });
 });
 
-describe("ffmpeg args", () => {
-  it("builds one looping image input per shot, narration inputs only where present, concat + subtitles, x264/aac", () => {
-    const shots: TimedShot[] = [
-      { index: 0, voice: "a", visual: "", imageAssetId: "c", voiceSec: 4, audioPath: "/t/vo-0.mp3", imagePath: "/t/img-c.png", start: 0, duration: 4.35 },
-      { index: 1, voice: "", visual: "", imageAssetId: "c", voiceSec: 0, audioPath: null, imagePath: "/t/img-c.png", start: 4.35, duration: 3 },
-    ];
+describe("ffmpeg args (viral template)", () => {
+  const shot = (i: number, start: number, duration: number, audioPath: string | null, imagePath: string): TimedShot => ({ index: i, voice: audioPath ? "x" : "", visual: "", imageAssetId: "c", voiceSec: audioPath ? duration - 0.35 : 0, audioPath, imagePath, start, duration });
+  it("pads shots, aligns rotating transitions with the narration, grades, adds the progress bar and captions", () => {
+    const shots = [shot(0, 0, 4.35, "/t/vo-0.mp3", "/t/img-a.png"), shot(1, 4.35, 3, null, "/t/img-b.png"), shot(2, 7.35, 2.5, "/t/vo-2.mp3", "/t/img-a.png")];
     const { args, summary } = buildFfmpegArgs({ shots, assPath: "/t/subs.ass", fontsDir: "/f/fonts", outPath: "/t/out.mp4" });
-    expect(args.filter((a) => a === "-loop")).toHaveLength(2);
-    expect(args.filter((a) => a === "-i")).toHaveLength(3); // 2 images + 1 narration
+    expect(args.filter((a) => a === "-loop")).toHaveLength(3);
+    expect(args.filter((a) => a === "-i")).toHaveLength(5); // 3 images + 2 narration tracks
+    // every shot but the last runs one transition longer, so the overlap never shifts the audio
+    expect(args.flatMap((a, i) => (a === "-t" ? [args[i + 1]] : []))).toEqual([(4.35 + XFADE_SEC).toFixed(3), (3 + XFADE_SEC).toFixed(3), "2.500"]);
     const fc = args[args.indexOf("-filter_complex") + 1];
     expect(fc).toContain("zoompan=");
-    expect(fc).toContain("[2:a]aresample=44100,apad=whole_dur=4.350");
+    // each padded input is also trimmed to its padded length, or the picture would run short of the narration
+    for (const len of ["4.600", "3.250", "2.500"]) expect(fc).toContain(`trim=duration=${len},`);
+    // xfade in ffmpeg 7 (Linux/Vercel) needs a constant frame rate on every input
+    for (let i = 0; i < 3; i++) expect(fc).toContain(`setsar=1,fps=30[v${i}]`);
+    expect(fc).toContain(`[v0][v1]xfade=transition=${TRANSITIONS[0]}:duration=${XFADE_SEC}:offset=4.350[x1]`);
+    expect(fc).toContain(`[x1][v2]xfade=transition=${TRANSITIONS[1]}:duration=${XFADE_SEC}:offset=7.350[x2]`);
+    expect(fc).toContain("[x2]eq=saturation=1.18:contrast=1.06");
+    expect(fc).toContain("color=c=0xFFD400:s=1080x14:r=30:d=9.850[bar]");
+    expect(fc).toContain("[graded][bar]overlay=x='-w+w*t/9.850':y=0:eval=frame[barred]");
+    expect(fc).toContain("[3:a]aresample=44100,apad=whole_dur=4.350");
     expect(fc).toContain("anullsrc=r=44100:cl=stereo,atrim=duration=3.000");
-    expect(fc).toContain("concat=n=2:v=1:a=1[vcat][acat]");
-    expect(fc).toContain("ass='/t/subs.ass':fontsdir='/f/fonts':shaping=complex[vout]"); // tone marks need HarfBuzz
+    expect(fc).toContain("[4:a]aresample=44100,apad=whole_dur=2.500");
+    expect(fc).toContain("[a0][a1][a2]concat=n=3:v=0:a=1[acat]");
+    expect(fc).toContain("[barred]ass='/t/subs.ass':fontsdir='/f/fonts':shaping=complex[vout]"); // tone marks need HarfBuzz
     expect(args).toEqual(expect.arrayContaining(["libx264", "aac", "/t/out.mp4", "-nostdin"]));
     expect(args.indexOf("-y")).toBeLessThan(args.indexOf("-i"));
-    expect(summary).toContain("2 shots, 1 narration");
+    expect(summary).toContain("3 shots, 2 narration tracks, 2 transitions");
+  });
+  it("renders a single shot without any transition", () => {
+    const { args } = buildFfmpegArgs({ shots: [shot(0, 0, 2.35, "/t/vo.mp3", "/t/i.png")], assPath: "/t/s.ass", fontsDir: "/f", outPath: "/t/o.mp4" });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).not.toContain("xfade");
+    expect(fc).toContain("[v0]eq=saturation=1.18");
+    expect(args[args.indexOf("-t") + 1]).toBe("2.350");
   });
   it("escapes filter-sensitive characters in paths", () => {
     expect(escapeFilterPath("C:/x'y")).toBe("C\\:/x\\'y");
