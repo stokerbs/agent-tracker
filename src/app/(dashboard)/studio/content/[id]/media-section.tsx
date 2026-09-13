@@ -28,6 +28,8 @@ import { ASPECT_LABEL, aspectClassFor, assetFamily, formatBytes, formatMmSs, for
 export interface MediaAvailabilityProps {
   image: { available: boolean; reason?: string };
   tts: { available: boolean; reason?: string };
+  /** Veo, for the motion hook in the video section. */
+  video: { available: boolean; reason?: string };
 }
 
 export interface MediaSectionProps {

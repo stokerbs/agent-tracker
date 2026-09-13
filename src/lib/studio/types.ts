@@ -182,6 +182,8 @@ export interface MediaPrefs {
   /** ElevenLabs voice id; empty = provider default voice. */
   tts_voice_id: string;
   tts_model: string;
+  /** Veo model id for the motion hook; empty = env/default (lite). */
+  video_model: string;
 }
 
 /** AI-estimated idea scores. 1–5. Labelled "AI estimate" in UI — not validated predictions. */

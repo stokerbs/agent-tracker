@@ -91,6 +91,21 @@ export function imageReadiness(assets: AssetLite[]): { hasSceneImage: boolean; h
 }
 
 /** Rendered mp4 outputs, in the order given (the query already sorts newest first). */
+/**
+ * The motion hook asset (an 8 s generated clip that replaces the first shot's still). Kept as a literal instead of
+ * importing lib/studio/media/motion, which is server-only. Assets arrive newest first, so the first match wins.
+ */
+export const MOTION_HOOK_TARGET = "hook_motion";
+
+export function motionHookAsset<T extends AssetLite>(assets: T[]): T | null {
+  return (
+    assets.find((a) => {
+      const target = (a.meta as { target?: { kind?: unknown } } | null)?.target?.kind;
+      return a.kind === "broll" && target === MOTION_HOOK_TARGET;
+    }) ?? null
+  );
+}
+
 export function videoAssets<T extends AssetLite>(assets: T[]): T[] {
   return assets.filter((a) => a.kind === "video" || (a.mime?.startsWith("video/") ?? false));
 }

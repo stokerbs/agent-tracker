@@ -296,6 +296,24 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 
 `scripts/studio-approve-knowledge.ts [--dry-run] [--user <uuid>] [--limit N] [--category a,b]` approves canonical rows (tag `consolidated`) for AI content use. It only touches rows that are still active, unapproved, not `restricted`, carry neither review flag (`ต้องตรวจ privacy`, `ต้องยืนยัน`), and pass a **fresh** deterministic scrub with no high/medium finding — anything else is counted and left for the owner. First run 2026-09-10: 919 canonical rows unapproved → 388 approved (services 114, investigator_knowledge 114, cases 78, gps 54, osint 28), 531 skipped as flagged, 0 caught by the fresh scan. Case lessons stay `confidential`; retrieval excludes only `restricted`, so they are usable — un-approve individually in the UI if that is not wanted.
 
+## 17. Motion hook — an 8 s generated clip as the first shot (2026-09-14)
+
+**Why.** The owner asked what a moving clip would cost. Full motion is ฿115–490 per clip depending on the Veo tier, against ฿30–50 for the stills template; a motion *hook* (the first 8 s, where viewers decide to stay) is ฿22 on Veo 3.1 Lite 1080p, about ฿60–70 per finished clip. Measured 2026-09-14 from the pricing page: Lite $0.08/s at 1080p, Fast $0.12/s, standard $0.40/s.
+
+**Two phases, because generation outlasts a function.** Veo takes minutes and Vercel allows 300 s, so nothing waits:
+1. `generateMotionHook` (server action, admin + published lock + the media rate limit) builds the prompt server-side from the plan's first shot, scans it for identifiers, calls `predictLongRunning`, and stores a `pending` asset (`kind broll`, `meta.target.kind = "hook_motion"`, `meta.veo.operation`).
+2. Cron `/api/cron/studio-motion-hook` every 5 min (`finishPendingHookMotions`) polls each pending asset, downloads the sample, uploads it to `studio-media` and flips the asset to `ready`. A network blip leaves the asset pending and retries next sweep; past `MOTION_TIMEOUT_MS` (20 min) or on a safety refusal it is marked `failed` with the reason.
+
+**Spend guards.** Admin + the published-content lock + the shared media rate limit (10 per 5 min, counted across images, TTS and motion hooks). The asset row is claimed *before* the provider is called, and migration 0123 adds a partial unique index (one `pending` hook per master), so two concurrent clicks cannot both pay; a failed start frees the slot and the quota row is written the moment the spend happens (`purpose video_hook`; the cron's completion row is `video_hook_finish` so nothing is charged twice).
+
+**Render.** `render.ts` looks for a ready motion hook (unless `job.params.motion_hook === false`), downloads it and sets `videoPath` on the first shot; `buildFfmpegArgs` then feeds it as a real clip — no `-loop`, no zoompan, `tpad` holds the last frame if the narration outlasts the 8 s, and the clip's own audio is never mapped. Nothing here can block a render: a hook that is still generating or failed simply leaves the still in place, and the asset records `meta.motion_hook`.
+
+**Prompt safety.** `MOTION_SAFETY_NEGATIVES` bans speech, music and any on-screen text (we burn our own subtitles), plus faces, plates, documents, logos and banknotes — Thai notes carry the King's portrait, which this brand does not put in an advert.
+
+**Model.** `media_prefs.video_model`, default `veo-3.1-lite-generate-preview`. Autopilot does not use motion hooks yet; that is a separate change.
+
+---
+
 ## 16. Autopilot — Phase 4: scheduled end-to-end production + posting (migration 0121)
 
 **Goal.** Owner decision 2026-09-10: the studio should produce and post by itself on a schedule, using the **template video** (stills + Thai voice-over), not Veo. One autopilot run = one finished post.

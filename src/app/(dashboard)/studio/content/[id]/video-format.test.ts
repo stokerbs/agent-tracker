@@ -3,6 +3,7 @@ import type { CreativePlan } from "@/lib/studio/types";
 import { MAX_SHOTS } from "@/lib/studio/video/timeline";
 import {
   buildStoryboard,
+  motionHookAsset,
   clampProgress,
   formatElapsed,
   imageReadiness,
@@ -25,6 +26,21 @@ const plan = (voices: (string | null)[]): CreativePlan => ({
   shots: voices.map((v, i) => ({ start_sec: i * 5, end_sec: i * 5 + 5, voice: v ?? "", visual: `ฉาก ${i + 1}` })),
   broll: [],
   text_overlays: [],
+});
+
+describe("motionHookAsset", () => {
+  const a = (over: Partial<{ id: string; kind: string; status: string; mime: string; meta: unknown }> = {}) => ({ id: "x", kind: "broll", status: "ready", mime: "video/mp4", meta: { target: { kind: "hook_motion" } }, ...over });
+  it("takes the newest motion hook and ignores every other asset", () => {
+    expect(motionHookAsset([])).toBeNull();
+    expect(motionHookAsset([a({ id: "new" }), a({ id: "old" })])?.id).toBe("new"); // assets arrive newest first
+    expect(motionHookAsset([a({ id: "img", kind: "image", meta: { target: { kind: "presenter" } } })])).toBeNull();
+    expect(motionHookAsset([a({ id: "scene", meta: { target: { kind: "scene", index: 0 } } })])).toBeNull();
+    expect(motionHookAsset([a({ id: "nometa", meta: null })])).toBeNull();
+  });
+  it("reports a queued or failed hook too, so the card can show its state", () => {
+    expect(motionHookAsset([a({ status: "pending" })])?.status).toBe("pending");
+    expect(motionHookAsset([a({ status: "failed" })])?.status).toBe("failed");
+  });
 });
 
 describe("video-format helpers", () => {

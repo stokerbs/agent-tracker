@@ -96,6 +96,8 @@ export interface TimedShot extends ShotSource {
   voiceSec: number;
   audioPath: string | null;
   imagePath: string;
+  /** Set on the first shot when a ready motion hook replaces its still (docs §17). */
+  videoPath?: string | null;
 }
 
 /** Lay shots out back-to-back from their narration lengths. */

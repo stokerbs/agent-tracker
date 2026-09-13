@@ -61,7 +61,11 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
   const filters: string[] = [];
   let audioInputs = 0;
   const lens = shots.map((s, i) => s.duration + (i < shots.length - 1 ? fadeSec : 0));
-  shots.forEach((s, i) => args.push("-loop", "1", "-framerate", String(FPS), "-t", lens[i].toFixed(3), "-i", s.imagePath));
+  // A motion hook is a real clip: no -loop, and its own audio track is simply never mapped.
+  shots.forEach((s, i) => {
+    if (s.videoPath) args.push("-i", s.videoPath);
+    else args.push("-loop", "1", "-framerate", String(FPS), "-t", lens[i].toFixed(3), "-i", s.imagePath);
+  });
   shots.forEach((s) => {
     if (s.audioPath) {
       args.push("-i", s.audioPath);
@@ -72,6 +76,14 @@ export function buildFfmpegArgs(input: { shots: TimedShot[]; assPath: string; fo
   const punchIn = "if(lte(on,15),1+0.12*(1-pow(1-on/15,3)),min(1.12+0.0007*(on-15),1.3))";
   shots.forEach((s, i) => {
     const frames = Math.max(1, Math.round(lens[i] * FPS));
+    if (s.videoPath) {
+      // Cover-fit the generated clip; hold its last frame if the narration outlasts it (tpad), then cut to length.
+      filters.push(
+        `[${i}:v]scale=${OUTPUT_W}:${OUTPUT_H}:force_original_aspect_ratio=increase,crop=${OUTPUT_W}:${OUTPUT_H},` +
+          `tpad=stop_mode=clone:stop_duration=${lens[i].toFixed(3)},trim=duration=${lens[i].toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p,setsar=1,fps=${FPS}[v${i}]`,
+      );
+      return;
+    }
     const presenter = isPresenter(s);
     const zoom = presenter ? PRESENTER_ZOOM : punchIn;
     const x = i % 2 && !presenter ? "min(iw/2-(iw/zoom/2)+on*0.6,iw-iw/zoom)" : "iw/2-(iw/zoom/2)";

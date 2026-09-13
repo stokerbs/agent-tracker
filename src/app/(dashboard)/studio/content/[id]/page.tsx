@@ -31,6 +31,7 @@ export default async function ContentEditorPage({ params }: { params: Promise<{ 
   const mediaAvailability = {
     image: { available: media.image.available, reason: media.image.reason },
     tts: { available: media.tts.available, reason: media.tts.reason },
+    video: { available: media.video.available, reason: media.video.reason },
   };
 
   // Same rule for the publish provider: a boolean + reason cross the boundary, the Ayrshare key stays on the server.

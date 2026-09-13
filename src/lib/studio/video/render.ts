@@ -8,12 +8,14 @@ import * as Sentry from "@sentry/nextjs";
 import { BUCKETS } from "@/lib/constants";
 import { createServiceClient } from "@/lib/supabase/server";
 import { recordGeneration } from "@/lib/studio/ai/run";
+import { findHookMotion } from "@/lib/studio/media/motion";
 import { getTtsProvider, MediaNotConfiguredError, type TtsProvider } from "@/lib/studio/media/provider";
 import { scrubText } from "@/lib/studio/privacy/scrub";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { CreativeAsset, CreativePlan } from "@/lib/studio/types";
 import { buildAss } from "./ass";
 import { buildFfmpegArgs, runFfmpeg } from "./ffmpeg";
+import { attachMotionHook } from "./hook-clip";
 import { layoutShots, mp3DurationSec, OUTPUT_H, OUTPUT_W, parseVideoFormat, resolveShotImages, totalDuration, type ShotSource } from "./timeline";
 
 /**
@@ -143,12 +145,25 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
     if ("error" in laid) return await fail(laid.error);
     const durationSec = totalDuration(laid);
 
+    // Motion hook: a ready generated clip stands in for the first shot's still. Never blocks a render —
+    // a clip that is still generating, missing or unreadable just leaves the still in place (see hook-clip.ts).
+    const motionHook = await attachMotionHook(laid, job.params, {
+      find: () => findHookMotion(master.id),
+      download: (asset) => downloadAsset(svc, asset),
+      write: async (bytes) => {
+        const p = path.join(tmp!, "hook.mp4");
+        await writeFile(p, bytes);
+        return p;
+      },
+      onSkip: (reason) => console.warn(`[studio:video] job=${jobId} motion hook skipped — ${reason}`),
+    });
+
     await step(60, "กำลังตัดต่อวิดีโอ");
     const assPath = path.join(tmp, "subs.ass");
     await writeFile(assPath, buildAss({ shots: laid, hook: master.hook, format }), "utf8");
     const outPath = path.join(tmp, "out.mp4");
     const plan2 = buildFfmpegArgs({ shots: laid, assPath, fontsDir: FONTS_DIR, outPath, format });
-    console.info(`[studio:video] job=${jobId} format=${format} ffmpeg ${plan2.summary} (${durationSec}s, tts_calls=${ttsCalls})`);
+    console.info(`[studio:video] job=${jobId} format=${format} motion_hook=${motionHook} ffmpeg ${plan2.summary} (${durationSec}s, tts_calls=${ttsCalls})`);
     const run = await runFfmpeg(plan2.args, { timeoutMs: FFMPEG_TIMEOUT_MS });
 
     await step(88, "กำลังอัปโหลดวิดีโอ");
@@ -168,7 +183,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
         prompt: null,
         provider: "ffmpeg",
         model: "template-v2",
-        meta: { aspect: "9:16", format, style: format === "storyteller" ? "storyteller" : "viral", shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
+        meta: { aspect: "9:16", format, style: format === "storyteller" ? "storyteller" : "viral", motion_hook: motionHook, shots: laid.length, tts_calls: ttsCalls, render_ms: run.durationMs, job_id: jobId } as never,
         created_by: opts.userId,
       })
       .select("*")
@@ -186,7 +201,7 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
       purpose: "video_render",
       provider: "ffmpeg",
       model: "template-v2",
-      input_refs: { master_id: master.id, job_id: jobId, format, shots: laid.length, tts_calls: ttsCalls },
+      input_refs: { master_id: master.id, job_id: jobId, format, motion_hook: motionHook, shots: laid.length, tts_calls: ttsCalls },
       output: { asset_id: row.id, duration_sec: durationSec, bytes: mp4.byteLength, render_ms: run.durationMs },
       input_tokens: null,
       output_tokens: null,

@@ -304,6 +304,28 @@ describe("ffmpeg args (viral template)", () => {
     expect(fc).toContain("[v0]eq=saturation=1.18");
     expect(args[args.indexOf("-t") + 1]).toBe("2.350");
   });
+  it("feeds a motion hook in as a real clip: no still loop, held on its last frame, no zoompan", () => {
+    const shots: TimedShot[] = [
+      { index: 0, voice: "a", visual: "", imageAssetId: "c", voiceSec: 6, audioPath: "/t/vo-0.mp3", imagePath: "/t/img-c.png", videoPath: "/t/hook.mp4", start: 0, duration: 6.35 },
+      { index: 1, voice: "b", visual: "", imageAssetId: "c", voiceSec: 4, audioPath: "/t/vo-1.mp3", imagePath: "/t/img-c.png", start: 6.35, duration: 4.35 },
+    ];
+    const { args } = buildFfmpegArgs({ shots, assPath: "/t/subs.ass", fontsDir: "/f/fonts", outPath: "/t/out.mp4" });
+    // one -loop for the still shot only, and the clip is an input in its own right
+    expect(args.filter((a) => a === "-loop")).toHaveLength(1);
+    expect(args[args.indexOf("/t/hook.mp4") - 1]).toBe("-i");
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    const hookChain = fc.split(";").find((c) => c.startsWith("[0:v]"))!;
+    expect(hookChain).toContain("tpad=stop_mode=clone");
+    expect(hookChain).not.toContain("zoompan");
+    expect(hookChain).toContain("fps=30[v0]");
+    // the still shot keeps the Ken Burns move
+    expect(fc.split(";").find((c) => c.startsWith("[1:v]"))).toContain("zoompan=");
+    // the clip carries Veo's own audio track: it must never reach the output, the narration does
+    expect(fc).not.toContain("[0:a]");
+    expect(args.filter((x) => x === "-map")).toHaveLength(2);
+    expect(args[args.lastIndexOf("-map") + 1]).toMatch(/\[a(cat|out)\]/);
+  });
+
   it("escapes filter-sensitive characters in paths", () => {
     expect(escapeFilterPath("C:/x'y")).toBe("C\\:/x\\'y");
   });
