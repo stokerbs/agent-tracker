@@ -61,6 +61,8 @@ export interface VideoSectionProps {
   /** Newest first (from the page query). */
   renderJobs: RenderJob[];
   ttsAvailability: VideoAvailabilityProps;
+  /** Veo status for the motion hook — a boolean + Thai reason, never the key. */
+  videoAvailability: VideoAvailabilityProps;
   editable: boolean;
 }
 
@@ -70,7 +72,7 @@ const VOICE_PREVIEW_CHARS = 60;
 
 type RenderRouteResponse = { ok: boolean; assetId?: string; durationSec?: number; error?: string };
 
-export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJobs, ttsAvailability, editable }: VideoSectionProps) {
+export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJobs, ttsAvailability, videoAvailability, editable }: VideoSectionProps) {
   const router = useRouter();
   const [pending, start] = useSafeTransition();
   const [presenterPending, startPresenter] = useSafeTransition();
@@ -273,7 +275,17 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
         {blocked && editable && !jobActive && !(needsPresenter && blocked === PRESENTER_MISSING_REASON) && <GateNotice reason={blocked} showSettingsLink={!ttsAvailability.available} />}
         {needsPresenter && editable && !jobActive && <PresenterNeeded pending={presenterPending} error={presenterError} onGenerate={runPresenter} onDismissError={() => setPresenterError(null)} />}
 
-        {editable && <MotionHookCard asset={motionHook} pending={motionPending} error={motionError} onGenerate={runMotionHook} onDismissError={() => setMotionError(null)} onRefresh={() => router.refresh()} />}
+        {editable && (
+          <MotionHookCard
+            asset={motionHook}
+            availability={videoAvailability}
+            pending={motionPending}
+            error={motionError}
+            onGenerate={runMotionHook}
+            onDismissError={() => setMotionError(null)}
+            onRefresh={() => router.refresh()}
+          />
+        )}
 
         {jobActive && <ProgressCard job={liveJob} elapsedMs={Math.max(0, now - startedAtMs)} shotCount={shots.length} />}
 
@@ -378,6 +390,7 @@ function FormatToggle({ value, onChange, disabled }: { value: VideoFormat; onCha
  */
 function MotionHookCard({
   asset,
+  availability,
   pending,
   error,
   onGenerate,
@@ -385,6 +398,7 @@ function MotionHookCard({
   onRefresh,
 }: {
   asset: Pick<CreativeAsset, "id" | "status" | "error"> | null;
+  availability: VideoAvailabilityProps;
   pending: boolean;
   error: string | null;
   onGenerate: () => void;
@@ -418,7 +432,7 @@ function MotionHookCard({
             <RefreshCw className="h-3 w-3" /> เช็กสถานะ
           </Button>
         ) : (
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerate} disabled={pending} title="สร้างคลิป 8 วินาทีด้วย Veo แล้วใช้เป็นฉากแรก">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerate} disabled={pending || !availability.available} title={availability.reason ?? "สร้างคลิป 8 วินาทีด้วย Veo แล้วใช้เป็นฉากแรก"}>
             {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Film className="h-3 w-3" />} {ready ? "สร้างใหม่" : "สร้างฮุกเคลื่อนไหว"}
           </Button>
         )}
@@ -428,9 +442,17 @@ function MotionHookCard({
           กำลังส่งคำสั่งสร้าง…
         </p>
       )}
-      {status === "failed" && asset?.error && (
+      {!availability.available && (
+        <p className="text-[11px] text-muted-foreground" role="status">
+          {availability.reason ?? "ยังสร้างวิดีโอไม่ได้"} ·{" "}
+          <Link href={SETTINGS_MEDIA_HREF} className="underline underline-offset-2">
+            ไปที่ตั้งค่าสื่อ
+          </Link>
+        </p>
+      )}
+      {status === "failed" && (
         <p className="text-[11px] text-destructive" role="alert">
-          ครั้งก่อนไม่สำเร็จ: {asset.error}
+          ครั้งก่อนไม่สำเร็จ: {asset?.error || "ไม่ทราบสาเหตุ — ลองสร้างใหม่อีกครั้ง"}
         </p>
       )}
       {error && (

@@ -159,8 +159,9 @@ export async function updateMediaPrefs(input: unknown): Promise<ActionResult> {
   const profile = await requireStudioAdmin();
   const parsed = mediaPrefsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  const current = (await getStudioSettings()).media_prefs;
-  const res = await saveSettings({ media_prefs: { ...parsed.data, video_model: parsed.data.video_model ?? current.video_model } }, profile.id, "media_prefs");
+  // The form does not post video_model; keep whatever is stored instead of clearing it back to the default tier.
+  const current = (await getStudioSettings())?.media_prefs?.video_model ?? "";
+  const res = await saveSettings({ media_prefs: { ...parsed.data, video_model: parsed.data.video_model ?? current } }, profile.id, "media_prefs");
   if (!res.ok) return res;
   await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "media_prefs" } });
   revalidatePath(SETTINGS_PATH);

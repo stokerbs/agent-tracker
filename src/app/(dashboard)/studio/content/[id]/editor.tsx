@@ -304,7 +304,7 @@ export function ContentEditor({ data, aiAvailable, aiReason, approvalRules, medi
             editable={editable}
             flush={flush}
           />
-          <VideoSection masterId={master.id} plan={master.creative_plan} hook={master.hook ?? ""} assets={data.assets} assetUrls={data.assetUrls} renderJobs={data.renderJobs} ttsAvailability={mediaAvailability.tts} editable={editable} />
+          <VideoSection masterId={master.id} plan={master.creative_plan} hook={master.hook ?? ""} assets={data.assets} assetUrls={data.assetUrls} renderJobs={data.renderJobs} ttsAvailability={mediaAvailability.tts} videoAvailability={mediaAvailability.video} editable={editable} />
           <SocialSection
             masterId={master.id}
             status={master.status}

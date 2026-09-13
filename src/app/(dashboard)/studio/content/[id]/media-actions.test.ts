@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
   rows: {} as Record<string, Row | null>,
   deletes: [] as string[],
   image: vi.fn(),
+  motion: vi.fn(),
   voice: vi.fn(),
   removed: [] as (string | null)[],
   audit: [] as { action: string }[],
@@ -22,6 +23,7 @@ const h = vi.hoisted(() => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(async (e: { action: string }) => void h.audit.push(e)) }));
 vi.mock("@/lib/studio/auth", () => ({ getStudioAdmin: vi.fn(async () => h.profile) }));
+vi.mock("@/lib/studio/media/motion", () => ({ startHookMotion: (i: unknown) => h.motion(i) }));
 vi.mock("@/lib/studio/media/generate", () => ({
   generateImageAsset: (i: unknown) => h.image(i),
   generateVoiceoverAsset: (i: unknown) => h.voice(i),
@@ -57,7 +59,37 @@ beforeEach(() => {
   h.removed = [];
   h.audit = [];
   h.image.mockReset().mockResolvedValue({ ok: true, asset: okAsset });
+  h.motion.mockReset().mockResolvedValue({ ok: true, assetId: ASSET });
   h.voice.mockReset().mockResolvedValue({ ok: true, asset: { ...okAsset, kind: "audio" } });
+});
+
+describe("generateMotionHook", () => {
+  it("rejects non-admins, bad ids and published content before paying for a clip", async () => {
+    const { generateMotionHook } = await import("./media-actions");
+    h.profile = null;
+    expect(await generateMotionHook({ masterId: MASTER })).toMatchObject({ ok: false, code: "unauthorized" });
+    h.profile = { id: "admin-1", role: "admin" };
+    expect(await generateMotionHook({ masterId: "nope" })).toMatchObject({ ok: false, code: "invalid" });
+    expect(await generateMotionHook({})).toMatchObject({ ok: false, code: "invalid" });
+    h.rows.studio_content_masters = null;
+    expect(await generateMotionHook({ masterId: MASTER })).toMatchObject({ ok: false, code: "not_found" });
+    h.rows.studio_content_masters = { id: MASTER, title: "T", script: null, hook: null, creative_plan: null, status: "published" };
+    expect(await generateMotionHook({ masterId: MASTER })).toMatchObject({ ok: false, code: "invalid" });
+    expect(h.motion).not.toHaveBeenCalled();
+  });
+  it("hands the RLS-loaded master to the queue and audits success", async () => {
+    const { generateMotionHook } = await import("./media-actions");
+    const res = await generateMotionHook({ masterId: MASTER });
+    expect(res).toMatchObject({ ok: true, assetId: ASSET });
+    expect(h.motion).toHaveBeenCalledWith(expect.objectContaining({ master: expect.objectContaining({ id: MASTER }), userId: "admin-1" }));
+    expect(h.audit.map((a) => a.action)).toContain("STUDIO_MEDIA_GENERATE");
+  });
+  it("does not audit a failed queue attempt", async () => {
+    const { generateMotionHook } = await import("./media-actions");
+    h.motion.mockResolvedValue({ ok: false, error: "เต็มโควตา", code: "rate_limited" });
+    expect(await generateMotionHook({ masterId: MASTER })).toMatchObject({ ok: false, code: "rate_limited" });
+    expect(h.audit).toHaveLength(0);
+  });
 });
 
 describe("generateImage", () => {

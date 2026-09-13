@@ -183,6 +183,14 @@ describe("finishPendingHookMotions", () => {
     expect(await finishPendingHookMotions()).toMatchObject({ failed: 1 });
     expect(h.updates[0].payload).toMatchObject({ status: "failed" });
   });
+  it("gives up on a clip Veo never finishes", async () => {
+    const { finishPendingHookMotions, MOTION_TIMEOUT_MS } = await import("./motion");
+    h.poll.mockResolvedValue({ done: false });
+    h.sweepRows = [pendingRow({ meta: { target: { kind: "hook_motion" }, veo: { operation: "models/veo/operations/abc", started_at: new Date(Date.now() - MOTION_TIMEOUT_MS - 1000).toISOString() }, seconds: 8 } })];
+    expect(await finishPendingHookMotions()).toMatchObject({ failed: 1, pending: 0 });
+    expect(h.updates[0].payload).toMatchObject({ status: "failed" });
+    expect(String(h.updates[0].payload.error)).toContain("นานเกิน");
+  });
   it("keeps a clip pending through a network blip, and gives up once it is stuck", async () => {
     const { finishPendingHookMotions, MOTION_TIMEOUT_MS } = await import("./motion");
     h.sweepRows = [pendingRow()];

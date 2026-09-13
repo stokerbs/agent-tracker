@@ -15,6 +15,7 @@ import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { CreativeAsset, CreativePlan } from "@/lib/studio/types";
 import { buildAss } from "./ass";
 import { buildFfmpegArgs, runFfmpeg } from "./ffmpeg";
+import { attachMotionHook } from "./hook-clip";
 import { layoutShots, mp3DurationSec, OUTPUT_H, OUTPUT_W, parseVideoFormat, resolveShotImages, totalDuration, type ShotSource } from "./timeline";
 
 /**
@@ -145,22 +146,17 @@ export async function runRenderJob(jobId: string, opts: { userId: string; tts?: 
     const durationSec = totalDuration(laid);
 
     // Motion hook: a ready generated clip stands in for the first shot's still. Never blocks a render —
-    // a clip that is still generating (or failed) just leaves the still in place.
-    let motionHook = false;
-    if ((job.params as { motion_hook?: unknown } | null)?.motion_hook !== false) {
-      const hookAsset = await findHookMotion(master.id);
-      if (hookAsset) {
-        try {
-          const bytes = await downloadAsset(svc, hookAsset);
-          const p = path.join(tmp, "hook.mp4");
-          await writeFile(p, bytes);
-          laid[0].videoPath = p;
-          motionHook = true;
-        } catch (e) {
-          console.warn(`[studio:video] job=${jobId} motion hook unusable, falling back to the still:`, e instanceof Error ? e.message : e);
-        }
-      }
-    }
+    // a clip that is still generating, missing or unreadable just leaves the still in place (see hook-clip.ts).
+    const motionHook = await attachMotionHook(laid, job.params, {
+      find: () => findHookMotion(master.id),
+      download: (asset) => downloadAsset(svc, asset),
+      write: async (bytes) => {
+        const p = path.join(tmp!, "hook.mp4");
+        await writeFile(p, bytes);
+        return p;
+      },
+      onSkip: (reason) => console.warn(`[studio:video] job=${jobId} motion hook skipped — ${reason}`),
+    });
 
     await step(60, "กำลังตัดต่อวิดีโอ");
     const assPath = path.join(tmp, "subs.ass");

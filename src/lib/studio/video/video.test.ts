@@ -320,6 +320,10 @@ describe("ffmpeg args (viral template)", () => {
     expect(hookChain).toContain("fps=30[v0]");
     // the still shot keeps the Ken Burns move
     expect(fc.split(";").find((c) => c.startsWith("[1:v]"))).toContain("zoompan=");
+    // the clip carries Veo's own audio track: it must never reach the output, the narration does
+    expect(fc).not.toContain("[0:a]");
+    expect(args.filter((x) => x === "-map")).toHaveLength(2);
+    expect(args[args.lastIndexOf("-map") + 1]).toMatch(/\[a(cat|out)\]/);
   });
 
   it("escapes filter-sensitive characters in paths", () => {
