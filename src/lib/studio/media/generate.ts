@@ -208,7 +208,8 @@ async function overRateLimit(userId: string): Promise<MediaResult | null> {
     .from("studio_ai_generations")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .in("purpose", ["image_generation", "tts"])
+    // Motion hooks spend from the same budget, so they count here too (a hook is ~฿22 against ~฿2 for a still).
+    .in("purpose", ["image_generation", "tts", "video_hook"])
     .gte("created_at", since);
   if (error) {
     console.error("[studio:media] rate-limit lookup failed:", error.message);

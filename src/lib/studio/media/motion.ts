@@ -112,11 +112,16 @@ export async function startHookMotion(input: { master: { id: string; title: stri
   const started = Date.now();
   try {
     const op = await provider.start({ prompt, model: prefs.video_model || undefined, seconds: HOOK_SECONDS });
-    const { error: uErr } = await svc
+    // Compare-and-set: if the sweep already timed this row out while Veo was answering, do not resurrect it.
+    const { data: claimed, error: uErr } = await svc
       .from("studio_creative_assets")
       .update({ model: op.model, meta: { ...meta, veo: { operation: op.operation, started_at: meta.veo.started_at } } as never })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
     if (uErr) throw new Error(`asset update failed: ${uErr.message}`);
+    if (!claimed) throw new Error("งานนี้ถูกยกเลิกไปก่อนที่โมเดลวิดีโอจะตอบกลับ — ลองสั่งใหม่อีกครั้ง");
     // Counts against the shared media quota at the moment the spend happens, not when the cron finishes.
     await recordGeneration({
       purpose: "video_hook",

@@ -10,6 +10,10 @@ const h = vi.hoisted(() => ({
   genCount: 0,
   genCountError: null as null | { message: string },
   insertError: null as null | { code?: string; message: string },
+  /** null = the row is gone (the sweep cancelled it while Veo was answering). */
+  updateRow: { id: "asset-1" } as Row | null,
+  lookup: null as Row | null,
+  filters: [] as { table: string; col: string; val: unknown }[],
   sweepRows: [] as Row[],
   inserts: [] as Row[],
   updates: [] as { id: unknown; payload: Row }[],
@@ -37,8 +41,9 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       const st = { op: "select", counting: false, sel: "", payload: null as Row | null, eq: {} as Record<string, unknown> };
       const b: Record<string, unknown> = {};
-      for (const m of ["in", "gte", "contains", "order", "limit", "single", "maybeSingle"]) b[m] = () => b;
-      b.eq = (col: string, v: unknown) => ((st.eq[col] = v), b);
+      for (const m of ["in", "gte", "contains", "order", "limit", "single"]) b[m] = () => b;
+      b.maybeSingle = () => ((st.op = st.op === "update" ? "update" : "maybeSingle"), b);
+      b.eq = (col: string, v: unknown) => ((st.eq[col] = v), h.filters.push({ table, col, val: v }), b);
       b.select = (sel: string, opts?: { count?: string; head?: boolean }) => ((st.sel = sel), (st.counting = !!opts?.count), b);
       b.insert = (row: Row) => ((st.op = "insert"), (st.payload = row), b);
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), b);
@@ -55,8 +60,9 @@ vi.mock("@/lib/supabase/server", () => ({
         }
         if (st.op === "update") {
           h.updates.push({ id: st.eq.id, payload: st.payload! });
-          return Promise.resolve(resolve({ data: null, error: null }));
+          return Promise.resolve(resolve({ data: h.updateRow, error: null }));
         }
+        if (st.op === "maybeSingle") return Promise.resolve(resolve({ data: h.lookup, error: null }));
         return Promise.resolve(resolve({ data: h.sweepRows, error: null }));
       };
       return b;
@@ -88,6 +94,9 @@ beforeEach(() => {
   h.genCount = 0;
   h.genCountError = null;
   h.insertError = null;
+  h.updateRow = { id: "asset-1" };
+  h.lookup = null;
+  h.filters = [];
   h.sweepRows = [];
   h.inserts = [];
   h.updates = [];
@@ -141,6 +150,13 @@ describe("startHookMotion", () => {
     expect(await startHookMotion({ master: master(), userId: "u1" })).toMatchObject({ ok: false, code: "rate_limited" });
     expect(h.start).not.toHaveBeenCalled();
     expect(MOTION_TARGET).toBe("hook_motion");
+  });
+  it("does not resurrect a row the sweep already cancelled while Veo was answering", async () => {
+    const { startHookMotion } = await import("./motion");
+    h.updateRow = null; // the compare-and-set found no pending row
+    const res = await startHookMotion({ master: master(), userId: "u1" });
+    expect(res).toMatchObject({ ok: false, code: "failed" });
+    expect(h.generations.at(-1)).toMatchObject({ purpose: "video_hook", status: "error" });
   });
   it("frees the claimed slot when the provider call fails, so the next attempt is not blocked", async () => {
     const { startHookMotion } = await import("./motion");
@@ -223,5 +239,20 @@ describe("finishPendingHookMotions", () => {
     const res = await finishPendingHookMotions();
     expect(res.errors[0]).toContain("no key");
     expect(h.updates).toHaveLength(0);
+  });
+});
+
+describe("findHookMotion", () => {
+  it("only ever hands the renderer a ready, stored clip", async () => {
+    const { findHookMotion } = await import("./motion");
+    h.lookup = { id: "a1", storage_path: "m1/a1.mp4" };
+    expect(await findHookMotion("m1")).toMatchObject({ id: "a1" });
+    expect(h.filters).toContainEqual({ table: "studio_creative_assets", col: "status", val: "ready" });
+    expect(h.filters).toContainEqual({ table: "studio_creative_assets", col: "kind", val: "broll" });
+    // a row without an object is useless to the renderer
+    h.lookup = { id: "a2", storage_path: null };
+    expect(await findHookMotion("m1")).toBeNull();
+    h.lookup = null;
+    expect(await findHookMotion("m1")).toBeNull();
   });
 });
