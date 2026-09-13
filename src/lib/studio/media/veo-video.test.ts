@@ -36,6 +36,14 @@ describe("VeoVideoProvider.poll", () => {
     expect(await poll({ done: true, response: { generateVideoResponse: { generatedSamples: [{ video: { uri: "https://v/1" } }] } } })).toEqual({ done: true, uri: "https://v/1" });
     expect(await poll({ done: true, response: { generatedSamples: [{ video: { uri: "https://v/2" } }] } })).toEqual({ done: true, uri: "https://v/2" });
   });
+  it("refuses an operation name that is not the shape Google returns", async () => {
+    const fetchImpl = vi.fn(async () => json({}));
+    const p = new VeoVideoProvider("k", fetchImpl as unknown as typeof fetch);
+    await expect(p.poll("https://evil.example/x")).rejects.toThrow(/not valid/);
+    await expect(p.poll("../../secrets")).rejects.toThrow(/not valid/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(await p.poll("/models/veo/operations/abc")).toEqual({ done: false });
+  });
   it("separates a failed run from a safety refusal", async () => {
     expect(await poll({ done: true, error: { message: "internal" } })).toMatchObject({ done: true, error: "internal" });
     expect(await poll({ done: true, response: {} })).toMatchObject({ done: true, error: expect.stringContaining("without a video URI") });

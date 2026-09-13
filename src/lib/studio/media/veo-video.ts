@@ -53,7 +53,11 @@ export class VeoVideoProvider implements VideoProvider {
   }
 
   async poll(operation: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<VideoPoll> {
-    const json = await this.call<OperationResponse>(`${ENDPOINT}/${operation.replace(/^\/+/, "")}`, { method: "GET" }, timeoutMs);
+    // The operation name comes back from a stored asset row: keep it to the shape Google returns so it can only
+    // ever address this API, never another path or host.
+    const name = operation.replace(/^\/+/, "");
+    if (!/^(models|operations)\/[A-Za-z0-9._\-/]{1,200}$/.test(name)) throw new Error(`Veo operation name is not valid: ${name.slice(0, 80)}`);
+    const json = await this.call<OperationResponse>(`${ENDPOINT}/${name}`, { method: "GET" }, timeoutMs);
     if (!json.done) return { done: false };
     if (json.error?.message) return { done: true, error: json.error.message.slice(0, 400) };
     const filtered = json.response?.generateVideoResponse?.raiMediaFilteredReasons?.[0];

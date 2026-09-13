@@ -151,15 +151,16 @@ const mediaPrefsSchema = z.object({
   image_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลไม่ถูกต้อง"),
   tts_voice_id: z.string().trim().max(80).regex(/^[\w\-]*$/u, "voice id ไม่ถูกต้อง"),
   tts_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลเสียงไม่ถูกต้อง"),
-  // Optional: the media form predates the motion hook and does not post this field; empty means the default tier.
-  video_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลวิดีโอไม่ถูกต้อง").optional().default(""),
+  // Optional: the media form predates the motion hook and does not post this field — the saved value is kept.
+  video_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลวิดีโอไม่ถูกต้อง").optional(),
 });
 
 export async function updateMediaPrefs(input: unknown): Promise<ActionResult> {
   const profile = await requireStudioAdmin();
   const parsed = mediaPrefsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  const res = await saveSettings({ media_prefs: parsed.data }, profile.id, "media_prefs");
+  const current = (await getStudioSettings()).media_prefs;
+  const res = await saveSettings({ media_prefs: { ...parsed.data, video_model: parsed.data.video_model ?? current.video_model } }, profile.id, "media_prefs");
   if (!res.ok) return res;
   await logAudit({ actorId: profile.id, action: "STUDIO_SETTINGS_UPDATE", entity: "studio_settings", entityId: STUDIO_SETTINGS_ID, metadata: { section: "media_prefs" } });
   revalidatePath(SETTINGS_PATH);

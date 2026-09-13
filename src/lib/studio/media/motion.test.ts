@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
   },
   genCount: 0,
   genCountError: null as null | { message: string },
-  inFlight: [] as Row[],
+  insertError: null as null | { code?: string; message: string },
   sweepRows: [] as Row[],
   inserts: [] as Row[],
   updates: [] as { id: unknown; payload: Row }[],
@@ -45,6 +45,11 @@ vi.mock("@/lib/supabase/server", () => ({
       b.then = (resolve: (v: unknown) => unknown) => {
         if (table === "studio_ai_generations" && st.counting) return Promise.resolve(resolve({ count: h.genCount, error: h.genCountError }));
         if (st.op === "insert") {
+          if (h.insertError) {
+            const err = h.insertError;
+            h.insertError = null;
+            return Promise.resolve(resolve({ data: null, error: err }));
+          }
           h.inserts.push(st.payload!);
           return Promise.resolve(resolve({ data: { id: `asset-${h.inserts.length}` }, error: null }));
         }
@@ -52,8 +57,7 @@ vi.mock("@/lib/supabase/server", () => ({
           h.updates.push({ id: st.eq.id, payload: st.payload! });
           return Promise.resolve(resolve({ data: null, error: null }));
         }
-        // selects: the sweep asks for master_id, the in-flight guard only for id
-        return Promise.resolve(resolve({ data: st.sel.includes("master_id") ? h.sweepRows : h.inFlight, error: null }));
+        return Promise.resolve(resolve({ data: h.sweepRows, error: null }));
       };
       return b;
     },
@@ -83,7 +87,7 @@ const pendingRow = (over: Row = {}): Row => ({
 beforeEach(() => {
   h.genCount = 0;
   h.genCountError = null;
-  h.inFlight = [];
+  h.insertError = null;
   h.sweepRows = [];
   h.inserts = [];
   h.updates = [];
@@ -101,9 +105,13 @@ describe("startHookMotion", () => {
     const { startHookMotion } = await import("./motion");
     const res = await startHookMotion({ master: master(), userId: "u1" });
     expect(res).toMatchObject({ ok: true, assetId: "asset-1" });
+    // the row is claimed BEFORE the provider is paid, then updated with the operation it answered with
     expect(h.inserts[0]).toMatchObject({ kind: "broll", status: "pending", master_id: "m1", provider: "veo", bytes: 0 });
-    expect((h.inserts[0].meta as { target: { kind: string }; veo: { operation: string } }).target.kind).toBe("hook_motion");
-    expect((h.inserts[0].meta as { veo: { operation: string } }).veo.operation).toBe("models/veo/operations/abc");
+    expect((h.inserts[0].meta as { target: { kind: string }; veo: { operation: string | null } }).target.kind).toBe("hook_motion");
+    expect((h.inserts[0].meta as { veo: { operation: string | null } }).veo.operation).toBeNull();
+    expect((h.updates[0].payload.meta as { veo: { operation: string } }).veo.operation).toBe("models/veo/operations/abc");
+    // the spend is charged to the shared media quota right away
+    expect(h.generations[0]).toMatchObject({ purpose: "video_hook", status: "ok" });
     // the prompt is built server-side and carries the safety negatives
     const prompt = h.start.mock.calls[0]![0].prompt;
     expect(prompt).toContain("ถนนกลางคืน");
@@ -123,22 +131,23 @@ describe("startHookMotion", () => {
     expect(res).toMatchObject({ ok: false, code: "no_source" });
     expect(h.start).not.toHaveBeenCalled();
   });
-  it("stops on the media rate limit and on a clip already generating for this master", async () => {
+  it("stops on the media rate limit, and lets the database reject a second clip for the same master", async () => {
     const { startHookMotion, MOTION_TARGET } = await import("./motion");
     h.genCount = 10;
     expect(await startHookMotion({ master: master(), userId: "u1" })).toMatchObject({ ok: false, code: "rate_limited" });
     h.genCount = 0;
-    h.inFlight = [{ id: "a0" }];
+    // the partial unique index (0123) is what actually stops two concurrent clicks
+    h.insertError = { code: "23505", message: "duplicate key value violates unique constraint" };
     expect(await startHookMotion({ master: master(), userId: "u1" })).toMatchObject({ ok: false, code: "rate_limited" });
     expect(h.start).not.toHaveBeenCalled();
     expect(MOTION_TARGET).toBe("hook_motion");
   });
-  it("records a failed start and writes no asset row", async () => {
+  it("frees the claimed slot when the provider call fails, so the next attempt is not blocked", async () => {
     const { startHookMotion } = await import("./motion");
     h.start.mockRejectedValue(new Error("veo down"));
     const res = await startHookMotion({ master: master(), userId: "u1" });
     expect(res).toMatchObject({ ok: false, code: "failed" });
-    expect(h.inserts).toHaveLength(0);
+    expect(h.updates.at(-1)?.payload).toMatchObject({ status: "failed" });
     expect(h.generations[0]).toMatchObject({ purpose: "video_hook", status: "error" });
   });
 });
@@ -159,7 +168,7 @@ describe("finishPendingHookMotions", () => {
     expect(res).toMatchObject({ ready: 1, failed: 0, pending: 0 });
     expect(h.uploads[0]).toMatchObject({ path: "m1/a1.mp4", bytes: 4 });
     expect(h.updates[0]).toMatchObject({ id: "a1", payload: { status: "ready", storage_path: "m1/a1.mp4", bytes: 4 } });
-    expect(h.generations[0]).toMatchObject({ purpose: "video_hook", status: "ok" });
+    expect(h.generations[0]).toMatchObject({ purpose: "video_hook_finish", status: "ok" });
   });
   it("marks a refused or failed generation instead of retrying forever", async () => {
     const { finishPendingHookMotions } = await import("./motion");
@@ -188,9 +197,14 @@ describe("finishPendingHookMotions", () => {
     expect(await finishPendingHookMotions()).toMatchObject({ failed: 1 });
     expect(h.updates[0].payload).toMatchObject({ status: "failed" });
   });
-  it("fails a clip whose operation never made it into the row", async () => {
-    const { finishPendingHookMotions } = await import("./motion");
-    h.sweepRows = [pendingRow({ meta: { target: { kind: "hook_motion" }, seconds: 8 } })];
+  it("waits out the claim grace window before failing a row that never got an operation", async () => {
+    const { finishPendingHookMotions, MOTION_CLAIM_GRACE_MS } = await import("./motion");
+    const noOp = (startedAt: string) => pendingRow({ meta: { target: { kind: "hook_motion" }, veo: { operation: null, started_at: startedAt }, seconds: 8 } });
+    h.sweepRows = [noOp(new Date().toISOString())];
+    expect(await finishPendingHookMotions()).toMatchObject({ pending: 1, failed: 0 });
+    expect(h.updates).toHaveLength(0);
+
+    h.sweepRows = [noOp(new Date(Date.now() - MOTION_CLAIM_GRACE_MS - 1000).toISOString())];
     expect(await finishPendingHookMotions()).toMatchObject({ failed: 1 });
     expect(h.poll).not.toHaveBeenCalled();
   });
