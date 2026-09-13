@@ -151,6 +151,8 @@ const mediaPrefsSchema = z.object({
   image_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลไม่ถูกต้อง"),
   tts_voice_id: z.string().trim().max(80).regex(/^[\w\-]*$/u, "voice id ไม่ถูกต้อง"),
   tts_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลเสียงไม่ถูกต้อง"),
+  // Optional: the media form predates the motion hook and does not post this field; empty means the default tier.
+  video_model: z.string().trim().max(80).regex(/^[\w.\-]*$/u, "ชื่อโมเดลวิดีโอไม่ถูกต้อง").optional().default(""),
 });
 
 export async function updateMediaPrefs(input: unknown): Promise<ActionResult> {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clapperboard, Download, ExternalLink, ImageOff, Loader2, Lock, RefreshCw, Trash2, TriangleAlert, User, VolumeX } from "lucide-react";
+import { Clapperboard, Download, ExternalLink, Film, ImageOff, Loader2, Lock, RefreshCw, Trash2, TriangleAlert, User, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +13,7 @@ import { VIDEO_FORMATS, type CreativeAsset, type CreativePlan, type RenderJob, t
 import { MAX_SHOTS, SILENT_SHOT_SEC } from "@/lib/studio/video/timeline";
 import { cn } from "@/lib/utils";
 import { formatDateTimeBkk } from "../format";
-import { deleteMediaAsset, generateImage } from "./media-actions";
+import { deleteMediaAsset, generateImage, generateMotionHook } from "./media-actions";
 import { formatBytes, formatMmSs, formatSeconds, truncate } from "./media-format";
 import { createRenderJob, getRenderJob } from "./video-actions";
 import {
@@ -32,6 +32,7 @@ import {
   renderStatusMeta,
   SHOT_ROLE_LABEL,
   VIDEO_FORMAT_META,
+  motionHookAsset,
   videoAssets,
   type StoryboardRow,
 } from "./video-format";
@@ -73,6 +74,8 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
   const router = useRouter();
   const [pending, start] = useSafeTransition();
   const [presenterPending, startPresenter] = useSafeTransition();
+  const [motionPending, startMotion] = useSafeTransition();
+  const [motionError, setMotionError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [presenterError, setPresenterError] = useState<string | null>(null);
 
@@ -91,6 +94,7 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
   const storyboard = useMemo(() => buildStoryboard(plan, assets, format), [plan, assets, format]);
   const readiness = useMemo(() => imageReadiness(assets), [assets]);
   const videos = useMemo(() => videoAssets(assets), [assets]);
+  const motionHook = useMemo(() => motionHookAsset(assets), [assets]);
   const history = useMemo(() => renderJobs.slice(0, HISTORY_LIMIT), [renderJobs]);
   const hasVoice = shots.some((s) => s.voice?.trim());
   const jobActive = activeJobId != null;
@@ -219,6 +223,22 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
     });
   }
 
+  /** Motion hook: queue only — Veo takes minutes, so a cron finishes the asset and the next render picks it up. */
+  function runMotionHook() {
+    if (motionPending || !editable) return;
+    setMotionError(null);
+    startMotion(async () => {
+      const res = await generateMotionHook({ masterId });
+      if (!res.ok) {
+        toast.error(res.error);
+        setMotionError(res.error);
+        return;
+      }
+      toast.success("สั่งสร้างฮุกเคลื่อนไหวแล้ว — ใช้เวลาราว 2–5 นาที ระบบจะดึงผลมาเอง");
+      router.refresh();
+    });
+  }
+
   return (
     <section className="rounded-lg border border-border/70 bg-card" aria-labelledby="video-title">
       <header className="space-y-1.5 border-b border-border/60 px-3 py-2">
@@ -252,6 +272,8 @@ export function VideoSection({ masterId, plan, hook, assets, assetUrls, renderJo
         )}
         {blocked && editable && !jobActive && !(needsPresenter && blocked === PRESENTER_MISSING_REASON) && <GateNotice reason={blocked} showSettingsLink={!ttsAvailability.available} />}
         {needsPresenter && editable && !jobActive && <PresenterNeeded pending={presenterPending} error={presenterError} onGenerate={runPresenter} onDismissError={() => setPresenterError(null)} />}
+
+        {editable && <MotionHookCard asset={motionHook} pending={motionPending} error={motionError} onGenerate={runMotionHook} onDismissError={() => setMotionError(null)} onRefresh={() => router.refresh()} />}
 
         {jobActive && <ProgressCard job={liveJob} elapsedMs={Math.max(0, now - startedAtMs)} shotCount={shots.length} />}
 
@@ -346,6 +368,81 @@ function FormatToggle({ value, onChange, disabled }: { value: VideoFormat; onCha
           </Button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Motion hook: an 8 s generated clip standing in for the first shot's still. It costs about ฿22, takes minutes,
+ * and a cron finishes it — so this card only ever queues one and reports where that clip is.
+ */
+function MotionHookCard({
+  asset,
+  pending,
+  error,
+  onGenerate,
+  onDismissError,
+  onRefresh,
+}: {
+  asset: Pick<CreativeAsset, "id" | "status" | "error"> | null;
+  pending: boolean;
+  error: string | null;
+  onGenerate: () => void;
+  onDismissError: () => void;
+  onRefresh: () => void;
+}) {
+  const status = asset?.status ?? null;
+  const generating = status === "pending";
+  const ready = status === "ready";
+  return (
+    <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="inline-flex min-w-0 items-start gap-1.5 text-muted-foreground">
+          <Film className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0">
+            {ready ? (
+              <>
+                <span className="font-medium text-foreground/80">ฮุกเคลื่อนไหวพร้อมใช้</span> — ฉากแรกของวิดีโอจะเป็นคลิปเคลื่อนไหวแทนภาพนิ่ง
+              </>
+            ) : generating ? (
+              <>
+                <span className="font-medium text-foreground/80">กำลังสร้างฮุกเคลื่อนไหว</span> — ใช้เวลาราว 2–5 นาที ระบบจะดึงผลมาเองแล้วใช้ในการ render ครั้งถัดไป
+              </>
+            ) : (
+              <>ฮุกเคลื่อนไหว 8 วินาทีแทนภาพนิ่งฉากแรก · ค่าใช้จ่ายราว ฿22 ต่อครั้ง · สร้างครั้งเดียวใช้ซ้ำได้</>
+            )}
+          </span>
+        </span>
+        {generating ? (
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onRefresh} aria-label="ตรวจสถานะฮุกเคลื่อนไหวอีกครั้ง">
+            <RefreshCw className="h-3 w-3" /> เช็กสถานะ
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerate} disabled={pending} title="สร้างคลิป 8 วินาทีด้วย Veo แล้วใช้เป็นฉากแรก">
+            {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Film className="h-3 w-3" />} {ready ? "สร้างใหม่" : "สร้างฮุกเคลื่อนไหว"}
+          </Button>
+        )}
+      </div>
+      {pending && (
+        <p className="text-[11px] text-muted-foreground" role="status">
+          กำลังส่งคำสั่งสร้าง…
+        </p>
+      )}
+      {status === "failed" && asset?.error && (
+        <p className="text-[11px] text-destructive" role="alert">
+          ครั้งก่อนไม่สำเร็จ: {asset.error}
+        </p>
+      )}
+      {error && (
+        <div className="flex flex-wrap items-center justify-between gap-2" role="alert">
+          <span className="inline-flex items-start gap-1.5 text-destructive">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
+          </span>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDismissError}>
+            ปิด
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

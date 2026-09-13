@@ -47,6 +47,25 @@ export function sceneText(target: ImageTarget, plan: CreativePlan | null, fallba
   return overlay ? `${visual}. (Mood cue only, do not render the words: "${overlay}")` : visual;
 }
 
+/**
+ * Motion hook: an 8 s generated clip that replaces the first shot's still. Veo renders its own audio and would
+ * happily put words on screen, so the prompt bans both — the clip carries our narration and our subtitles.
+ * Thai banknotes are excluded as well: the portrait on them is not something this brand puts in an advert.
+ */
+export const MOTION_SAFETY_NEGATIVES =
+  "No speech, no music, no on-screen text, captions, numbers or subtitles of any kind. No real or identifiable faces (silhouettes, back views, hands or objects only), no readable licence plates or documents, no third-party logos, no banknotes or currency, no gore, no weapons.";
+
+export function buildMotionPrompt(input: { style: string; scene: string; seconds: number }): string {
+  return [
+    input.style.trim() || "Cinematic documentary footage, realistic, muted palette.",
+    `Shot: ${input.scene.trim()}`,
+    `One continuous ${input.seconds}-second vertical 9:16 take with slow, deliberate camera motion. No cuts.`,
+    MOTION_SAFETY_NEGATIVES,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function buildImagePrompt(input: { style: string; scene: string; aspect: ImageAspect; broll?: string[]; musicMood?: string | null }): string {
   const parts = [
     input.style.trim() || "Cinematic documentary photography, realistic, muted palette.",

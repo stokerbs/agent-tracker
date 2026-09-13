@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import { getStudioAdmin } from "@/lib/studio/auth";
 import { generateImageAsset, generateVoiceoverAsset, removeAssetObject, type MediaErrorCode } from "@/lib/studio/media/generate";
+import { startHookMotion } from "@/lib/studio/media/motion";
 import { MAX_CUSTOM_PROMPT_CHARS } from "@/lib/studio/media/prompts";
 import { MAX_TTS_CHARS } from "@/lib/studio/media/elevenlabs-tts";
 import { IMAGE_ASPECTS, type CreativeAsset, type CreativePlan, type ImageAspect } from "@/lib/studio/types";
@@ -22,6 +23,8 @@ const PUBLISHED_LOCK = "คอนเทนต์ที่เผยแพร่�
 const idSchema = z.string().uuid();
 
 export type MediaActionResult = { ok: true; asset: CreativeAsset } | { ok: false; error: string; code: MediaErrorCode | "unauthorized" | "invalid" | "not_found" };
+/** The motion hook is generated asynchronously: the action returns once the job is queued, a cron finishes it. */
+export type MotionActionResult = { ok: true; assetId: string } | { ok: false; error: string; code: MediaErrorCode | "unauthorized" | "invalid" | "not_found" };
 
 const imageSchema = z.object({
   masterId: idSchema,
@@ -47,6 +50,30 @@ export async function generateImage(input: unknown): Promise<MediaActionResult> 
   const res = await generateImageAsset({ master, target: parsed.data.target, aspect: parsed.data.aspect, userId: profile.id });
   if (res.ok) {
     await logAudit({ actorId: profile.id, action: "STUDIO_MEDIA_GENERATE", entity: "studio_creative_assets", entityId: res.asset.id, metadata: { master_id: master.id, kind: res.asset.kind, target: parsed.data.target.kind, model: res.asset.model } });
+    revalidatePath(`/studio/content/${master.id}`);
+  }
+  return res;
+}
+
+const motionSchema = z.object({ masterId: idSchema });
+
+/**
+ * Queue an 8 s motion hook for this content. The prompt is built server-side from the plan's first shot, so
+ * nothing client-supplied reaches the video model; the clip costs about ฿22, hence the same admin + published
+ * lock + rate limit as the image path.
+ */
+export async function generateMotionHook(input: unknown): Promise<MotionActionResult> {
+  const profile = await getStudioAdmin();
+  if (!profile) return { ok: false, error: UNAUTHORIZED, code: "unauthorized" };
+  const parsed = motionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง", code: "invalid" };
+  const master = await loadMaster(parsed.data.masterId);
+  if (!master) return { ok: false, error: "ไม่พบคอนเทนต์", code: "not_found" };
+  if (master.status === "published") return { ok: false, error: PUBLISHED_LOCK, code: "invalid" };
+
+  const res = await startHookMotion({ master, userId: profile.id });
+  if (res.ok) {
+    await logAudit({ actorId: profile.id, action: "STUDIO_MEDIA_GENERATE", entity: "studio_creative_assets", entityId: res.assetId, metadata: { master_id: master.id, kind: "broll", target: "hook_motion" } });
     revalidatePath(`/studio/content/${master.id}`);
   }
   return res;
