@@ -33,11 +33,13 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
 // with a bounded name length so a false positive costs a few characters, not a sentence.
-// Thai has no word spaces, so a title is almost always glued to the word before it ("พบนายสมชาย").
-// The rule therefore works at the level of words, not positions: only ท- (ทนาย) is blocked before,
-// and after the title only the compounds that are never a name intro (นายหน้า, นายจ้าง, นางแบบ…).
-// Longest title first, or นางสาว would match as นาง + "สาว…".
-const NAME_TITLE_RE = /(?<!ท)(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย|นาง)(?!หน้า|จ้าง|ทุน|งาน|เอก|ฟ้า|แบบ|สนาม|ก(?:รัฐมนตรี|[\s,.!?…]|$))\s?[ก-๙]{2,10}/g;
+// Thai has no word spaces, so a title is almost always glued to the word before it ("พบนายสมชาย") —
+// a lookbehind on "any Thai letter" would therefore only ever match at the start of a field.
+// The exclusions belong to the title that owns them: นายหน้า/นายจ้าง are not people, but นายเอกชัย
+// is, so นางเอก/นางฟ้า must not silence เอก/ฟ้า after นาย. ทนายความ is excluded here rather than by a
+// lookbehind, which would have swallowed ทนายสมชาย. Longest title first, or นางสาว matches as นาง + สาว.
+const NAME_TITLE_RE =
+  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|ก(?:[ก-๙]|ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?[ก-๙]{2,10}/g;
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
@@ -51,7 +53,8 @@ const NAME_CUE_RE = /(?<![เแโใไ])(?:ชื่อเล่นว่า|
 // "ชื่อของ/ใน/ที่ … คือ <name>" — the cue rule excludes those three particles because they usually
 // introduce a thing, not a person ("ชื่อของบริการนี้คือ…"), so this brings back the case where a
 // person really is named: "ชื่อของลูกค้าคือสมชาย", "ชื่อในบัตรประชาชนคือสมหญิง".
-const NAME_INTRO_RE = /ชื่อ(?:ของ|ใน|ที่)[ก-๙\s]{0,15}(?:คือ|ว่า)\s*(?!การ|ความ|เรื่อง)[ก-๙A-Za-z]{2,10}/g;
+const NAME_INTRO_RE =
+  /(?<![เแโใไ])ชื่อ(?:ของ|ใน|ที่|และ|หรือ|กับ)[ก-๙\s]{0,25}?(?:คือ|ว่า)\s*(?!การ|ความ|เรื่อง|รหัส|บริการ|แพ็|ระบบ|เลข)[ก-๙A-Za-z]{2,10}/g;
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
 const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.
