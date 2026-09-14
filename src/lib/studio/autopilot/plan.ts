@@ -80,4 +80,5 @@ export const STOP_REASON_TH: Record<string, string> = {
   image_failed: "สร้างภาพไม่สำเร็จ",
   already_running: "มีรอบอื่นทำงานอยู่",
   timeout: "หมดเวลาที่เซิร์ฟเวอร์อนุญาต",
+  timeout_before_publish: "ผลิตเสร็จแล้วแต่หมดเวลาก่อนโพสต์ (รอบตามจะโพสต์ให้)",
 };
