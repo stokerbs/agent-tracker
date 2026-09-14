@@ -11,7 +11,8 @@ const h = vi.hoisted(() => ({
   posts: [] as Row[],
   video: null as Row | null,
   updates: [] as { table: string; payload: Row }[],
-  filters: [] as { table: string; m: string; args: unknown[] }[],
+  filters: [] as { chain: number; table: string; m: string; args: unknown[] }[],
+  chains: 0,
   claim: { id: "r1" } as Row | null,
   audits: [] as Row[],
   notes: [] as string[],
@@ -31,10 +32,13 @@ vi.mock("@/lib/studio/settings", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () => ({
     from: (table: string) => {
+      // Each from() starts a new chain: the load query is chain 1, so its filters can be asserted on their own
+      // (the claim's compare-and-set hits the same table and would otherwise satisfy the assertions).
+      const chain = ++h.chains;
       const st = { op: "select", payload: null as Row | null };
       const b: Record<string, unknown> = {};
       for (const m of ["select", "eq", "not", "gte", "in", "order", "limit", "maybeSingle", "single"]) {
-        b[m] = (...args: unknown[]) => (h.filters.push({ table, m, args }), b);
+        b[m] = (...args: unknown[]) => (h.filters.push({ chain, table, m, args }), b);
       }
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), b);
       b.then = (resolve: (v: unknown) => unknown) => {
@@ -65,6 +69,7 @@ beforeEach(() => {
   h.video = { id: "v1" };
   h.updates = [];
   h.filters = [];
+  h.chains = 0;
   h.claim = { id: "r1" };
   h.audits = [];
   h.notes = [];
@@ -87,14 +92,17 @@ describe("publishPendingAutopilotRuns", () => {
     const { publishPendingAutopilotRuns, PENDING_WINDOW_MS } = await import("./publish-pending");
     const now = Date.now();
     await publishPendingAutopilotRuns({ now });
-    const runFilters = h.filters.filter((f) => f.table === "studio_autopilot_runs");
-    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "eq", args: ["stopped_at", "timeout_before_publish"] });
-    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "eq", args: ["published", false] });
-    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "not", args: ["master_id", "is", null] });
+    // chain 1 is the load query itself — not the later claim, which filters the same table
+    const runFilters = h.filters.filter((f) => f.chain === 1);
+    expect(runFilters.every((f) => f.table === "studio_autopilot_runs")).toBe(true);
+    expect(runFilters.map((f) => [f.m, ...f.args])).toContainEqual(["eq", "stopped_at", "timeout_before_publish"]);
+    expect(runFilters.map((f) => [f.m, ...f.args])).toContainEqual(["eq", "published", false]);
+    expect(runFilters.map((f) => [f.m, ...f.args])).toContainEqual(["not", "master_id", "is", null]);
     const since = runFilters.find((f) => f.m === "gte");
+    expect(since).toBeTruthy();
     expect(Date.parse(String(since?.args[1]))).toBe(now - PENDING_WINDOW_MS);
     // a post that failed or was deleted must not count as "already posted"
-    expect(h.filters).toContainEqual({ table: "studio_social_posts", m: "in", args: ["status", ["queued", "scheduled", "published"]] });
+    expect(h.filters.filter((f) => f.table === "studio_social_posts").map((f) => [f.m, ...f.args])).toContainEqual(["in", "status", ["queued", "scheduled", "published"]]);
   });
   it("leaves a piece the owner scheduled for later alone", async () => {
     const { publishPendingAutopilotRuns } = await import("./publish-pending");

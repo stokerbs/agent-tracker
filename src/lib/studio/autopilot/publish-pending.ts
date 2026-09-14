@@ -9,11 +9,11 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 /**
  * Publishing sweep for autopilot runs that produced a finished piece but ran out of function time before posting
- * (docs §16). The producing run stops at `timeout` on purpose — it will not start a public post it may not live
- * long enough to record — so this cron picks the piece up a few minutes later and posts it through the same
- * `publishMaster` path, with the same privacy scan, duplicate guard and audit trail.
+ * (docs §16). The producing run stops at `timeout_before_publish` on purpose — it will not start a public post it
+ * may not live long enough to record — so this cron picks the piece up a few minutes later and posts it through
+ * the same `publishMaster` path, with the same privacy scan, duplicate guard and audit trail.
  *
- * Deliberately narrow: only runs that stopped at `timeout`, only while `auto_publish` is on, only a master that
+ * Deliberately narrow: only runs that stopped at `timeout_before_publish`, only while `auto_publish` is on, only a master that
  * already has a ready video and no social post yet, and only within a day of the run.
  */
 

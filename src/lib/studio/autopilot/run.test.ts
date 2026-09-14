@@ -379,6 +379,32 @@ describe("runAutopilot clip format", () => {
     }
   });
 
+  it("separates the two timeouts: only the one at the publish step is the reason the publish sweep looks for", async () => {
+    // The sweep (publish-pending.ts) only picks up runs stopped at timeout_before_publish — a run that ran out of
+    // time earlier produced nothing to post and must never be swept.
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const warn = silenceWarn();
+    const render = vi.mocked((await import("@/lib/studio/video/render")).runRenderJob);
+    try {
+      // finished everything, then ran out of time before posting
+      render.mockImplementationOnce(async () => ((clock += 235_000), h.render as never));
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "timeout_before_publish" });
+      expect(lastRunPatch()).toMatchObject({ stopped_at: "timeout_before_publish" });
+
+      // ran out of time before the render even started: nothing to post, plain timeout
+      clock = 2_000_000;
+      const media = await imageMock();
+      media.mockImplementationOnce(async () => ((clock += 160_000), h.image as never));
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "timeout" });
+      expect(lastRunPatch()).toMatchObject({ stopped_at: "timeout" });
+    } finally {
+      now.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
   it("records stats.format on a review finish and on a stop after render, but not on a stop before render", async () => {
     h.cfg = { video_format: "storyteller", auto_publish: false };
     const { runAutopilot } = await load();
