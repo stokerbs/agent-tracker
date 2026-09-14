@@ -206,7 +206,10 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
         format = "template";
       }
     }
-    for (let i = 0; i < Math.min(trimmed.shots.length, cfg.images_per_run - 1); i++) {
+    // One image per shot: a frame reused under a different line is what made clips look mismatched (docs §16).
+    // images_per_run stays as the cost ceiling for the whole run, cover and presenter included.
+    const sceneBudget = Math.max(0, cfg.images_per_run - images);
+    for (let i = 0; i < Math.min(trimmed.shots.length, sceneBudget); i++) {
       // Scene images are optional polish — drop them rather than run out of function time before the video.
       if (Date.now() > deadline - 150_000) {
         console.warn(`[studio:autopilot] run=${runId} skipping remaining scene images to protect the time budget`);

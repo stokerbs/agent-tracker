@@ -44,6 +44,7 @@ ${input.script}
 
 RULES
 - Split the script into 3–8 shots with start_sec/end_sec that add up to roughly the target length; "voice" = the exact spoken lines in that window.
+- Every shot gets its OWN visual, and it must show what that shot's line is about: a line about a car leaving at odd hours is a car and a gate at night, not a generic desk. No two shots may share the same visual idea.
 - Visuals must be SAFE and non-identifying: night traffic, silhouettes, generic condo corridors, hands with a notebook, map UI without real addresses, stock-style. Never real plates, faces, addresses, or a recognisable specific location.
 - Text overlays: ≤ 6 words each, Thai or short English (e.g. "GPS ≠ Full Investigation").
 - Thumbnail: describe composition + 3–5 word title text. No clichés (no magnifying glass, fingerprints, police tape, neon hacker screens).

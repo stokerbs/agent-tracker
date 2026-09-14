@@ -216,7 +216,8 @@ describe("updateAutopilot", () => {
   it("rejects a fixed pillar mode with no pillar and out-of-range values", async () => {
     const { updateAutopilot } = await load();
     expect((await updateAutopilot({ ...good, pillar_mode: "fixed", pillar: null })).ok).toBe(false);
-    expect((await updateAutopilot({ ...good, images_per_run: 7 })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, images_per_run: 11 })).ok).toBe(false); // ceiling is 10 images a run
+    expect((await updateAutopilot({ ...good, images_per_run: 0 })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, days: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, platforms: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, target_seconds: 42 })).ok).toBe(false);

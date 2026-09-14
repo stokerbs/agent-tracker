@@ -204,7 +204,7 @@ const autopilotSchema = z.object({
   pillar_mode: z.enum(["rotate", "fixed"]),
   pillar: z.enum(PILLARS as [string, ...string[]]).nullable(),
   target_seconds: z.number().int().refine((n) => (TARGET_DURATIONS as number[]).includes(n), "ความยาวไม่ถูกต้อง"),
-  images_per_run: z.number().int().min(1).max(6),
+  images_per_run: z.number().int().min(1).max(10),
   auto_publish: z.boolean(),
   publish_on_review_required: z.boolean(),
   allow_unsupported_claims: z.boolean(),

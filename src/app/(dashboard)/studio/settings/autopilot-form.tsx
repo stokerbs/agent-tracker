@@ -270,15 +270,15 @@ export function AutopilotForm({ initial }: { initial: AutopilotSettings }) {
             id="autopilot-images"
             type="number"
             min={1}
-            max={6}
+            max={10}
             value={cfg.images_per_run}
-            onChange={(e) => set("images_per_run", clamp(Number(e.target.value), 1, 6))}
+            onChange={(e) => set("images_per_run", clamp(Number(e.target.value), 1, 10))}
             disabled={pending}
             className="h-9 w-28 tabular-nums"
             inputMode="numeric"
           />
           <p className="text-xs text-muted-foreground">
-            1 = ภาพปกอย่างเดียว · มากกว่านั้นคือภาพประกอบรายช็อต — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ {imageCostHint(cfg.images_per_run, cfg.video_format)}
+            เพดานจำนวนภาพต่อรอบ รวมภาพปก · ระบบสร้างภาพให้ช็อตละหนึ่งรูปจนเต็มเพดาน (7 = ปก + ช็อตละรูปสำหรับคลิป 6 ช็อต) — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ {imageCostHint(cfg.images_per_run, cfg.video_format)}
             {PRESENTER_COST_NOTE[cfg.video_format]})
           </p>
         </div>

@@ -105,6 +105,7 @@ beforeEach(() => {
   h.publish = { ok: true, posts: [{ post_url: "https://fb/1" }, { post_url: null }], providerPostId: "P1", scheduled: false };
   h.image = { ok: true, asset: { id: "img1" } };
   h.presenterImage = { ok: true, asset: { id: "presenter1" } };
+  h.plan = { ok: true, data: { shots: [{ start_sec: 0, end_sec: 4, voice: "พูด", visual: "ภาพ", text_overlay: null }], broll: [], text_overlays: [] } };
   h.lastRun = null;
   h.lastRunError = null;
   h.filters = [];
@@ -283,7 +284,8 @@ describe("runAutopilot clip format", () => {
   const silenceWarn = () => vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
   it("storyteller generates the presenter after the cover, before scene images, and renders with format=storyteller", async () => {
-    h.cfg = { video_format: "storyteller", images_per_run: 2 };
+    // 3 = cover + presenter + one scene: images_per_run is the ceiling for the whole run
+    h.cfg = { video_format: "storyteller", images_per_run: 3 };
     const { runAutopilot } = await load();
     expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
     expect(await imageKinds()).toEqual(["thumbnail", "presenter", "scene"]);
@@ -294,6 +296,26 @@ describe("runAutopilot clip format", () => {
     const stats = lastRunPatch().stats as Row;
     expect(stats).toMatchObject({ format: "storyteller", images: 3 });
     expect(stats).not.toHaveProperty("format_fallback");
+  });
+
+  it("gives every shot its own image, up to the run's ceiling", async () => {
+    h.plan = { ok: true, data: { shots: Array.from({ length: 4 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
+    h.cfg = { video_format: "template", images_per_run: 7 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    // cover + one image per shot, each pointed at its own shot index
+    expect(await imageKinds()).toEqual(["thumbnail", "scene", "scene", "scene", "scene"]);
+    const indexes = (await imageMock()).mock.calls.map(([i]) => (i.target as { index?: number }).index).filter((i) => i !== undefined);
+    expect(indexes).toEqual([0, 1, 2, 3]);
+    expect(lastRunPatch().stats).toMatchObject({ images: 5 });
+  });
+
+  it("stops at the ceiling instead of one image per shot when the owner set a low one", async () => {
+    h.plan = { ok: true, data: { shots: Array.from({ length: 4 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
+    h.cfg = { video_format: "template", images_per_run: 2 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(await imageKinds()).toEqual(["thumbnail", "scene"]);
   });
 
   it("template never generates a presenter image", async () => {
@@ -352,7 +374,8 @@ describe("runAutopilot clip format", () => {
       const { runAutopilot } = await load();
       expect(await runAutopilot({ userId: "u1" })).toMatchObject({ ok: true, status: "done" });
       expect(renderParams().format).toBe("template");
-      expect(lastRunPatch().stats).toMatchObject({ format: "template", format_fallback: "presenter_failed", images: 1 });
+      // cover + the one shot's own image; the failed presenter is not counted
+      expect(lastRunPatch().stats).toMatchObject({ format: "template", format_fallback: "presenter_failed", images: 2 });
       expect(warn.mock.calls.some(([m]) => String(m).includes("storyteller → template"))).toBe(true);
     } finally {
       warn.mockRestore();

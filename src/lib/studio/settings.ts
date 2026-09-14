@@ -40,7 +40,8 @@ export const DEFAULT_AUTOPILOT: AutopilotSettings = {
   pillar_mode: "rotate",
   pillar: null,
   target_seconds: 30,
-  images_per_run: 1,
+  // One image per shot plus the cover: 6 shots is the usual plan, and this is a ceiling, not a target.
+  images_per_run: 7,
   auto_publish: true,
   publish_on_review_required: false,
   allow_unsupported_claims: false,
@@ -107,7 +108,7 @@ export function normaliseAutopilot(v: unknown): AutopilotSettings {
     pillar_mode: raw.pillar_mode === "fixed" ? "fixed" : "rotate",
     pillar: PILLARS.includes(raw.pillar as (typeof PILLARS)[number]) ? (raw.pillar as AutopilotSettings["pillar"]) : null,
     target_seconds: (TARGET_DURATIONS as readonly number[]).includes(raw.target_seconds as number) ? raw.target_seconds! : DEFAULT_AUTOPILOT.target_seconds,
-    images_per_run: num(raw.images_per_run, DEFAULT_AUTOPILOT.images_per_run, 1, 6),
+    images_per_run: num(raw.images_per_run, DEFAULT_AUTOPILOT.images_per_run, 1, 10),
     auto_publish: bool(raw.auto_publish, DEFAULT_AUTOPILOT.auto_publish),
     publish_on_review_required: bool(raw.publish_on_review_required, DEFAULT_AUTOPILOT.publish_on_review_required),
     allow_unsupported_claims: bool(raw.allow_unsupported_claims, DEFAULT_AUTOPILOT.allow_unsupported_claims),
