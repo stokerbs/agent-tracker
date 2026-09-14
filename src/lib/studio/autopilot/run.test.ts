@@ -341,6 +341,36 @@ describe("runAutopilot pipeline", () => {
     // the queue lookahead is what lets a repeated subject be skipped at all
     expect(h.filters.filter((f) => f.table === "studio_ideas" && f.m === "limit")[0].args[0]).toBe(10);
   });
+  it("keeps a saved idea whose subject it cannot place, even when the generic bucket was just used", async () => {
+    h.recentTitles = [{ title: "ขึ้นศาลต้องใช้หลักฐานแบบไหน" }]; // the generic legal bucket
+    h.savedIdeas = [
+      { id: "idea-1", title: "ฟ้องคดีต้องเตรียมอะไร", hook: null, description: null, tags: [] }, // legal → just covered
+      { id: "idea-2", title: "คลิปวันจันทร์", hook: null, description: null, tags: [] }, // no bucket at all
+    ];
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-2" });
+  });
+  it("takes the oldest saved idea first among the ones left", async () => {
+    h.savedIdeas = [
+      { id: "idea-old", title: "เรื่องแรก", hook: null, description: null, tags: [] },
+      { id: "idea-new", title: "เรื่องที่สอง", hook: null, description: null, tags: [] },
+    ];
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const ideas = h.filters.filter((f) => f.table === "studio_ideas");
+    const oi = ideas.findIndex((f) => f.m === "order");
+    expect(ideas[oi].args[0]).toBe("created_at");
+    expect((ideas[oi].args[1] as { ascending: boolean }).ascending).toBe(true); // oldest first
+    expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-old" });
+  });
+  it("lets only owner-approved, current questions steer idea generation (0109 invariant)", async () => {
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const q = h.filters.filter((f) => f.table === "studio_customer_questions");
+    expect(q.some((f) => f.m === "eq" && f.args[0] === "approved_for_content" && f.args[1] === true)).toBe(true);
+    expect(q.some((f) => f.m === "is" && f.args[0] === "superseded_by" && f.args[1] === null)).toBe(true);
+  });
   it("tells the idea generator what was just made when the queue is empty", async () => {
     h.recentTitles = [{ title: "สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน" }];
     const ai = await import("@/lib/studio/ai");

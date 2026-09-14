@@ -1,3 +1,4 @@
+import { REFERENCE_FENCE, referenceBullets } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar, Platform } from "@/lib/studio/types";
 
@@ -29,8 +30,8 @@ ${PILLAR_GUIDE}
 KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — build from these; cite ids)
 ${input.knowledgeContext || "(no matching knowledge blocks — every idea must then cite \"ai_general\" and list the topic under knowledge_gaps)"}
 
-ALREADY EXISTS (do not duplicate these angles)
-${input.existingTitles.length ? input.existingTitles.map((t) => `- ${t}`).join("\n") : "(none)"}
+ALREADY EXISTS (do not duplicate these angles — ${REFERENCE_FENCE})
+${referenceBullets(input.existingTitles) || "(none)"}
 
 RULES
 - Each idea must have a specific, concrete angle a viewer can learn from — not a generic topic.
