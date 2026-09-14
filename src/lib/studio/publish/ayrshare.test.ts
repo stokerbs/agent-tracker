@@ -33,6 +33,59 @@ describe("AyrsharePublishProvider", () => {
     expect(body.file.startsWith("data:image/png;base64,")).toBe(true);
     expect(body.fileName).toBe("a.png");
   });
+  describe("findRecentPostByRef", () => {
+    const SINCE = "2026-09-14T10:20:00.000Z";
+    const entry = (over: Record<string, unknown> = {}) => ({
+      id: "P_LATE",
+      refId: "R_LATE",
+      status: "success",
+      notes: "master-1",
+      created: "2026-09-14T10:21:35Z",
+      platforms: ["facebook", "tiktok"],
+      postIds: [{ status: "success", id: "fb_1", platform: "facebook", postUrl: "https://fb/1" }],
+      ...over,
+    });
+
+    it("matches our refKey, the exact platform set and the time window", async () => {
+      const { f, calls } = mockFetch([{ body: { history: [entry()] } }]);
+      const p = new AyrsharePublishProvider("KEY", f);
+      const out = await p.findRecentPostByRef({ refKey: "master-1", platforms: ["tiktok", "facebook"], since: SINCE });
+      expect(out).toMatchObject({ providerPostId: "P_LATE", refId: "R_LATE", status: "success" });
+      expect(out!.perPlatform.facebook).toMatchObject({ status: "success", postUrl: "https://fb/1" });
+      expect(calls[0].url).toBe("https://api.ayrshare.com/api/history?lastRecords=25");
+      expect(calls[0].init.method).toBe("GET");
+      expect(String(calls[0].url)).not.toContain("KEY"); // the key only ever travels in the header
+    });
+
+    it("reads a held schedule as scheduled, not published", async () => {
+      const { f } = mockFetch([{ body: { history: [entry({ status: "scheduled" })] } }]);
+      const out = await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE });
+      expect(out!.status).toBe("scheduled");
+    });
+
+    it("ignores another master, another platform set, an older post, an errored post and a missing id", async () => {
+      const cases: Record<string, unknown>[] = [
+        { notes: "master-2" },
+        { platforms: ["facebook"] }, // a narrower request than the group we are asking about
+        { platforms: ["facebook", "tiktok", "instagram"] },
+        { created: "2026-09-14T10:00:00Z" }, // well before the attempt, even with the clock slack
+        { status: "error" },
+        { id: undefined },
+        { created: "not a date" },
+      ];
+      for (const over of cases) {
+        const { f } = mockFetch([{ body: { history: [entry(over)] } }]);
+        const out = await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE });
+        expect(out, JSON.stringify(over)).toBeNull();
+      }
+    });
+
+    it("returns null instead of throwing when the history call answers an error", async () => {
+      const { f } = mockFetch([{ status: 404, body: { status: "error", code: 221, message: "not found" } }]);
+      expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook"], since: SINCE })).toBeNull();
+    });
+  });
+
   it("creates a post with platform options and parses per-platform results", async () => {
     const { f, calls } = mockFetch([{ body: { status: "success", id: "P1", refId: "R1", postIds: [{ status: "success", id: "fb_1", platform: "facebook", postUrl: "https://fb/1" }, { status: "error", platform: "instagram", message: "media required" }] } }]);
     const p = new AyrsharePublishProvider("KEY", f);

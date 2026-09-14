@@ -12,6 +12,11 @@ import { PublishRejectedError, type ConnectedAccounts, type CreatedPost, type Cr
 
 const BASE = "https://api.ayrshare.com/api";
 const DEFAULT_TIMEOUT_MS = 60_000;
+/** Reconciliation runs after a request already burned its own timeout, so it gets a short one. */
+const RECONCILE_TIMEOUT_MS = 20_000;
+const RECONCILE_RECORDS = 25;
+/** Their clock vs ours: allow a little drift before deciding a record predates our attempt. */
+const RECONCILE_SLACK_MS = 60_000;
 const UPLOAD_TIMEOUT_MS = 180_000;
 
 /** Ayrshare platform keys ↔ ours (identical today; kept explicit for safety). */
@@ -26,6 +31,13 @@ interface AyrPostResponse {
   errors?: { platform?: string; message?: string; code?: number }[];
   message?: string;
   code?: number;
+}
+
+interface AyrHistoryEntry extends AyrPostResponse {
+  /** Our refKey — Ayrshare echoes whatever we sent as `notes`. */
+  notes?: string;
+  created?: string;
+  platforms?: string[];
 }
 
 export class AyrsharePublishProvider implements PublishProvider {
@@ -94,6 +106,27 @@ export class AyrsharePublishProvider implements PublishProvider {
       refId: json.refId ?? null,
       status: json.status === "scheduled" ? "scheduled" : "success",
       perPlatform,
+    };
+  }
+
+  async findRecentPostByRef(input: { refKey: string; platforms: SocialPlatform[]; since: string }): Promise<CreatedPost | null> {
+    const json = await this.call<{ history?: AyrHistoryEntry[] }>("GET", `/history?lastRecords=${RECONCILE_RECORDS}`, undefined, RECONCILE_TIMEOUT_MS, true);
+    const floor = Date.parse(input.since) - RECONCILE_SLACK_MS;
+    const wanted = input.platforms.map((p) => TO_AYR[p]).sort();
+    const match = (json.history ?? []).find((h) => {
+      if (h.notes !== input.refKey || !h.id) return false;
+      const created = Date.parse(h.created ?? "");
+      if (!Number.isFinite(created) || created < floor) return false;
+      const got = [...(h.platforms ?? [])].sort();
+      return got.length === wanted.length && got.every((p, i) => p === wanted[i]);
+    });
+    // "error" stays a failure: the caller already recorded why, and nothing went live.
+    if (!match || match.status === "error") return null;
+    return {
+      providerPostId: match.id ?? "",
+      refId: match.refId ?? null,
+      status: match.status === "scheduled" ? "scheduled" : "success",
+      perPlatform: parsePerPlatform(match),
     };
   }
 

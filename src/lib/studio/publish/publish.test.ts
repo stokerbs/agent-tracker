@@ -62,6 +62,7 @@ function fakeProvider(over: Partial<PublishProvider> = {}): PublishProvider & { 
     connectedPlatforms: async () => ({ active: ["facebook"], displayNames: {}, checkedAt: "now" }),
     uploadMedia: async (i) => (calls.push({ upload: i.fileName }), { url: `https://ayr/${i.fileName}` }),
     createPost: async (i) => (calls.push({ post: i }), { providerPostId: "P1", refId: "R1", status: i.scheduleAt ? "scheduled" : "success", perPlatform: Object.fromEntries(i.platforms.map((p) => [p, { status: i.scheduleAt ? "pending" : "success", id: `${p}_1`, postUrl: `https://${p}/1` }])) }),
+    findRecentPostByRef: async (i) => (calls.push({ reconcile: i }), null),
     deletePost: async () => void calls.push({ delete: true }),
     postStatus: async (id) => ({ providerPostId: id, status: "success", perPlatform: { facebook: { status: "success", postUrl: "https://fb/9" } } }),
     ...over,
@@ -220,6 +221,81 @@ describe("publishMaster", () => {
     const foreign = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["not-mine"], scheduleAt: null, userId: "u1" }, { provider });
     expect(foreign).toMatchObject({ ok: false, code: "requirements" });
     expect(provider.calls).toHaveLength(0);
+  });
+  it("recovers a post the aggregator accepted while our request timed out", async () => {
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new Error("Ayrshare POST /post timed out after 60000 ms");
+      },
+      findRecentPostByRef: async () => ({ providerPostId: "P_LATE", refId: "R_LATE", status: "success", perPlatform: { facebook: { status: "success", id: "fb_late", postUrl: "https://fb/late" } } }),
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: true, providerPostId: "P_LATE" });
+      expect((r as { failures?: Row }).failures).toBeUndefined();
+      const rows = h.inserts.filter((i) => i.platform);
+      expect(rows.map((x) => [x.platform, x.status, x.post_url])).toEqual([["facebook", "published", "https://fb/late"]]);
+      expect(rows[0].provider_post_id).toBe("P_LATE");
+      expect(warn.mock.calls.some(([m]) => String(m).includes("recovered"))).toBe(true);
+    } finally {
+      warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+  it("asks only about the group's own platforms, from the moment the attempt started", async () => {
+    const before = Date.now();
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new Error("socket hang up");
+      },
+    });
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      await publishMaster({ master, variants: [{ id: "v1", platform: "instagram_reel", caption: "IG เฉพาะ", hook: null }], platforms: ["facebook", "instagram"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      const asks = provider.calls.filter((c) => c.reconcile).map((c) => c.reconcile as { refKey: string; platforms: string[]; since: string });
+      expect(asks.map((a) => a.platforms)).toEqual([["facebook"], ["instagram"]]);
+      expect(asks.every((a) => a.refKey === MASTER)).toBe(true);
+      expect(asks.every((a) => Date.parse(a.since) >= before && Date.parse(a.since) <= Date.now())).toBe(true);
+    } finally {
+      err.mockRestore();
+    }
+  });
+  it("does not go looking when the provider rejected the post outright", async () => {
+    const { PublishRejectedError } = await import("./provider");
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new PublishRejectedError("caption too long", { facebook: "too long" });
+      },
+    });
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: false, code: "rejected" });
+      expect(provider.calls.some((c) => c.reconcile)).toBe(false);
+      expect(h.inserts.filter((i) => i.platform)).toHaveLength(0);
+    } finally {
+      err.mockRestore();
+    }
+  });
+  it("keeps the original failure when the lookup finds nothing or itself fails", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      for (const findRecentPostByRef of [async () => null, async () => { throw new Error("history down"); }] as const) {
+        h.inserts = [];
+        const provider = fakeProvider({ createPost: async () => { throw new Error("socket hang up"); }, findRecentPostByRef });
+        const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+        expect(r).toMatchObject({ ok: false, code: "rejected", details: { facebook: "socket hang up" } });
+        expect(h.inserts.filter((i) => i.platform)).toHaveLength(0);
+      }
+    } finally {
+      err.mockRestore();
+    }
   });
   it("maps a provider rejection to per-platform details", async () => {
     const { PublishRejectedError } = await import("./provider");

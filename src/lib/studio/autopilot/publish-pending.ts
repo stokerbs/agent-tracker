@@ -123,7 +123,8 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
       if (!published.ok) {
         res.failed += 1;
         res.errors.push(`${run.id}: ${published.code}: ${published.error}`);
-        await svc.from("studio_autopilot_runs").update({ stopped_at: "publish_failed", error: `${published.code}: ${published.error}`.slice(0, 900) }).eq("id", run.id);
+        // Same guard as the catch below: only the claim we are holding may be turned into a failure.
+        await svc.from("studio_autopilot_runs").update({ stopped_at: "publish_failed", error: `${published.code}: ${published.error}`.slice(0, 900) }).eq("id", run.id).eq("stopped_at", "publishing");
         await notify(`❌ โพสต์คอนเทนต์ที่ค้างจาก Autopilot ไม่สำเร็จ\n"${master.title}"\n${published.error}\n${APP_URL}/studio/content/${masterId}`);
         continue;
       }

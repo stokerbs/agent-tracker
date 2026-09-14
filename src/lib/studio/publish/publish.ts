@@ -45,6 +45,19 @@ export const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 export const SCHEDULE_MIN_LEAD_MS = 60_000;
 const ACTIVE_STATUSES = ["queued", "scheduled", "published"] as const;
 
+/**
+ * After an ambiguous provider failure, ask the provider whether the post exists anyway.
+ * Never throws: a failed lookup just leaves the original failure standing.
+ */
+async function reconcileGroup(provider: PublishProvider, refKey: string, platforms: SocialPlatform[], since: string): Promise<CreatedPost | null> {
+  try {
+    return await provider.findRecentPostByRef({ refKey, platforms, since });
+  } catch (err) {
+    console.error(`[studio:publish] reconcile lookup failed master=${refKey}:`, err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 /** Only http(s) URLs are ever stored or forwarded — never trust a provider string blindly. */
 export function safeHttpUrl(u: string | null | undefined): string | null {
   return u && /^https?:\/\/\S+$/i.test(u) ? u : null;
@@ -144,6 +157,7 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
     for (const [text, group] of groups) {
       let created: CreatedPost | null = null;
       let groupError: string | null = null;
+      const attemptedAt = new Date().toISOString();
       try {
         created = await provider.createPost({
           text,
@@ -163,6 +177,18 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
         for (const p of group) failures[p] = perPlatform[p] ?? groupError;
         if (!(err instanceof PublishRejectedError)) Sentry.captureException(err, { tags: { module: "studio-publish" } });
         console.error(`[studio:publish] group failed master=${master.id} platforms=${group.join(",")}:`, groupError);
+        // A rejection is a real "no". Anything else (timeout, dropped connection) is ambiguous: the aggregator
+        // may have accepted the post while our client gave up — that is how a live post ended up with no rows.
+        if (!(err instanceof PublishRejectedError)) {
+          const recovered = await reconcileGroup(provider, master.id, group, attemptedAt);
+          if (recovered) {
+            created = recovered;
+            groupError = null;
+            for (const p of group) delete failures[p];
+            if (!firstProviderId) firstProviderId = created.providerPostId;
+            console.warn(`[studio:publish] recovered master=${master.id} platforms=${group.join(",")} provider_post=${created.providerPostId} after an ambiguous failure`);
+          }
+        }
       }
       for (const p of group) {
         const r = created?.perPlatform[p];

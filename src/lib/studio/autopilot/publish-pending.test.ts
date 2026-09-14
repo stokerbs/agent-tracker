@@ -183,7 +183,10 @@ describe("publishPendingAutopilotRuns", () => {
     h.publish.mockResolvedValue({ ok: false, code: "blocked", error: "แคปชันยังมีข้อมูลที่ระบุตัวตนได้" });
     const res = await publishPendingAutopilotRuns();
     expect(res).toMatchObject({ failed: 1, published: 0 });
-    expect(h.updates.some((u) => u.payload.stopped_at === "publish_failed")).toBe(true);
+    const failed = h.updates.find((u) => u.payload.stopped_at === "publish_failed")!;
+    expect(failed).toBeDefined();
+    // only our own claim may be marked failed — another worker's run must stay untouched
+    expect(failed.predicates).toContainEqual(["eq", "stopped_at", "publishing"]);
     expect(h.notes[0]).toContain("ไม่สำเร็จ");
     expect(h.audits).toHaveLength(0);
   });
