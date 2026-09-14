@@ -9,6 +9,15 @@ vi.mock("./context", () => ({
 }));
 vi.mock("../run", () => ({ runStructured: (o: unknown) => h.run(o) }));
 
+describe("script schema", () => {
+  it("does not offer the model section labels the prompt bans", async () => {
+    const { ScriptResponseSchema } = await import("../prompts/schemas");
+    const description = ScriptResponseSchema.shape.script.description ?? "";
+    expect(description).toContain("No section labels");
+    expect(description).not.toMatch(/\[HOOK\]|label[s]? like/i);
+  });
+});
+
 describe("generateScript retrieval", () => {
   it("asks for four knowledge blocks and tells the model to use at most two", async () => {
     h.context.mockResolvedValue({ system: "sys", knowledgeContext: "blocks", hits: [], refs: {} });
