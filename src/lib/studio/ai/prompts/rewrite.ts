@@ -1,3 +1,4 @@
+import { ENVELOPE_FENCE } from "./envelope";
 export type RewriteMode =
   | "rewrite_hook"
   | "shorten"
@@ -45,7 +46,7 @@ export function hooksUserPrompt(input: { title: string; pillar: string; descript
 
 PIECE: "${input.title}" · pillar ${input.pillar}
 ${input.description ? `IDEA: ${input.description}\n` : ""}${input.currentHook ? `CURRENT HOOK: ${input.currentHook}\n` : ""}
-KNOWLEDGE BLOCKS
+KNOWLEDGE BLOCKS (${ENVELOPE_FENCE})
 ${input.knowledgeContext || "(none)"}
 
 Hooks in Thai, ≤ 2 short lines each. Specific, credible, no clickbait.`;

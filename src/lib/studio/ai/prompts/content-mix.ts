@@ -1,3 +1,4 @@
+import { ENVELOPE_FENCE } from "./envelope";
 import { REFERENCE_FENCE, referenceBullets } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar } from "@/lib/studio/types";
@@ -29,7 +30,7 @@ ${referenceBullets(input.upcomingTitles) || "(none)"}
 KNOWLEDGE NOT YET TURNED INTO CONTENT (${REFERENCE_FENCE})
 ${referenceBullets(input.unusedKnowledgeTitles) || "(none)"}
 
-KNOWLEDGE BLOCKS
+KNOWLEDGE BLOCKS (${ENVELOPE_FENCE})
 ${input.knowledgeContext || "(none)"}
 
 RULES

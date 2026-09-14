@@ -1,3 +1,4 @@
+import { ENVELOPE_FENCE } from "./envelope";
 import { REFERENCE_FENCE, referenceBullets } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar, Platform } from "@/lib/studio/types";
@@ -27,7 +28,7 @@ ${input.pillar ? `\nPILLAR FOCUS: ${input.pillar}` : ""}${input.platforms?.lengt
 CONTENT PILLARS
 ${PILLAR_GUIDE}
 
-KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — build from these; cite ids)
+KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — build from these; cite ids; ${ENVELOPE_FENCE})
 ${input.knowledgeContext || "(no matching knowledge blocks — every idea must then cite \"ai_general\" and list the topic under knowledge_gaps)"}
 
 ALREADY EXISTS (do not duplicate these angles — ${REFERENCE_FENCE})

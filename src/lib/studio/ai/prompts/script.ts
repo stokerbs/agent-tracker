@@ -1,3 +1,5 @@
+import { referenceLine } from "./reference-list";
+import { ENVELOPE_FENCE } from "./envelope";
 import type { Pillar, Platform, TargetDuration } from "@/lib/studio/types";
 import { CASE_STORY_STRUCTURE } from "./case-story";
 
@@ -27,17 +29,17 @@ export function scriptUserPrompt(input: ScriptPromptInput): string {
   return `TASK: Write the ${isVideo ? "spoken short-form video script" : "post copy"} for one Detective Pulse content piece.
 
 PIECE
-- Title: ${input.title}
+- Title: ${referenceLine(input.title, 200)}
 - Pillar: ${input.pillar}
 - Platform: ${input.platform}
-${input.hook ? `- Working hook: ${input.hook}` : ""}${input.description ? `\n- Idea: ${input.description}` : ""}${input.tone ? `\n- Tone: ${input.tone}` : ""}
+${input.hook ? `- Working hook: ${referenceLine(input.hook, 200)}` : ""}${input.description ? `\n- Idea: ${referenceLine(input.description, 400)}` : ""}${input.tone ? `\n- Tone: ${referenceLine(input.tone, 200)}` : ""}
 - Target length: ${DURATION_GUIDE[input.targetSeconds]}
 
 STRUCTURE (flexible — use what the idea needs, don't force every part)
 HOOK → CONTEXT → INSIGHT → EXPLANATION → PAYOFF → CTA
 ${input.pillar === "case_story" ? `\n${CASE_STORY_STRUCTURE}` : ""}
 
-KNOWLEDGE BLOCKS (approved reference — cite ids in source_refs and per claim)
+KNOWLEDGE BLOCKS (approved reference — cite ids in source_refs and per claim; ${ENVELOPE_FENCE})
 - Use at MOST 2 blocks, and only ones that support the single idea of this piece. Ignore the rest; leaving a block unused is correct and expected.
 - Never stitch two topics together to use more blocks. If only one block fits, use one.
 ${input.knowledgeContext || "(none matched — state clearly in ai_notes that this script relies on general knowledge, and mark every claim ai_general)"}

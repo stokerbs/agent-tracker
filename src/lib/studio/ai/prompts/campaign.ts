@@ -1,3 +1,4 @@
+import { ENVELOPE_FENCE } from "./envelope";
 import { numberedReferenceLines, REFERENCE_FENCE, referenceBullets, referenceLine } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar, Platform } from "@/lib/studio/types";
@@ -30,7 +31,7 @@ STEP 2 — PROPOSE exactly post_count ideas, ranked strongest first. Each idea n
 PILLAR BALANCE (use to avoid over-representing one pillar)
 ${targets}
 
-KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — cite ids)
+KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — cite ids; ${ENVELOPE_FENCE})
 ${input.knowledgeContext || "(no matching knowledge blocks — cite \"ai_general\" and list topics under knowledge_gaps)"}
 
 ALREADY EXISTS (avoid duplicating — ${REFERENCE_FENCE})
