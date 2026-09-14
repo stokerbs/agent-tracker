@@ -1,5 +1,8 @@
 import "server-only";
 
+import { dataEnvelope, envelopeTag } from "@/lib/studio/ai/prompts/envelope";
+import { referenceLine } from "@/lib/studio/ai/prompts/reference-list";
+
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Pillar, SourceKind } from "@/lib/studio/types";
 
@@ -192,14 +195,25 @@ export async function searchKnowledge(query: string, opts: SearchOptions = {}): 
   return hits.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-/** Format hits as numbered context blocks the model can cite as [K1], [K2]… */
-export function formatKnowledgeContext(hits: KnowledgeHit[]): { context: string; refs: Record<string, KnowledgeHit> } {
+/**
+ * Format hits as numbered context blocks the model can cite as [K1], [K2]…
+ *
+ * Knowledge rows are built from customer chats, so this text is not ours in the way it looks:
+ * it is too long to flatten, so it is wrapped in an unguessable envelope instead, and any [K…]
+ * marker inside a block is neutralised — only this function may hand out citation ids (docs §18).
+ */
+export function formatKnowledgeContext(hits: KnowledgeHit[], tag = envelopeTag()): { context: string; refs: Record<string, KnowledgeHit> } {
   const refs: Record<string, KnowledgeHit> = {};
   const lines = hits.map((h, i) => {
     const key = `K${i + 1}`;
     refs[key] = h;
     const kindLabel = h.kind === "knowledge" ? "คลังความรู้" : h.kind === "case_insight" ? "บทเรียนจากเคส (ไม่ระบุตัวตน)" : "คำถามลูกค้า";
-    return `[${key}] (${kindLabel}) ${h.title}\n${h.text}`;
+    return `[${key}] (${kindLabel}) ${stripCitationMarkers(referenceLine(h.title, 200))}\n${stripCitationMarkers(h.text)}`;
   });
-  return { context: lines.join("\n\n"), refs };
+  return { context: lines.length ? dataEnvelope("KNOWLEDGE", lines.join("\n\n"), tag) : "", refs };
+}
+
+/** `[K3]` written inside a block would read as our own citation id; keep the text, drop the brackets. */
+function stripCitationMarkers(text: string): string {
+  return text.replace(/[[［【]\s*K\s*[\d\u0E50-\u0E59]+\s*[\]］】]/gi, "(K?)");
 }

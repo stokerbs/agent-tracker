@@ -1,3 +1,5 @@
+import { dataEnvelope, ENVELOPE_FENCE, envelopeTag } from "./envelope";
+import { referenceLine } from "./reference-list";
 import { z } from "zod/v4";
 
 /**
@@ -37,16 +39,23 @@ export function consolidateSystemAddendum(): string {
   return `You are now DEDUPLICATING an internal knowledge base. Rows came from thousands of real chat transcripts, so the same insight appears many times in slightly different words. Merge only rows that make the SAME point (or the same customer question); never merge different topics just because they share a word. Output stays identity-free.`;
 }
 
-export function consolidateKnowledgeUserPrompt(items: { n: number; title: string; content: string; category: string }[]): string {
-  return `ROWS (same knowledge category, sorted by title)
-${items.map((i) => `[${i.n}] (${i.category}) ${i.title}\n${i.content}`).join("\n\n")}
+export function consolidateKnowledgeUserPrompt(items: { n: number; title: string; content: string; category: string }[], tag = envelopeTag()): string {
+  // Rows are built from real chat transcripts, and whatever this run merges is written back into the
+  // knowledge base and carried by every later prompt — so the row boundaries must not be forgeable.
+  const rows = items.map((i) => `[${i.n}] (${i.category}) ${referenceLine(i.title, 200)}\n${i.content}`).join("\n\n");
+  return `ROWS (same knowledge category, sorted by title — ${ENVELOPE_FENCE})
+${dataEnvelope("ROWS", rows, tag)}
 
 TASK: return groups of rows that express the same reusable insight (2+ members each) with a merged canonical title/content that preserves every distinct detail. Rows that stand alone must NOT appear in any group. Do not invent facts. Thai output.`;
 }
 
-export function consolidateQuestionsUserPrompt(items: { n: number; question: string; answer_hint: string | null; frequency: number }[]): string {
-  return `QUESTIONS (sorted; frequency = how often customers asked)
-${items.map((i) => `[${i.n}] (×${i.frequency}) ${i.question}${i.answer_hint ? `\n   → ${i.answer_hint}` : ""}`).join("\n")}
+export function consolidateQuestionsUserPrompt(items: { n: number; question: string; answer_hint: string | null; frequency: number }[], tag = envelopeTag()): string {
+  // Questions are customer-authored: one line each, so they are flattened as well as enveloped.
+  const rows = items
+    .map((i) => `[${i.n}] (×${i.frequency}) ${referenceLine(i.question, 300)}${i.answer_hint ? `\n   → ${referenceLine(i.answer_hint, 300)}` : ""}`)
+    .join("\n");
+  return `QUESTIONS (sorted; frequency = how often customers asked — ${ENVELOPE_FENCE})
+${dataEnvelope("QUESTIONS", rows, tag)}
 
 TASK: return groups of questions that ask the same thing (2+ members each) with one canonical question and the best merged answer hint. Questions that stand alone must NOT appear in any group. Thai output.`;
 }
