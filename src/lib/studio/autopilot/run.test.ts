@@ -6,7 +6,9 @@ const h = vi.hoisted(() => ({
   pillars: [{ key: "detective_knowledge", target_pct: 100 }],
   settingsThrow: false,
   runsThisWeek: 0,
-  savedIdea: null as Row | null,
+  savedIdeas: [] as Row[],
+  recentTitles: [] as Row[],
+  recentTitlesError: null as { message: string } | null,
   ideaResult: { ok: true, generationId: "g1", model: "m", data: { ideas: [{ title: "ไอเดียใหม่", hook: "hook", description: "d", tags: ["t"], platforms: [], format: null, ai_scores: null, source_refs: [] }], knowledge_gaps: [] } } as Row,
   script: { ok: true, data: { hook: "h", script: "สคริปต์", caption: "แคปชัน", cta: "cta", estimated_duration_sec: 30, ai_notes: "", source_refs: [], claims: [] as Row[] } } as Row,
   plan: { ok: true, data: { shots: [{ start_sec: 0, end_sec: 4, voice: "พูด", visual: "ภาพ", text_overlay: null }], broll: [], text_overlays: [] } } as Row,
@@ -70,7 +72,6 @@ vi.mock("@/lib/supabase/server", () => ({
         }
         if (st.op === "update") return { data: null, error: null };
         if (table === "profiles") return { data: h.admin, error: null };
-        if (table === "studio_ideas") return { data: h.savedIdea, error: null };
         if (table === "studio_autopilot_runs") return { data: h.lastRun, error: h.lastRunError };
         if (table === "studio_content_masters") return { data: { title: "หัวข้อ", hook: "h", script: "s", caption: "c", cta: "x" }, error: null };
         return { data: null, error: null };
@@ -80,9 +81,21 @@ vi.mock("@/lib/supabase/server", () => ({
       b.then = (r: (v: unknown) => unknown) =>
         Promise.resolve(
           r({
-            data: table === "studio_customer_questions" ? [{ question: "q", frequency: 3 }] : [],
+            data:
+              table === "studio_customer_questions"
+                ? [{ question: "q", frequency: 3 }]
+                : table === "studio_ideas"
+                  ? h.savedIdeas
+                  : table === "studio_content_masters"
+                    ? h.recentTitles
+                    : [],
             count: table === "studio_autopilot_runs" ? h.runsThisWeek : 0,
-            error: st.op === "insert" && table === "studio_privacy_checks" && h.privacyInsertFails ? { code: "42501", message: "denied" } : null,
+            error:
+              st.op === "insert" && table === "studio_privacy_checks" && h.privacyInsertFails
+                ? { code: "42501", message: "denied" }
+                : st.op === "select" && table === "studio_content_masters"
+                  ? h.recentTitlesError
+                  : null,
           }),
         );
       return b;
@@ -95,7 +108,9 @@ beforeEach(() => {
   h.cfg = {};
   h.settingsThrow = false;
   h.runsThisWeek = 0;
-  h.savedIdea = null;
+  h.savedIdeas = [];
+  h.recentTitles = [];
+  h.recentTitlesError = null;
   h.script = { ok: true, data: { hook: "h", script: "สคริปต์", caption: "แคปชัน", cta: "cta", estimated_duration_sec: 30, ai_notes: "", source_refs: [], claims: [] } };
   h.privacy = { status: "safe", findings: [], summary: "ok", checked_by: "ai", model: "m" };
   h.allowOverride = true;
@@ -266,13 +281,74 @@ describe("runAutopilot pipeline", () => {
     expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "review", stopReason: "publish_failed" });
   });
   it("reuses a saved idea for the pillar instead of generating new ones", async () => {
-    h.savedIdea = { id: "idea-9", title: "ไอเดียที่บันทึกไว้", hook: null, description: null, tags: [] };
+    h.savedIdeas = [{ id: "idea-9", title: "ไอเดียที่บันทึกไว้", hook: null, description: null, tags: [] }];
     const ai = await import("@/lib/studio/ai");
     const { runAutopilot } = await load();
     await runAutopilot({ userId: "u1" });
     expect(ai.generateIdeas).not.toHaveBeenCalled();
     expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-9", title: "ไอเดียที่บันทึกไว้" });
     expect(h.updates.some((u) => u.table === "studio_ideas" && u.row.status === "generated")).toBe(true);
+  });
+  it("skips a saved idea that repeats what the last pieces were about", async () => {
+    h.recentTitles = [{ title: "สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน" }];
+    h.savedIdeas = [
+      { id: "idea-1", title: "แฟนนอกใจ ดูยังไง", hook: null, description: null, tags: [] },
+      { id: "idea-2", title: "ตรวจประวัติว่าที่หุ้นส่วนก่อนเซ็นสัญญา", hook: null, description: null, tags: [] },
+    ];
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-2" });
+  });
+  it("uses the oldest saved idea anyway when every one of them repeats a recent subject", async () => {
+    h.recentTitles = [{ title: "สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน" }];
+    h.savedIdeas = [
+      { id: "idea-1", title: "แฟนนอกใจ ดูยังไง", hook: null, description: null, tags: [] },
+      { id: "idea-2", title: "คู่สมรสเปลี่ยนไป", hook: null, description: null, tags: [] },
+    ];
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const { runAutopilot } = await load();
+      await runAutopilot({ userId: "u1" });
+      expect(h.inserts.find((i) => i.table === "studio_content_masters")!.row).toMatchObject({ idea_id: "idea-1" });
+      expect(info.mock.calls.some(([m]) => String(m).includes("repeats a recent subject"))).toBe(true);
+    } finally {
+      info.mockRestore();
+    }
+  });
+  it("still produces a piece when the recent-titles lookup fails", async () => {
+    h.recentTitlesError = { message: "connection reset" };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+      expect(warn.mock.calls.some(([m]) => String(m).includes("recent titles lookup failed"))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+  it("asks for the newest titles only, skips archived/rejected, and looks deep enough into the saved queue", async () => {
+    h.savedIdeas = [{ id: "idea-1", title: "แฟนนอกใจ ดูยังไง", hook: null, description: null, tags: [] }];
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const masters = h.filters.filter((f) => f.table === "studio_content_masters");
+    const oi = masters.findIndex((f) => f.m === "order");
+    expect(oi, "recent titles must be ordered").toBeGreaterThan(-1);
+    expect(masters[oi].args[0]).toBe("created_at");
+    expect((masters[oi].args[1] as { ascending: boolean }).ascending).toBe(false); // newest first, not oldest
+    expect(masters[oi + 1]).toMatchObject({ m: "limit", args: [6] });
+    // exactly these two: dropping "rejected" or adding draft/review would change what counts as "just made"
+    expect(masters.some((f) => f.m === "not" && f.args[0] === "status" && f.args[1] === "in" && f.args[2] === "(archived,rejected)")).toBe(true);
+    // the queue lookahead is what lets a repeated subject be skipped at all
+    expect(h.filters.filter((f) => f.table === "studio_ideas" && f.m === "limit")[0].args[0]).toBe(10);
+  });
+  it("tells the idea generator what was just made when the queue is empty", async () => {
+    h.recentTitles = [{ title: "สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน" }];
+    const ai = await import("@/lib/studio/ai");
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const brief = vi.mocked(ai.generateIdeas).mock.calls.at(-1)![0].brief;
+    expect(brief).toContain("เพิ่งทำไปแล้ว");
+    expect(brief).toContain("สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน");
   });
 });
 

@@ -10,7 +10,7 @@ import { publishMaster } from "@/lib/studio/publish/publish";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import { runRenderJob } from "@/lib/studio/video/render";
 import type { AutopilotSettings, AutopilotVideoFormat, CreativePlan, Pillar, Platform, SocialPlatform, VideoFormat } from "@/lib/studio/types";
-import { buildBrief, choosePillar, shouldRun, STOP_REASON_TH, type SkipReason } from "./plan";
+import { buildBrief, choosePillar, recentTopics, shouldRun, STOP_REASON_TH, topicOf, type SkipReason } from "./plan";
 
 /**
  * Autopilot (phase 4): one cron run produces one finished post — idea →
@@ -126,7 +126,8 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     const publishedByPillar = await countPublishedByPillar(svc);
     const pillar = choosePillar(cfg, pillars, publishedByPillar);
     await svc.from("studio_autopilot_runs").update({ pillar }).eq("id", runId);
-    const idea = await pickIdea(svc, pillar, actor);
+    const recentTitles = await recentPieceTitles(svc);
+    const idea = await pickIdea(svc, pillar, actor, recentTitles);
     if (!idea) return await stop("no_idea", null, "failed");
 
     // ── 2. master + script ──────────────────────────────────────────────────
@@ -355,17 +356,42 @@ interface PickedIdea {
   persisted: boolean;
 }
 
-/** Oldest saved idea for the pillar, else generate a fresh batch from real customer questions. */
-async function pickIdea(svc: Svc, pillar: Pillar, userId: string | null): Promise<PickedIdea | null> {
-  const { data: saved } = await svc
+/** What the last few pieces were about, newest first — the next one should not repeat them (docs §18). */
+const RECENT_PIECES = 6;
+/** How far down the saved queue to look for an idea on a subject we have not just used. */
+const SAVED_IDEA_LOOKAHEAD = 10;
+async function recentPieceTitles(svc: Svc): Promise<string[]> {
+  const { data, error } = await svc
+    .from("studio_content_masters")
+    .select("title")
+    // Archived and rejected pieces are not "what we just made"; a draft or one waiting for review is,
+    // so it still counts — producing the same subject twice while one sits in the queue is the bug we are fixing.
+    .not("status", "in", "(archived,rejected)")
+    .order("created_at", { ascending: false })
+    .limit(RECENT_PIECES);
+  if (error) {
+    // Variety is a nice-to-have; never stop a run because we could not read history.
+    console.warn(`[studio:autopilot] recent titles lookup failed: ${error.message}`);
+    return [];
+  }
+  return (data ?? []).map((r) => r.title).filter((t): t is string => !!t);
+}
+
+/** Oldest saved idea for the pillar whose subject we have not just covered, else a fresh batch. */
+async function pickIdea(svc: Svc, pillar: Pillar, userId: string | null, recentTitles: string[] = []): Promise<PickedIdea | null> {
+  const avoid = recentTopics(recentTitles);
+  const { data: savedRows } = await svc
     .from("studio_ideas")
     .select("id, title, hook, description, tags")
     .eq("status", "saved")
     .eq("pillar", pillar)
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (saved) return { id: saved.id, title: saved.title, hook: saved.hook, description: saved.description, tags: saved.tags ?? [], persisted: true };
+    .limit(SAVED_IDEA_LOOKAHEAD);
+  const saved = (savedRows ?? []).find((r) => !avoid.has(topicOf(r.title) ?? "")) ?? (savedRows ?? [])[0];
+  if (saved) {
+    if (avoid.has(topicOf(saved.title) ?? "")) console.info(`[studio:autopilot] every saved idea for ${pillar} repeats a recent subject — using the oldest anyway`);
+    return { id: saved.id, title: saved.title, hook: saved.hook, description: saved.description, tags: saved.tags ?? [], persisted: true };
+  }
 
   // Only owner-approved questions may steer generation (0109 invariant): these rows are customer-authored.
   const { data: questions } = await svc
@@ -375,7 +401,7 @@ async function pickIdea(svc: Svc, pillar: Pillar, userId: string | null): Promis
     .eq("approved_for_content", true)
     .order("frequency", { ascending: false })
     .limit(20);
-  const res = await generateIdeas({ brief: buildBrief(pillar, questions ?? []), count: 3, pillar, userId });
+  const res = await generateIdeas({ brief: buildBrief(pillar, questions ?? [], recentTitles), count: 3, pillar, userId });
   if (!res.ok || !res.data.ideas.length) {
     console.error("[studio:autopilot] idea generation failed:", res.ok ? "empty" : res.error);
     return null;
