@@ -336,7 +336,8 @@ describe("runAutopilot pipeline", () => {
     expect(masters[oi].args[0]).toBe("created_at");
     expect((masters[oi].args[1] as { ascending: boolean }).ascending).toBe(false); // newest first, not oldest
     expect(masters[oi + 1]).toMatchObject({ m: "limit", args: [6] });
-    expect(masters.some((f) => f.m === "not" && f.args[0] === "status" && String(f.args[2]).includes("archived"))).toBe(true);
+    // exactly these two: dropping "rejected" or adding draft/review would change what counts as "just made"
+    expect(masters.some((f) => f.m === "not" && f.args[0] === "status" && f.args[1] === "in" && f.args[2] === "(archived,rejected)")).toBe(true);
     // the queue lookahead is what lets a repeated subject be skipped at all
     expect(h.filters.filter((f) => f.table === "studio_ideas" && f.m === "limit")[0].args[0]).toBe(10);
   });
