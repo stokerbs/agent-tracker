@@ -45,16 +45,64 @@ export function choosePillar(cfg: AutopilotSettings, pillars: PillarConfig[], pu
   return best;
 }
 
-/** Brief for the idea generator: the pillar plus what customers actually ask. */
-export function buildBrief(pillar: Pillar, questions: { question: string; frequency: number }[]): string {
-  const base = `สร้างไอเดียคอนเทนต์สำหรับเสา "${pillar}" เน้นความรู้ที่ใช้ได้จริง ไม่เล่าเคสจริง ไม่สัญญาผลลัพธ์`;
+/**
+ * Coarse subject buckets. Rotating the pillar was not enough to vary what a piece is *about*:
+ * the approved customer questions are dominated by partner infidelity, so three pieces in a row
+ * came back to the same subject under different pillars (owner, 2026-09-14). This is a "same
+ * subject again?" check, not a taxonomy — first match in this order wins, so the specific
+ * subjects are listed before the generic ones (หลักฐาน/คดี appear in almost every title).
+ */
+export const TOPIC_KEYWORDS: Record<string, string[]> = {
+  infidelity: ["ชู้", "นอกใจ", "แฟน", "สามี", "ภรรยา", "คู่สมรส", "มือที่สาม", "คนรัก"],
+  background: ["ตรวจประวัติ", "ประวัติบุคคล", "ว่าที่", "คู่ค้า", "สมัครงาน", "นายจ้าง", "คนที่คุยอยู่", "หุ้นส่วน"],
+  fraud: ["โกงเงิน", "ฉ้อโกง", "หลอกลงทุน", "แชร์ลูกโซ่", "สแกม", "โอนเงินไป", "ถูกหลอก"],
+  missing: ["คนหาย", "ตามหา", "หนีออกจากบ้าน", "ขาดการติดต่อ"],
+  asset: ["สืบทรัพย์", "ทรัพย์สิน", "ที่ดิน", "มรดก", "บังคับคดี", "ลูกหนี้"],
+  workplace: ["ทุจริต", "พนักงาน", "ข้อมูลรั่ว", "คู่แข่ง", "ลาป่วย", "ในบริษัท"],
+  stalking: ["สะกดรอย", "ถูกตาม", "คุกคาม", "กล้องแอบ", "ติดตามตัว"],
+  legal: ["ศาล", "ฟ้อง", "คดี", "ทนาย", "หลักฐาน"],
+};
+
+/** The subject a title or question is about, or null when nothing recognisable matches. */
+export function topicOf(text: string): string | null {
+  const t = text.toLowerCase();
+  for (const [topic, words] of Object.entries(TOPIC_KEYWORDS)) if (words.some((w) => t.includes(w))) return topic;
+  return null;
+}
+
+/** Subjects covered by the pieces produced most recently — what the next one should avoid. */
+export function recentTopics(titles: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const t of titles) {
+    const topic = topicOf(t);
+    if (topic) out.add(topic);
+  }
+  return out;
+}
+
+/**
+ * The one question the piece answers. Most-asked first, but skipping subjects just covered —
+ * unless every question left is one of them, in which case the most-asked wins after all.
+ */
+export function chooseSpine<T extends { question: string; frequency: number }>(ranked: T[], avoid: Set<string>): T | undefined {
+  return ranked.find((q) => !avoid.has(topicOf(q.question) ?? "")) ?? ranked[0];
+}
+
+/** Brief for the idea generator: the pillar plus what customers actually ask, minus what we just made. */
+export function buildBrief(pillar: Pillar, questions: { question: string; frequency: number }[], recentTitles: string[] = []): string {
+  const avoid = recentTopics(recentTitles);
+  const covered = recentTitles.slice(0, 5).map((t) => `- ${t.trim().slice(0, 120)}`).join("\n");
+  const base = `สร้างไอเดียคอนเทนต์สำหรับเสา "${pillar}" เน้นความรู้ที่ใช้ได้จริง ไม่เล่าเคสจริง ไม่สัญญาผลลัพธ์${
+    covered ? `\n\nเพิ่งทำไปแล้ว — ห้ามเสนอเรื่องเดิมหรือมุมใกล้เคียงกับรายการนี้ ให้เปลี่ยนเรื่องไปเลย:\n${covered}` : ""
+  }`;
   const ranked = questions.slice().sort((a, b) => b.frequency - a.frequency);
-  const spine = ranked[0];
+  const spine = chooseSpine(ranked, avoid);
   if (!spine) return base;
   // One question is the spine of the piece; the rest are context only. A list of eight produced clips that
   // answered several questions at once and read as a jumble (2026-09-14).
   const others = ranked
-    .slice(1, 4)
+    .filter((q) => q !== spine)
+    .slice(0, 3)
     .map((q) => `- ${q.question.trim().slice(0, 120)}`)
     .join("\n");
   // Customer-authored text: reference material only, never instructions to follow.
