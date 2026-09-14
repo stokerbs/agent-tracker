@@ -123,7 +123,8 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
       if (!published.ok) {
         res.failed += 1;
         res.errors.push(`${run.id}: ${published.code}: ${published.error}`);
-        await svc.from("studio_autopilot_runs").update({ stopped_at: "publish_failed", error: `${published.code}: ${published.error}`.slice(0, 900) }).eq("id", run.id);
+        // Same guard as the catch below: only the claim we are holding may be turned into a failure.
+        await svc.from("studio_autopilot_runs").update({ stopped_at: "publish_failed", error: `${published.code}: ${published.error}`.slice(0, 900) }).eq("id", run.id).eq("stopped_at", "publishing");
         await notify(`❌ โพสต์คอนเทนต์ที่ค้างจาก Autopilot ไม่สำเร็จ\n"${master.title}"\n${published.error}\n${APP_URL}/studio/content/${masterId}`);
         continue;
       }
@@ -133,7 +134,9 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
         action: "STUDIO_SOCIAL_POST",
         entity: "studio_content_masters",
         entityId: masterId,
-        metadata: { autopilot: true, run_id: run.id, recovered: "timeout_before_publish", platforms: cfg.platforms, provider_post_id: published.providerPostId },
+        // Two different recoveries can meet here: the run we picked up (swept_from) and, inside publishMaster,
+        // a post the provider had accepted without answering us (provider_recovered).
+        metadata: { autopilot: true, run_id: run.id, swept_from: "timeout_before_publish", platforms: cfg.platforms, provider_post_id: published.providerPostId, ...(published.recovered ? { provider_recovered: true } : {}) },
       });
       await markDone(svc, run.id, run.stats, published.posts.length);
       const urls = published.posts.map((p) => p.post_url).filter((u): u is string => !!u);

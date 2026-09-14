@@ -87,6 +87,15 @@ describe("publishPendingAutopilotRuns", () => {
     expect(done.payload).toMatchObject({ status: "done", published: true });
     expect((done.payload.stats as { posts: number; recovered: boolean; format: string })).toMatchObject({ posts: 2, recovered: true, format: "template" });
     expect(h.audits[0]).toMatchObject({ action: "STUDIO_SOCIAL_POST", entityId: "m1" });
+    // the sweep's own recovery is a different fact from "the provider had accepted it all along"
+    expect(h.audits[0].metadata).toMatchObject({ autopilot: true, swept_from: "timeout_before_publish" });
+    expect(h.audits[0].metadata).not.toHaveProperty("provider_recovered");
+
+    // …and when publishMaster itself recovered the post from the provider's history, the audit says so
+    h.audits = [];
+    h.publish.mockResolvedValue({ ok: true, posts: [{ id: "sp1", post_url: "https://fb/1" }], providerPostId: "P_LATE", scheduled: false, recovered: true });
+    await publishPendingAutopilotRuns();
+    expect(h.audits[0].metadata).toMatchObject({ swept_from: "timeout_before_publish", provider_recovered: true });
     expect(h.notes[0]).toContain("https://fb/1");
   });
   it("only ever looks at finished-but-unposted runs from the last day", async () => {
@@ -151,7 +160,9 @@ describe("publishPendingAutopilotRuns", () => {
     h.updates = [];
     h.publish.mockRejectedValue(new Error("provider exploded"));
     expect(await publishPendingAutopilotRuns()).toMatchObject({ failed: 1 });
-    expect(h.updates.some((u) => u.payload.stopped_at === "publish_failed")).toBe(true);
+    const thrown = h.updates.find((u) => u.payload.stopped_at === "publish_failed")!;
+    expect(thrown).toBeDefined();
+    expect(thrown.predicates).toContainEqual(["eq", "stopped_at", "publishing"]); // only our own claim
   });
   it("never posts behind the owner's switches", async () => {
     const { publishPendingAutopilotRuns } = await import("./publish-pending");
@@ -183,7 +194,10 @@ describe("publishPendingAutopilotRuns", () => {
     h.publish.mockResolvedValue({ ok: false, code: "blocked", error: "แคปชันยังมีข้อมูลที่ระบุตัวตนได้" });
     const res = await publishPendingAutopilotRuns();
     expect(res).toMatchObject({ failed: 1, published: 0 });
-    expect(h.updates.some((u) => u.payload.stopped_at === "publish_failed")).toBe(true);
+    const failed = h.updates.find((u) => u.payload.stopped_at === "publish_failed")!;
+    expect(failed).toBeDefined();
+    // only our own claim may be marked failed — another worker's run must stay untouched
+    expect(failed.predicates).toContainEqual(["eq", "stopped_at", "publishing"]);
     expect(h.notes[0]).toContain("ไม่สำเร็จ");
     expect(h.audits).toHaveLength(0);
   });

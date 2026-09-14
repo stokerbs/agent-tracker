@@ -71,6 +71,13 @@ export interface PublishProvider {
   connectedPlatforms(): Promise<ConnectedAccounts>;
   uploadMedia(input: { bytes: Uint8Array; mime: string; fileName: string }): Promise<UploadedMedia>;
   createPost(input: CreatePostInput): Promise<CreatedPost>;
+  /**
+   * Look for a post we may have created but never saw the answer to (the request
+   * timed out or the connection dropped mid-flight). Matches on our own refKey,
+   * the exact platform set of that request, and a creation time inside the window.
+   * Returns null when nothing matches — never throws for "not found".
+   */
+  findRecentPostByRef(input: { refKey: string; platforms: SocialPlatform[]; since: string }): Promise<CreatedPost | null>;
   deletePost(providerPostId: string): Promise<void>;
   postStatus(providerPostId: string): Promise<PostStatus>;
 }

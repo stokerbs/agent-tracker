@@ -15,7 +15,7 @@ const h = vi.hoisted(() => ({
   deleteProvider: vi.fn(),
   privacy: { ok: true, check: { status: "safe" } } as Row,
   updates: [] as { table: string; payload: Row }[],
-  audit: [] as { action: string }[],
+  audit: [] as { action: string; metadata?: Record<string, unknown> }[],
   rate: { allowed: true, remaining: 9, retryAfterMs: 0 } as Row,
 }));
 
@@ -86,6 +86,15 @@ describe("publishToSocial", () => {
     expect(r.ok).toBe(true);
     expect(h.publish).toHaveBeenCalledWith(expect.objectContaining({ platforms: ["facebook", "instagram"], scheduleAt: "2030-01-01T00:00:00.000Z", variants: [{ id: "v1", platform: "instagram_reel", caption: "IG", hook: null }], userId: "admin-1" }));
     expect(h.audit.map((a) => a.action)).toContain("STUDIO_SOCIAL_POST");
+  });
+  it("marks a publish the provider had accepted all along, and only that one", async () => {
+    const { publishToSocial } = await import("./publish-actions");
+    await publishToSocial({ masterId: MASTER, platforms: ["facebook"] });
+    expect(h.audit.at(-1)!.metadata).not.toHaveProperty("provider_recovered");
+
+    h.publish.mockResolvedValue({ ok: true, posts: [{ id: "sp1" }], providerPostId: "P_LATE", scheduled: false, recovered: true });
+    await publishToSocial({ masterId: MASTER, platforms: ["facebook"] });
+    expect(h.audit.at(-1)!.metadata).toMatchObject({ provider_recovered: true, provider_post_id: "P_LATE" });
   });
   it("enforces the per-admin rate limit before touching the master", async () => {
     h.rate = { allowed: false, remaining: 0, retryAfterMs: 120_000 };
