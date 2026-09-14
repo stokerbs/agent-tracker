@@ -221,7 +221,7 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
         console.warn(`[studio:autopilot] run=${runId} skipping remaining scene images to protect the time budget`);
         break;
       }
-      attempts += 1;
+      attempts += 1; // the loop bound already holds the ceiling; kept so the counter stays true if this loop grows
       const shot = await generateImageAsset({ master: ctx, target: { kind: "scene", index: i }, aspect: "9:16", userId: actor });
       if (shot.ok) images += 1;
       else console.warn(`[studio:autopilot] run=${runId} scene image ${i} skipped: ${shot.code}`);
