@@ -9,6 +9,7 @@
  * faked. Writes use the RLS client (admin passes is_admin() policies).
  */
 
+import { REFERENCE_FENCE, referenceBullets, referenceLine } from "@/lib/studio/ai/prompts/reference-list";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -153,7 +154,10 @@ export async function generateMoreIdeas(input: unknown): Promise<ActionResult<{ 
   if (off) return { ok: false, error: off };
 
   const { request, existingTitles, count, platforms, pillar } = parsed.data;
-  const avoid = existingTitles.length ? `\n\nห้ามซ้ำกับไอเดียที่มีอยู่แล้วในแคมเปญนี้ (ทั้งหัวข้อและมุมเล่า):\n${existingTitles.map((t) => `- ${t}`).join("\n")}` : "";
+  // The titles come from the client; fenced and flattened like every other reference list so one of them
+  // cannot pose as a new prompt section inside the owner's brief (docs §18).
+  const avoidList = referenceBullets(existingTitles);
+  const avoid = avoidList ? `\n\nห้ามซ้ำกับไอเดียที่มีอยู่แล้วในแคมเปญนี้ ทั้งหัวข้อและมุมเล่า (${REFERENCE_FENCE}):\n${avoidList}` : "";
   const res = await generateIdeas({
     brief: `${request}${avoid}`,
     count,
@@ -178,7 +182,7 @@ export async function replaceIdea(input: unknown): Promise<ActionResult<{ idea: 
 
   const { request, avoidTitle, existingTitles, pillar, platforms } = parsed.data;
   const avoidList = Array.from(new Set([avoidTitle, ...existingTitles]));
-  const brief = `${request}\n\nต้องการไอเดียใหม่ 1 ชิ้นมาแทนที่ "${avoidTitle}" — เปลี่ยนมุมเล่าให้ต่างจากเดิมชัดเจน และห้ามซ้ำกับ:\n${avoidList.map((t) => `- ${t}`).join("\n")}`;
+  const brief = `${request}\n\nต้องการไอเดียใหม่ 1 ชิ้นมาแทนที่ "${referenceLine(avoidTitle)}" — เปลี่ยนมุมเล่าให้ต่างจากเดิมชัดเจน และห้ามซ้ำกับรายการนี้ (${REFERENCE_FENCE}):\n${referenceBullets(avoidList)}`;
   const res = await generateIdeas({ brief, count: 1, pillar: pillar ?? null, platforms, userId: profile.id });
   if (!res.ok) return { ok: false, error: res.error };
   const idea = res.data.ideas[0];
