@@ -88,10 +88,12 @@ describe("publishMaster", () => {
     const r = await publishMaster({ master, variants: [{ id: "v1", platform: "instagram_reel", caption: "IG เฉพาะ", hook: null }], platforms: ["facebook", "instagram", "tiktok"], assetIds: ["a1", "a2"], scheduleAt: null, userId: "u1" }, { provider });
     expect(r.ok).toBe(true);
     expect(h.downloads).toEqual([`${MASTER}/a1.png`]); // a2 already cached
-    const posts = provider.calls.filter((c) => c.post).map((c) => c.post as { mediaUrls: string[]; platforms: string[]; text: string });
+    const posts = provider.calls.filter((c) => c.post).map((c) => c.post as { mediaUrls: string[]; platforms: string[]; text: string; refKey: string });
     expect(posts).toHaveLength(2); // facebook+tiktok share the master caption, instagram has its own
     expect(posts[0]).toMatchObject({ platforms: ["facebook", "tiktok"], text: "แคปชันปลอดภัย\n\nปรึกษาทาง LINE" });
     expect(posts[1]).toMatchObject({ platforms: ["instagram"], text: "IG เฉพาะ" });
+    // the master id is what a recovery lookup matches on — it must be what we sent in the first place
+    expect(posts.every((p) => p.refKey === MASTER)).toBe(true);
     expect(posts[0].mediaUrls).toEqual(["https://ayr/a1.png", "https://ayr/cached.png"]);
     const rows = h.inserts.filter((i) => i.platform);
     expect(rows.map((x) => [x.platform, x.status])).toEqual([["facebook", "published"], ["tiktok", "published"], ["instagram", "published"]]);
@@ -358,6 +360,8 @@ describe("publishMaster", () => {
         expect(r).toMatchObject({ ok: false, code: "rejected", details: { facebook: "socket hang up" } });
         expect(h.inserts.filter((i) => i.platform)).toHaveLength(0);
       }
+      // the lookup that threw is on the record, so a silent reconcile outage is visible afterwards
+      expect(err.mock.calls.some(([m]) => String(m).includes("reconcile lookup failed"))).toBe(true);
     } finally {
       err.mockRestore();
     }
