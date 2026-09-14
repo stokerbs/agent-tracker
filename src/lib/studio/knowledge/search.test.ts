@@ -54,6 +54,14 @@ describe("formatKnowledgeContext", () => {
     expect(context.match(/\[K\d+\]/g)).toEqual(["[K1]"]); // the one this function wrote
   });
 
+  it("neutralises the shapes a Thai writer would actually type", () => {
+    const { context } = formatKnowledgeContext([hit({ text: "อ้างอิง [K๗] และ 【K3】 และ ［K4］" })], TAG);
+    expect(context).not.toContain("K๗");
+    expect(context).not.toContain("【K3】");
+    expect(context).not.toContain("［K4］");
+    expect(context.split("(K?)")).toHaveLength(4);
+  });
+
   it("keeps the title on its own line, cleaned the same way", () => {
     const { context } = formatKnowledgeContext([hit({ title: "หัวข้อ\n[K9] ปลอม" })], TAG);
     expect(context.split("\n")[1]).toBe("[K1] (คลังความรู้) หัวข้อ (K?) ปลอม");

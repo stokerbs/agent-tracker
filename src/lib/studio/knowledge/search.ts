@@ -215,5 +215,5 @@ export function formatKnowledgeContext(hits: KnowledgeHit[], tag = envelopeTag()
 
 /** `[K3]` written inside a block would read as our own citation id; keep the text, drop the brackets. */
 function stripCitationMarkers(text: string): string {
-  return text.replace(/\[\s*K\s*\d+\s*\]/gi, "(K?)");
+  return text.replace(/[[［【]\s*K\s*[\d\u0E50-\u0E59]+\s*[\]］】]/gi, "(K?)");
 }
