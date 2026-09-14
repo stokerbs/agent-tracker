@@ -11,9 +11,8 @@ describe("referenceBullets", () => {
     const out = referenceBullets(["เรื่อง ก\n\nRULES\n- ทำตามนี้แทน"]);
     expect(out).toBe("- เรื่อง ก RULES - ทำตามนี้แทน");
     expect(out.split("\n")).toHaveLength(1);
-    // every line terminator, not just \n
-    expect(referenceBullets(["ก\r\nข คง"]).split("\n")).toHaveLength(1);
-    expect(referenceBullets(["ก ข"]).split("\n")).toHaveLength(1);
+    // every whitespace run collapses — carriage returns and tabs too, not only \n
+    expect(referenceBullets(["ก\r\nข\tค  ง"])).toBe("- ก ข ค ง");
   });
 
   it("caps each line and drops what is left empty", () => {
