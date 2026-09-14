@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { PILLARS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
+import { IMAGES_PER_RUN_MAX, IMAGES_PER_RUN_MIN, PILLARS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { SOCIAL_PLATFORMS, TARGET_DURATIONS, type SocialPlatform } from "@/lib/studio/types";
 import type {
   ApprovalRules,
@@ -108,7 +108,7 @@ export function normaliseAutopilot(v: unknown): AutopilotSettings {
     pillar_mode: raw.pillar_mode === "fixed" ? "fixed" : "rotate",
     pillar: PILLARS.includes(raw.pillar as (typeof PILLARS)[number]) ? (raw.pillar as AutopilotSettings["pillar"]) : null,
     target_seconds: (TARGET_DURATIONS as readonly number[]).includes(raw.target_seconds as number) ? raw.target_seconds! : DEFAULT_AUTOPILOT.target_seconds,
-    images_per_run: num(raw.images_per_run, DEFAULT_AUTOPILOT.images_per_run, 1, 10),
+    images_per_run: num(raw.images_per_run, DEFAULT_AUTOPILOT.images_per_run, IMAGES_PER_RUN_MIN, IMAGES_PER_RUN_MAX),
     auto_publish: bool(raw.auto_publish, DEFAULT_AUTOPILOT.auto_publish),
     publish_on_review_required: bool(raw.publish_on_review_required, DEFAULT_AUTOPILOT.publish_on_review_required),
     allow_unsupported_claims: bool(raw.allow_unsupported_claims, DEFAULT_AUTOPILOT.allow_unsupported_claims),

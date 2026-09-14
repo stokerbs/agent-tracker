@@ -174,6 +174,14 @@ export const KNOWLEDGE_CATEGORIES = Object.keys(KNOWLEDGE_CATEGORY_META) as Know
 
 export const STUDIO_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
+/**
+ * The autopilot's image ceiling for a whole run — cover, storyteller presenter and
+ * one image per shot all count against it. Every layer (form, zod, normaliser) uses
+ * these two so the ceiling cannot drift apart between them.
+ */
+export const IMAGES_PER_RUN_MIN = 1;
+export const IMAGES_PER_RUN_MAX = 10;
+
 /** Models the owner may pick in Studio Settings (Anthropic provider). */
 export const STUDIO_MODELS: { id: string; label: string; hint: string }[] = [
   { id: "claude-opus-5", label: "Claude Opus 5", hint: "คุณภาพสูงสุด — แนะนำสำหรับสคริปต์และแคมเปญ" },

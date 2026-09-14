@@ -28,6 +28,12 @@ describe("sceneText", () => {
     expect(s).toContain("hook"); // the voice line of shot 0
     expect(s).toContain("Never render these words in the image.");
   });
+  it("caps how much of the spoken line it forwards", () => {
+    const long: CreativePlan = { ...plan, shots: [{ ...plan.shots[0], voice: "ก".repeat(400) }] };
+    const s = sceneText({ kind: "scene", index: 0 }, long, "T")!;
+    expect(s).toContain("ก".repeat(220));
+    expect(s).not.toContain("ก".repeat(221));
+  });
   it("returns null for a shot without a visual or out of range", () => {
     expect(sceneText({ kind: "scene", index: 1 }, plan, "T")).toBeNull();
     expect(sceneText({ kind: "scene", index: 9 }, plan, "T")).toBeNull();

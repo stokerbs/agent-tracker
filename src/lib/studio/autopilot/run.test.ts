@@ -342,6 +342,31 @@ describe("runAutopilot clip format", () => {
     }
   });
 
+  it("keeps the presenter when the ceiling is exactly 2", async () => {
+    h.cfg = { video_format: "storyteller", images_per_run: 2 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(await imageKinds()).toEqual(["thumbnail", "presenter"]);
+    expect(lastRunPatch().stats).toMatchObject({ format: "storyteller", images: 2 });
+    expect(lastRunPatch().stats).not.toHaveProperty("format_fallback");
+  });
+
+  it("counts a failed image against the ceiling — the run never calls the provider more than the owner allowed", async () => {
+    h.plan = { ok: true, data: { shots: Array.from({ length: 4 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
+    h.cfg = { video_format: "storyteller", images_per_run: 4 };
+    h.presenterImage = { ok: false, code: "failed", error: "quota" };
+    const warn = silenceWarn();
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+      // cover + presenter (failed) + 2 scenes = 4 provider calls, not 5
+      expect(await imageKinds()).toEqual(["thumbnail", "presenter", "scene", "scene"]);
+      expect(lastRunPatch().stats).toMatchObject({ images: 3 }); // the failed one is not an image we got
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("keeps going through the remaining shots when one scene image fails", async () => {
     h.plan = { ok: true, data: { shots: Array.from({ length: 3 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
     h.cfg = { video_format: "template", images_per_run: 7 };
