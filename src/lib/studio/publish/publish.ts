@@ -25,7 +25,7 @@ import { getPublishProvider, PublishNotConfiguredError, PublishRejectedError, ty
 
 export type PublishErrorCode = "not_configured" | "blocked" | "requirements" | "rejected" | "failed" | "not_connected" | "duplicate";
 export type PublishResult =
-  | { ok: true; posts: SocialPost[]; providerPostId: string; scheduled: boolean; failures?: Partial<Record<SocialPlatform, string>> }
+  | { ok: true; posts: SocialPost[]; providerPostId: string; scheduled: boolean; failures?: Partial<Record<SocialPlatform, string>>; recovered?: true }
   | { ok: false; error: string; code: PublishErrorCode; details?: Partial<Record<SocialPlatform, string>> };
 
 export interface PublishInput {
@@ -49,9 +49,29 @@ const ACTIVE_STATUSES = ["queued", "scheduled", "published"] as const;
  * After an ambiguous provider failure, ask the provider whether the post exists anyway.
  * Never throws: a failed lookup just leaves the original failure standing.
  */
-async function reconcileGroup(provider: PublishProvider, refKey: string, platforms: SocialPlatform[], since: string): Promise<CreatedPost | null> {
+async function reconcileGroup(
+  svc: Awaited<ReturnType<typeof createServiceClient>>,
+  provider: PublishProvider,
+  refKey: string,
+  platforms: SocialPlatform[],
+  since: string,
+): Promise<CreatedPost | null> {
   try {
-    return await provider.findRecentPostByRef({ refKey, platforms, since });
+    const found = await provider.findRecentPostByRef({ refKey, platforms, since });
+    if (!found?.providerPostId) return null; // nothing to attribute the post to
+    // Two attempts can race (a double click, or the sweep meeting a manual publish). Whoever recorded the
+    // provider post first owns it — claiming it twice would point our delete button at someone else's post.
+    const { data: taken } = await svc
+      .from("studio_social_posts")
+      .select("id")
+      .eq("provider_post_id", found.providerPostId)
+      .in("status", ACTIVE_STATUSES as unknown as string[])
+      .limit(1);
+    if (taken?.length) {
+      console.warn(`[studio:publish] reconcile found master=${refKey} provider_post=${found.providerPostId} already recorded — leaving it alone`);
+      return null;
+    }
+    return found;
   } catch (err) {
     console.error(`[studio:publish] reconcile lookup failed master=${refKey}:`, err instanceof Error ? err.message : String(err));
     return null;
@@ -154,6 +174,8 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
     const rows: Omit<SocialPost, "id" | "created_at" | "updated_at">[] = [];
     const failures: Partial<Record<SocialPlatform, string>> = {};
     let firstProviderId = "";
+    /** True when at least one group's post was found after an ambiguous failure — recorded in the audit trail. */
+    let wasRecovered = false;
     for (const [text, group] of groups) {
       let created: CreatedPost | null = null;
       let groupError: string | null = null;
@@ -180,9 +202,10 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
         // A rejection is a real "no". Anything else (timeout, dropped connection) is ambiguous: the aggregator
         // may have accepted the post while our client gave up — that is how a live post ended up with no rows.
         if (!(err instanceof PublishRejectedError)) {
-          const recovered = await reconcileGroup(provider, master.id, group, attemptedAt);
+          const recovered = await reconcileGroup(svc, provider, master.id, group, attemptedAt);
           if (recovered) {
             created = recovered;
+            wasRecovered = true;
             groupError = null;
             for (const p of group) delete failures[p];
             if (!firstProviderId) firstProviderId = created.providerPostId;
@@ -229,7 +252,7 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
     }
     await flipMasterIfDone(svc, master.id);
     console.info(`[studio:publish] master=${master.id} platforms=${platforms.join(",")} requests=${groups.size} provider_post=${firstProviderId} scheduled=${!!scheduleAt} failed=${Object.keys(failures).length}`);
-    return { ok: true, posts: inserted ?? [], providerPostId: firstProviderId, scheduled: !!scheduleAt, ...(Object.keys(failures).length ? { failures } : {}) };
+    return { ok: true, posts: inserted ?? [], providerPostId: firstProviderId, scheduled: !!scheduleAt, ...(Object.keys(failures).length ? { failures } : {}), ...(wasRecovered ? { recovered: true as const } : {}) };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[studio:publish] failed:", message);

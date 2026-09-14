@@ -234,7 +234,7 @@ describe("publishMaster", () => {
     try {
       const { publishMaster } = await import("./publish");
       const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
-      expect(r).toMatchObject({ ok: true, providerPostId: "P_LATE" });
+      expect(r).toMatchObject({ ok: true, providerPostId: "P_LATE", recovered: true });
       expect((r as { failures?: Row }).failures).toBeUndefined();
       const rows = h.inserts.filter((i) => i.platform);
       expect(rows.map((x) => [x.platform, x.status, x.post_url])).toEqual([["facebook", "published", "https://fb/late"]]);
@@ -261,6 +261,28 @@ describe("publishMaster", () => {
       expect(asks.every((a) => a.refKey === MASTER)).toBe(true);
       expect(asks.every((a) => Date.parse(a.since) >= before && Date.parse(a.since) <= Date.now())).toBe(true);
     } finally {
+      err.mockRestore();
+    }
+  });
+  it("leaves a recovered post alone when another attempt already recorded it", async () => {
+    // a concurrent attempt (double click, or the sweep meeting a manual publish) wrote the rows first
+    h.socialRows = [{ id: "sp0", master_id: "other-master", platform: "tiktok", status: "published", provider_post_id: "P_LATE" }];
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new Error("socket hang up");
+      },
+      findRecentPostByRef: async () => ({ providerPostId: "P_LATE", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "fb_late", postUrl: "https://fb/late" } } }),
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: false, code: "rejected" });
+      expect(h.inserts.filter((i) => i.platform)).toHaveLength(0);
+      expect(warn.mock.calls.some(([m]) => String(m).includes("already recorded"))).toBe(true);
+    } finally {
+      warn.mockRestore();
       err.mockRestore();
     }
   });

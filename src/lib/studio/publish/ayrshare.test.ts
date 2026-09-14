@@ -80,6 +80,25 @@ describe("AyrsharePublishProvider", () => {
       }
     });
 
+    it("only calls an explicit success with per-platform results posted", async () => {
+      // still in flight → reported as not-yet-published so the sync cron keeps following it
+      for (const over of [{ status: "pending" }, { status: "processing" }, { status: "success", postIds: [] }]) {
+        const { f } = mockFetch([{ body: { history: [entry(over)] } }]);
+        const out = await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE });
+        expect(out, JSON.stringify(over)).toMatchObject({ providerPostId: "P_LATE", status: "scheduled" });
+      }
+      // a status we do not understand is never treated as posted
+      for (const status of ["deleted", "cancelled", "unknown-to-us"]) {
+        const { f } = mockFetch([{ body: { history: [entry({ status })] } }]);
+        expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE })).toBeNull();
+      }
+    });
+
+    it("ignores a record created past the window, not only one before it", async () => {
+      const { f } = mockFetch([{ body: { history: [entry({ created: new Date(Date.now() + 10 * 60_000).toISOString() })] } }]);
+      expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE })).toBeNull();
+    });
+
     it("returns null instead of throwing when the history call answers an error", async () => {
       const { f } = mockFetch([{ status: 404, body: { status: "error", code: 221, message: "not found" } }]);
       expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook"], since: SINCE })).toBeNull();

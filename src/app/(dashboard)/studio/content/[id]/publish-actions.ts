@@ -78,7 +78,8 @@ export async function publishToSocial(input: unknown): Promise<PublishActionResu
     action: "STUDIO_SOCIAL_POST",
     entity: "studio_content_masters",
     entityId: master.id,
-    metadata: { platforms: d.platforms, provider_post_id: res.providerPostId, scheduled: res.scheduled, assets: d.assetIds.length },
+    // recovered = the provider never answered us; the post was found in its history afterwards.
+    metadata: { platforms: d.platforms, provider_post_id: res.providerPostId, scheduled: res.scheduled, assets: d.assetIds.length, ...(res.recovered ? { recovered: true } : {}) },
   });
   revalidateContentPaths(master.id);
   return { ok: true, posts: res.posts, scheduled: res.scheduled };

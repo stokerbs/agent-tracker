@@ -116,16 +116,19 @@ export class AyrsharePublishProvider implements PublishProvider {
     const match = (json.history ?? []).find((h) => {
       if (h.notes !== input.refKey || !h.id) return false;
       const created = Date.parse(h.created ?? "");
-      if (!Number.isFinite(created) || created < floor) return false;
+      if (!Number.isFinite(created) || created < floor || created > Date.now() + RECONCILE_SLACK_MS) return false;
       const got = [...(h.platforms ?? [])].sort();
       return got.length === wanted.length && got.every((p, i) => p === wanted[i]);
     });
-    // "error" stays a failure: the caller already recorded why, and nothing went live.
-    if (!match || match.status === "error") return null;
+    if (!match) return null;
+    // Only an explicit success counts as posted. "error" and "deleted" are failures the caller already recorded,
+    // and anything still in flight is reported as not-yet-published so the sync cron keeps following it.
+    const settled = match.status === "success" && !!match.postIds?.length;
+    if (match.status && !["success", "scheduled", "pending", "processing"].includes(match.status)) return null;
     return {
       providerPostId: match.id ?? "",
       refId: match.refId ?? null,
-      status: match.status === "scheduled" ? "scheduled" : "success",
+      status: settled ? "success" : "scheduled",
       perPlatform: parsePerPlatform(match),
     };
   }
