@@ -45,12 +45,12 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
   }
   const cfg = settings.autopilot;
   // The owner may have turned posting off since the run; never post behind that switch.
-  if (!cfg.enabled || !cfg.auto_publish || !cfg.platforms.length) return res;
+  if (!cfg.enabled || !cfg.auto_publish) return res;
 
   const { data: runs, error } = await svc
     .from("studio_autopilot_runs")
     .select("id, master_id, stats, started_at, created_by")
-    .eq("stopped_at", "timeout")
+    .eq("stopped_at", "timeout_before_publish")
     .eq("published", false)
     .not("master_id", "is", null)
     .gte("started_at", new Date(now - PENDING_WINDOW_MS).toISOString())
@@ -65,18 +65,37 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
     res.checked += 1;
     const masterId = run.master_id as string;
     try {
-      const { data: master } = await svc.from("studio_content_masters").select("id, title, caption, cta, hook, status").eq("id", masterId).maybeSingle();
+      const { data: master } = await svc.from("studio_content_masters").select("id, title, caption, cta, hook, status, scheduled_at").eq("id", masterId).maybeSingle();
       // Only a piece the run itself approved: anything the owner archived, reopened or already published is left alone.
       if (!master || (master.status !== "approved" && master.status !== "scheduled")) {
         res.skipped += 1;
         continue;
       }
-      const { data: posted } = await svc.from("studio_social_posts").select("id").eq("master_id", masterId).limit(1);
+      // The owner may have picked a time in the meantime; posting now would override their choice.
+      if (master.scheduled_at && Date.parse(master.scheduled_at) > now) {
+        res.skipped += 1;
+        continue;
+      }
+      const { data: posted } = await svc.from("studio_social_posts").select("id").eq("master_id", masterId).in("status", ["queued", "scheduled", "published"]).limit(1);
       if (posted?.length) {
         await markDone(svc, run.id, run.stats, posted.length);
         res.skipped += 1;
         continue;
       }
+      // Claim the run before going public: a second sweep (or a retried cron fire) must not post the piece twice.
+      const { data: claimed } = await svc
+        .from("studio_autopilot_runs")
+        .update({ step: "กำลังโพสต์รอบตาม", stopped_at: "publishing" })
+        .eq("id", run.id)
+        .eq("stopped_at", "timeout_before_publish")
+        .eq("published", false)
+        .select("id")
+        .maybeSingle();
+      if (!claimed) {
+        res.skipped += 1;
+        continue;
+      }
+
       const { data: video } = await svc
         .from("studio_creative_assets")
         .select("id")
@@ -87,6 +106,8 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
         .limit(1)
         .maybeSingle();
       if (!video) {
+        // Hand the claim back so a later sweep can try again once the render lands.
+        await svc.from("studio_autopilot_runs").update({ stopped_at: "timeout_before_publish", step: "รอวิดีโอ" }).eq("id", run.id).eq("stopped_at", "publishing");
         res.skipped += 1;
         continue;
       }
@@ -121,6 +142,8 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
       res.published += 1;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // Do not leave the run stuck in "publishing": record the failure so the owner sees it and the sweep moves on.
+      await svc.from("studio_autopilot_runs").update({ stopped_at: "publish_failed", error: message.slice(0, 900) }).eq("id", run.id).eq("stopped_at", "publishing");
       res.failed += 1;
       res.errors.push(`${run.id}: ${message.slice(0, 200)}`);
       console.error(`[studio:autopilot-publish] run=${run.id} threw:`, message);
@@ -133,7 +156,7 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
 async function markDone(svc: ReturnType<typeof createServiceClient>, runId: string, stats: unknown, posts: number): Promise<void> {
   await svc
     .from("studio_autopilot_runs")
-    .update({ status: "done", published: true, step: "เสร็จแล้ว (โพสต์รอบตาม)", progress: 100, stats: { ...((stats as object) ?? {}), posts, recovered: true } as never })
+    .update({ status: "done", published: true, step: "เสร็จแล้ว (โพสต์รอบตาม)", progress: 100, finished_at: new Date().toISOString(), stats: { ...((stats as object) ?? {}), posts, recovered: true } as never })
     .eq("id", runId)
     .eq("published", false);
 }

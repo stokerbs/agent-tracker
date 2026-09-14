@@ -263,7 +263,8 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
 
     // ── 8. publish ──────────────────────────────────────────────────────────
     // Never start a public post we might not live long enough to record.
-    if (Date.now() > deadline - 45_000) return await stop("timeout", masterId, "review", "หมดเวลาก่อนโพสต์");
+    // A distinct reason: only this one means "finished, just never posted", which is what the publish sweep picks up.
+    if (Date.now() > deadline - 45_000) return await stop("timeout_before_publish", masterId, "review", "หมดเวลาก่อนโพสต์");
     await step(88, "กำลังโพสต์");
     const published = await publishMaster({
       master: { id: mid, title: master.title, caption: script.data.caption, cta: script.data.cta, hook: script.data.hook, scheduled_at: null },

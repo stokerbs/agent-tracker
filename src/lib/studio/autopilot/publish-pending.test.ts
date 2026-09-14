@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
   posts: [] as Row[],
   video: null as Row | null,
   updates: [] as { table: string; payload: Row }[],
+  filters: [] as { table: string; m: string; args: unknown[] }[],
+  claim: { id: "r1" } as Row | null,
   audits: [] as Row[],
   notes: [] as string[],
   publish: vi.fn(),
@@ -31,12 +33,15 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       const st = { op: "select", payload: null as Row | null };
       const b: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "not", "gte", "order", "limit", "maybeSingle", "single"]) b[m] = () => b;
+      for (const m of ["select", "eq", "not", "gte", "in", "order", "limit", "maybeSingle", "single"]) {
+        b[m] = (...args: unknown[]) => (h.filters.push({ table, m, args }), b);
+      }
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), b);
       b.then = (resolve: (v: unknown) => unknown) => {
         if (st.op === "update") {
           h.updates.push({ table, payload: st.payload! });
-          return Promise.resolve(resolve({ data: null, error: null }));
+          // the claim update is the only one that reads a row back
+          return Promise.resolve(resolve({ data: st.payload?.stopped_at === "publishing" ? h.claim : null, error: null }));
         }
         if (table === "studio_autopilot_runs") return Promise.resolve(resolve({ data: h.runs, error: null }));
         if (table === "studio_content_masters") return Promise.resolve(resolve({ data: h.master, error: null }));
@@ -55,10 +60,12 @@ beforeEach(() => {
   h.settings = { autopilot: { enabled: true, auto_publish: true, platforms: ["facebook", "instagram", "tiktok"] } };
   h.settingsError = null;
   h.runs = [run()];
-  h.master = { id: "m1", title: "หัวข้อ", caption: "แคปชัน", cta: "ทัก LINE", hook: "ฮุก", status: "scheduled" };
+  h.master = { id: "m1", title: "หัวข้อ", caption: "แคปชัน", cta: "ทัก LINE", hook: "ฮุก", status: "scheduled", scheduled_at: null };
   h.posts = [];
   h.video = { id: "v1" };
   h.updates = [];
+  h.filters = [];
+  h.claim = { id: "r1" };
   h.audits = [];
   h.notes = [];
   h.publish.mockReset().mockResolvedValue(okPublish);
@@ -70,15 +77,57 @@ describe("publishPendingAutopilotRuns", () => {
     const res = await publishPendingAutopilotRuns();
     expect(res).toMatchObject({ checked: 1, published: 1, failed: 0 });
     expect(h.publish).toHaveBeenCalledWith(expect.objectContaining({ platforms: ["facebook", "instagram", "tiktok"], assetIds: ["v1"], scheduleAt: null, userId: "u1" }));
-    const done = h.updates.find((u) => u.table === "studio_autopilot_runs")!;
+    const done = h.updates.find((u) => u.payload.status === "done")!;
     expect(done.payload).toMatchObject({ status: "done", published: true });
     expect((done.payload.stats as { posts: number; recovered: boolean; format: string })).toMatchObject({ posts: 2, recovered: true, format: "template" });
     expect(h.audits[0]).toMatchObject({ action: "STUDIO_SOCIAL_POST", entityId: "m1" });
     expect(h.notes[0]).toContain("https://fb/1");
   });
+  it("only ever looks at finished-but-unposted runs from the last day", async () => {
+    const { publishPendingAutopilotRuns, PENDING_WINDOW_MS } = await import("./publish-pending");
+    const now = Date.now();
+    await publishPendingAutopilotRuns({ now });
+    const runFilters = h.filters.filter((f) => f.table === "studio_autopilot_runs");
+    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "eq", args: ["stopped_at", "timeout_before_publish"] });
+    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "eq", args: ["published", false] });
+    expect(runFilters).toContainEqual({ table: "studio_autopilot_runs", m: "not", args: ["master_id", "is", null] });
+    const since = runFilters.find((f) => f.m === "gte");
+    expect(Date.parse(String(since?.args[1]))).toBe(now - PENDING_WINDOW_MS);
+    // a post that failed or was deleted must not count as "already posted"
+    expect(h.filters).toContainEqual({ table: "studio_social_posts", m: "in", args: ["status", ["queued", "scheduled", "published"]] });
+  });
+  it("leaves a piece the owner scheduled for later alone", async () => {
+    const { publishPendingAutopilotRuns } = await import("./publish-pending");
+    h.master = { ...h.master, status: "scheduled", scheduled_at: new Date(Date.now() + 3 * 3600_000).toISOString() };
+    expect(await publishPendingAutopilotRuns()).toMatchObject({ skipped: 1, published: 0 });
+    expect(h.publish).not.toHaveBeenCalled();
+    // a time that has already passed is fine to post
+    h.master = { ...h.master, scheduled_at: new Date(Date.now() - 60_000).toISOString() };
+    expect(await publishPendingAutopilotRuns()).toMatchObject({ published: 1 });
+  });
+  it("claims the run before going public, and skips when another sweep already has it", async () => {
+    const { publishPendingAutopilotRuns } = await import("./publish-pending");
+    h.claim = null;
+    expect(await publishPendingAutopilotRuns()).toMatchObject({ skipped: 1, published: 0 });
+    expect(h.publish).not.toHaveBeenCalled();
+    const claim = h.updates.find((u) => u.payload.stopped_at === "publishing");
+    expect(claim).toBeTruthy();
+  });
+  it("hands the claim back when the video is missing, and records a thrown failure", async () => {
+    const { publishPendingAutopilotRuns } = await import("./publish-pending");
+    h.video = null;
+    await publishPendingAutopilotRuns();
+    expect(h.updates.map((u) => u.payload.stopped_at)).toContain("timeout_before_publish");
+
+    h.video = { id: "v1" };
+    h.updates = [];
+    h.publish.mockRejectedValue(new Error("provider exploded"));
+    expect(await publishPendingAutopilotRuns()).toMatchObject({ failed: 1 });
+    expect(h.updates.some((u) => u.payload.stopped_at === "publish_failed")).toBe(true);
+  });
   it("never posts behind the owner's switches", async () => {
     const { publishPendingAutopilotRuns } = await import("./publish-pending");
-    for (const cfg of [{ enabled: false }, { auto_publish: false }, { platforms: [] }]) {
+    for (const cfg of [{ enabled: false }, { auto_publish: false }]) {
       h.settings.autopilot = { enabled: true, auto_publish: true, platforms: ["facebook"], ...cfg };
       expect(await publishPendingAutopilotRuns()).toMatchObject({ checked: 0, published: 0 });
     }
@@ -99,14 +148,14 @@ describe("publishPendingAutopilotRuns", () => {
     const res = await publishPendingAutopilotRuns();
     expect(res).toMatchObject({ skipped: 1, published: 0 });
     expect(h.publish).not.toHaveBeenCalled();
-    expect(h.updates.find((u) => u.table === "studio_autopilot_runs")?.payload).toMatchObject({ published: true });
+    expect(h.updates.some((u) => u.payload.published === true)).toBe(true);
   });
   it("records a rejected publish on the run and tells the owner", async () => {
     const { publishPendingAutopilotRuns } = await import("./publish-pending");
     h.publish.mockResolvedValue({ ok: false, code: "blocked", error: "แคปชันยังมีข้อมูลที่ระบุตัวตนได้" });
     const res = await publishPendingAutopilotRuns();
     expect(res).toMatchObject({ failed: 1, published: 0 });
-    expect(h.updates.find((u) => u.table === "studio_autopilot_runs")?.payload).toMatchObject({ stopped_at: "publish_failed" });
+    expect(h.updates.some((u) => u.payload.stopped_at === "publish_failed")).toBe(true);
     expect(h.notes[0]).toContain("ไม่สำเร็จ");
     expect(h.audits).toHaveLength(0);
   });
