@@ -125,6 +125,30 @@ describe("scrubText", () => {
     // the excerpt must be the longest title, not นาง + สาว…
     expect(scan("นางสาวสมหญิง ทำงานที่นั่น").find((f) => f.kind === "name")?.excerpt).toBe("นางสาวสมหญิง");
   });
+  it("keeps names that start with ก — the นายก exclusion must be compounds, not a letter class", () => {
+    for (const t of ["พบนายกิตติศักดิ์ ที่ร้าน", "นายกมล ใจดี", "นายกฤษณะ", "นายกานต์", "นายก้องภพ", "นายกอบชัย", "นายกำธร"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    for (const t of ["นายกรัฐมนตรีแถลง", "นายกสมาคมกล่าว", "นายกเทศมนตรีลงพื้นที่", "นายกฯ แถลง", "นายกอบต.ประชุม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("finds a name that follows the label with a space, not only after คือ/ว่า", () => {
+    for (const t of ["ชื่อของลูกค้า สมชาย ใจดี", "ชื่อในรายงาน สมหญิง ศรีสุข", "ชื่อและนามสกุล สมชาย ใจดี", "ชื่อที่ลูกค้าให้มา สมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("does not let the gap skip a rejected คือ and grab the next ว่า", () => {
+    for (const t of [
+      "ชื่อของบริการนี้คือการสืบที่ว่ายากมาก",
+      "ชื่อของเคสนี้คือรหัสที่ว่ากันว่าลับ",
+      "ชื่อและนามสกุลคือข้อมูลส่วนบุคคล",
+      "ชื่อของทีมคือทีมสืบสวนพิเศษ",
+      "ชื่อของรายงานคือสรุปผลการสืบ",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
   it("does not let the ชื่อของ/ใน/ที่ rule reopen the เชื่อ bug it was added next to", () => {
     for (const t of [
       "ความเชื่อของลูกค้าคือหลักฐานต้องชัด",

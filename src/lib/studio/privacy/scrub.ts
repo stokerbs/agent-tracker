@@ -39,7 +39,7 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // is, so นางเอก/นางฟ้า must not silence เอก/ฟ้า after นาย. ทนายความ is excluded here rather than by a
 // lookbehind, which would have swallowed ทนายสมชาย. Longest title first, or นางสาว matches as นาง + สาว.
 const NAME_TITLE_RE =
-  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|ก(?:[ก-๙]|ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?[ก-๙]{2,10}/g;
+  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|กรัฐมนตรี|กสมาคม|กเทศมนตรี|กสภา|กอบต|กอบจ|กสมาพันธ์|ก(?:ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?[ก-๙]{2,10}/g;
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
@@ -50,11 +50,11 @@ const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่ว
 // spaces, so เชื่อ (believe) literally contains it — "ความน่าเชื่อถือ" and "ความเชื่อมโยง" were
 // being reported as a person's name, on the gate that decides whether a piece may be published.
 const NAME_CUE_RE = /(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
-// "ชื่อของ/ใน/ที่ … คือ <name>" — the cue rule excludes those three particles because they usually
+// "ชื่อของ/ใน/ที่ … คือ|ว่า|<space> <name>" — the cue rule excludes those particles because they usually
 // introduce a thing, not a person ("ชื่อของบริการนี้คือ…"), so this brings back the case where a
 // person really is named: "ชื่อของลูกค้าคือสมชาย", "ชื่อในบัตรประชาชนคือสมหญิง".
 const NAME_INTRO_RE =
-  /(?<![เแโใไ])ชื่อ(?:ของ|ใน|ที่|และ|หรือ|กับ)[ก-๙\s]{0,25}?(?:คือ|ว่า)\s*(?!การ|ความ|เรื่อง|รหัส|บริการ|แพ็|ระบบ|เลข)[ก-๙A-Za-z]{2,10}/g;
+  /(?<![เแโใไ])ชื่อ(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?!คือ|ว่า)[ก-๙\s]){0,25}(?:คือ|ว่า|\s)\s*(?!การ|ความ|เรื่อง|รหัส|บริการ|แพ็|ระบบ|เลข|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|ตรง|ไม่)[ก-๙A-Za-z]{2,10}/g;
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
 const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.
