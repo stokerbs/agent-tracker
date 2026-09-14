@@ -296,6 +296,9 @@ Bulk import leaves thousands of overlapping rows. `scripts/studio-consolidate.ts
 
 ## 15b. Bulk approval of consolidated knowledge
 
+**Thai word boundaries (2026-09-15).** Clearing the review backlog surfaced a scanner bug: the name rules matched inside other words, because Thai is written without spaces. เชื่อ (believe) contains ชื่อ (name), so "ความน่าเชื่อถือ" and "ความเชื่อมโยง" were reported as a person's name, and ทนายความ (lawyer) matched the title นาย — on the deterministic gate that decides whether a piece may be published. 129 knowledge rows in one review run were held for this reason alone, and every generated piece using those very ordinary words was pushed to manual review. Both rules now carry a lookbehind for Thai leading vowels and consonants, pinned by tests.
+
+
 `scripts/studio-approve-knowledge.ts [--dry-run] [--user <uuid>] [--limit N] [--category a,b]` approves canonical rows (tag `consolidated`) for AI content use. It only touches rows that are still active, unapproved, not `restricted`, carry neither review flag (`ต้องตรวจ privacy`, `ต้องยืนยัน`), and pass a **fresh** deterministic scrub with no high/medium finding — anything else is counted and left for the owner. First run 2026-09-10: 919 canonical rows unapproved → 388 approved (services 114, investigator_knowledge 114, cases 78, gps 54, osint 28), 531 skipped as flagged, 0 caught by the fresh scan. Case lessons stay `confidential`; retrieval excludes only `restricted`, so they are usable — un-approve individually in the UI if that is not wanted.
 
 ## 17. Motion hook — an 8 s generated clip as the first shot (2026-09-14)

@@ -33,14 +33,18 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
 // with a bounded name length so a false positive costs a few characters, not a sentence.
-const NAME_TITLE_RE = /(?:นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,10}/g;
+// The lookbehind keeps a title from matching inside a longer word — ทนายความ is not "นาย ความ".
+const NAME_TITLE_RE = /(?<![ก-ฮเแโใไ])(?:นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,10}/g;
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
 const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่วย", "รับ", "มี", "ทำ", "ว่า", "จะ", "ได้", "ไหม", "ต้อง", "เป็น", "อยู่", "ไป", "มา", "คิด", "เอง", "ล่ะ", "นะ", "เห็น", "รู้", "บอก", "ถาม", "ลอง", "ดู", "ก็", "แล้ว", "ยัง", "เคย", "อยาก", "ควร", "ขอ", "ใช้", "เอา", "ให้", "พอ", "ลูกค้า", "ผู้ชาย", "ผู้หญิง", "ตำรวจ", "ทนาย", "หมอ", "ครู", "มาก", "มากๆ", "พ่อ", "แม่", "ตา", "ยาย", "ปู่", "ย่า", "ลุง", "ป้า", "น้า", "อา", "พี่", "น้อง", "แฟน", "สามี", "ภรรยา", "ลูก", "ภาพ", "ค่า", "จ้า", "นะ", "นะคะ", "นะครับ", "หมอ", "ครู", "ด้วย", "เลย", "ก่อน", "แน่", "ไว้", "หน่อย", "ล่ะ"]);
 // Untitled names after cue words in chat: "แฟนชื่อสมชาย", "ชื่อเล่นว่าเอ", "เรียกว่าพี่บี"
 // Compounds like ชื่อเสียง/ชื่อดัง/ชื่อบัญชี/ชื่อร้าน are not names — excluded; name length bounded.
-const NAME_CUE_RE = /(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
+// The leading-vowel lookbehind is what keeps "ชื่อ" from matching inside another word: Thai has no
+// spaces, so เชื่อ (believe) literally contains it — "ความน่าเชื่อถือ" and "ความเชื่อมโยง" were
+// being reported as a person's name, on the gate that decides whether a piece may be published.
+const NAME_CUE_RE = /(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
 const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.

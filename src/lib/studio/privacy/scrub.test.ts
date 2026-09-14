@@ -62,6 +62,31 @@ describe("scrubText", () => {
     expect(scan("แฟนชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
     expect(scan("บริษัทมีชื่อเสียงดี").some((f) => f.kind === "name")).toBe(false);
   });
+  it("does not read ชื่อ inside another word as a name — Thai has no word spaces", () => {
+    // เชื่อ (believe) contains ชื่อ, so these everyday words were being reported as a person's name
+    // on the gate that decides whether a piece may be published at all.
+    for (const t of [
+      "ความน่าเชื่อถือของบริการสำคัญกว่าราคา",
+      "พบความเชื่อมโยงใหม่ระหว่างสองเคส",
+      "เชื่อใจได้ว่างานจะเสร็จตามกำหนด",
+      "ชื่อในทะเบียนราษฎร์ตรงกับที่แจ้งไว้",
+      "ชื่อที่ให้มาสะกดไม่ตรงกับเอกสาร",
+      "ชื่อของบริการนี้คือการตรวจสอบประวัติ",
+      "หนังสือรับรองบริษัท",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // and the cue still works where a name really follows it
+    expect(scan("เป้าหมายชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
+    expect(scan("ชื่อเล่นว่าเอ").some((f) => f.kind === "name")).toBe(true);
+  });
+  it("does not read a title inside a longer word as a name", () => {
+    for (const t of ["แนะนำให้ปรึกษาทนายความ", "ทนายความประจำบริษัท", "งานนายหน้าไม่ใช่งานนักสืบ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    expect(scan("นายสมชาย เดินทางออกจากบ้าน").some((f) => f.kind === "name")).toBe(true);
+    expect(scan("นางสาวสมหญิง ทำงานที่นั่น").some((f) => f.kind === "name")).toBe(true);
+  });
   it("flags denylist terms case-insensitively", () => {
     expect(scan("ลูกค้าชื่อ Pimchanok มาปรึกษา", ["pimchanok"]).some((f) => f.kind === "denylist")).toBe(true);
   });
