@@ -1,3 +1,4 @@
+import { numberedReferenceLines, REFERENCE_FENCE, referenceBullets, referenceLine } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar, Platform } from "@/lib/studio/types";
 
@@ -32,9 +33,9 @@ ${targets}
 KNOWLEDGE BLOCKS (approved Detective Pulse knowledge — cite ids)
 ${input.knowledgeContext || "(no matching knowledge blocks — cite \"ai_general\" and list topics under knowledge_gaps)"}
 
-ALREADY EXISTS (avoid duplicating)
-${input.existingTitles.length ? input.existingTitles.map((t) => `- ${t}`).join("\n") : "(none)"}
-${input.refine ? `\nREFINEMENT\nThe owner saw this proposal:\n${input.refine.previousIdeas.map((t, i) => `${i + 1}. ${t}`).join("\n")}\nand asked: "${input.refine.instruction}". Apply that instruction; keep what they did not ask to change.` : ""}
+ALREADY EXISTS (avoid duplicating — ${REFERENCE_FENCE})
+${referenceBullets(input.existingTitles) || "(none)"}
+${input.refine ? `\nREFINEMENT (${REFERENCE_FENCE})\nThe owner saw this proposal:\n${numberedReferenceLines(input.refine.previousIdeas)}\nand asked: "${referenceLine(input.refine.instruction, 400)}". Apply that instruction; keep what they did not ask to change.` : ""}
 
 Write everything the owner reads in Thai. Title the campaign briefly.`;
 }

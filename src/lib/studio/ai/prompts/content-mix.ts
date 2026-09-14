@@ -1,3 +1,4 @@
+import { REFERENCE_FENCE, referenceBullets } from "./reference-list";
 import { PILLAR_META } from "@/lib/studio/constants";
 import type { Pillar } from "@/lib/studio/types";
 
@@ -22,11 +23,11 @@ CURRENT MIX
 ${rows}
 Total pieces: ${total}
 
-UPCOMING / RECENT TITLES
-${input.upcomingTitles.length ? input.upcomingTitles.map((t) => `- ${t}`).join("\n") : "(none)"}
+UPCOMING / RECENT TITLES (${REFERENCE_FENCE})
+${referenceBullets(input.upcomingTitles) || "(none)"}
 
-KNOWLEDGE NOT YET TURNED INTO CONTENT
-${input.unusedKnowledgeTitles.length ? input.unusedKnowledgeTitles.map((t) => `- ${t}`).join("\n") : "(none)"}
+KNOWLEDGE NOT YET TURNED INTO CONTENT (${REFERENCE_FENCE})
+${referenceBullets(input.unusedKnowledgeTitles) || "(none)"}
 
 KNOWLEDGE BLOCKS
 ${input.knowledgeContext || "(none)"}
