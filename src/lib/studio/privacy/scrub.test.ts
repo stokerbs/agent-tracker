@@ -110,6 +110,12 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
   });
+  it("keeps catching the shapes an over-eager exclusion list would silence", () => {
+    // Every entry below is one someone might be tempted to add to the ชื่อ(?!…) list; each is a real name.
+    for (const t of ["สามีชื่อนายสมชาย", "ชื่อเอ", "ชื่อบี", "เป้าหมายชื่อจากใบสมัคร", "ลูกค้าชื่อใหม่ที่ติดต่อมา"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
   it("finds a name introduced as ชื่อของ/ชื่อใน/ชื่อที่ … คือ", () => {
     for (const t of ["ชื่อของลูกค้าคือสมชาย ใจดี", "ชื่อในบัตรประชาชนคือสมหญิง", "ชื่อที่ใช้สมัครคือสมชาย"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
