@@ -10,7 +10,7 @@ const h = vi.hoisted(() => ({
   master: null as Row | null,
   posts: [] as Row[],
   video: null as Row | null,
-  updates: [] as { table: string; payload: Row }[],
+  updates: [] as { table: string; payload: Row; predicates: unknown[][] }[],
   filters: [] as { chain: number; table: string; m: string; args: unknown[] }[],
   chains: 0,
   claim: { id: "r1" } as Row | null,
@@ -43,7 +43,8 @@ vi.mock("@/lib/supabase/server", () => ({
       b.update = (row: Row) => ((st.op = "update"), (st.payload = row), b);
       b.then = (resolve: (v: unknown) => unknown) => {
         if (st.op === "update") {
-          h.updates.push({ table, payload: st.payload! });
+          // the filters collected on this same chain ARE the compare-and-set predicate
+          h.updates.push({ table, payload: st.payload!, predicates: h.filters.filter((f) => f.chain === chain).map((f) => [f.m, ...f.args]) });
           // the claim update is the only one that reads a row back
           return Promise.resolve(resolve({ data: st.payload?.stopped_at === "publishing" ? h.claim : null, error: null }));
         }
@@ -120,6 +121,25 @@ describe("publishPendingAutopilotRuns", () => {
     expect(h.publish).not.toHaveBeenCalled();
     const claim = h.updates.find((u) => u.payload.stopped_at === "publishing");
     expect(claim).toBeTruthy();
+    // the claim is only a claim because of its predicate: without it every sweep "wins" and posts again
+    expect(claim!.predicates).toContainEqual(["eq", "stopped_at", "timeout_before_publish"]);
+    expect(claim!.predicates).toContainEqual(["eq", "published", false]);
+  });
+  it("closes and hands back the claim only while the run is still the one it claimed", async () => {
+    const { publishPendingAutopilotRuns } = await import("./publish-pending");
+    await publishPendingAutopilotRuns();
+    // marking the run done must not steal a run another worker already published
+    const done = h.updates.find((u) => u.payload.status === "done")!;
+    expect(done.predicates).toContainEqual(["eq", "published", false]);
+
+    h.updates = [];
+    h.filters = [];
+    h.chains = 0;
+    h.video = null;
+    await publishPendingAutopilotRuns();
+    // handing the claim back only applies to a run this sweep still holds
+    const handBack = h.updates.find((u) => u.payload.stopped_at === "timeout_before_publish")!;
+    expect(handBack.predicates).toContainEqual(["eq", "stopped_at", "publishing"]);
   });
   it("hands the claim back when the video is missing, and records a thrown failure", async () => {
     const { publishPendingAutopilotRuns } = await import("./publish-pending");
