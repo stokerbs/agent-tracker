@@ -45,13 +45,18 @@ describe("choosePillar", () => {
 });
 
 describe("buildBrief", () => {
-  it("puts the most-asked customer questions in the brief, capped at eight", () => {
+  it("builds the brief around ONE question, with a few neighbours as context only", () => {
     const qs = Array.from({ length: 12 }, (_, i) => ({ question: `คำถามข้อ ${i}`, frequency: i }));
     const brief = buildBrief("service", qs);
     expect(brief).toContain("service");
+    // the most-asked question is the spine of the piece
     expect(brief).toContain("คำถามข้อ 11 (ถูกถาม 11 ครั้ง)");
+    expect(brief).toContain("ห้ามตอบทุกข้อในคลิปเดียว");
+    // at most three neighbours, and the long tail never reaches the model
+    expect(brief.match(/^- /gm)).toHaveLength(3);
+    expect(brief).toContain("คำถามข้อ 10");
+    expect(brief).not.toContain("คำถามข้อ 7");
     expect(brief).not.toContain("คำถามข้อ 0");
-    expect(brief.match(/^\d+\. /gm)).toHaveLength(8);
   });
   it("works with no questions at all", () => {
     const brief = buildBrief("case_story", []);

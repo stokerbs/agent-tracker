@@ -41,7 +41,8 @@ export interface GenerateScriptInput {
 
 export async function generateScript(input: GenerateScriptInput): Promise<RunResult<GeneratedScript>> {
   const query = [input.title, input.description ?? "", input.searchHint ?? ""].join(" ");
-  const ctx = await buildContext(query, { limit: 8, pillar: input.pillar });
+  // Four blocks, not eight: a long list pushes the model to cram unrelated facts into one piece (the prompt caps use at 2).
+  const ctx = await buildContext(query, { limit: 4, pillar: input.pillar });
   const res = await runStructured({
     purpose: "script",
     schema: ScriptResponseSchema,

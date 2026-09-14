@@ -37,13 +37,16 @@ STRUCTURE (flexible — use what the idea needs, don't force every part)
 HOOK → CONTEXT → INSIGHT → EXPLANATION → PAYOFF → CTA
 ${input.pillar === "case_story" ? `\n${CASE_STORY_STRUCTURE}` : ""}
 
-KNOWLEDGE BLOCKS (approved — build from these, cite ids in source_refs and per claim)
+KNOWLEDGE BLOCKS (approved reference — cite ids in source_refs and per claim)
+- Use at MOST 2 blocks, and only ones that support the single idea of this piece. Ignore the rest; leaving a block unused is correct and expected.
+- Never stitch two topics together to use more blocks. If only one block fits, use one.
 ${input.knowledgeContext || "(none matched — state clearly in ai_notes that this script relies on general knowledge, and mark every claim ai_general)"}
 ${input.existingScript ? `\nEXISTING DRAFT (improve, keep the owner's edits where sensible)\n${input.existingScript}` : ""}
 
 OUTPUT RULES
-- script: one spoken line per row, blank line between sections. Optional labels like [HOOK] at row start.
-- caption: natural Thai, 1–3 short paragraphs, ends with 3–5 hashtags. Max one emoji.
+- script: one spoken line per row, blank line between sections. NO section labels — the rows are read aloud as they are.
+- Every row must be sayable in one breath. Read the script back and cut any row that sounds written rather than spoken.
+- caption: the same spoken Thai as the script, 1–3 short paragraphs, ends with 3–5 hashtags. Max one emoji. A caption is what you would type to a customer in chat, not a summary written about them.
 - cta: one line, soft, LINE @detectivepluse.
 - claims: list each factual statement and the knowledge block it rests on. Anything not backed by a block → "ai_general" + confidence "ai_suggestion".
 - No identifiers of real people, vehicles, addresses, dates or companies anywhere.`;
