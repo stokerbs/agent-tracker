@@ -318,6 +318,49 @@ describe("runAutopilot clip format", () => {
     expect(await imageKinds()).toEqual(["thumbnail", "scene"]);
   });
 
+  it("keeps the ceiling over the whole storyteller run — cover and presenter eat into the shots' share", async () => {
+    // 4 shots, ceiling 3: cover + presenter leave room for exactly ONE scene image, not one per shot.
+    h.plan = { ok: true, data: { shots: Array.from({ length: 4 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
+    h.cfg = { video_format: "storyteller", images_per_run: 3 };
+    const { runAutopilot } = await load();
+    expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+    expect(await imageKinds()).toEqual(["thumbnail", "presenter", "scene"]);
+    expect(lastRunPatch().stats).toMatchObject({ format: "storyteller", images: 3 });
+  });
+
+  it("skips the presenter when the ceiling leaves no room for it, and says so in the stats", async () => {
+    h.cfg = { video_format: "storyteller", images_per_run: 1 };
+    const warn = silenceWarn();
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ ok: true, status: "done" });
+      expect(await imageKinds()).toEqual(["thumbnail"]);
+      expect(renderParams().format).toBe("template");
+      expect(lastRunPatch().stats).toMatchObject({ format: "template", format_fallback: "image_cap", images: 1 });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("keeps going through the remaining shots when one scene image fails", async () => {
+    h.plan = { ok: true, data: { shots: Array.from({ length: 3 }, (_, i) => ({ start_sec: i * 4, end_sec: i * 4 + 4, voice: `พูด ${i}`, visual: `ภาพ ${i}`, text_overlay: null })), broll: [], text_overlays: [] } };
+    h.cfg = { video_format: "template", images_per_run: 7 };
+    const media = await imageMock();
+    media.mockImplementationOnce(async () => h.image as never); // cover
+    media.mockImplementationOnce(async () => ({ ok: false, code: "failed", error: "quota" }) as never); // scene 0
+    const warn = silenceWarn();
+    try {
+      const { runAutopilot } = await load();
+      expect(await runAutopilot({ userId: "u1" })).toMatchObject({ status: "done" });
+      // the failed shot does not cut the loop short — shots 1 and 2 still get their own image
+      expect((await imageMock()).mock.calls.map(([i]) => (i.target as { index?: number }).index).filter((i) => i !== undefined)).toEqual([0, 1, 2]);
+      expect(lastRunPatch().stats).toMatchObject({ images: 3 });
+      expect(warn.mock.calls.some(([m]) => String(m).includes("scene image 0 skipped"))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("template never generates a presenter image", async () => {
     h.cfg = { video_format: "template", images_per_run: 2 };
     const { runAutopilot } = await load();

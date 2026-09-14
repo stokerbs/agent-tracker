@@ -23,6 +23,11 @@ describe("sceneText", () => {
     expect(s).toContain("มือถือวางบนโต๊ะ");
     expect(s).toContain("do not render the words");
   });
+  it("carries the shot's spoken line into the scene, so the image shows that moment", () => {
+    const s = sceneText({ kind: "scene", index: 0 }, plan, "T")!;
+    expect(s).toContain("hook"); // the voice line of shot 0
+    expect(s).toContain("Never render these words in the image.");
+  });
   it("returns null for a shot without a visual or out of range", () => {
     expect(sceneText({ kind: "scene", index: 1 }, plan, "T")).toBeNull();
     expect(sceneText({ kind: "scene", index: 9 }, plan, "T")).toBeNull();

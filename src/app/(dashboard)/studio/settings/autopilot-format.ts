@@ -138,7 +138,7 @@ export function autopilotIssues(cfg: AutopilotSettings): string[] {
   if (!cfg.days.length) issues.push("เลือกอย่างน้อย 1 วัน");
   if (!cfg.platforms.length) issues.push("เลือกอย่างน้อย 1 แพลตฟอร์ม");
   if (cfg.pillar_mode === "fixed" && !cfg.pillar) issues.push("เลือกเสาคอนเทนต์ที่ต้องการกำหนดเอง");
-  if (cfg.images_per_run < 1 || cfg.images_per_run > 6) issues.push("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–6");
+  if (cfg.images_per_run < 1 || cfg.images_per_run > 10) issues.push("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–10");
   if (cfg.max_runs_per_week < 1 || cfg.max_runs_per_week > 14) issues.push("จำนวนรอบต่อสัปดาห์ต้องอยู่ระหว่าง 1–14");
   return issues;
 }

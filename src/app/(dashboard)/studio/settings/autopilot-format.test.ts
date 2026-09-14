@@ -127,7 +127,9 @@ describe("autopilotIssues", () => {
     expect(autopilotIssues(cfg({ platforms: [] }))).toContain("เลือกอย่างน้อย 1 แพลตฟอร์ม");
     expect(autopilotIssues(cfg({ pillar_mode: "fixed", pillar: null }))).toContain("เลือกเสาคอนเทนต์ที่ต้องการกำหนดเอง");
     expect(autopilotIssues(cfg({ pillar_mode: "fixed", pillar: "case_story" }))).toEqual([]);
-    expect(autopilotIssues(cfg({ images_per_run: 7 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–6");
+    expect(autopilotIssues(cfg({ images_per_run: 7 }))).toEqual([]); // 7 = ค่า default ใหม่ ต้องบันทึกได้
+    expect(autopilotIssues(cfg({ images_per_run: 11 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–10");
+    expect(autopilotIssues(cfg({ images_per_run: 0 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–10");
     expect(autopilotIssues(cfg({ max_runs_per_week: 0 }))).toContain("จำนวนรอบต่อสัปดาห์ต้องอยู่ระหว่าง 1–14");
   });
 });

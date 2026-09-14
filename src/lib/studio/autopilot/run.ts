@@ -33,7 +33,7 @@ const PLATFORM_FOR_VARIANT: Record<SocialPlatform, Platform> = {
   line_oa: "line_oa",
 };
 /** Why a storyteller run rendered as a template clip instead (recorded as stats.format_fallback). */
-type FormatFallback = "presenter_failed" | "budget";
+type FormatFallback = "presenter_failed" | "budget" | "image_cap";
 
 export interface AutopilotResult {
   ok: boolean;
@@ -191,7 +191,10 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     let formatFallback: FormatFallback | null = null;
     if (format === "storyteller") {
       // The presenter carries a storyteller clip. Without it the run still ships — as a template clip, never a failed run.
-      if (Date.now() > deadline - 150_000) {
+      if (cfg.images_per_run < images + 1) {
+        // The ceiling counts every image in the run, cover included — a ceiling of 1 leaves no room for the presenter.
+        formatFallback = "image_cap";
+      } else if (Date.now() > deadline - 150_000) {
         formatFallback = "budget";
       } else {
         const presenter = await generateImageAsset({ master: ctx, target: { kind: "presenter" }, aspect: "9:16", userId: actor });
