@@ -361,7 +361,14 @@ const RECENT_PIECES = 6;
 /** How far down the saved queue to look for an idea on a subject we have not just used. */
 const SAVED_IDEA_LOOKAHEAD = 10;
 async function recentPieceTitles(svc: Svc): Promise<string[]> {
-  const { data, error } = await svc.from("studio_content_masters").select("title").order("created_at", { ascending: false }).limit(RECENT_PIECES);
+  const { data, error } = await svc
+    .from("studio_content_masters")
+    .select("title")
+    // Archived and rejected pieces are not "what we just made"; a draft or one waiting for review is,
+    // so it still counts — producing the same subject twice while one sits in the queue is the bug we are fixing.
+    .not("status", "in", "(archived,rejected)")
+    .order("created_at", { ascending: false })
+    .limit(RECENT_PIECES);
   if (error) {
     // Variety is a nice-to-have; never stop a run because we could not read history.
     console.warn(`[studio:autopilot] recent titles lookup failed: ${error.message}`);

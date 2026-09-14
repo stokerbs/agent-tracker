@@ -326,6 +326,20 @@ describe("runAutopilot pipeline", () => {
       warn.mockRestore();
     }
   });
+  it("asks for the newest titles only, skips archived/rejected, and looks deep enough into the saved queue", async () => {
+    h.savedIdeas = [{ id: "idea-1", title: "แฟนนอกใจ ดูยังไง", hook: null, description: null, tags: [] }];
+    const { runAutopilot } = await load();
+    await runAutopilot({ userId: "u1" });
+    const masters = h.filters.filter((f) => f.table === "studio_content_masters");
+    const oi = masters.findIndex((f) => f.m === "order");
+    expect(oi, "recent titles must be ordered").toBeGreaterThan(-1);
+    expect(masters[oi].args[0]).toBe("created_at");
+    expect((masters[oi].args[1] as { ascending: boolean }).ascending).toBe(false); // newest first, not oldest
+    expect(masters[oi + 1]).toMatchObject({ m: "limit", args: [6] });
+    expect(masters.some((f) => f.m === "not" && f.args[0] === "status" && String(f.args[2]).includes("archived"))).toBe(true);
+    // the queue lookahead is what lets a repeated subject be skipped at all
+    expect(h.filters.filter((f) => f.table === "studio_ideas" && f.m === "limit")[0].args[0]).toBe(10);
+  });
   it("tells the idea generator what was just made when the queue is empty", async () => {
     h.recentTitles = [{ title: "สงสัยว่าแฟนมีชู้ แต่ยังไม่มีหลักฐาน" }];
     const ai = await import("@/lib/studio/ai");
