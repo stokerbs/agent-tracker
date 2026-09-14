@@ -88,7 +88,7 @@ export const ClaimSchema = z.object({
 
 export const ScriptResponseSchema = z.object({
   hook: z.string(),
-  script: z.string().describe("Full spoken script in Thai. Sections separated by blank lines; may use short labels like [HOOK] [CONTEXT] [INSIGHT] [PAYOFF] [CTA] at line starts when helpful, but do not force every section."),
+  script: z.string().describe("Full spoken script in Thai, one spoken line per row, sections separated by blank lines. No section labels — every row is read aloud as it is."),
   caption: z.string().describe("Platform caption in Thai, ends with 3–5 hashtags"),
   cta: z.string(),
   estimated_seconds: z.number().describe("Your own estimate of spoken length"),
