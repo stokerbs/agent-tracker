@@ -113,6 +113,7 @@ export class AyrsharePublishProvider implements PublishProvider {
     const json = await this.call<{ history?: AyrHistoryEntry[] }>("GET", `/history?lastRecords=${RECONCILE_RECORDS}`, undefined, RECONCILE_TIMEOUT_MS, true);
     const floor = Date.parse(input.since) - RECONCILE_SLACK_MS;
     const wanted = input.platforms.map((p) => TO_AYR[p]).sort();
+    // Ayrshare returns history newest first, so the first match is the most recent attempt.
     const match = (json.history ?? []).find((h) => {
       if (h.notes !== input.refKey || !h.id) return false;
       const created = Date.parse(h.created ?? "");

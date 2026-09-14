@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   inserts: [] as Row[],
   updates: [] as { table: string; payload: Row; eq: [string, unknown][]; in: [string, unknown[]][] }[],
   downloads: [] as string[],
+  socialSelectError: null as { message: string } | null,
 }));
 
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
@@ -38,6 +39,8 @@ vi.mock("@/lib/supabase/server", () => ({
           return Promise.resolve(resolve({ data: null, error: null }));
         }
         if (st.op === "insert") return Promise.resolve(resolve({ data: (Array.isArray(st.payload) ? st.payload : [st.payload]).map((r, i) => ({ ...(r as Row), id: `sp-${i}` })), error: null }));
+        // only the reconcile ownership lookup (filtered by provider_post_id) fails, not the duplicate pre-check
+        if (table === "studio_social_posts" && h.socialSelectError && st.eq.some(([c]) => c === "provider_post_id")) return Promise.resolve(resolve({ data: null, error: h.socialSelectError }));
         let data: Row[] = table === "studio_creative_assets" ? h.assets : table === "studio_social_posts" ? h.socialRows : [];
         for (const [c, v] of st.eq) data = data.filter((r) => r[c] === v);
         for (const [c, v] of st.in) data = data.filter((r) => (v as unknown[]).includes(r[c]));
@@ -75,6 +78,7 @@ beforeEach(() => {
   h.inserts = [];
   h.updates = [];
   h.downloads = [];
+  h.socialSelectError = null;
 });
 
 describe("publishMaster", () => {
@@ -283,6 +287,45 @@ describe("publishMaster", () => {
       expect(warn.mock.calls.some(([m]) => String(m).includes("already recorded"))).toBe(true);
     } finally {
       warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+  it("still recovers when the only row holding that provider post is deleted", async () => {
+    h.socialRows = [{ id: "sp0", master_id: MASTER, platform: "facebook", status: "deleted", provider_post_id: "P_LATE" }];
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new Error("socket hang up");
+      },
+      findRecentPostByRef: async () => ({ providerPostId: "P_LATE", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "fb_late", postUrl: "https://fb/late" } } }),
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: true, recovered: true });
+      expect(h.inserts.filter((i) => i.platform)).toHaveLength(1);
+    } finally {
+      warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+  it("does not claim a post it cannot check the ownership of", async () => {
+    h.socialSelectError = { message: "connection reset" };
+    const provider = fakeProvider({
+      createPost: async () => {
+        throw new Error("socket hang up");
+      },
+      findRecentPostByRef: async () => ({ providerPostId: "P_LATE", refId: null, status: "success", perPlatform: { facebook: { status: "success", id: "fb_late", postUrl: "https://fb/late" } } }),
+    });
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const { publishMaster } = await import("./publish");
+      const r = await publishMaster({ master, variants: [], platforms: ["facebook"], assetIds: ["a1"], scheduleAt: null, userId: "u1" }, { provider });
+      expect(r).toMatchObject({ ok: false, code: "rejected" });
+      expect(h.inserts.filter((i) => i.platform)).toHaveLength(0);
+      expect(err.mock.calls.some(([m]) => String(m).includes("ownership check failed"))).toBe(true);
+    } finally {
       err.mockRestore();
     }
   });

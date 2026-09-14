@@ -61,12 +61,17 @@ async function reconcileGroup(
     if (!found?.providerPostId) return null; // nothing to attribute the post to
     // Two attempts can race (a double click, or the sweep meeting a manual publish). Whoever recorded the
     // provider post first owns it — claiming it twice would point our delete button at someone else's post.
-    const { data: taken } = await svc
+    const { data: taken, error: takenErr } = await svc
       .from("studio_social_posts")
       .select("id")
       .eq("provider_post_id", found.providerPostId)
       .in("status", ACTIVE_STATUSES as unknown as string[])
       .limit(1);
+    if (takenErr) {
+      // Fail closed: unable to prove the post is ours, so leave the failure standing rather than claim it.
+      console.error(`[studio:publish] reconcile ownership check failed master=${refKey}:`, takenErr.message);
+      return null;
+    }
     if (taken?.length) {
       console.warn(`[studio:publish] reconcile found master=${refKey} provider_post=${found.providerPostId} already recorded — leaving it alone`);
       return null;
@@ -206,7 +211,7 @@ export async function publishMaster(input: PublishInput, deps: { provider?: Publ
           if (recovered) {
             created = recovered;
             wasRecovered = true;
-            groupError = null;
+            groupError = null; // read only inside this catch; cleared so the shape of the block stays honest
             for (const p of group) delete failures[p];
             if (!firstProviderId) firstProviderId = created.providerPostId;
             console.warn(`[studio:publish] recovered master=${master.id} platforms=${group.join(",")} provider_post=${created.providerPostId} after an ambiguous failure`);

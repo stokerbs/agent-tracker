@@ -99,6 +99,18 @@ describe("AyrsharePublishProvider", () => {
       expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE })).toBeNull();
     });
 
+    it("refuses a platform set of the same size but a different shape", async () => {
+      const { f } = mockFetch([{ body: { history: [entry({ platforms: ["facebook", "instagram"] })] } }]);
+      expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE })).toBeNull();
+    });
+
+    it("takes the newest of two matching records", async () => {
+      // Ayrshare returns history newest first; a retry can leave two records for the same group.
+      const { f } = mockFetch([{ body: { history: [entry({ id: "P_NEW", created: "2026-09-14T10:25:00Z" }), entry({ id: "P_OLD" })] } }]);
+      const out = await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook", "tiktok"], since: SINCE });
+      expect(out!.providerPostId).toBe("P_NEW");
+    });
+
     it("returns null instead of throwing when the history call answers an error", async () => {
       const { f } = mockFetch([{ status: 404, body: { status: "error", code: 221, message: "not found" } }]);
       expect(await new AyrsharePublishProvider("KEY", f).findRecentPostByRef({ refKey: "master-1", platforms: ["facebook"], since: SINCE })).toBeNull();
