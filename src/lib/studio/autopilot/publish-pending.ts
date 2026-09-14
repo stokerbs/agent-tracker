@@ -134,7 +134,9 @@ export async function publishPendingAutopilotRuns(opts: { now?: number; limit?: 
         action: "STUDIO_SOCIAL_POST",
         entity: "studio_content_masters",
         entityId: masterId,
-        metadata: { autopilot: true, run_id: run.id, recovered: "timeout_before_publish", platforms: cfg.platforms, provider_post_id: published.providerPostId },
+        // Two different recoveries can meet here: the run we picked up (swept_from) and, inside publishMaster,
+        // a post the provider had accepted without answering us (provider_recovered).
+        metadata: { autopilot: true, run_id: run.id, swept_from: "timeout_before_publish", platforms: cfg.platforms, provider_post_id: published.providerPostId, ...(published.recovered ? { provider_recovered: true } : {}) },
       });
       await markDone(svc, run.id, run.stats, published.posts.length);
       const urls = published.posts.map((p) => p.post_url).filter((u): u is string => !!u);

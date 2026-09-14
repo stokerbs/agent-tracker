@@ -87,6 +87,9 @@ describe("publishPendingAutopilotRuns", () => {
     expect(done.payload).toMatchObject({ status: "done", published: true });
     expect((done.payload.stats as { posts: number; recovered: boolean; format: string })).toMatchObject({ posts: 2, recovered: true, format: "template" });
     expect(h.audits[0]).toMatchObject({ action: "STUDIO_SOCIAL_POST", entityId: "m1" });
+    // the sweep's own recovery is a different fact from "the provider had accepted it all along"
+    expect(h.audits[0].metadata).toMatchObject({ autopilot: true, swept_from: "timeout_before_publish" });
+    expect(h.audits[0].metadata).not.toHaveProperty("provider_recovered");
     expect(h.notes[0]).toContain("https://fb/1");
   });
   it("only ever looks at finished-but-unposted runs from the last day", async () => {
