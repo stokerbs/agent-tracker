@@ -62,6 +62,123 @@ describe("scrubText", () => {
     expect(scan("แฟนชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
     expect(scan("บริษัทมีชื่อเสียงดี").some((f) => f.kind === "name")).toBe(false);
   });
+  it("does not read ชื่อ inside another word as a name — Thai has no word spaces", () => {
+    // เชื่อ (believe) contains ชื่อ, so these everyday words were being reported as a person's name
+    // on the gate that decides whether a piece may be published at all.
+    for (const t of [
+      "ความน่าเชื่อถือของบริการสำคัญกว่าราคา",
+      "พบความเชื่อมโยงใหม่ระหว่างสองเคส",
+      "เชื่อใจได้ว่างานจะเสร็จตามกำหนด",
+      "ชื่อในทะเบียนราษฎร์ตรงกับที่แจ้งไว้",
+      "ชื่อที่ให้มาสะกดไม่ตรงกับเอกสาร",
+      "ชื่อของบริการนี้คือการตรวจสอบประวัติ",
+      "หนังสือรับรองบริษัท",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // and the cue still works where a name really follows it
+    expect(scan("เป้าหมายชื่อสมชาย").some((f) => f.kind === "name")).toBe(true);
+    expect(scan("ชื่อเล่นว่าเอ").some((f) => f.kind === "name")).toBe(true);
+  });
+  it("does not read a title inside a longer word as a name", () => {
+    for (const t of [
+      "แนะนำให้ปรึกษาทนายความ",
+      "ทนายความประจำบริษัท",
+      "งานนายหน้าไม่ใช่งานนักสืบ",
+      "นายหน้าอสังหาฯ ติดต่อมา",
+      "นายจ้างเรียกเข้าพบ",
+      "นายทุนรายใหญ่",
+      "นางแบบในงานอีเวนต์",
+      "นายกรัฐมนตรีแถลงข่าว",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("still finds a titled name in the middle of a sentence — Thai glues it to the word before", () => {
+    // The trap: with no word spaces a title almost never starts a "word", so a position-based rule
+    // would silently stop detecting real names everywhere except the start of a field.
+    for (const t of [
+      "ลูกค้าพบนายสมชาย ที่ห้างเมื่อคืน",
+      "ได้รับแจ้งจากนางสาวสมหญิง ว่ามีคนตาม",
+      "เป้าหมายเดินทางกับนายอนุชา",
+      "ผู้ว่าจ้างคือนายสมชาย ใจดี",
+      "รายงานโดยดร.สมศักดิ์",
+      "เจอนายสมชายที่ร้าน",
+      "นายสมชาย เดินทางออกจากบ้าน",
+      "นางสาวสมหญิง ทำงานที่นั่น",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("keeps a title's exclusions to that title — นางเอก must not silence นายเอกชัย", () => {
+    // เอก/ฟ้า/แบบ/สนาม belong to นาง; they are also the first syllable of very common men's names.
+    for (const t of ["นายเอกชัย สุขใจ", "พบนายเอกพงษ์", "ดร.เอกชัย", "ด.ช.เอกภพ", "นายฟ้าลิขิต", "นายสนามชัย", "นางสาวฟ้าใส"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // …and a lawyer with a name is a name; only ทนายความ is the profession
+    for (const t of ["ทนายสมชาย ยืนยันว่า", "ปรึกษาทนายสมหญิง", "ทนายอนุชาเป็นคนแจ้ง"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    for (const t of ["แนะนำให้ปรึกษาทนายความ", "นายกสมาคมกล่าวว่า", "นายกเทศมนตรีลงพื้นที่", "นายกฯ แถลง"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // the excerpt must be the longest title, not นาง + สาว…
+    expect(scan("นางสาวสมหญิง ทำงานที่นั่น").find((f) => f.kind === "name")?.excerpt).toBe("นางสาวสมหญิง");
+  });
+  it("keeps names that start with ก — the นายก exclusion must be compounds, not a letter class", () => {
+    for (const t of ["พบนายกิตติศักดิ์ ที่ร้าน", "นายกมล ใจดี", "นายกฤษณะ", "นายกานต์", "นายก้องภพ", "นายกอบชัย", "นายกำธร"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    for (const t of ["นายกรัฐมนตรีแถลง", "นายกสมาคมกล่าว", "นายกเทศมนตรีลงพื้นที่", "นายกฯ แถลง", "นายกอบต.ประชุม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("finds a name that follows the label with a space, not only after คือ/ว่า", () => {
+    for (const t of ["ชื่อของลูกค้า สมชาย ใจดี", "ชื่อในรายงาน สมหญิง ศรีสุข", "ชื่อและนามสกุล สมชาย ใจดี", "ชื่อที่ลูกค้าให้มา สมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("does not let the gap skip a rejected คือ and grab the next ว่า", () => {
+    for (const t of [
+      "ชื่อของบริการนี้คือการสืบที่ว่ายากมาก",
+      "ชื่อของเคสนี้คือรหัสที่ว่ากันว่าลับ",
+      "ชื่อและนามสกุลคือข้อมูลส่วนบุคคล",
+      "ชื่อของทีมคือทีมสืบสวนพิเศษ",
+      "ชื่อของรายงานคือสรุปผลการสืบ",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("does not let the ชื่อของ/ใน/ที่ rule reopen the เชื่อ bug it was added next to", () => {
+    for (const t of [
+      "ความเชื่อของลูกค้าคือหลักฐานต้องชัด",
+      "เราเชื่อในทีมงานคือหัวใจของบริการ",
+      "เชื่อที่เห็นมากับตาว่าจริง",
+      "ชื่อในรายงานคือรหัสเคสเท่านั้น",
+      "ชื่อของแพ็กเกจนี้คือบริการสืบทรัพย์",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // a real introduction still flags, including across a longer gap and other particles
+    for (const t of ["ชื่อและนามสกุลของผู้เสียหายคือสมชาย", "ชื่อที่ปรากฏในเอกสารสัญญาฉบับนี้คือสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("keeps catching the shapes an over-eager exclusion list would silence", () => {
+    // Every entry below is one someone might be tempted to add to the ชื่อ(?!…) list; each is a real name.
+    for (const t of ["สามีชื่อนายสมชาย", "ชื่อเอ", "ชื่อบี", "เป้าหมายชื่อจากใบสมัคร", "ลูกค้าชื่อใหม่ที่ติดต่อมา"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("finds a name introduced as ชื่อของ/ชื่อใน/ชื่อที่ … คือ", () => {
+    for (const t of ["ชื่อของลูกค้าคือสมชาย ใจดี", "ชื่อในบัตรประชาชนคือสมหญิง", "ชื่อที่ใช้สมัครคือสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // …but the same particles introducing a thing are still not a person
+    for (const t of ["ชื่อของบริการนี้คือการตรวจสอบประวัติ", "ชื่อในทะเบียนราษฎร์ตรงกับที่แจ้งไว้"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
   it("flags denylist terms case-insensitively", () => {
     expect(scan("ลูกค้าชื่อ Pimchanok มาปรึกษา", ["pimchanok"]).some((f) => f.kind === "denylist")).toBe(true);
   });
