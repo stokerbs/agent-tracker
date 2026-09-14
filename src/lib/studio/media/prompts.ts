@@ -43,8 +43,17 @@ export function sceneText(target: ImageTarget, plan: CreativePlan | null, fallba
   if (!shot) return null;
   const visual = shot.visual?.trim();
   if (!visual) return null;
+  // The viewer hears this line while looking at this image, so the line is part of the brief — a generic
+  // stock-looking frame under an unrelated sentence is what made clips feel mismatched (2026-09-14).
+  const voice = shot.voice?.trim();
   const overlay = shot.text_overlay?.trim();
-  return overlay ? `${visual}. (Mood cue only, do not render the words: "${overlay}")` : visual;
+  return [
+    visual,
+    voice ? `The viewer hears this line over this shot — the image must show that moment, not a generic mood: "${voice.slice(0, 220)}". Never render these words in the image.` : null,
+    overlay ? `(Mood cue only, do not render the words: "${overlay}")` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**

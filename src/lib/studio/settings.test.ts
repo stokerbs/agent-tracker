@@ -23,3 +23,14 @@ describe("normaliseAutopilot video_format", () => {
     }
   });
 });
+
+describe("normaliseAutopilot images_per_run", () => {
+  // One image per shot: the ceiling covers the whole run, so it has to allow more than the old 6.
+  it("keeps every value in 1–10 and clamps outside it", () => {
+    expect(DEFAULT_AUTOPILOT.images_per_run).toBe(7);
+    for (const n of [1, 6, 7, 10]) expect(normaliseAutopilot({ ...DEFAULT_AUTOPILOT, images_per_run: n }).images_per_run).toBe(n);
+    expect(normaliseAutopilot({ ...DEFAULT_AUTOPILOT, images_per_run: 11 }).images_per_run).toBe(10);
+    expect(normaliseAutopilot({ ...DEFAULT_AUTOPILOT, images_per_run: 0 }).images_per_run).toBe(1);
+    expect(normaliseAutopilot({ ...DEFAULT_AUTOPILOT, images_per_run: "x" as never }).images_per_run).toBe(DEFAULT_AUTOPILOT.images_per_run);
+  });
+});

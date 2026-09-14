@@ -93,6 +93,8 @@ describe("runStatsSummary", () => {
   it("names the rendered clip format and flags a storyteller fallback", () => {
     expect(runStatsSummary({ images: 2, format: "storyteller" })).toBe("ภาพ 2 · คลิปนักสืบเล่าเรื่อง");
     expect(runStatsSummary({ images: 1, format: "template", format_fallback: "presenter_failed" })).toBe("ภาพ 1 · คลิปภาพประกอบ (แทนนักสืบเล่าเรื่อง)");
+    // the owner's own ceiling is a different story from a failed image — say which one happened
+    expect(runStatsSummary({ images: 1, format: "template", format_fallback: "image_cap" })).toBe("ภาพ 1 · คลิปภาพประกอบ (แทนนักสืบเล่าเรื่อง — เพดานภาพไม่พอ)");
     expect(runStatsSummary({ images: 1, format: "alternate" })).toBe("ภาพ 1");
   });
 });
@@ -110,11 +112,11 @@ describe("imageCostHint", () => {
     expect(imageCostHint(4)).toBe("~฿6");
     expect(imageCostHint(1, "template")).toBe("~฿1.5");
   });
-  it("adds the presenter image for storyteller and shows a range for alternate", () => {
-    expect(imageCostHint(1, "storyteller")).toBe("~฿3");
-    expect(imageCostHint(3, "storyteller")).toBe("~฿6");
-    expect(imageCostHint(1, "alternate")).toBe("~฿1.5–3");
-    expect(imageCostHint(4, "alternate")).toBe("~฿6–7.5");
+  it("is the ceiling itself, whatever the format — the presenter is counted inside it", () => {
+    for (const f of ["template", "storyteller", "alternate"] as const) {
+      expect(imageCostHint(1, f)).toBe("~฿1.5");
+      expect(imageCostHint(7, f)).toBe("~฿10.5");
+    }
   });
 });
 
@@ -127,7 +129,9 @@ describe("autopilotIssues", () => {
     expect(autopilotIssues(cfg({ platforms: [] }))).toContain("เลือกอย่างน้อย 1 แพลตฟอร์ม");
     expect(autopilotIssues(cfg({ pillar_mode: "fixed", pillar: null }))).toContain("เลือกเสาคอนเทนต์ที่ต้องการกำหนดเอง");
     expect(autopilotIssues(cfg({ pillar_mode: "fixed", pillar: "case_story" }))).toEqual([]);
-    expect(autopilotIssues(cfg({ images_per_run: 7 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–6");
+    expect(autopilotIssues(cfg({ images_per_run: 7 }))).toEqual([]); // 7 = ค่า default ใหม่ ต้องบันทึกได้
+    expect(autopilotIssues(cfg({ images_per_run: 11 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–10");
+    expect(autopilotIssues(cfg({ images_per_run: 0 }))).toContain("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–10");
     expect(autopilotIssues(cfg({ max_runs_per_week: 0 }))).toContain("จำนวนรอบต่อสัปดาห์ต้องอยู่ระหว่าง 1–14");
   });
 });

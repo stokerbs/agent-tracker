@@ -1,4 +1,5 @@
 import { STOP_REASON_TH } from "@/lib/studio/autopilot/plan";
+import { IMAGES_PER_RUN_MAX, IMAGES_PER_RUN_MIN } from "@/lib/studio/constants";
 import type { AutopilotRunStatus, AutopilotSettings, AutopilotVideoFormat, VideoFormat } from "@/lib/studio/types";
 
 /**
@@ -110,22 +111,22 @@ export function runStatsSummary(stats: unknown): string {
   if (videoSec !== null) parts.push(`วิดีโอ ${videoSec.toLocaleString("en-GB")} วิ`);
   if (posts !== null) parts.push(`โพสต์ ${posts.toLocaleString("en-GB")}`);
   if (s.format === "template" || s.format === "storyteller") {
-    // A fallback only ever goes storyteller → template, so say what it replaced.
-    parts.push(`คลิป${RENDERED_FORMAT_SHORT[s.format]}${typeof s.format_fallback === "string" ? " (แทนนักสืบเล่าเรื่อง)" : ""}`);
+    // A fallback only ever goes storyteller → template, so say what it replaced — and, when the owner's own
+    // ceiling is what stopped it, say that too, or the setting looks like it simply did not work.
+    const why = typeof s.format_fallback === "string" ? (s.format_fallback === "image_cap" ? " (แทนนักสืบเล่าเรื่อง — เพดานภาพไม่พอ)" : " (แทนนักสืบเล่าเรื่อง)") : "";
+    parts.push(`คลิป${RENDERED_FORMAT_SHORT[s.format]}${why}`);
   }
   return parts.join(" · ");
 }
 
 /**
- * "~฿3" — image spend per run at the current setting. Storyteller adds the
- * presenter image; alternate adds it every other run, so it shows a range ("~฿1.5–3").
+ * "~฿10.5" — the most a run can spend on images at the current setting. The ceiling
+ * covers every image in the run (cover and storyteller presenter included), so the
+ * format no longer changes the number.
  */
-export function imageCostHint(imagesPerRun: number, format: AutopilotVideoFormat = "template"): string {
+export function imageCostHint(imagesPerRun: number, _format: AutopilotVideoFormat = "template"): string {
   const base = Math.max(0, imagesPerRun);
-  const thb = (n: number) => (n * IMAGE_COST_THB).toLocaleString("en-GB", { maximumFractionDigits: 2 });
-  if (format === "storyteller") return `~฿${thb(base + 1)}`;
-  if (format === "alternate") return `~฿${thb(base)}–${thb(base + 1)}`;
-  return `~฿${thb(base)}`;
+  return `~฿${(base * IMAGE_COST_THB).toLocaleString("en-GB", { maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -138,7 +139,7 @@ export function autopilotIssues(cfg: AutopilotSettings): string[] {
   if (!cfg.days.length) issues.push("เลือกอย่างน้อย 1 วัน");
   if (!cfg.platforms.length) issues.push("เลือกอย่างน้อย 1 แพลตฟอร์ม");
   if (cfg.pillar_mode === "fixed" && !cfg.pillar) issues.push("เลือกเสาคอนเทนต์ที่ต้องการกำหนดเอง");
-  if (cfg.images_per_run < 1 || cfg.images_per_run > 6) issues.push("จำนวนภาพต่อรอบต้องอยู่ระหว่าง 1–6");
+  if (cfg.images_per_run < IMAGES_PER_RUN_MIN || cfg.images_per_run > IMAGES_PER_RUN_MAX) issues.push(`จำนวนภาพต่อรอบต้องอยู่ระหว่าง ${IMAGES_PER_RUN_MIN}–${IMAGES_PER_RUN_MAX}`);
   if (cfg.max_runs_per_week < 1 || cfg.max_runs_per_week > 14) issues.push("จำนวนรอบต่อสัปดาห์ต้องอยู่ระหว่าง 1–14");
   return issues;
 }

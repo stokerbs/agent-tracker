@@ -33,7 +33,7 @@ const PLATFORM_FOR_VARIANT: Record<SocialPlatform, Platform> = {
   line_oa: "line_oa",
 };
 /** Why a storyteller run rendered as a template clip instead (recorded as stats.format_fallback). */
-type FormatFallback = "presenter_failed" | "budget";
+type FormatFallback = "presenter_failed" | "budget" | "image_cap";
 
 export interface AutopilotResult {
   ok: boolean;
@@ -188,12 +188,18 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
     const cover = await generateImageAsset({ master: ctx, target: { kind: "thumbnail" }, aspect: "9:16", userId: actor });
     if (!cover.ok) return await stop("image_failed", masterId, "failed", `${cover.code}: ${cover.error}`);
     let images = 1;
+    /** Provider calls, successful or not — the ceiling limits spend, so it has to count attempts. */
+    let attempts = 1;
     let formatFallback: FormatFallback | null = null;
     if (format === "storyteller") {
       // The presenter carries a storyteller clip. Without it the run still ships — as a template clip, never a failed run.
-      if (Date.now() > deadline - 150_000) {
+      if (cfg.images_per_run < attempts + 1) {
+        // The ceiling counts every image in the run, cover included — a ceiling of 1 leaves no room for the presenter.
+        formatFallback = "image_cap";
+      } else if (Date.now() > deadline - 150_000) {
         formatFallback = "budget";
       } else {
+        attempts += 1;
         const presenter = await generateImageAsset({ master: ctx, target: { kind: "presenter" }, aspect: "9:16", userId: actor });
         if (presenter.ok) images += 1;
         else {
@@ -206,12 +212,16 @@ export async function runAutopilot(opts: { userId: string | null; trigger?: "cro
         format = "template";
       }
     }
-    for (let i = 0; i < Math.min(trimmed.shots.length, cfg.images_per_run - 1); i++) {
+    // One image per shot: a frame reused under a different line is what made clips look mismatched (docs §16).
+    // images_per_run stays as the cost ceiling for the whole run, cover and presenter included.
+    const sceneBudget = Math.max(0, cfg.images_per_run - attempts);
+    for (let i = 0; i < Math.min(trimmed.shots.length, sceneBudget); i++) {
       // Scene images are optional polish — drop them rather than run out of function time before the video.
       if (Date.now() > deadline - 150_000) {
         console.warn(`[studio:autopilot] run=${runId} skipping remaining scene images to protect the time budget`);
         break;
       }
+      attempts += 1; // the loop bound already holds the ceiling; kept so the counter stays true if this loop grows
       const shot = await generateImageAsset({ master: ctx, target: { kind: "scene", index: i }, aspect: "9:16", userId: actor });
       if (shot.ok) images += 1;
       else console.warn(`[studio:autopilot] run=${runId} scene image ${i} skipped: ${shot.code}`);

@@ -216,13 +216,23 @@ describe("updateAutopilot", () => {
   it("rejects a fixed pillar mode with no pillar and out-of-range values", async () => {
     const { updateAutopilot } = await load();
     expect((await updateAutopilot({ ...good, pillar_mode: "fixed", pillar: null })).ok).toBe(false);
-    expect((await updateAutopilot({ ...good, images_per_run: 7 })).ok).toBe(false);
+    expect((await updateAutopilot({ ...good, images_per_run: 11 })).ok).toBe(false); // ceiling is 10 images a run
+    expect((await updateAutopilot({ ...good, images_per_run: 0 })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, days: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, platforms: [] })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, target_seconds: 42 })).ok).toBe(false);
     expect((await updateAutopilot({ ...good, video_format: "vlog" })).ok).toBe(false);
     expect((await updateAutopilot(Object.fromEntries(Object.entries(good).filter(([k]) => k !== "video_format")))).ok).toBe(false);
     expect(h.upsertCalls).toHaveLength(0);
+  });
+  it("accepts the whole image ceiling range the form offers", async () => {
+    // the server, not the form, is what has to accept the new default and the top of the range
+    const { updateAutopilot } = await load();
+    for (const n of [1, 7, 10]) {
+      const r = await updateAutopilot({ ...good, images_per_run: n });
+      expect(r.ok, `images_per_run ${n}`).toBe(true);
+      expect((h.upsertCalls.at(-1)!.row.autopilot as Record<string, unknown>).images_per_run).toBe(n);
+    }
   });
   it("stores the config with days de-duplicated and sorted, and audits", async () => {
     const { updateAutopilot } = await load();

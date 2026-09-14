@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useSafeTransition } from "@/components/studio/use-safe-transition";
 import { bangkokDay } from "@/lib/studio/autopilot/plan";
-import { PILLARS, PILLAR_META } from "@/lib/studio/constants";
+import { IMAGES_PER_RUN_MAX, IMAGES_PER_RUN_MIN, PILLARS, PILLAR_META } from "@/lib/studio/constants";
 import { PLATFORM_LABEL } from "@/lib/studio/publish/captions";
 import { SOCIAL_PLATFORMS, TARGET_DURATIONS, type AutopilotSettings, type AutopilotVideoFormat, type Pillar, type SocialPlatform, type TargetDuration } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
@@ -42,11 +42,11 @@ const PLATFORM_HINT: Partial<Record<SocialPlatform, string>> = {
   tiktok: "ต้องมีวิดีโอ — รอบอัตโนมัติสร้างวิดีโอเทมเพลตให้เสมอ",
 };
 
-/** Appended to the image cost hint: the storyteller presenter is one more image. */
+/** Appended to the image cost hint: the storyteller presenter is counted inside the ceiling. */
 const PRESENTER_COST_NOTE: Record<AutopilotVideoFormat, string> = {
   template: "",
-  storyteller: " รวมภาพนักสืบ",
-  alternate: " บางรอบรวมภาพนักสืบ",
+  storyteller: " · ภาพนักสืบนับรวมในเพดานนี้แล้ว",
+  alternate: " · รอบที่เป็นนักสืบเล่าเรื่อง ภาพนักสืบนับรวมในเพดานนี้แล้ว",
 };
 
 const PILLAR_MODE_LABEL: Record<AutopilotSettings["pillar_mode"], string> = {
@@ -269,18 +269,21 @@ export function AutopilotForm({ initial }: { initial: AutopilotSettings }) {
           <Input
             id="autopilot-images"
             type="number"
-            min={1}
-            max={6}
+            min={IMAGES_PER_RUN_MIN}
+            max={IMAGES_PER_RUN_MAX}
             value={cfg.images_per_run}
-            onChange={(e) => set("images_per_run", clamp(Number(e.target.value), 1, 6))}
+            onChange={(e) => set("images_per_run", clamp(Number(e.target.value), IMAGES_PER_RUN_MIN, IMAGES_PER_RUN_MAX))}
             disabled={pending}
             className="h-9 w-28 tabular-nums"
             inputMode="numeric"
           />
           <p className="text-xs text-muted-foreground">
-            1 = ภาพปกอย่างเดียว · มากกว่านั้นคือภาพประกอบรายช็อต — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ {imageCostHint(cfg.images_per_run, cfg.video_format)}
+            เพดานจำนวนภาพต่อรอบ นับทุกภาพในรอบนั้น · ระบบสร้างภาพให้ช็อตละหนึ่งรูปจนเต็มเพดาน (7 = ปก + ช็อตละรูปสำหรับคลิป 6 ช็อต) — ค่าใช้จ่ายภาพประมาณ ฿{IMAGE_COST_THB.toLocaleString("en-GB")} ต่อภาพ (รอบนี้ไม่เกิน {imageCostHint(cfg.images_per_run, cfg.video_format)}
             {PRESENTER_COST_NOTE[cfg.video_format]})
           </p>
+          {cfg.video_format !== "template" && cfg.images_per_run < 2 ? (
+            <p className="text-xs text-amber-600 dark:text-amber-500">เพดาน 1 ภาพไม่พอสำหรับภาพนักสืบ รอบนั้นจะถ่ายเป็นคลิปภาพประกอบแทน — ตั้งอย่างน้อย 2 ถ้าต้องการคลิปนักสืบเล่าเรื่อง</p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">

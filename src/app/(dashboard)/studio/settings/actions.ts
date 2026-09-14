@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudioAdmin } from "@/lib/studio/auth";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/errors";
-import { PILLARS, PLATFORMS, STUDIO_MODELS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
+import { IMAGES_PER_RUN_MAX, IMAGES_PER_RUN_MIN, PILLARS, PLATFORMS, STUDIO_MODELS, STUDIO_SETTINGS_ID } from "@/lib/studio/constants";
 import { loadDemoData, removeDemoData, type SeedSummary } from "@/lib/studio/seed";
 import { getStudioSettings } from "@/lib/studio/settings";
 import { IMAGE_ASPECTS, SOCIAL_PLATFORMS, TARGET_DURATIONS, type ActionResult, type ApprovalRules, type BrandVoice, type ImageAspect, type PillarConfig, type PrivacyRules, type SocialPlatform } from "@/lib/studio/types";
@@ -204,7 +204,7 @@ const autopilotSchema = z.object({
   pillar_mode: z.enum(["rotate", "fixed"]),
   pillar: z.enum(PILLARS as [string, ...string[]]).nullable(),
   target_seconds: z.number().int().refine((n) => (TARGET_DURATIONS as number[]).includes(n), "ความยาวไม่ถูกต้อง"),
-  images_per_run: z.number().int().min(1).max(6),
+  images_per_run: z.number().int().min(IMAGES_PER_RUN_MIN).max(IMAGES_PER_RUN_MAX),
   auto_publish: z.boolean(),
   publish_on_review_required: z.boolean(),
   allow_unsupported_claims: z.boolean(),
