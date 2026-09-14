@@ -81,11 +81,43 @@ describe("scrubText", () => {
     expect(scan("ชื่อเล่นว่าเอ").some((f) => f.kind === "name")).toBe(true);
   });
   it("does not read a title inside a longer word as a name", () => {
-    for (const t of ["แนะนำให้ปรึกษาทนายความ", "ทนายความประจำบริษัท", "งานนายหน้าไม่ใช่งานนักสืบ"]) {
+    for (const t of [
+      "แนะนำให้ปรึกษาทนายความ",
+      "ทนายความประจำบริษัท",
+      "งานนายหน้าไม่ใช่งานนักสืบ",
+      "นายหน้าอสังหาฯ ติดต่อมา",
+      "นายจ้างเรียกเข้าพบ",
+      "นายทุนรายใหญ่",
+      "นางแบบในงานอีเวนต์",
+      "นายกรัฐมนตรีแถลงข่าว",
+    ]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
-    expect(scan("นายสมชาย เดินทางออกจากบ้าน").some((f) => f.kind === "name")).toBe(true);
-    expect(scan("นางสาวสมหญิง ทำงานที่นั่น").some((f) => f.kind === "name")).toBe(true);
+  });
+  it("still finds a titled name in the middle of a sentence — Thai glues it to the word before", () => {
+    // The trap: with no word spaces a title almost never starts a "word", so a position-based rule
+    // would silently stop detecting real names everywhere except the start of a field.
+    for (const t of [
+      "ลูกค้าพบนายสมชาย ที่ห้างเมื่อคืน",
+      "ได้รับแจ้งจากนางสาวสมหญิง ว่ามีคนตาม",
+      "เป้าหมายเดินทางกับนายอนุชา",
+      "ผู้ว่าจ้างคือนายสมชาย ใจดี",
+      "รายงานโดยดร.สมศักดิ์",
+      "เจอนายสมชายที่ร้าน",
+      "นายสมชาย เดินทางออกจากบ้าน",
+      "นางสาวสมหญิง ทำงานที่นั่น",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("finds a name introduced as ชื่อของ/ชื่อใน/ชื่อที่ … คือ", () => {
+    for (const t of ["ชื่อของลูกค้าคือสมชาย ใจดี", "ชื่อในบัตรประชาชนคือสมหญิง", "ชื่อที่ใช้สมัครคือสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // …but the same particles introducing a thing are still not a person
+    for (const t of ["ชื่อของบริการนี้คือการตรวจสอบประวัติ", "ชื่อในทะเบียนราษฎร์ตรงกับที่แจ้งไว้"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
   });
   it("flags denylist terms case-insensitively", () => {
     expect(scan("ลูกค้าชื่อ Pimchanok มาปรึกษา", ["pimchanok"]).some((f) => f.kind === "denylist")).toBe(true);

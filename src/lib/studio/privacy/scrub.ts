@@ -33,8 +33,11 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
 // with a bounded name length so a false positive costs a few characters, not a sentence.
-// The lookbehind keeps a title from matching inside a longer word — ทนายความ is not "นาย ความ".
-const NAME_TITLE_RE = /(?<![ก-ฮเแโใไ])(?:นาย|นาง|นางสาว|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s?[ก-๙]{2,10}/g;
+// Thai has no word spaces, so a title is almost always glued to the word before it ("พบนายสมชาย").
+// The rule therefore works at the level of words, not positions: only ท- (ทนาย) is blocked before,
+// and after the title only the compounds that are never a name intro (นายหน้า, นายจ้าง, นางแบบ…).
+// Longest title first, or นางสาว would match as นาง + "สาว…".
+const NAME_TITLE_RE = /(?<!ท)(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย|นาง)(?!หน้า|จ้าง|ทุน|งาน|เอก|ฟ้า|แบบ|สนาม|ก(?:รัฐมนตรี|[\s,.!?…]|$))\s?[ก-๙]{2,10}/g;
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
@@ -45,6 +48,10 @@ const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่ว
 // spaces, so เชื่อ (believe) literally contains it — "ความน่าเชื่อถือ" and "ความเชื่อมโยง" were
 // being reported as a person's name, on the gate that decides whether a piece may be published.
 const NAME_CUE_RE = /(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*[ก-๙A-Za-z]{2,10}/g;
+// "ชื่อของ/ใน/ที่ … คือ <name>" — the cue rule excludes those three particles because they usually
+// introduce a thing, not a person ("ชื่อของบริการนี้คือ…"), so this brings back the case where a
+// person really is named: "ชื่อของลูกค้าคือสมชาย", "ชื่อในบัตรประชาชนคือสมหญิง".
+const NAME_INTRO_RE = /ชื่อ(?:ของ|ใน|ที่)[ก-๙\s]{0,15}(?:คือ|ว่า)\s*(?!การ|ความ|เรื่อง)[ก-๙A-Za-z]{2,10}/g;
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
 const AGE_RE = /(?:อายุ\s*\d{1,2}(?:\s*ปี)?|(?<!\d)\d{1,2}\s*(?:ปี|ขวบ)(?![ก-๙A-Za-z0-9]))/g;
 // Brand handles we allow (our own CTA) — never flag these.
@@ -98,6 +105,7 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!KHUN_STOPLIST.has(m[1])) push("name", m[0], "พบ “คุณ” ตามด้วยชื่อสั้น ๆ — อาจเป็นชื่อบุคคลจริง", "medium");
   }
   for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium");
+  for (const m of text.matchAll(NAME_INTRO_RE)) push("name", m[0], "พบการแนะนำชื่อ (ชื่อของ/ชื่อใน/ชื่อที่ … คือ) ตามด้วยชื่อ", "medium");
   for (const m of text.matchAll(AGE_RE)) push("other", m[0], "พบอายุระบุชัด — ร่วมกับรายละเอียดอื่นอาจระบุตัวตนได้", "low");
 
   for (const term of rules?.denylist ?? []) {
