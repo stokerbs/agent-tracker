@@ -62,9 +62,13 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
     }
     // A finding whose rule could not say where the name is goes whole, and so does every identifier.
     for (const at of occurrences(trimmed, f.excerpt)) {
-      // Thai writes no space inside a word and a name slot stops at ten letters, so a match can end
-      // mid-word; taking the rest of it keeps an orphan syllable out of the row.
-      spans.push({ start: at, end: wordEnd(trimmed, at + f.excerpt.length), token });
+      // The rest of the word goes with a NAME only. A name slot stops at ten letters and Thai writes no
+      // space inside a word, so a name match can end mid-word and leave an orphan syllable. An
+      // identifier match never does — a phone number, a plate or an age ends where its pattern ends —
+      // so extending those only ate the sentence after them ("อายุ 34 ปีที่แล้วเขาหายไปจากบ้าน" became
+      // one token, where main kept the clause).
+      const end = at + f.excerpt.length;
+      spans.push({ start: at, end: f.kind === "name" ? wordEnd(trimmed, end) : end, token });
     }
   }
   let out = "";

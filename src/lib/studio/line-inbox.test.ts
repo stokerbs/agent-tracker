@@ -261,6 +261,40 @@ describe("redactForInbox", () => {
       expect(redactForInbox(t), t).toBe(t);
     }
   });
+  it("pins the two mechanisms a single mutant could still remove quietly", async () => {
+    // Shapes the security gate measured for exactly this: the first-token search, and the speech test.
+    const { redactForInbox } = await import("./line-inbox");
+    // Only the first-token search catches the second mention here, because the surname step stops at
+    // the particle instead of swallowing the rest.
+    expect(redactForInbox("ชื่อของเป้าหมายคือ สมชาย ใจดี ครับ สมชายไปไหน")).not.toContain("สมชาย");
+    // And only the speech test keeps this question, by refusing to read it as a surname. The gate's own
+    // shape used a two-letter nickname, which this build redacts inside other words on purpose, so the
+    // name here is long enough that the surname step is what decides.
+    expect(redactForInbox("แฟนชื่อสมชาย ขอเอกสารด้วยครับ")).toContain("ขอเอกสารด้วยครับ");
+  });
+  it("does not take the sentence after an identifier with it", async () => {
+    // An identifier match ends where its pattern ends, so there is no half-word to finish — extending
+    // it the way a name is extended turned the whole message into one token.
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("อายุ 34 ปีที่แล้วเขาหายไปจากบ้าน")).toBe("[ข้อมูลส่วนตัว]ที่แล้วเขาหายไปจากบ้าน");
+    expect(redactForInbox("เขาอายุ 28 ปีทำงานที่สีลม")).toBe("เขา[ข้อมูลส่วนตัว]ทำงานที่สีลม");
+    expect(redactForInbox("โทร 0812345678 ได้เลยครับ")).toBe("โทร [เบอร์โทร] ได้เลยครับ");
+  });
+  it("tokenises the identifier kinds a customer actually sends", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("เกิดวันที่ 12/03/2540 ครับ")).toContain("[วันที่]");
+    expect(redactForInbox("เลขบัตร 1234567890123 ครับ")).toContain("[เลขบัตร]");
+    expect(redactForInbox("ดูที่ https://example.com/profile ครับ")).toContain("[ลิงก์]");
+    expect(redactForInbox("อีเมล somchai@example.com ครับ")).toContain("[อีเมล]");
+  });
+  it("returns nothing for an empty message and never exceeds the stored length", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("")).toBe("");
+    expect(redactForInbox("   \n  ")).toBe("");
+    // Tokens are longer than what they replace, so a long message of names can grow before it is cut.
+    const long = "แฟนชื่อสมชาย ".repeat(200);
+    expect(redactForInbox(long).length).toBeLessThanOrEqual(1500);
+  });
   it("redacts a vocative คุณ name and the non-name kinds", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("คุณสมชาย โทรมาเมื่อเช้า")).not.toContain("สมชาย");
