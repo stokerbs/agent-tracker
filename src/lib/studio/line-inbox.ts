@@ -83,7 +83,10 @@ function nameWasLocated(excerpt: string, name: string): boolean {
   // Thai has no spaces inside a word, so Thai letters straight after what we took means the length
   // cap cut a word in half — a label longer than the cap ("ชื่อของ ผู้ต้องสงสัย สมชาย"), not the name.
   if (/^[ก-๙]/u.test(tail)) return false;
-  // And a คือ/ว่า still ahead of us means the name is on the other side of it.
+  // And a คือ/ว่า still ahead of us means the name is on the other side of it. No test pins this one
+  // and no message reaches it today: the prefix above already runs to the LAST คือ/ว่า, so nothing is
+  // left ahead. It stays as the belt to that brace — the shape it catches is what shipped raw names
+  // once, and a prefix that stops earlier again would bring it straight back.
   return !/(?:คือ|ว่า)\s*[ก-๙]{2,}/u.test(tail);
 }
 
