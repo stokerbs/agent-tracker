@@ -188,6 +188,14 @@ describe("redactForInbox", () => {
       ["แฟนชื่อสมชาย มีชัย", "มีชัย"],
       ["ชื่อของลูกค้าคือ สมชาย ที่รักษ์ ครับ", "ที่รักษ์"],
       ["ชื่อของลูกค้าคือ สมชาย ช่วยชาติ ครับ", "ช่วยชาติ"],
+      // ชนะ/ธนะ/มานะ are among the commonest syllables in Thai surnames and each contains นะ. Testing
+      // for speech anywhere inside the run vetoed all of them — 80 of 280 shapes the security gate
+      // measured — so the test looks at the end of the run, where a particle actually falls.
+      ["พบนายสมชาย ชนะชัย ที่คอนโด", "ชนะชัย"],
+      ["คุณบอย ธนะรัตน์ โทรมาเมื่อเช้า", "ธนะรัตน์"],
+      ["แฟนชื่อสมชาย มานะชัย ครับ", "มานะชัย"],
+      ["ชื่อของสามีคือ สมชาย จิตรชนะ", "จิตรชนะ"],
+      ["นายสมชาย นะวะมันดา", "นะวะมันดา"],
       // and the length of the surname is not what decides it, for any of the rules
       ["นายสมชาย ประเสริฐศรีสกุลชัย ครับ", "ประเสริฐศรีสกุลชัย"],
       ["คุณบอย วงศ์ทองสุวรรณชัย ครับ", "วงศ์ทองสุวรรณชัย"],

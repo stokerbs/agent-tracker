@@ -46,15 +46,19 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
  */
 const NOT_A_SURNAME = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ|เป็น|มี|ขอ|ช่วย|อยู่|อยาก|ได้|ให้|ไป|มา|ทำ";
 /**
- * Speech, not a surname: a run that carries a politeness particle or a question word anywhere inside it
- * is the customer talking. Without this the surname step ate the question in the commonest shape there
- * is — "ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ" lost everything after the name, because Thai glues a whole
- * clause into one run and the run does not begin with a bare grammar word. The price is a surname that
- * contains one of these as a syllable (นะวะมันดา), recorded in §15b.
+ * Speech, not a surname — tested at the END of the run, not anywhere inside it. Thai particles and
+ * question words close a sentence ("ขอเอกสารด้วยครับ", "ราคาเท่าไหร่ครับ", "สืบได้ไหมครับ") while a
+ * surname ends on an auspicious syllable (ชัย, ศักดิ์, รัตน์, ทอง, สุข), so where the marker falls is
+ * what separates them — a property of the language rather than a guess.
+ *
+ * Testing it anywhere inside the run, as the previous build did, was a veto that failed OPEN: นะ is a
+ * syllable in ชนะชัย, ธนะรัตน์, มานะชัย, จิตรชนะ — one of the commonest families of Thai surnames —
+ * and the security gate measured 80 of 280 surname shapes surviving beside a token, all of them
+ * misleading. Single-syllable particles are left out of this test entirely: as whole tokens they are
+ * already in NOT_A_SURNAME, and keeping them here is exactly what vetoed จิตรชนะ and ทวีชนะ.
  */
-const SPEECH_INSIDE = "ครับ|ค่ะ|คะ|ค่า|จ้า|จ้ะ|นะ|ไหม|มั้ย|หรือ|อะไร|บ้าง|ด้วย|เลย|หน่อย|เท่าไหร่|ยังไง|ขอบคุณ";
-/** The surname tail, shared by the rules here and by `redactForInbox`. */
-export const SURNAME_TAIL = String.raw`\s(?!(?:${NOT_A_SURNAME})(?![ก-๙]))(?:(?!${SPEECH_INSIDE})[ก-๙]){2,}(?![ก-๙])`;
+const SPEECH_INSIDE = "ครับ|ค่ะ|จ้ะ|ไหม|มั้ย|หรือ|อะไร|บ้าง|ด้วย|เลย|หน่อย|เท่าไหร่|ยังไง|ขอบคุณ";
+export const SURNAME_TAIL = String.raw`\s(?!(?:${NOT_A_SURNAME})(?![ก-๙]))(?![ก-๙]*(?:${SPEECH_INSIDE})(?![ก-๙]))[ก-๙]{2,}(?![ก-๙])`;
 const SURNAME = String.raw`(?:${SURNAME_TAIL})?`;
 // Titles that usually precede a real name in Thai copy
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
