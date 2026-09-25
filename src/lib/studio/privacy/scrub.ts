@@ -45,26 +45,26 @@ const NAME_TITLE_RE =
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
 const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่วย", "รับ", "มี", "ทำ", "ว่า", "จะ", "ได้", "ไหม", "ต้อง", "เป็น", "อยู่", "ไป", "มา", "คิด", "เอง", "ล่ะ", "นะ", "เห็น", "รู้", "บอก", "ถาม", "ลอง", "ดู", "ก็", "แล้ว", "ยัง", "เคย", "อยาก", "ควร", "ขอ", "ใช้", "เอา", "ให้", "พอ", "ลูกค้า", "ผู้ชาย", "ผู้หญิง", "ตำรวจ", "ทนาย", "หมอ", "ครู", "มาก", "มากๆ", "พ่อ", "แม่", "ตา", "ยาย", "ปู่", "ย่า", "ลุง", "ป้า", "น้า", "อา", "พี่", "น้อง", "แฟน", "สามี", "ภรรยา", "ลูก", "ภาพ", "ค่า", "จ้า", "นะ", "นะคะ", "นะครับ", "หมอ", "ครู", "ด้วย", "เลย", "ก่อน", "แน่", "ไว้", "หน่อย", "ล่ะ"]);
 // Untitled names after cue words in chat: "แฟนชื่อสมชาย", "ชื่อเล่นว่าเอ", "เรียกว่าพี่บี".
-// Without a title the name has to be glued to the cue, the way chat writes it. A space after ชื่อ is
-// how Thai writes a list of fields — "ชื่อ ที่อยู่เก่า และเบอร์โทร" is three column headings, not a
-// person; the labelled forms with a space are covered by NAME_INTRO_RE instead.
-// Compounds like ชื่อเสียง/ชื่อดัง/ชื่อบัญชี/ชื่อร้าน are not names — excluded; name length bounded.
-// The leading-vowel lookbehind is what keeps "ชื่อ" from matching inside another word: Thai has no
-// spaces, so เชื่อ (believe) literally contains it — "ความน่าเชื่อถือ" and "ความเชื่อมโยง" were
-// being reported as a person's name, on the gate that decides whether a piece may be published.
-const NAME_CUE_RE = /(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ|เล่น))(?:\s*(?:คุณ|พี่|น้อง|นาย|นาง)\s*)?(?<!\s)[ก-๙A-Za-z]{2,10}/g;
-// "ชื่อ<particle> <whose> คือ|ว่า|<space> <name>" — the cue rule excludes those particles because they
-// usually introduce a thing, not a person ("ชื่อของบริการนี้คือ…"), so this brings back the case where a
-// person really is named: "ชื่อของลูกค้าคือสมชาย", "ชื่อในบัตรประชาชนคือสมหญิง".
-/**
- * Whose name it is. Requiring one of these between the particle and the name is what keeps the rule
- * from reading "ชื่อที่ไม่แน่ใจว่าใช่หรือเปล่า" as an introduction — the shape that held a finished
- * clip for review on 2026-09-24 while the AI reviewer was writing "the scanner got this wrong".
- */
-const NAME_LABEL =
-  "ลูกค้า|ผู้เสียหาย|ผู้ว่าจ้าง|เป้าหมาย|คนร้าย|ผู้ต้องสงสัย|พยาน|เจ้าของ|คู่กรณี|ลูกความ|เขา|เธอ|สามี|ภรรยา|แฟน|ลูก|พ่อ|แม่|น้อง|พี่|เพื่อน|หุ้นส่วน|พนักงาน|คนขับ|เจ้าหน้าที่|ผู้จัดการ|นามสกุล|บัตรประชาชน|ทะเบียนบ้าน|เอกสาร|สัญญา|รายงาน|ใบสมัคร|ผู้สมัคร|ผู้ติดต่อ|สมัคร|แจ้ง|ลงทะเบียน|จอง|โอน|บัญชี";
+// What follows the cue has to look like a name. Thai cannot enumerate *whose* name it is — a case
+// brings a new word every time (คนหาย, ผู้เช่า, เจ้าหนี้, ทายาท, ชู้) — but the name slot itself is
+// enumerable: field labels and grammar words are never a person (docs §18).
+const NOT_A_NAME =
+  "ที่อยู่|นามสกุล|เบอร์|โทร|อายุ|อาชีพ|พิกัด|เวลา|วันที่|รูปถ่าย|รูป|เลขบัตร|อีเมล|ไลน์|ที่|ใน|ของ|และ|หรือ|กับ|ไม่|ซึ่ง|การ|ความ|เรื่อง|อะไร|ใคร|จะ|ต้อง|ยัง|เพราะ|สะกด|ตรง|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|รหัส|บริการ|ระบบ|เลข|แพ็|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|เดียว|ผิด|ถูก|ครบ|ตาม|จาก|เป็น|คือ";
+/** Compounds where ชื่อ is part of another word, not a cue: ชื่อเสียง, ชื่อบัญชี, ชื่อเล่น… */
+const NOT_A_CUE = "เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ|เล่น";
+const NAME_CUE_RE = new RegExp(
+  String.raw`(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!${NOT_A_CUE}))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
+  "g",
+);
+// "ชื่อ<particle> … คือ|ว่า|<space> <name>" — the cue rule skips those particles because they usually
+// introduce a thing ("ชื่อของบริการนี้คือ…"), so this catches the case where a person really is named.
+// A gap that says the name is unknown is not an introduction ("ชื่อที่ไม่แน่ใจว่าใช่หรือเปล่า", the line
+// that held a finished clip on 2026-09-24), and on the space branch a field word in the gap means the
+// sentence is listing fields ("ชื่อหรือเบอร์โทรศัพท์ นักสืบ…"), not naming anyone.
+const UNKNOWN_GAP = "คือ|ว่า|ไม่แน่ใจ|ไม่ตรง|สะกด";
+const FIELD_WORD = "เบอร์|โทร|ที่อยู่|อายุ|อาชีพ|พิกัด|วันที่|รูป|อีเมล|ไลน์";
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?:ของ|ใน|ที่|และ|หรือ|กับ)?(?:(?!คือ|ว่า)[ก-๙\s]){0,12}?(?:${NAME_LABEL})[ก-๙]{0,12}\s*(?:คือ|ว่า|\s)\s*(?!การ|ความ|เรื่อง|รหัส|บริการ|แพ็|ระบบ|เลข|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|ตรง|ไม่|ที่|ใน|ของ|กับ|และ|หรือ)[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!${UNKNOWN_GAP})[ก-๙\s]){0,25}(?:คือ|ว่า)|(?:(?!${UNKNOWN_GAP}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
   "g",
 );
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
