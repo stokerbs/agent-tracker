@@ -69,7 +69,6 @@ describe("redactForInbox", () => {
     const { redactForInbox } = await import("./line-inbox");
     for (const [input, gone, kept] of [
       ["อยากสืบแฟนครับ ชื่อเล่นของแฟนผม บอย อยู่บางนา", "บอย", "อยากสืบแฟนครับ"],
-      ["ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม", "สมชาย", "ช่วยดูให้ได้ไหม"],
       ["ขอเช็คประวัติ ชื่อของเป้าหมาย สมหญิง ค่ะ", "สมหญิง", "ขอเช็คประวัติ"],
       ["ชื่อในรายงาน สมหญิง ศรีสุข", "ศรีสุข", "ชื่อในรายงาน"],
     ] as const) {
@@ -99,6 +98,21 @@ describe("redactForInbox", () => {
     expect(both).not.toContain("สมชาย");
     expect(both).not.toContain("บอย");
   });
+  it("gives up the sentence rather than the name when the finding swallowed both", async () => {
+    // "ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม" — the scanner's gap crosses the spaces, so its finding
+    // runs past the name and over the question. We cannot tell which token in there is the name
+    // (Thai has no word spaces), so the whole finding goes. Losing the question is the cheaper loss.
+    const { redactForInbox } = await import("./line-inbox");
+    const out = redactForInbox("ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม");
+    expect(out).not.toContain("สมชาย");
+    expect(out).toContain("[ชื่อ]");
+  });
+  it("redacts a vocative คุณ name and the non-name kinds", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("คุณสมชาย โทรมาเมื่อเช้า")).not.toContain("สมชาย");
+    expect(redactForInbox("โทร 0812345678 ได้เลยครับ")).toBe("โทร [เบอร์โทร] ได้เลยครับ");
+    expect(redactForInbox("อยู่ เลขที่ 12/34 ซอยอารีย์ ครับ")).toContain("[ที่อยู่]");
+  });
   it("does not put a [ชื่อ] beside a name it failed to locate", async () => {
     // A label with spaces between the cue and the name used to make the wrong word get replaced —
     // the row then read as redacted while the real name sat next to the token.
@@ -111,6 +125,14 @@ describe("redactForInbox", () => {
       // so the replacement succeeds on a word that is not the name.
       ["ชื่อของ ผู้ต้องสงสัย สมชาย ครับ", "สมชาย"],
       ["ชื่อของ บัตรประชาชน ธนวัฒน์ ครับ", "ธนวัฒน์"],
+      // The label runs straight into the name, so the scanner's own name slot lands on the particle
+      // at the end ("ครับ") and the real name sits inside the gap — nothing in the finding says where.
+      ["ชื่อของลูกค้าสมชาย ครับ", "สมชาย"],
+      ["ชื่อของสามีสมชาย ค่ะ", "สมชาย"],
+      ["ชื่อของ แฟน เก่า สมชาย ครับ", "สมชาย"],
+      ["ชื่อในทะเบียนบ้าน ของ เป้าหมาย สมชาย ครับ", "สมชาย"],
+      // The prefix runs into a name that contains ว่า, so no name is picked at all.
+      ["ชื่อของ ผู้ต้องสงสัย คือ ว่าน ครับ", "ว่าน"],
     ] as const) {
       const out = redactForInbox(input);
       expect(out, input).not.toContain(gone);

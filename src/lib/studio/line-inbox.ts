@@ -46,13 +46,21 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
       // around the name ("ชื่อเล่นของแฟนผม บอย อยู่บางนา"), and blanking all of that loses the
       // question this inbox exists to mine. No word-boundary check here — Thai runs the next word
       // straight into the name ("แฟนชื่อสมชายมาปรึกษา"), so requiring one skipped most real names
-      // and stored them raw. A scan that grabbed a fragment is a scanner bug, fixed in scrub.ts.
+      // and stored them raw.
       const name = nameInsideExcerpt(ex);
-      const next = name ? out.replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : out;
-      // Fail safe: blank the whole finding unless the name was really located. "Nothing changed" is not
-      // enough of a check — picking the wrong word replaces something and leaves the name in place with
-      // a [ชื่อ] beside it, which reads as redacted and is not.
-      out = next === out || !nameWasLocated(ex, name) ? out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : next;
+      // Then check the work by re-reading it with the same scanner, on the finding alone. Guessing
+      // from the attempt — "nothing changed", "a cue is still ahead", "we stopped mid-word" — missed a
+      // new shape every time, and a wrong pick is worse than an obvious miss: the row keeps the name
+      // and gains a [ชื่อ] that reads as redacted. If the scanner still sees a name in the result, the
+      // pick was wrong, and the whole finding is blanked.
+      // The name comes OUT of the copy we re-read rather than being tokenised in it: the token starts
+      // with ชื่อ and the bracket around it breaks the cue chain, which would hide the very name the
+      // check is looking for ("ชื่อของ [ชื่อ]ัย สมชาย" reads clean; "ชื่อของ ัย สมชาย" does not).
+      const settled = name && !NOT_A_PICK.test(name) ? ex.replace(name, " ") : ex;
+      const located = name !== "" && !NOT_A_PICK.test(name) && !scrubText({ fields: { t: settled }, rules: rules ?? null }).some((f) => f.kind === "name");
+      out = located
+        ? out.replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name)
+        : out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name);
       continue;
     }
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
@@ -61,6 +69,15 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   }
   return out.slice(0, MAX_LEN);
 }
+
+/**
+ * Words that are never the name, whatever the scan's own name slot landed on. A label glued to the
+ * name leaves the slot on the particle at the end ("ชื่อของลูกค้าสมชาย ครับ" → the slot is ครับ and
+ * สมชาย is inside the gap), and Thai writes no space to tell us where the label stopped. A pick from
+ * this list is therefore a failure to find the name, not a name.
+ */
+const NOT_A_PICK =
+  /^(?:ครับ|ค่ะ|คะ|นะ|จ้า|จ้ะ|ด้วย|เลย|หน่อย|ไหม|มั้ย|หรือ|แล้ว|อยู่|ที่|ของ|และ|กับ|คือ|ว่า|ไม่|จะ|ต้อง|ได้|ให้|มา|ไป|ช่วย|ขอ|อยาก|ทำ|เป็น|มี|รู้|บอก|ดู|เคย|ยัง|ก็|แต่|เพราะ|ตอน|เมื่อ|วัน)(?:\s|$)/u;
 
 /** Cue words and labels a name rule may match before the name itself. */
 const CUE_PREFIX_RE =
@@ -76,19 +93,6 @@ function nameInsideExcerpt(excerpt: string): string {
   return rest.match(/^[ก-๙A-Za-z]{2,10}(?:\s(?!ครับ|ค่ะ|คะ|นะ|จ้า|ด้วย|เลย)[ก-๙A-Za-z]{2,10})?/u)?.[0] ?? "";
 }
 
-/** Did we take the name, or a word in front of it? Two tells, both read off the result. */
-function nameWasLocated(excerpt: string, name: string): boolean {
-  if (!name) return false;
-  const tail = excerpt.slice(excerpt.indexOf(name) + name.length);
-  // Thai has no spaces inside a word, so Thai letters straight after what we took means the length
-  // cap cut a word in half — a label longer than the cap ("ชื่อของ ผู้ต้องสงสัย สมชาย"), not the name.
-  if (/^[ก-๙]/u.test(tail)) return false;
-  // And a คือ/ว่า still ahead of us means the name is on the other side of it. No test pins this one
-  // and no message reaches it today: the prefix above already runs to the LAST คือ/ว่า, so nothing is
-  // left ahead. It stays as the belt to that brace — the shape it catches is what shipped raw names
-  // once, and a prefix that stops earlier again would bring it straight back.
-  return !/(?:คือ|ว่า)\s*[ก-๙]{2,}/u.test(tail);
-}
 
 const TOKENS: Record<string, string> = {
   phone: "[เบอร์โทร]",
