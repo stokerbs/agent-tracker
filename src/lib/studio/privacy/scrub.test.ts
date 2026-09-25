@@ -181,6 +181,27 @@ describe("scrubText", () => {
     }
     expect(scan("ชื่อเล่นของลูกค้าคือข้อมูลส่วนบุคคล").some((f) => f.kind === "name")).toBe(false);
   });
+  it("stays quiet on a sentence that says the name is not known", () => {
+    // The 2026-09-24 class, as the QA gate measured it: the word after ว่า varies endlessly, so the
+    // hedge in the gap is what disqualifies these — but only before ว่า, never before คือ.
+    for (const t of [
+      "ชื่อที่ไม่แน่ใจว่าจริงหรือไม่",
+      "ชื่อที่ไม่แน่ใจว่าถูกต้องหรือเปล่า",
+      "ชื่อที่ลูกค้าไม่แน่ใจว่าเป็นคนเดียวกัน",
+      "ชื่อที่ไม่ตรงว่าเป็นคนเดียวกันหรือไม่",
+      "ชื่อที่ลูกค้าจำไม่ได้ว่าครบทุกตัวอักษร",
+      "ชื่อที่เขาบอกว่าเต็มไปด้วยข้อสงสัย",
+      "ชื่อที่พิสูจน์ว่าเป็นคนเดียวกัน",
+      "ชื่อที่ยังไม่รู้ว่าถูกหรือผิด",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("does not mistake a field label for a person", () => {
+    for (const t of ["ชื่อ บัญชี ธนาคาร", "ชื่อ เอกสาร แนบ", "ชื่อ รายงาน ฉบับเต็ม", "ชื่อ สกุล และวันเกิด", "ชื่อ หลักฐาน และพยาน", "ชื่อ บริษัท และตำแหน่ง"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
   it("keeps names that begin with a word from the slot list", () => {
     // NOT_A_NAME matches a prefix, so every token in it costs real names: these were measured as
     // costing nothing in return and are gone. การ/จะ/ต้อง/ทีม stay, and take การุณ/จะเด็ด/ต้องตา with them.
