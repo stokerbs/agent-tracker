@@ -46,19 +46,21 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
  */
 const NOT_A_SURNAME = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ|เป็น|มี|ขอ|ช่วย|อยู่|อยาก|ได้|ให้|ไป|มา|ทำ";
 /**
- * Speech, not a surname — tested at the END of the run, not anywhere inside it. Thai particles and
- * question words close a sentence ("ขอเอกสารด้วยครับ", "ราคาเท่าไหร่ครับ", "สืบได้ไหมครับ") while a
- * surname ends on an auspicious syllable (ชัย, ศักดิ์, รัตน์, ทอง, สุข), so where the marker falls is
- * what separates them — a property of the language rather than a guess.
+ * Speech, not a surname — and what marks speech is a question or a discourse word, optionally with a
+ * politeness particle after it, at the END of the run: "ขอเอกสารด้วยครับ", "ราคาเท่าไหร่ครับ",
+ * "ติดต่อกลับได้ไหม". A particle on its own does not mark it, because Thai glues one onto a surname as
+ * readily as onto a question — "นายสมชาย ใจดีครับ" is a full name, and treating its ครับ as speech kept
+ * the surname in 168 of 168 measured rows, next to a token saying the name was gone.
  *
- * Testing it anywhere inside the run, as the previous build did, was a veto that failed OPEN: นะ is a
- * syllable in ชนะชัย, ธนะรัตน์, มานะชัย, จิตรชนะ — one of the commonest families of Thai surnames —
- * and the security gate measured 80 of 280 surname shapes surviving beside a token, all of them
- * misleading. Single-syllable particles are left out of this test entirely: as whole tokens they are
- * already in NOT_A_SURNAME, and keeping them here is exactly what vetoed จิตรชนะ and ทวีชนะ.
+ * The test is at the end of the run because that is where Thai puts these words, while a surname ends
+ * on an auspicious syllable (ชัย, ศักดิ์, รัตน์, ทอง, สุข). Testing anywhere inside the run failed OPEN:
+ * นะ is a syllable in ชนะชัย, ธนะรัตน์, มานะชัย and จิตรชนะ, one of the commonest families of Thai
+ * surnames, and 80 of 280 shapes survived. What is left ambiguous after this is a surname glued to a
+ * discourse word — "ใจดีด้วย", "ใจดีเลย" — which stays; measured at 84 rows and recorded in §15b.
  */
-const SPEECH_INSIDE = "ครับ|ค่ะ|จ้ะ|ไหม|มั้ย|หรือ|อะไร|บ้าง|ด้วย|เลย|หน่อย|เท่าไหร่|ยังไง|ขอบคุณ";
-export const SURNAME_TAIL = String.raw`\s(?!(?:${NOT_A_SURNAME})(?![ก-๙]))(?![ก-๙]*(?:${SPEECH_INSIDE})(?![ก-๙]))[ก-๙]{2,}(?![ก-๙])`;
+const SPEECH_WORD = "ไหม|มั้ย|หรือ|อะไร|บ้าง|ด้วย|เลย|หน่อย|เท่าไหร่|ยังไง|ขอบคุณ|สวัสดี";
+const BARE_PARTICLE = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ";
+export const SURNAME_TAIL = String.raw`\s(?!(?:${NOT_A_SURNAME})(?![ก-๙]))(?![ก-๙]*(?:${SPEECH_WORD})(?:${BARE_PARTICLE})?(?![ก-๙]))[ก-๙]{2,}(?![ก-๙])`;
 const SURNAME = String.raw`(?:${SURNAME_TAIL})?`;
 // Titles that usually precede a real name in Thai copy
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title

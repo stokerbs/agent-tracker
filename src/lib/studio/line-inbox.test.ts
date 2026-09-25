@@ -261,6 +261,41 @@ describe("redactForInbox", () => {
       expect(redactForInbox(t), t).toBe(t);
     }
   });
+  it("takes a surname that has a particle glued onto it", async () => {
+    // "นายสมชาย ใจดีครับ" is a full name with a particle stuck to the surname. Reading that ครับ as
+    // speech kept the surname in 168 of 168 measured rows beside a token saying the name was gone, so
+    // only a question or discourse word marks speech now — a bare particle does not.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["นายสมชาย ใจดีครับ", "ใจดี"],
+      ["คุณบอย ใจดีครับ", "ใจดี"],
+      ["แฟนชื่อสมชาย ศรีสุขค่ะ", "ศรีสุข"],
+      ["ชื่อของลูกค้าคือ สมชาย ใจดีครับ", "ใจดี"],
+      ["นายสมชาย ชนะชัยนะ", "ชนะชัย"],
+    ] as const) {
+      expect(redactForInbox(input), input).not.toContain(gone);
+    }
+  });
+  it("keeps the customer's question after a name", async () => {
+    // The only reason the speech test exists. Nothing asserted this before, so a mutant emptying the
+    // list changed 867 rows and passed the whole suite.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, kept] of [
+      ["ชื่อของแฟนคือ สมชาย ขอเอกสารด้วยครับ", "ขอเอกสารด้วยครับ"],
+      ["แฟนชื่อสมชาย ช่วยดูให้ด้วยครับ", "ช่วยดูให้ด้วยครับ"],
+      ["ชื่อของลูกค้าคือ สมชาย ราคาเท่าไหร่ครับ", "ราคาเท่าไหร่ครับ"],
+      ["คุณสมชาย ติดต่อกลับได้ไหม", "ติดต่อกลับได้ไหม"],
+      ["นายสมชาย สืบได้ไหมครับ", "สืบได้ไหมครับ"],
+    ] as const) {
+      expect(redactForInbox(input), input).toContain(kept);
+    }
+  });
+  it("redacts a first name mentioned again after a full name", async () => {
+    // The first-token search is what catches these; a mutant removing it survived every other test.
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("ชื่อในรายงานคือ สมหญิง ศรีสุข ค่ะ สมหญิง ย้ายบ้านแล้ว")).not.toContain("สมหญิง");
+    expect(redactForInbox("ชื่อของคนหายคือ นารี แสนสุข ค่ะ นารี อายุ 24 ปี")).not.toContain("นารี");
+  });
   it("pins the two mechanisms a single mutant could still remove quietly", async () => {
     // Shapes the security gate measured for exactly this: the first-token search, and the speech test.
     const { redactForInbox } = await import("./line-inbox");
