@@ -76,10 +76,14 @@ function nameInsideExcerpt(excerpt: string): string {
   return rest.match(/^[ก-๙A-Za-z]{2,10}(?:\s(?!ครับ|ค่ะ|คะ|นะ|จ้า|ด้วย|เลย)[ก-๙A-Za-z]{2,10})?/u)?.[0] ?? "";
 }
 
-/** Did we take the name, or a word in front of it? A คือ/ว่า left after it means we took the label. */
+/** Did we take the name, or a word in front of it? Two tells, both read off the result. */
 function nameWasLocated(excerpt: string, name: string): boolean {
   if (!name) return false;
   const tail = excerpt.slice(excerpt.indexOf(name) + name.length);
+  // Thai has no spaces inside a word, so Thai letters straight after what we took means the length
+  // cap cut a word in half — a label longer than the cap ("ชื่อของ ผู้ต้องสงสัย สมชาย"), not the name.
+  if (/^[ก-๙]/u.test(tail)) return false;
+  // And a คือ/ว่า still ahead of us means the name is on the other side of it.
   return !/(?:คือ|ว่า)\s*[ก-๙]{2,}/u.test(tail);
 }
 

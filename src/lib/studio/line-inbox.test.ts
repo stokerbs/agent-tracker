@@ -107,6 +107,10 @@ describe("redactForInbox", () => {
       ["ชื่อของ ผู้ต้องสงสัย คือ สมชาย ครับ", "สมชาย"],
       ["ชื่อของ แฟน คือ บอย", "บอย"],
       ["ชื่อใน บัตรประชาชน คือ สมหญิง ค่ะ", "สมหญิง"],
+      // No คือ/ว่า at all, and a label longer than the length cap: the cap cuts the label in half,
+      // so the replacement succeeds on a word that is not the name.
+      ["ชื่อของ ผู้ต้องสงสัย สมชาย ครับ", "สมชาย"],
+      ["ชื่อของ บัตรประชาชน ธนวัฒน์ ครับ", "ธนวัฒน์"],
     ] as const) {
       const out = redactForInbox(input);
       expect(out, input).not.toContain(gone);
