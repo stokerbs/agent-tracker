@@ -157,6 +157,54 @@ describe("redactForInbox", () => {
     expect(redactForInbox("ชื่อของลูกค้า ครับ\nคือ สมชาย\nทะเบียน กข 1234")).toContain("[ทะเบียนรถ]");
     expect(redactForInbox("อยากให้สืบพฤติกรรมสามีครับ\nชื่อของสามี ครับ กิตติ แสนสุข\nเบอร์ 0812345678")).toContain("[เบอร์โทร]");
   });
+  it("redacts the name everywhere it is mentioned, not only where it was found", async () => {
+    // Naming the target and then talking about them is how these messages are actually written, and
+    // redacting only the first mention leaves the name in the row next to a [ชื่อ] that says it is gone.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["ชื่อของลูกค้าคือ สมชาย ครับ สมชายหายไป 3 วัน", "สมชาย"],
+      ["ชื่อของแฟนคือ สมชาย ช่วยตามสมชายให้ด้วย", "สมชาย"],
+      ["สมชาย เป็นสามีค่ะ ชื่อของสามีคือ สมชาย", "สมชาย"],
+      // the คือ form captures the full name, and the later mention is usually the first name alone
+      ["ชื่อของเป้าหมายคือ สมชาย ใจดี อยากรู้ว่าสมชายไปไหน", "สมชาย"],
+    ] as const) {
+      expect(redactForInbox(input), input).not.toContain(gone);
+    }
+  });
+  it("takes the surname with the name, whichever rule found it", async () => {
+    // A Thai surname alone identifies a family, and left beside the token it reads as redacted.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["นายสมชาย ใจดี ครับ", "ใจดี"],
+      ["คุณบอย ใจดี ครับ", "ใจดี"],
+      ["แฟนชื่อสมชาย ใจดี", "ใจดี"],
+      ["ชื่อของลูกค้าคือ สมชาย ประเสริฐศรีสกุลชัย ครับ", "ประเสริฐศรีสกุลชัย"],
+    ] as const) {
+      expect(redactForInbox(input), input).not.toContain(gone);
+    }
+  });
+  it("never leaves a name it reported anywhere in the row", async () => {
+    // A property, not a list of shapes: whatever the scan says the name is, none of it may survive.
+    // Every earlier build passed shape tests while leaking in a shape nobody had written down.
+    const { redactForInbox } = await import("./line-inbox");
+    const { scrubText } = await import("./privacy/scrub");
+    const messages = [
+      "ชื่อของแฟนคือ สมชาย ครับ สมชาย หายไปแล้ว",
+      "แฟนชื่อกิตติ ค่ะ กิตติ ไม่ยอมรับสาย",
+      "นายปรีชา รักไทย ครับ ปรีชา เคยมาที่ร้าน",
+      "คุณบอย ครับ บอย หายไป 3 วัน",
+      "ชื่อของเป้าหมายคือ สมชาย ใจดี อยากรู้ว่าสมชายไปไหน",
+      "ชื่อของภรรยา ครับ คือ สมหญิง ศรีสุข ช่วยดูให้ได้ไหม",
+      "แฟนชื่อสมชายมาปรึกษาเราเมื่อวาน",
+      "ชื่อเล่นของลูกค้าคือบอยอยู่บางนา",
+    ];
+    for (const t of messages) {
+      const out = redactForInbox(t);
+      for (const f of scrubText({ fields: { t }, rules: null })) {
+        if (f.kind === "name" && f.name) expect(out, `${t} → ${out} (name ${f.name})`).not.toContain(f.name);
+      }
+    }
+  });
   it("leaves a message with no personal name in it readable", async () => {
     const { redactForInbox } = await import("./line-inbox");
     for (const t of [

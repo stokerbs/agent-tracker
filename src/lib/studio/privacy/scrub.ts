@@ -29,6 +29,14 @@ const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
+/**
+ * The second token of a Thai full name, in the one rule whose shape makes it safe to take: after
+ * "…คือ" a customer is writing out a name, so the token after it is a surname far more often than it
+ * is the next word of the question. The other rules leave it — measured, extending them read
+ * "นางสาวสมหญิง ทำงานที่นั่น" as a full name — and the LINE inbox handles the leftover surname itself,
+ * where the price of being wrong is one word of a question rather than a wrong finding (docs §15b).
+ */
+const SURNAME = String.raw`(?:\s(?!ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ)[ก-๙]{2,}(?![ก-๙]))?`;
 // Titles that usually precede a real name in Thai copy
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,
@@ -38,11 +46,13 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // The exclusions belong to the title that owns them: นายหน้า/นายจ้าง are not people, but นายเอกชัย
 // is, so นางเอก/นางฟ้า must not silence เอก/ฟ้า after นาย. ทนายความ is excluded here rather than by a
 // lookbehind, which would have swallowed ทนายสมชาย. Longest title first, or นางสาว matches as นาง + สาว.
-const NAME_TITLE_RE =
-  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|กรัฐมนตรี|กสมาคม|กเทศมนตรี|กสภา|กอบต|กอบจ|กสมาพันธ์|ก(?:ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?([ก-๙]{2,10})/g;
+const NAME_TITLE_RE = new RegExp(
+  String.raw`(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|กรัฐมนตรี|กสมาคม|กเทศมนตรี|กสภา|กอบต|กอบจ|กสมาพันธ์|ก(?:ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?([ก-๙]{2,10})`,
+  "g",
+);
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
-const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
+const KHUN_NAME_RE = new RegExp(String.raw`(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)`, "g");
 const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่วย", "รับ", "มี", "ทำ", "ว่า", "จะ", "ได้", "ไหม", "ต้อง", "เป็น", "อยู่", "ไป", "มา", "คิด", "เอง", "ล่ะ", "นะ", "เห็น", "รู้", "บอก", "ถาม", "ลอง", "ดู", "ก็", "แล้ว", "ยัง", "เคย", "อยาก", "ควร", "ขอ", "ใช้", "เอา", "ให้", "พอ", "ลูกค้า", "ผู้ชาย", "ผู้หญิง", "ตำรวจ", "ทนาย", "หมอ", "ครู", "มาก", "มากๆ", "พ่อ", "แม่", "ตา", "ยาย", "ปู่", "ย่า", "ลุง", "ป้า", "น้า", "อา", "พี่", "น้อง", "แฟน", "สามี", "ภรรยา", "ลูก", "ภาพ", "ค่า", "จ้า", "นะ", "นะคะ", "นะครับ", "หมอ", "ครู", "ด้วย", "เลย", "ก่อน", "แน่", "ไว้", "หน่อย", "ล่ะ"]);
 // Untitled names after cue words in chat: "แฟนชื่อสมชาย", "ชื่อเล่นว่าเอ", "เรียกว่าพี่บี".
 // What follows the cue has to look like a name. Thai cannot enumerate *whose* name it is — a case
@@ -108,7 +118,7 @@ const PARTICLE_SLOT = String.raw`(?:${PARTICLES})(?:[\s,.!?…]|$)`;
  */
 const SPACED_GAP = String.raw`(?:(?!คือ|${VA}|${PARTICLE_GAP}|${FIELD_WORD})[ก-๙\s])`;
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|${VA})[ก-๙\s]){0,25}คือ|(?:(?!คือ|${VA}|${HEDGE})[ก-๙\s]){0,25}${VA}|(?:(?!คือ|${VA})[ก-๙\s]){0,25}${VA}(?=\s*(?:คือ\s*)?(?!${PREDICATE})))\s*(?:คือ\s*)?((?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}(?:\s(?!${PARTICLES}|คือ|ว่า)[ก-๙]{2,12}(?![ก-๙]))?)`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|${VA})[ก-๙\s]){0,25}คือ|(?:(?!คือ|${VA}|${HEDGE})[ก-๙\s]){0,25}${VA}|(?:(?!คือ|${VA})[ก-๙\s]){0,25}${VA}(?=\s*(?:คือ\s*)?(?!${PREDICATE})))\s*(?:คือ\s*)?((?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}${SURNAME})`,
   "g",
 );
 /**

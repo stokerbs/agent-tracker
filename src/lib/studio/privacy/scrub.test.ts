@@ -402,4 +402,15 @@ describe("summarizeFindings", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
   });
+  it("pins the two traps the particle rules exist for", () => {
+    // PARTICLE_GAP must stay anchored to a space: เจ้าหนี้ contains จ้า, so an unanchored list silences
+    // this real name. A mutant that drops the \s passed every other test in this file.
+    for (const t of ["ชื่อของเจ้าหนี้ สมชาย ช่วยดูให้ด้วย", "ชื่อของมะนาว สมชาย ครับ", "ชื่อของ ผู้ว่าจ้าง คือ สมหญิง ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // PARTICLE_SLOT: a name that is nothing but a particle is not a name — the documented trade.
+    for (const t of ["ชื่อของลูกค้าคือ นะ ครับ", "ชื่อของลูกค้าคือ คะ ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
 });

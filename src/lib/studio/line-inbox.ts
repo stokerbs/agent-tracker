@@ -42,16 +42,25 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   const spans: { start: number; end: number; token: string }[] = [];
   for (const f of findings) {
     const token = f.kind === "name" ? TOKENS.name : (TOKENS[f.kind] ?? "[ข้อมูลส่วนตัว]");
+    if (f.kind === "name" && f.name) {
+      // The rule said which part of its match was the name, so redact that name wherever it appears —
+      // not only inside the finding that reported it. Naming the target and then talking about them
+      // ("ชื่อของลูกค้าคือ สมชาย ครับ สมชายหายไป 3 วัน") is the most natural way to write one of these
+      // messages, and redacting only the first mention leaves the name in the row beside a [ชื่อ].
+      // The first token goes too: the คือ form captures a full name, and the later mention is usually
+      // the first name on its own.
+      for (const v of new Set([f.name, f.name.split(" ")[0]])) {
+        for (const at of occurrences(trimmed, v)) {
+          spans.push({ start: at, end: surnameEnd(trimmed, wordEnd(trimmed, at + v.length)), token });
+        }
+      }
+      continue;
+    }
+    // A finding whose rule could not say where the name is goes whole, and so does every identifier.
     for (const at of occurrences(trimmed, f.excerpt)) {
-      // For a name, the rule says which part of its match was the name — and when it cannot say, the
-      // whole finding goes. Nothing here re-derives the name from the text of the finding: four builds
-      // tried, and each one stored a name with a [ชื่อ] beside it, which reads as redacted.
-      const inner = f.kind === "name" && f.name ? trimmed.toLowerCase().indexOf(f.name.toLowerCase(), at) : -1;
-      const start = inner >= 0 && inner < at + f.excerpt.length ? inner : at;
-      const end = start === at ? at + f.excerpt.length : inner + f.name!.length;
       // Thai writes no space inside a word and a name slot stops at ten letters, so a match can end
       // mid-word; taking the rest of it keeps an orphan syllable out of the row.
-      spans.push({ start, end: wordEnd(trimmed, end), token });
+      spans.push({ start: at, end: wordEnd(trimmed, at + f.excerpt.length), token });
     }
   }
   let out = "";
@@ -66,9 +75,8 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
 }
 
 /**
- * Every index where `find` occurs, so a name repeated in the message is redacted everywhere. Matching
- * ignores case, because a denylist finding carries the term as the owner configured it, not as the
- * message spells it.
+ * Every index where `find` occurs. Matching ignores case, because a denylist finding carries the term
+ * as the owner configured it, not as the message spells it.
  */
 function occurrences(text: string, find: string): number[] {
   const hay = text.toLowerCase();
@@ -76,6 +84,19 @@ function occurrences(text: string, find: string): number[] {
   const out: number[] = [];
   for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + 1)) out.push(i);
   return out;
+}
+
+/**
+ * A Thai full name is two tokens, and only the คือ rule can safely report both. Here the token after
+ * the name goes too unless it is a politeness particle or a grammar word — a surname left beside the
+ * token is the misleading row this whole design exists to prevent, and a Thai surname alone identifies
+ * a family. The bound is the token, not a letter count — a surname can be long. When the next word is
+ * not a surname the row loses one word of the question, which is the
+ * cheaper way to be wrong in a store of customer PII (docs §15b).
+ */
+function surnameEnd(text: string, end: number): number {
+  const m = /^\s(?!ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ|เป็น|มี|ขอ|ช่วย|อยู่|อยาก|ได้|ให้|ไป|มา|ทำ)([ก-๙]{2,})(?![ก-๙])/u.exec(text.slice(end));
+  return m ? end + m[0].length : end;
 }
 
 /** The end of the word a match stops inside. */
