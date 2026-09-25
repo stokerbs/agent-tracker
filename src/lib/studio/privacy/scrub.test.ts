@@ -133,6 +133,24 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
   });
+  it("only reads an introduction when the text says whose name it is", () => {
+    // The exact line that held a finished clip for review on 2026-09-24 — no person is named here.
+    expect(scan("ลูกค้าถือชื่อที่ไม่แน่ใจว่าใช่หรือเปล่ามาให้เรา").some((f) => f.kind === "name")).toBe(false);
+    for (const t of [
+      "ชื่อที่ให้มาสะกดไม่ตรงกับเอกสาร",
+      "ชื่อที่เพศไม่ตรงกับที่คาดไว้",
+      "ชื่อ ที่อยู่เก่า และเบอร์โทร",
+      "ชื่อ พิกัด และเวลา",
+      "ชื่อเล่น อาชีพ และรูปถ่าย",
+      "ชื่อหรือเบอร์โทรศัพท์ นักสืบยังสืบต่อได้",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // …and it still reads one when the text does say whose
+    for (const t of ["ชื่อเป้าหมายคืออนุชา", "ชื่อสามีคือสมชาย", "ชื่อผู้เสียหายคือสมหญิง", "ชื่อที่ใช้สมัครคือสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
   it("finds a name that follows the label with a space, not only after คือ/ว่า", () => {
     for (const t of ["ชื่อของลูกค้า สมชาย ใจดี", "ชื่อในรายงาน สมหญิง ศรีสุข", "ชื่อและนามสกุล สมชาย ใจดี", "ชื่อที่ลูกค้าให้มา สมชาย"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
