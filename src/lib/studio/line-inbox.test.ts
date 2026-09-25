@@ -129,7 +129,9 @@ describe("redactForInbox", () => {
     // The name slot stops at ten letters, so a long name used to be replaced in part and leave its
     // last syllable behind ("แฟนชื่อ[ชื่อ]ัย"). The replacement now takes the rest of the word.
     const { redactForInbox } = await import("./line-inbox");
-    expect(redactForInbox("แฟนชื่อประสิทธิ์ชัย ทำงานที่สีลม")).toBe("แฟนชื่อ[ชื่อ] ทำงานที่สีลม");
+    // The run after the name goes with it: it is a surname often enough that leaving it stores half an
+    // identity, and Thai writes no space inside a word to tell a surname from the rest of a sentence.
+    expect(redactForInbox("แฟนชื่อประสิทธิ์ชัย ทำงานที่สีลม")).toBe("แฟนชื่อ[ชื่อ]");
     // And with the finding no longer running past the name, the question survives intact.
     expect(redactForInbox("ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม")).toBe("[ชื่อ] ครับ ช่วยดูให้ได้ไหม");
   });
@@ -179,6 +181,17 @@ describe("redactForInbox", () => {
       ["คุณบอย ใจดี ครับ", "ใจดี"],
       ["แฟนชื่อสมชาย ใจดี", "ใจดี"],
       ["ชื่อของลูกค้าคือ สมชาย ประเสริฐศรีสกุลชัย ครับ", "ประเสริฐศรีสกุลชัย"],
+      // A surname that begins with a word on the never-a-surname list is still a surname. As a prefix
+      // test that list kept มีชัย, ที่รักษ์ and ช่วยชาติ readable next to the token.
+      ["นายสมชาย มีชัย", "มีชัย"],
+      ["คุณบอย มีชัย ครับ", "มีชัย"],
+      ["แฟนชื่อสมชาย มีชัย", "มีชัย"],
+      ["ชื่อของลูกค้าคือ สมชาย ที่รักษ์ ครับ", "ที่รักษ์"],
+      ["ชื่อของลูกค้าคือ สมชาย ช่วยชาติ ครับ", "ช่วยชาติ"],
+      // and the length of the surname is not what decides it, for any of the rules
+      ["นายสมชาย ประเสริฐศรีสกุลชัย ครับ", "ประเสริฐศรีสกุลชัย"],
+      ["คุณบอย วงศ์ทองสุวรรณชัย ครับ", "วงศ์ทองสุวรรณชัย"],
+      ["แฟนชื่อสมชาย ประเสริฐศรีสกุลชัย", "ประเสริฐศรีสกุลชัย"],
     ] as const) {
       expect(redactForInbox(input), input).not.toContain(gone);
     }
@@ -204,6 +217,12 @@ describe("redactForInbox", () => {
         if (f.kind === "name" && f.name) expect(out, `${t} → ${out} (name ${f.name})`).not.toContain(f.name);
       }
     }
+  });
+  it("does not redact a two-letter nickname inside other words", async () => {
+    // เอ is a real nickname and also the first syllable of เอกสาร; Thai has no space between them.
+    const { redactForInbox } = await import("./line-inbox");
+    expect(redactForInbox("ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ")).toContain("เอกสาร");
+    expect(redactForInbox("ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ")).toContain("[ชื่อ]");
   });
   it("leaves a message with no personal name in it readable", async () => {
     const { redactForInbox } = await import("./line-inbox");

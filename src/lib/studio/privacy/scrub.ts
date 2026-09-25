@@ -30,13 +30,32 @@ const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
- * The second token of a Thai full name, in the one rule whose shape makes it safe to take: after
- * "…คือ" a customer is writing out a name, so the token after it is a surname far more often than it
- * is the next word of the question. The other rules leave it — measured, extending them read
- * "นางสาวสมหญิง ทำงานที่นั่น" as a full name — and the LINE inbox handles the leftover surname itself,
- * where the price of being wrong is one word of a question rather than a wrong finding (docs §15b).
+ * The token after a name, which in Thai is the surname often enough that leaving it stores half a
+ * person's identity beside a token saying the name is gone. Two rules about this list, both learned by
+ * measurement and both written down in §15b before being broken again here:
+ *
+ * - a word in it counts only as the WHOLE token. As a prefix it took real surnames with it — มีชัย,
+ *   มีสุข, ที่รักษ์, จะเรินทร์, ช่วยชาติ, อยู่สุข all begin with a word on this list, and the QA gate
+ *   found them surviving next to a [ชื่อ]. The same mistake as NOT_A_NAME's prefixes, a third time.
+ * - there is one list, used by the rules and by the LINE inbox. Two copies drifted to sixteen and
+ *   twenty-seven words, so the rules disagreed about which surnames to keep.
+ *
+ * Thai writes no space inside a word, so what follows a name is one run: a surname, or the rest of the
+ * sentence. Only a particle or a bare grammar word is reliably neither, which is why the cost of this
+ * is a lost clause whenever a customer writes their question as one run — recorded in §15b.
  */
-const SURNAME = String.raw`(?:\s(?!ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ)[ก-๙]{2,}(?![ก-๙]))?`;
+const NOT_A_SURNAME = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ|เป็น|มี|ขอ|ช่วย|อยู่|อยาก|ได้|ให้|ไป|มา|ทำ";
+/**
+ * Speech, not a surname: a run that carries a politeness particle or a question word anywhere inside it
+ * is the customer talking. Without this the surname step ate the question in the commonest shape there
+ * is — "ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ" lost everything after the name, because Thai glues a whole
+ * clause into one run and the run does not begin with a bare grammar word. The price is a surname that
+ * contains one of these as a syllable (นะวะมันดา), recorded in §15b.
+ */
+const SPEECH_INSIDE = "ครับ|ค่ะ|คะ|ค่า|จ้า|จ้ะ|นะ|ไหม|มั้ย|หรือ|อะไร|บ้าง|ด้วย|เลย|หน่อย|เท่าไหร่|ยังไง|ขอบคุณ";
+/** The surname tail, shared by the rules here and by `redactForInbox`. */
+export const SURNAME_TAIL = String.raw`\s(?!(?:${NOT_A_SURNAME})(?![ก-๙]))(?:(?!${SPEECH_INSIDE})[ก-๙]){2,}(?![ก-๙])`;
+const SURNAME = String.raw`(?:${SURNAME_TAIL})?`;
 // Titles that usually precede a real name in Thai copy
 // "คุณ" is the everyday pronoun "you" in chat, so it is NOT treated as a title
 // (it swallowed whole clauses — Thai has no word spaces). Formal titles only,

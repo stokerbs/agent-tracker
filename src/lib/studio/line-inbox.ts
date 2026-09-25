@@ -3,7 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { scrubText } from "@/lib/studio/privacy/scrub";
+import { SURNAME_TAIL, scrubText } from "@/lib/studio/privacy/scrub";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 
@@ -51,6 +51,10 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
       // the first name on its own.
       for (const v of new Set([f.name, f.name.split(" ")[0]])) {
         for (const at of occurrences(trimmed, v)) {
+          // A two- or three-letter nickname (เอ, บี, มด, อ้อ) is a substring of ordinary words, and Thai
+          // has no space to tell them apart: "ชื่อเล่นว่าเอ ขอเอกสารด้วย" was redacting the เอ inside
+          // เอกสาร. For a name that short, only take it where a Thai letter does not run into it.
+          if (v.length <= 3 && at > 0 && /[ก-๙]/u.test(trimmed[at - 1]) && at !== trimmed.toLowerCase().indexOf(v.toLowerCase())) continue;
           spans.push({ start: at, end: surnameEnd(trimmed, wordEnd(trimmed, at + v.length)), token });
         }
       }
@@ -87,15 +91,20 @@ function occurrences(text: string, find: string): number[] {
 }
 
 /**
- * A Thai full name is two tokens, and only the คือ rule can safely report both. Here the token after
- * the name goes too unless it is a politeness particle or a grammar word — a surname left beside the
- * token is the misleading row this whole design exists to prevent, and a Thai surname alone identifies
- * a family. The bound is the token, not a letter count — a surname can be long. When the next word is
- * not a surname the row loses one word of the question, which is the
- * cheaper way to be wrong in a store of customer PII (docs §15b).
+ * A Thai full name is two tokens and the rules report only the first for most shapes, so the token
+ * after a name goes too — a surname beside the token is the misleading row this design exists to
+ * prevent, and a Thai surname alone identifies a family. The list of words that are never a surname
+ * lives in scrub.ts and is shared, so the rules and this layer cannot disagree, and a word on it
+ * counts only as a whole token: as a prefix it kept มีชัย, ที่รักษ์ and ช่วยชาติ readable.
+ *
+ * The cost is real and not a single word: Thai writes no space inside a word, so a question written as
+ * one run ("เดินทางไปเชียงใหม่เมื่อวานนี้") goes with the name. A question written as separate words
+ * keeps everything after the first. Losing a clause is the cheaper way to be wrong in a store of
+ * customer PII, and it is fail-closed rather than a leak (docs §15b).
  */
+const SURNAME_TAIL_RE = new RegExp(`^${SURNAME_TAIL}`, "u");
 function surnameEnd(text: string, end: number): number {
-  const m = /^\s(?!ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี|คือ|ว่า|ไม่|และ|กับ|ที่|จะ|เป็น|มี|ขอ|ช่วย|อยู่|อยาก|ได้|ให้|ไป|มา|ทำ)([ก-๙]{2,})(?![ก-๙])/u.exec(text.slice(end));
+  const m = SURNAME_TAIL_RE.exec(text.slice(end));
   return m ? end + m[0].length : end;
 }
 
