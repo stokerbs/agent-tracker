@@ -74,8 +74,32 @@ const HEDGE = "ไม่แน่ใจ|ไม่ตรง|จำไม่ได
 const PREDICATE =
   "เป็นคน|เป็นใคร|จริงหรือ|ถูกต้อง|ถูกหรือ|ผิดหรือ|ครบทุก|เต็มไป|ยังไม่|ใช่หรือ|คนเดียวกัน|ตัวอักษร|หรือไม่|หรือเปล่า|ข้อสงสัย|อะไร|เขียนอย่าง|เขียนยัง|สะกดอย่าง";
 const FIELD_WORD = "เบอร์|โทร|ที่อยู่|อายุ|อาชีพ|พิกัด|วันที่|รูป|อีเมล|ไลน์";
+/**
+ * Politeness particles and openers. The gap between the cue and the name must not cross one: a gap
+ * that does runs past the name and over the question ("ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม" was a
+ * single finding ending on ไหม), and then nothing in the finding says which token was the name. With
+ * the gap stopped here and the slot refusing a particle, a finding ENDS at the name — which is what
+ * lets the inbox layer redact one without guessing (docs §15b).
+ */
+const PARTICLES = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี";
+/**
+ * Where a particle really is one. Thai hides these inside ordinary words — เจ้าหนี้ contains จ้า,
+ * มะนาว contains นะ — so a bare list used as a position test blocks real labels (that trap has cost
+ * this rule four rounds). A particle counts only after a space, and only when the slot is nothing but
+ * the particle, so คะนอง stays a name.
+ */
+const PARTICLE_GAP = String.raw`\s(?:${PARTICLES})`;
+const PARTICLE_SLOT = String.raw`(?:${PARTICLES})(?:[\s,.!?…]|$)`;
+/**
+ * A nickname glued to its owner: "ชื่อเล่นของแฟนสมชาย". No separator, so the intro rule cannot see it
+ * and the cue rule will not (ของ is in NOT_A_NAME, which is what stops "ชื่อของบริการนี้"). It gets its
+ * own rule because ชื่อเล่น only ever belongs to a person — a service has no nickname — so the widest
+ * form is safe here and nowhere else. Measured: the same shape opened up for ชื่อของ/ชื่อใน false-
+ * positived 14 of 15 real customer questions, which is why this stops at ชื่อเล่น (docs §15b).
+ */
+const NICKNAME_GLUED_RE = /(?<![เแโใไ])ชื่อเล่น(?:ของ|ใน|ที่|กับ)(?![\s])(?:(?!คือ|ว่า)[ก-๙]){2,20}(?![ก-๙])/g;
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|ว่า)[ก-๙\s]){0,25}คือ|(?:(?!คือ|ว่า|${HEDGE})[ก-๙\s]){0,25}ว่า|(?:(?!คือ|ว่า)[ก-๙\s]){0,25}ว่า(?=\s*(?:คือ\s*)?(?!${PREDICATE}))|(?:(?!คือ|ว่า|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|ว่า|${PARTICLE_GAP})[ก-๙\s]){0,25}คือ|(?:(?!คือ|ว่า|${PARTICLE_GAP}|${HEDGE})[ก-๙\s]){0,25}ว่า|(?:(?!คือ|ว่า|${PARTICLE_GAP})[ก-๙\s]){0,25}ว่า(?=\s*(?:คือ\s*)?(?!${PREDICATE}))|(?:(?!คือ|ว่า|${PARTICLE_GAP}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}`,
   "g",
 );
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
@@ -132,6 +156,7 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   }
   for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium");
   for (const m of text.matchAll(NAME_INTRO_RE)) push("name", m[0], "พบการแนะนำชื่อ (ชื่อของ/ชื่อใน/ชื่อที่ … คือ) ตามด้วยชื่อ", "medium");
+  for (const m of text.matchAll(NICKNAME_GLUED_RE)) push("name", m[0], "พบชื่อเล่นของบุคคลติดกับคำบอกความเป็นเจ้าของ", "medium");
   for (const m of text.matchAll(AGE_RE)) push("other", m[0], "พบอายุระบุชัด — ร่วมกับรายละเอียดอื่นอาจระบุตัวตนได้", "low");
 
   for (const term of rules?.denylist ?? []) {

@@ -381,4 +381,13 @@ describe("summarizeFindings", () => {
     expect(summarizeFindings(scan("โทร 081-234-5678 และ 089-111-2222"))).toContain("เบอร์โทร ×2");
     expect(summarizeFindings([])).toContain("ไม่พบ");
   });
+  it("catches a nickname glued to whose it is, and still leaves a service name alone", () => {
+    for (const t of ["ชื่อเล่นของแฟนสมชาย", "ชื่อเล่นของลูกค้าบอย", "ชื่อเล่นในกลุ่มไลน์อนุชา"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // ชื่อของ/ชื่อใน keep their guard: the same width there flagged 14 of 15 real questions (docs §15b).
+    for (const t of ["ชื่อของบริการนี้คืออะไรครับ", "ขอทราบชื่อของแพ็กเกจหน่อยครับ", "ชื่อของเอกสารที่ต้องเตรียม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
 });
