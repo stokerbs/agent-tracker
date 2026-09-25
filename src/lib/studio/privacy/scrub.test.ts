@@ -215,7 +215,7 @@ describe("scrubText", () => {
   });
   it("keeps the four shapes a prefix in the slot list was quietly eating", () => {
     // เลข/รูป/ตรง/แพ็ prevented nothing measurable and cost these names; แพ็ก still blocks แพ็กเกจ.
-    for (const t of ["ลูกค้าชื่อเลขา", "ลูกค้าชื่อ ตรงใจ", "ชื่อเล่น แพ็ตตี้", "เพื่อนเรียกว่าแพ็ท", "ชื่อเล่นของลูกค้าคือแพ็ตตี้", "เป้าหมายชื่อตรงใจ"]) {
+    for (const t of ["ลูกค้าชื่อเลขา", "ลูกค้าชื่อ ตรงใจ", "ชื่อเล่น แพ็ตตี้", "เพื่อนเรียกว่าแพ็ท", "ชื่อเล่นของลูกค้าคือแพ็ตตี้", "เป้าหมายชื่อตรงใจ", "ลูกค้าชื่อรูปงาม"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
     expect(scan("ชื่อของแพ็กเกจนี้คือบริการสืบทรัพย์").some((f) => f.kind === "name")).toBe(false);

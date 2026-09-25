@@ -44,11 +44,13 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
     if (kind === "name") {
       // Replace the name inside the excerpt, not the excerpt itself: a name rule matches the phrase
       // around the name ("ชื่อเล่นของแฟนผม บอย อยู่บางนา"), and blanking all of that loses the
-      // question this inbox exists to mine. Every branch of the name rules has to be stripped here,
-      // or the longer excerpt simply survives and the name is stored verbatim (docs §15b).
+      // question this inbox exists to mine. No word-boundary check here — Thai runs the next word
+      // straight into the name ("แฟนชื่อสมชายมาปรึกษา"), so requiring one skipped most real names
+      // and stored them raw. A scan that grabbed a fragment is a scanner bug, fixed in scrub.ts.
       const name = nameInsideExcerpt(ex);
-      if (!name) continue;
-      out = out.replace(new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![ก-๙A-Za-z])`, "giu"), TOKENS.name);
+      const next = name ? out.replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : out;
+      // Fail safe: if the name could not be located, blank the whole finding rather than store it.
+      out = next === out ? out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : next;
       continue;
     }
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";

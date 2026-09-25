@@ -79,6 +79,26 @@ describe("redactForInbox", () => {
       expect(out, input).toContain("[ชื่อ]");
     }
   });
+  it("redacts a name that runs straight into the next word, which is how Thai is written", async () => {
+    // Every earlier test put a space after the name, so a boundary check that skipped 61% of real
+    // names passed them all. These are the shapes a customer actually types.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["แฟนชื่อสมชายมาปรึกษาเราเมื่อวาน", "สมชาย"],
+      ["เป้าหมายชื่อสมหญิงทำงานที่สีลม", "สมหญิง"],
+      ["ชื่อว่าสมชายอยู่นนทบุรี", "สมชาย"],
+      ["พบนายสมชายที่คอนโด", "สมชาย"],
+      ["ชื่อเล่นของลูกค้าคือบอยอยู่บางนา", "บอย"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(gone);
+      expect(out, input).toContain("[ชื่อ]");
+    }
+    // two names in one message: both go
+    const both = redactForInbox("แฟนชื่อสมชายกับเพื่อนชื่อบอย");
+    expect(both).not.toContain("สมชาย");
+    expect(both).not.toContain("บอย");
+  });
   it("leaves a sentence alone when the scan grabbed part of a longer word", async () => {
     // Thai has no spaces inside a word, so a "name" with more letters straight after it is a fragment.
     const { redactForInbox } = await import("./line-inbox");
