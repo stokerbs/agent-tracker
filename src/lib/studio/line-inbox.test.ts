@@ -63,6 +63,22 @@ describe("redactForInbox", () => {
     expect(redactForInbox("บริษัทนี้มีชื่อเสียงดี")).toContain("ชื่อเสียง");
     expect(redactForInbox("แฟนชื่อสมชาย ทำงานที่กรุงเทพ")).not.toContain("สมชาย");
   });
+  it("redacts a name introduced with a label, nickname included", async () => {
+    // The intro shape produces a longer excerpt than a bare cue; without stripping it, the
+    // length guard reads it as a clause and the nickname is stored verbatim.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, name] of [
+      ["ชื่อเล่นของลูกค้าคือบอย", "บอย"],
+      ["ชื่อของลูกค้าคือสมชาย", "สมชาย"],
+      ["ชื่อในโฉนดคือสมชาย", "สมชาย"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(name);
+      expect(out, input).toContain("[ชื่อ]");
+    }
+    // an ordinary question about the service is untouched
+    expect(redactForInbox("ขอทราบชื่อของบริการนี้หน่อยครับ")).toContain("บริการ");
+  });
   it("applies the owner denylist", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("เคสของ Pimchanok", { denylist: ["pimchanok"], custom_patterns: [], strict_mode: false })).not.toContain("Pimchanok");

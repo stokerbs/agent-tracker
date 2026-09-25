@@ -197,6 +197,33 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
   });
+  it("names a hedged sentence when a person follows, and not when a judgement does", () => {
+    // Hedging is not the test — what follows ว่า is. "สงสัยว่าเป็นสมชาย" identifies someone;
+    // "ไม่แน่ใจว่าเป็นคนเดียวกัน" does not, and "จำไม่ได้ว่าสมชายหรือสมชัย" holds two real names.
+    for (const t of [
+      "ชื่อที่ไม่แน่ใจว่าเป็นสมชาย",
+      "ชื่อที่สงสัยว่าเป็นสมชาย",
+      "ชื่อที่พิสูจน์แล้วว่าเป็นสมชาย",
+      "ชื่อที่ตำรวจสงสัยว่าเป็นอนุชา ทองดี",
+      "ชื่อที่ยังไม่รู้ว่าสมชายหรือสมศักดิ์",
+      "ชื่อที่ไม่แน่ใจ สมชาย ใจดี",
+      "ชื่อที่ลูกค้าจำไม่ได้ สมชาย",
+      "ชื่อเล่นที่สงสัยว่าบอย",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("keeps the four shapes a prefix in the slot list was quietly eating", () => {
+    // เลข/รูป/ตรง/แพ็ prevented nothing measurable and cost these names; แพ็ก still blocks แพ็กเกจ.
+    for (const t of ["ลูกค้าชื่อเลขา", "ลูกค้าชื่อ ตรงใจ", "ชื่อเล่น แพ็ตตี้", "เพื่อนเรียกว่าแพ็ท", "ชื่อเล่นของลูกค้าคือแพ็ตตี้", "เป้าหมายชื่อตรงใจ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    expect(scan("ชื่อของแพ็กเกจนี้คือบริการสืบทรัพย์").some((f) => f.kind === "name")).toBe(false);
+  });
+  it("gives the gap a boundary — an unbounded one is what caused the 2026-09-24 hold", () => {
+    expect(scan("ชื่อของลูกค้าคือสมชาย").some((f) => f.kind === "name")).toBe(true);
+    expect(scan(`ชื่อของ${"ก".repeat(40)}คือสมชาย`).some((f) => f.kind === "name")).toBe(false);
+  });
   it("does not mistake a field label for a person", () => {
     for (const t of ["ชื่อ บัญชี ธนาคาร", "ชื่อ เอกสาร แนบ", "ชื่อ รายงาน ฉบับเต็ม", "ชื่อ สกุล และวันเกิด", "ชื่อ หลักฐาน และพยาน", "ชื่อ บริษัท และตำแหน่ง"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);

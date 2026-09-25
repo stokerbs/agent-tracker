@@ -49,7 +49,7 @@ const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่ว
 // brings a new word every time (คนหาย, ผู้เช่า, เจ้าหนี้, ทายาท, ชู้) — but the name slot itself is
 // enumerable: field labels and grammar words are never a person (docs §15b).
 const NOT_A_NAME =
-  "ที่อยู่|นามสกุล|เบอร์|โทร|อายุ|อาชีพ|พิกัด|เวลา|วันที่|รูปถ่าย|รูป|เลขบัตร|อีเมล|ไลน์|ที่|ใน|ของ|และ|หรือ|กับ|ไม่|ซึ่ง|การ|ความ|เรื่อง|อะไร|ใคร|ใช่|เปล่า|จะ|ต้อง|เพราะ|สะกด|ตรง|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|รหัส|บริการ|ระบบ|เลข|แพ็|ปลอม|ย่อ|นี้|นั้น|เดียว|คือ|บัญชี|ธนาคาร|เอกสาร|รายงาน|สกุล|ช่องทาง|หลักฐาน|บริษัท|พยาน|ยานพาหนะ|เต็มไป|ยังไม่|ไม่ได้";
+  "ที่อยู่|นามสกุล|เบอร์|โทร|อายุ|อาชีพ|พิกัด|เวลา|วันที่|รูปถ่าย|เลขบัตร|อีเมล|ไลน์|ที่|ใน|ของ|และ|หรือ|กับ|ไม่|ซึ่ง|การ|ความ|เรื่อง|อะไร|ใคร|ใช่|เปล่า|จะ|ต้อง|เพราะ|สะกด|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|รหัส|บริการ|ระบบ|แพ็ก|ปลอม|ย่อ|นี้|นั้น|เดียว|คือ|บัญชี|ธนาคาร|เอกสาร|รายงาน|สกุล|ช่องทาง|หลักฐาน|บริษัท|พยาน|ยานพาหนะ|เต็มไป|ยังไม่|ไม่ได้";
 /** Compounds where ชื่อ is part of another word, not a cue: ชื่อเสียง, ชื่อบัญชี, ชื่อเล่น… */
 const NOT_A_CUE = "เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ|เล่น";
 const NAME_CUE_RE = new RegExp(
@@ -61,16 +61,21 @@ const NAME_CUE_RE = new RegExp(
 // "ชื่อที่สะกดว่าสมชาย" names someone, so สะกด no longer disqualifies a sentence; what keeps the
 // 2026-09-24 line ("ชื่อที่ไม่แน่ใจว่าใช่หรือเปล่า") quiet is the name slot plus HEDGE on the ว่า branch. On the space
 // branch a field word in the gap means the sentence is listing fields ("ชื่อหรือเบอร์โทรศัพท์ นักสืบ…").
-// The compound guard below is what stops ชื่อเสียง/ชื่อบัญชี now that ชื่อเล่น may take a particle.
+// The compound guard below is defence in depth, not what does the work: what keeps ชื่อเสียง/ชื่อบัญชี
+// out is the particle this rule requires straight after ชื่อ/ชื่อเล่น, which no compound has.
 /**
- * A sentence that hedges is talking about a name nobody is sure of, not naming anyone —
- * but only before ว่า. With คือ a name really does follow ("ชื่อที่ไม่ตรงกับบัตรคือสมชาย"),
- * which is why the two gates disagreed about this list until it was split by terminator.
+ * Hedging alone does not mean nobody is named — "ชื่อที่สงสัยว่าเป็นสมชาย" and "ชื่อที่พิสูจน์แล้ว
+ * ว่าเป็นสมชาย" identify a person, and "จำไม่ได้ว่าสมชายหรือสมชัย" holds two real names. What
+ * decides it is what follows ว่า: a person, or a judgement about a name. So the sentence is only
+ * dropped when the gap hedges *and* the slot is one of these — written as whole phrases, because
+ * this file has learned twice that a prefix list takes real names with it.
  */
 const HEDGE = "ไม่แน่ใจ|ไม่ตรง|จำไม่ได้|ไม่รู้|สงสัย|พิสูจน์|ไม่ชัด|ไม่แน่";
+const PREDICATE =
+  "เป็นคน|เป็นใคร|จริงหรือ|ถูกต้อง|ถูกหรือ|ผิดหรือ|ครบทุก|เต็มไป|ยังไม่|ใช่หรือ|คนเดียวกัน|ตัวอักษร|หรือไม่|หรือเปล่า|ข้อสงสัย|อะไร";
 const FIELD_WORD = "เบอร์|โทร|ที่อยู่|อายุ|อาชีพ|พิกัด|วันที่|รูป|อีเมล|ไลน์";
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|ว่า)[ก-๙\s]){0,25}คือ|(?:(?!คือ|ว่า|${HEDGE})[ก-๙\s]){0,25}ว่า|(?:(?!คือ|ว่า|${HEDGE}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|ว่า)[ก-๙\s]){0,25}คือ|(?:(?!คือ|ว่า|${HEDGE})[ก-๙\s]){0,25}ว่า|(?:(?!คือ|ว่า)[ก-๙\s]){0,25}ว่า(?=\s*(?:คือ\s*)?(?!${PREDICATE}))|(?:(?!คือ|ว่า|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
   "g",
 );
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
