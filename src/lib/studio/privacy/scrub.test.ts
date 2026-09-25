@@ -408,9 +408,15 @@ describe("summarizeFindings", () => {
     for (const t of ["ชื่อของเจ้าหนี้ สมชาย ช่วยดูให้ด้วย", "ชื่อของมะนาว สมชาย ครับ", "ชื่อของ ผู้ว่าจ้าง คือ สมหญิง ครับ"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
-    // PARTICLE_SLOT: a name that is nothing but a particle is not a name — the documented trade.
+    // PARTICLE_SLOT cuts both ways and both directions need holding. A particle that IS the whole slot
+    // is not a name — the documented trade. But it must stay a whole-slot test: as a prefix it silences
+    // every name that starts with one, and the security gate measured that at 242 leaks with the rest
+    // of this file still green. This file has twice paid for a prefix list taking real names with it.
     for (const t of ["ชื่อของลูกค้าคือ นะ ครับ", "ชื่อของลูกค้าคือ คะ ครับ"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    for (const t of ["ชื่อของลูกค้าคือ คะนอง ครับ", "ชื่อของลูกค้าคือ นะโม ครับ", "ชื่อของ ผู้ต้องสงสัย คือ จ้าวขวัญ ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
   });
 });
