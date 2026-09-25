@@ -49,7 +49,7 @@ const KHUN_STOPLIST = new Set(["คะ", "ครับ", "ค่ะ", "ช่ว
 // brings a new word every time (คนหาย, ผู้เช่า, เจ้าหนี้, ทายาท, ชู้) — but the name slot itself is
 // enumerable: field labels and grammar words are never a person (docs §18).
 const NOT_A_NAME =
-  "ที่อยู่|นามสกุล|เบอร์|โทร|อายุ|อาชีพ|พิกัด|เวลา|วันที่|รูปถ่าย|รูป|เลขบัตร|อีเมล|ไลน์|ที่|ใน|ของ|และ|หรือ|กับ|ไม่|ซึ่ง|การ|ความ|เรื่อง|อะไร|ใคร|จะ|ต้อง|ยัง|เพราะ|สะกด|ตรง|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|รหัส|บริการ|ระบบ|เลข|แพ็|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|เดียว|ผิด|ถูก|ครบ|ตาม|จาก|เป็น|คือ";
+  "ที่อยู่|นามสกุล|เบอร์|โทร|อายุ|อาชีพ|พิกัด|เวลา|วันที่|รูปถ่าย|รูป|เลขบัตร|อีเมล|ไลน์|ที่|ใน|ของ|และ|หรือ|กับ|ไม่|ซึ่ง|การ|ความ|เรื่อง|อะไร|ใคร|ใช่|เปล่า|จะ|ต้อง|เพราะ|สะกด|ตรง|ข้อมูล|ตำแหน่ง|สรุป|ทีม|ชื่อ|รหัส|บริการ|ระบบ|เลข|แพ็|ปลอม|ย่อ|นี้|นั้น|เดียว|คือ";
 /** Compounds where ชื่อ is part of another word, not a cue: ชื่อเสียง, ชื่อบัญชี, ชื่อเล่น… */
 const NOT_A_CUE = "เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ|เล่น";
 const NAME_CUE_RE = new RegExp(
@@ -58,13 +58,14 @@ const NAME_CUE_RE = new RegExp(
 );
 // "ชื่อ<particle> … คือ|ว่า|<space> <name>" — the cue rule skips those particles because they usually
 // introduce a thing ("ชื่อของบริการนี้คือ…"), so this catches the case where a person really is named.
-// A gap that says the name is unknown is not an introduction ("ชื่อที่ไม่แน่ใจว่าใช่หรือเปล่า", the line
-// that held a finished clip on 2026-09-24), and on the space branch a field word in the gap means the
-// sentence is listing fields ("ชื่อหรือเบอร์โทรศัพท์ นักสืบ…"), not naming anyone.
-const UNKNOWN_GAP = "คือ|ว่า|ไม่แน่ใจ|ไม่ตรง|สะกด";
+// "ชื่อที่สะกดว่าสมชาย" names someone, so the gap only ends at คือ/ว่า — what keeps the 2026-09-24 line
+// ("ชื่อที่ไม่แน่ใจว่าใช่หรือเปล่า") quiet is the name slot, where ใช่/เปล่า are not names. On the space
+// branch a field word in the gap means the sentence is listing fields ("ชื่อหรือเบอร์โทรศัพท์ นักสืบ…").
+// The compound guard below is what stops ชื่อเสียง/ชื่อบัญชี now that ชื่อเล่น may take a particle.
+const GAP_END = "คือ|ว่า";
 const FIELD_WORD = "เบอร์|โทร|ที่อยู่|อายุ|อาชีพ|พิกัด|วันที่|รูป|อีเมล|ไลน์";
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!${UNKNOWN_GAP})[ก-๙\s]){0,25}(?:คือ|ว่า)|(?:(?!${UNKNOWN_GAP}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!${GAP_END})[ก-๙\s]){0,25}(?:คือ|ว่า)|(?:(?!${GAP_END}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
   "g",
 );
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"

@@ -161,6 +161,39 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
   });
+  it("reads a nickname introduction, and a name the text says was spelled out", () => {
+    // ชื่อเล่น is full PII and the rows write it this way constantly; "สะกดว่า X" is naming someone,
+    // not saying the name is unknown. Both were measured as lost against main before this shape.
+    for (const t of [
+      "ชื่อเล่นของลูกค้าคือบอย",
+      "ชื่อเล่นของเป้าหมายคือบอย",
+      "ชื่อเล่นของเขาคือสมชาย",
+      "ชื่อเล่นในกลุ่มไลน์คือบอย",
+      "ชื่อเล่นที่เพื่อนเรียกคือบอย",
+      "ชื่อที่สะกดว่าสมชาย",
+      "ชื่อที่สะกดว่า สมชาย",
+      "ชื่อที่ลูกค้าสะกดให้คือสมชาย",
+      "ชื่อที่ไม่ตรงกับบัตรคือสมชาย",
+      "ชื่อของลูกค้าที่ไม่แน่ใจคือสมชาย",
+      "ชื่อที่ผู้เสียหายบอกว่าคือสมชาย",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    expect(scan("ชื่อเล่นของลูกค้าคือข้อมูลส่วนบุคคล").some((f) => f.kind === "name")).toBe(false);
+  });
+  it("keeps names that begin with a word from the slot list", () => {
+    // NOT_A_NAME matches a prefix, so every token in it costs real names: these were measured as
+    // costing nothing in return and are gone. การ/จะ/ต้อง/ทีม stay, and take การุณ/จะเด็ด/ต้องตา with them.
+    for (const t of ["ลูกค้าชื่อตามใจ", "เป้าหมายชื่อจากฟ้า", "พยานชื่อเป็นสุข", "ชื่อเล่น ถูกใจ", "เขาชื่อยังยิ้ม", "ลูกค้าชื่อครบพร้อม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("leaves the marketing copy that is live on the site alone", () => {
+    // Pins the shape an optional particle in the intro rule would drag back in.
+    for (const t of ["เช็คประวัติบุคคลจากชื่อ นามสกุล และเบอร์โทร", "ค้นหาคนจากชื่อ นามสกุล"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
   it("does not read the brand's own copy as a person", () => {
     // ชื่อเสียง/ชื่อบัญชี are compounds; an optional particle once let the intro rule reach past them
     for (const t of [
