@@ -36,68 +36,54 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   const trimmed = normalizeThaiDigits(text).replace(/\s+/g, " ").trim().slice(0, MAX_LEN);
   if (!trimmed) return "";
   const findings = scrubText({ fields: { t: trimmed }, rules: rules ?? null });
-  let out = trimmed;
-  // Everything that is not a name first: a name finding is the widest of them, and redacting it first
-  // used to erase the text a plate or phone finding was still waiting to match ("ทะเบียน กข 1234" lost
-  // its plate token and kept the digits).
-  for (const f of findings.filter((x) => x.kind !== "name")) {
-    out = replaceAll(out, f.excerpt, TOKENS[f.kind] ?? "[ข้อมูลส่วนตัว]");
+  // One pass over spans, not one pass per finding. Redacting findings in sequence let a wide name
+  // finding erase the text a plate finding was still waiting to match (the row kept the digits), and
+  // redacting identifiers first let the name pass eat a token that had just been inserted.
+  const spans: { start: number; end: number; token: string }[] = [];
+  for (const f of findings) {
+    const token = f.kind === "name" ? TOKENS.name : (TOKENS[f.kind] ?? "[ข้อมูลส่วนตัว]");
+    for (const at of occurrences(trimmed, f.excerpt)) {
+      // For a name, the rule says which part of its match was the name — and when it cannot say, the
+      // whole finding goes. Nothing here re-derives the name from the text of the finding: four builds
+      // tried, and each one stored a name with a [ชื่อ] beside it, which reads as redacted.
+      const inner = f.kind === "name" && f.name ? trimmed.toLowerCase().indexOf(f.name.toLowerCase(), at) : -1;
+      const start = inner >= 0 && inner < at + f.excerpt.length ? inner : at;
+      const end = start === at ? at + f.excerpt.length : inner + f.name!.length;
+      // Thai writes no space inside a word and a name slot stops at ten letters, so a match can end
+      // mid-word; taking the rest of it keeps an orphan syllable out of the row.
+      spans.push({ start, end: wordEnd(trimmed, end), token });
+    }
   }
-  // Names come from a second read of the text we have now, not from the first scan: a name finding is
-  // wide enough to overlap the identifiers above, and after those are tokenised the first scan's
-  // excerpt no longer occurs in the text — matching it would silently do nothing and keep the name.
-  const names = Array.from(new Set(scrubText({ fields: { t: out }, rules: rules ?? null }).filter((f) => f.kind === "name").map((f) => f.excerpt)))
-    // Longest first so partial overlaps don't leave fragments behind.
-    .sort((a, b) => b.length - a.length);
-  for (const ex of names) {
-    // A rule with a gap between the cue and the name (ชื่อของ… คือ …) cannot tell the inbox WHICH
-    // token in the finding is the name: the gap can hold it. Four attempts to work it out from the
-    // finding alone each shipped a row that kept the name and gained a [ชื่อ] reading as redacted,
-    // which is worse than an obvious miss. So those findings go whole. The cue, title and คุณ rules
-    // have no gap — the name follows the cue immediately — so there the name alone goes and the
-    // customer's question survives, which is what this inbox is mined for.
-    const gapless = !GAP_RULE_RE.test(ex);
-    const name = gapless ? nameInsideExcerpt(ex) : "";
-    out = name ? replaceAll(out, name, TOKENS.name) : replaceAll(out, ex, TOKENS.name, true);
+  let out = "";
+  let cursor = 0;
+  for (const s of spans.sort((a, b) => a.start - b.start || b.end - a.end)) {
+    if (s.end <= cursor) continue; // already inside something wider
+    out += trimmed.slice(cursor, Math.max(cursor, s.start)) + s.token;
+    cursor = s.end;
   }
+  out += trimmed.slice(cursor);
   return out.slice(0, MAX_LEN);
 }
 
-/** The rules whose match holds a gap that can contain the name: ชื่อของ/ชื่อใน/ชื่อที่ … คือ/ว่า. */
-const GAP_RULE_RE = /^ชื่อ(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)/u;
-
 /**
- * Replace every occurrence, and take the rest of the word with it. Thai writes no space inside a word,
- * so a finding can end mid-word (the name slot is capped at ten letters) — replacing exactly what was
- * matched leaves an orphan syllable that reads as damage and is useless to the mining layer.
+ * Every index where `find` occurs, so a name repeated in the message is redacted everywhere. Matching
+ * ignores case, because a denylist finding carries the term as the owner configured it, not as the
+ * message spells it.
  */
-function replaceAll(text: string, find: string, token: string, surname = false): string {
-  // A Thai full name is two tokens and a rule's finding ends at the first one, so a finding taken
-  // whole also takes a following token unless it is a politeness particle — otherwise "ชื่อในรายงาน
-  // สมหญิง ศรีสุข" stores the surname beside the token. The cost is a word of the question when the
-  // next word is not a surname, which is the cheaper way to be wrong here.
-  const tail = surname ? String.raw`(?:\s(?!${PARTICLES})[ก-๙]{2,10}(?![ก-๙]))?` : "";
-  const re = new RegExp(`${find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[ก-๙]*${tail}`, "giu");
-  return text.replace(re, token);
+function occurrences(text: string, find: string): number[] {
+  const hay = text.toLowerCase();
+  const needle = find.toLowerCase();
+  const out: number[] = [];
+  for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + 1)) out.push(i);
+  return out;
 }
 
-/** Politeness particles, which are never part of the name that precedes them. */
-const PARTICLES = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ด้วย|เลย|หน่อย|ขอบคุณ";
-
-/** Cue words and labels a name rule may match before the name itself. */
-const CUE_PREFIX_RE =
-  /^(?:ชื่อ(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)[ก-๙\s]{0,25}?(?:คือ|ว่า|\s)|ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ|นางสาว|นาย|นาง|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*/u;
-
-/** The name part of a name finding: one token, or two when a Thai full name is written out. */
-function nameInsideExcerpt(excerpt: string): string {
-  // Greedy up to the LAST คือ/ว่า: the label between the cue and the name can hold spaces
-  // ("ชื่อของ ผู้ต้องสงสัย คือ สมชาย"), and stopping at the first one picks the label as the name.
-  const prefix = excerpt.match(/^.*(?:คือ|ว่า)\s*/u)?.[0] ?? excerpt.match(CUE_PREFIX_RE)?.[0] ?? "";
-  const rest = excerpt.slice(prefix.length);
-  // The trailing politeness particle is not part of the name.
-  return rest.match(/^[ก-๙A-Za-z]{2,10}(?:\s(?!ครับ|ค่ะ|คะ|นะ|จ้า|ด้วย|เลย)[ก-๙A-Za-z]{2,10})?/u)?.[0] ?? "";
+/** The end of the word a match stops inside. */
+function wordEnd(text: string, end: number): number {
+  let i = end;
+  while (i < text.length && /[ก-๙]/u.test(text[i])) i += 1;
+  return i;
 }
-
 
 const TOKENS: Record<string, string> = {
   phone: "[เบอร์โทร]",

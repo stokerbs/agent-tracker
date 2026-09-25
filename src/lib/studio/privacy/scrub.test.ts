@@ -381,12 +381,24 @@ describe("summarizeFindings", () => {
     expect(summarizeFindings(scan("โทร 081-234-5678 และ 089-111-2222"))).toContain("เบอร์โทร ×2");
     expect(summarizeFindings([])).toContain("ไม่พบ");
   });
-  it("catches a nickname glued to whose it is, and still leaves a service name alone", () => {
-    for (const t of ["ชื่อเล่นของแฟนสมชาย", "ชื่อเล่นของลูกค้าบอย", "ชื่อเล่นในกลุ่มไลน์อนุชา"]) {
-      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+  it("says where the name is, so nothing downstream has to guess", () => {
+    for (const [text, name] of [
+      ["แฟนชื่อสมชายมาปรึกษาเราเมื่อวาน", "สมชายมาปรึ"],
+      ["ชื่อของลูกหนี้คือ ธนวัฒน์ ครับ", "ธนวัฒน์"],
+      ["ชื่อของภรรยา ครับ คือ สมหญิง ศรีสุข", "สมหญิง ศรีสุข"],
+      ["พบนายสมชายที่คอนโด", "สมชายที่คอ"],
+      ["คุณสมชาย โทรมาเมื่อเช้า", "สมชาย"],
+    ] as const) {
+      const f = scan(text).find((x) => x.kind === "name");
+      expect(f?.name, text).toBe(name);
     }
-    // ชื่อของ/ชื่อใน keep their guard: the same width there flagged 14 of 15 real questions (docs §15b).
-    for (const t of ["ชื่อของบริการนี้คืออะไรครับ", "ขอทราบชื่อของแพ็กเกจหน่อยครับ", "ชื่อของเอกสารที่ต้องเตรียม"]) {
+  });
+  it("known gap: a label glued to the name, and a nickname glued to whose it is", () => {
+    // Neither shape has a separator, so no rule can say which token is the name. Opening the rules
+    // wide enough to catch them was measured: ชื่อของ/ชื่อใน flagged 14 of 15 real customer questions,
+    // and a ชื่อเล่น-only version still swallowed 8 of 15 ("ชื่อเล่นของลูกค้าจำเป็นไหมครับ"). A false
+    // positive here holds a finished clip, which cost three weeks of silence in September (docs §15b).
+    for (const t of ["ชื่อของลูกค้าสมชาย ครับ", "ชื่อเล่นของแฟนสมชาย"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
   });

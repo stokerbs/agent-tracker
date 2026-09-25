@@ -39,7 +39,7 @@ const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันท�
 // is, so นางเอก/นางฟ้า must not silence เอก/ฟ้า after นาย. ทนายความ is excluded here rather than by a
 // lookbehind, which would have swallowed ทนายสมชาย. Longest title first, or นางสาว matches as นาง + สาว.
 const NAME_TITLE_RE =
-  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|กรัฐมนตรี|กสมาคม|กเทศมนตรี|กสภา|กอบต|กอบจ|กสมาพันธ์|ก(?:ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?[ก-๙]{2,10}/g;
+  /(?:นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|นาย(?!ความ|หน้า|จ้าง|ทุน|งาน|กรัฐมนตรี|กสมาคม|กเทศมนตรี|กสภา|กอบต|กอบจ|กสมาพันธ์|ก(?:ฯ|[\s,.!?…]|$))|นาง(?!เอก|ฟ้า|แบบ|สนาม))\s?([ก-๙]{2,10})/g;
 // "คุณ" + a SHORT token followed by a space/punctuation/end is a vocative name
 // ("คุณสมชาย ขับรถ"); the pronoun runs straight into a verb ("คุณรับงาน…").
 const KHUN_NAME_RE = /(?<!ขอบ|ขอบพระ|ชอบ)คุณ([ก-๙]{2,5})(?=[\s,.!?…]|$)/g;
@@ -53,7 +53,7 @@ const NOT_A_NAME =
 /** Compounds where ชื่อ is part of another word, not a cue: ชื่อเสียง, ชื่อบัญชี, ชื่อเล่น… */
 const NOT_A_CUE = "เสียง|ดัง|บัญชี|ร้าน|บริษัท|เรื่อง|สินค้า|โครงการ|ผู้ใช้|ไฟล์|จริง|ปลอม|เต็ม|ย่อ|นี้|นั้น|ใน|ที่|ของ|และ|หรือ|กับ|เล่น";
 const NAME_CUE_RE = new RegExp(
-  String.raw`(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!${NOT_A_CUE}))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*(?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ(?!${NOT_A_CUE}))\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*((?!${NOT_A_NAME})[ก-๙A-Za-z]{2,10})`,
   "g",
 );
 // "ชื่อ<particle> … คือ|ว่า|<space> <name>" — the cue rule skips those particles because they usually
@@ -81,25 +81,44 @@ const FIELD_WORD = "เบอร์|โทร|ที่อยู่|อายุ
  * the gap stopped here and the slot refusing a particle, a finding ENDS at the name — which is what
  * lets the inbox layer redact one without guessing (docs §15b).
  */
+/**
+ * A particle after a space ends the gap — but only in the branch that has no คือ/ว่า to aim at. That
+ * branch takes the token after the gap as the name, so a gap that crosses " ครับ" hands the slot a
+ * particle or a word from the question ("ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม"). The คือ/ว่า branches
+ * must be free to cross one, because customers write the label, a particle, then the name ("ชื่อของ
+ * ภรรยา ครับ คือ สมหญิง") — blocking those cost the whole finding, measured by the security gate.
+ * It cannot be a bare list: เจ้าหนี้ contains จ้า and มะนาว contains นะ, so the space is what makes it
+ * a particle, and in the slot it must be the whole slot, which keeps คะนอง a name (docs §15b).
+ */
 const PARTICLES = "ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|จ้ะ|ขอบคุณ|สวัสดี";
 /**
- * Where a particle really is one. Thai hides these inside ordinary words — เจ้าหนี้ contains จ้า,
- * มะนาว contains นะ — so a bare list used as a position test blocks real labels (that trap has cost
- * this rule four rounds). A particle counts only after a space, and only when the slot is nothing but
- * the particle, so คะนอง stays a name.
+ * ว่า as a cue, not as the middle of a word: ผู้ว่าจ้าง and ผู้ว่าราชการ are not saying anything. The
+ * gap has to be able to cross one of those to reach the คือ that follows, or the rule reads the word
+ * fragment as the name and leaves the real one in the row — measured by the security gate.
  */
+const VA = String.raw`(?<!ผู้)ว่า`;
 const PARTICLE_GAP = String.raw`\s(?:${PARTICLES})`;
 const PARTICLE_SLOT = String.raw`(?:${PARTICLES})(?:[\s,.!?…]|$)`;
 /**
- * A nickname glued to its owner: "ชื่อเล่นของแฟนสมชาย". No separator, so the intro rule cannot see it
- * and the cue rule will not (ของ is in NOT_A_NAME, which is what stops "ชื่อของบริการนี้"). It gets its
- * own rule because ชื่อเล่น only ever belongs to a person — a service has no nickname — so the widest
- * form is safe here and nowhere else. Measured: the same shape opened up for ชื่อของ/ชื่อใน false-
- * positived 14 of 15 real customer questions, which is why this stops at ชื่อเล่น (docs §15b).
+ * The gap in the spaced form, which has no คือ/ว่า to aim at. It stops at a particle after a space so
+ * the name slot lands on the name and not on the question behind it — and because customers write the
+ * label, a particle, then the name ("ชื่อของเป้าหมาย ครับ สมชาย"), the rule has a second alternative
+ * that steps over exactly one particle. The tight alternative comes first, so the shorter reading of
+ * "ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม" wins and the question survives.
  */
-const NICKNAME_GLUED_RE = /(?<![เแโใไ])ชื่อเล่น(?:ของ|ใน|ที่|กับ)(?![\s])(?:(?!คือ|ว่า)[ก-๙]){2,20}(?![ก-๙])/g;
+const SPACED_GAP = String.raw`(?:(?!คือ|${VA}|${PARTICLE_GAP}|${FIELD_WORD})[ก-๙\s])`;
 const NAME_INTRO_RE = new RegExp(
-  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|ว่า|${PARTICLE_GAP})[ก-๙\s]){0,25}คือ|(?:(?!คือ|ว่า|${PARTICLE_GAP}|${HEDGE})[ก-๙\s]){0,25}ว่า|(?:(?!คือ|ว่า|${PARTICLE_GAP})[ก-๙\s]){0,25}ว่า(?=\s*(?:คือ\s*)?(?!${PREDICATE}))|(?:(?!คือ|ว่า|${PARTICLE_GAP}|${FIELD_WORD})[ก-๙\s]){0,25}\s)\s*(?:คือ\s*)?(?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}`,
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:(?:(?!คือ|${VA})[ก-๙\s]){0,25}คือ|(?:(?!คือ|${VA}|${HEDGE})[ก-๙\s]){0,25}${VA}|(?:(?!คือ|${VA})[ก-๙\s]){0,25}${VA}(?=\s*(?:คือ\s*)?(?!${PREDICATE})))\s*(?:คือ\s*)?((?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}(?:\s(?!${PARTICLES}|คือ|ว่า)[ก-๙]{2,12}(?![ก-๙]))?)`,
+  "g",
+);
+/**
+ * The same introduction with nothing but a space where คือ/ว่า would be ("ชื่อของสามี สมชาย"). It
+ * flags, but it does NOT say where the name is and must not pretend to: "ชื่อของ ก ข" is a label and
+ * a name in one reading and a name and a word of the question in the other, and Thai writes no
+ * spaces inside a word to settle it. Whoever consumes this takes the whole finding (docs §15b).
+ */
+const NAME_INTRO_SPACED_RE = new RegExp(
+  String.raw`(?<![เแโใไ])ชื่อ(?!เสียง|ดัง|บัญชี|ร้าน|บริษัท|สินค้า|โครงการ|ผู้ใช้|ไฟล์)(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)(?:${SPACED_GAP}{0,25}\s|${SPACED_GAP}{0,25}\s(?:${PARTICLES})\s)(?!${NOT_A_NAME}|${PARTICLE_SLOT})[ก-๙A-Za-z]{2,10}`,
   "g",
 );
 // Ages: "อายุ 34", "34 ปี", "5 ขวบ"
@@ -120,8 +139,8 @@ function isAllowlisted(excerpt: string): boolean {
 }
 
 function scanField(field: string, text: string, rules: Partial<PrivacyRules> | null | undefined, out: PrivacyFinding[]) {
-  const push = (kind: PrivacyFinding["kind"], excerpt: string, reason: string, severity: PrivacyFinding["severity"]) =>
-    pushFinding(out, { kind, excerpt: excerpt.trim().slice(0, 80), reason, severity, field, source: "deterministic" });
+  const push = (kind: PrivacyFinding["kind"], excerpt: string, reason: string, severity: PrivacyFinding["severity"], name?: string) =>
+    pushFinding(out, { kind, excerpt: excerpt.trim().slice(0, 80), reason, severity, field, source: "deterministic", ...(name ? { name } : {}) });
 
   for (const m of text.matchAll(PHONE_RE)) {
     if (!isAllowlisted(m[0])) push("phone", m[0], "พบหมายเลขโทรศัพท์ที่ไม่ใช่ช่องทางติดต่อของบริษัท", "high");
@@ -150,13 +169,13 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
-  for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium");
+  for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
   for (const m of text.matchAll(KHUN_NAME_RE)) {
-    if (!KHUN_STOPLIST.has(m[1])) push("name", m[0], "พบ “คุณ” ตามด้วยชื่อสั้น ๆ — อาจเป็นชื่อบุคคลจริง", "medium");
+    if (!KHUN_STOPLIST.has(m[1])) push("name", m[0], "พบ “คุณ” ตามด้วยชื่อสั้น ๆ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
   }
-  for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium");
-  for (const m of text.matchAll(NAME_INTRO_RE)) push("name", m[0], "พบการแนะนำชื่อ (ชื่อของ/ชื่อใน/ชื่อที่ … คือ) ตามด้วยชื่อ", "medium");
-  for (const m of text.matchAll(NICKNAME_GLUED_RE)) push("name", m[0], "พบชื่อเล่นของบุคคลติดกับคำบอกความเป็นเจ้าของ", "medium");
+  for (const m of text.matchAll(NAME_CUE_RE)) push("name", m[0], "พบคำบ่งชี้ชื่อ (ชื่อ/ชื่อเล่น/เรียกว่า) ตามด้วยชื่อ", "medium", m[1]);
+  for (const m of text.matchAll(NAME_INTRO_RE)) push("name", m[0], "พบการแนะนำชื่อ (ชื่อของ/ชื่อใน/ชื่อที่ … คือ) ตามด้วยชื่อ", "medium", m[1]);
+  for (const m of text.matchAll(NAME_INTRO_SPACED_RE)) push("name", m[0], "พบการแนะนำชื่อโดยเว้นวรรค — ไม่ทราบว่าคำใดเป็นชื่อ", "medium");
   for (const m of text.matchAll(AGE_RE)) push("other", m[0], "พบอายุระบุชัด — ร่วมกับรายละเอียดอื่นอาจระบุตัวตนได้", "low");
 
   for (const term of rules?.denylist ?? []) {

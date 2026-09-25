@@ -240,6 +240,13 @@ export interface PrivacyFinding {
   severity: "low" | "medium" | "high";
   field?: string;
   source: "deterministic" | "ai";
+  /**
+   * For `kind: "name"`, the name itself as the rule matched it — the slot, without the cue, the label
+   * or the gap around it. Only the rule knows which token in its match is the name; anything reading
+   * the excerpt back has to guess, and four builds of the LINE inbox redaction proved that guessing
+   * stores the name with a token beside it (docs §15b). Absent when a rule cannot say.
+   */
+  name?: string;
 }
 
 // ─── Row aliases ─────────────────────────────────────────────────────────────

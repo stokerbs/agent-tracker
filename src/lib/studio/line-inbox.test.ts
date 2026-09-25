@@ -133,6 +133,42 @@ describe("redactForInbox", () => {
     // And with the finding no longer running past the name, the question survives intact.
     expect(redactForInbox("ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม")).toBe("[ชื่อ] ครับ ช่วยดูให้ได้ไหม");
   });
+  it("handles the shapes a customer types across several lines", async () => {
+    // LINE users press Enter, and the text is normalised to single spaces — so the label, a politeness
+    // particle and the name each end up separated by a space. These are the security gate's own rows.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["สวัสดีครับ อยากสืบเรื่องภรรยา\nชื่อของภรรยา ครับ\nคือ สมหญิง ศรีสุข\nช่วยดูให้ได้ไหม", "สมหญิง"],
+      ["ขอปรึกษาหน่อยนะคะ\nชื่อของสามี นะคะ\nคือ ธนวัฒน์ วงศ์ทอง", "ธนวัฒน์"],
+      ["ชื่อของเป้าหมาย ครับ\nสมชาย ใจดี\nอยู่บางนา", "สมชาย"],
+      ["ชื่อของผู้ต้องสงสัย ครับ\nปรีชา รักไทย", "ปรีชา"],
+      ["อยากให้สืบพฤติกรรมสามีครับ\nชื่อของสามี ครับ กิตติ แสนสุข\nเบอร์ 0812345678", "กิตติ"],
+      ["ชื่อของลูกค้า ครับ\nคือ สมชาย\nทะเบียน กข 1234", "สมชาย"],
+      // a label that contains ว่า: ผู้ว่าจ้าง is not saying anything, so the cue is the คือ after it
+      ["ชื่อของ ผู้ว่าจ้าง คือ สมหญิง ครับ", "สมหญิง"],
+      // and a surname the rule takes with the name
+      ["ชื่อในรายงาน ค่ะ คือ สมหญิง ศรีสุข ค่ะ", "ศรีสุข"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(gone);
+      expect(out, input).toContain("[ชื่อ]");
+    }
+    // the identifier keeps its own token even though the name finding overlaps it
+    expect(redactForInbox("ชื่อของลูกค้า ครับ\nคือ สมชาย\nทะเบียน กข 1234")).toContain("[ทะเบียนรถ]");
+    expect(redactForInbox("อยากให้สืบพฤติกรรมสามีครับ\nชื่อของสามี ครับ กิตติ แสนสุข\nเบอร์ 0812345678")).toContain("[เบอร์โทร]");
+  });
+  it("leaves a message with no personal name in it readable", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    for (const t of [
+      "สวัสดีค่ะ ค่าบริการสืบพฤติกรรมเท่าไหร่ ขอบคุณค่ะ",
+      "ชื่อของลูกค้า ค่ะ ต้องใส่ทุกช่องไหม",
+      "ราคาประมาณเท่าไหร่ครับ",
+      "ขอทราบชื่อของบริการนี้หน่อยครับ",
+      "รักษาชื่อเสียงของลูกค้าไหมครับ",
+    ]) {
+      expect(redactForInbox(t), t).toBe(t);
+    }
+  });
   it("redacts a vocative คุณ name and the non-name kinds", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("คุณสมชาย โทรมาเมื่อเช้า")).not.toContain("สมชาย");
