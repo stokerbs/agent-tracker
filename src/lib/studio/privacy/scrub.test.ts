@@ -220,6 +220,38 @@ describe("scrubText", () => {
     }
     expect(scan("ชื่อของแพ็กเกจนี้คือบริการสืบทรัพย์").some((f) => f.kind === "name")).toBe(false);
   });
+  it("pins the slot words that carry their weight", () => {
+    // Each of these was added because a real sentence needed it; without a test they drift back out.
+    for (const t of [
+      "ชื่อของลูกค้าคือธนาคารกรุงเทพ",
+      "เมื่อได้ชื่อ ช่องทางติดต่อ และความยินยอม",
+      "ชื่อของคดีนี้คือพยานปากเอก",
+      "ชื่อในใบเสร็จคือยานพาหนะที่ใช้",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("pins the hedge words the predicate rule leans on", () => {
+    for (const t of ["ชื่อที่สงสัยว่าเป็นคนเดียวกัน", "ชื่อที่ไม่ชัดว่าถูกต้อง", "ชื่อที่ไม่แน่ว่าครบทุกตัวอักษร"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("does not read a case number or a match statement as a name", () => {
+    // Removing เลข/ตรง as prefixes brought these back; the phrases are what actually needed excluding.
+    for (const t of [
+      "ชื่อในรายงานคือเลขคดีที่เปิดไว้",
+      "ชื่อของไฟล์คือเลขที่เอกสาร",
+      "ชื่อในใบเสร็จคือเลขที่ใบกำกับภาษี",
+      "ชื่อในบัตรคือตรงกันทุกตัวอักษร",
+      "ชื่อที่ลูกค้าให้มาคือตรงกับทะเบียนบ้าน",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // …while the names those prefixes were eating still flag
+    for (const t of ["ลูกค้าชื่อเลขา", "เป้าหมายชื่อตรงใจ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
   it("gives the gap a boundary — an unbounded one is what caused the 2026-09-24 hold", () => {
     expect(scan("ชื่อของลูกค้าคือสมชาย").some((f) => f.kind === "name")).toBe(true);
     expect(scan(`ชื่อของ${"ก".repeat(40)}คือสมชาย`).some((f) => f.kind === "name")).toBe(false);

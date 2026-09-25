@@ -41,16 +41,32 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   let out = trimmed;
   for (const ex of excerpts) {
     const kind = findings.find((f) => f.excerpt === ex)?.kind ?? "other";
-    // A "name" longer than a real Thai name is a clause the heuristic grabbed — keep the text.
-    // Measure the name portion only (strip cue words/titles) so "ชื่อเล่นว่าคุณ…" is still redacted.
-    // The intro shape ("ชื่อเล่นของลูกค้าคือบอย") has to be stripped too, or its longer excerpt reads
-    // as a clause and the nickname — full PII — is stored verbatim.
-    if (kind === "name" && ex.replace(/^(?:ชื่อ(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)[ก-๙\s]{0,25}?(?:คือ|ว่า)|ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ|นางสาว|นาย|นาง|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*/u, "").length > 12) continue;
+    if (kind === "name") {
+      // Replace the name inside the excerpt, not the excerpt itself: a name rule matches the phrase
+      // around the name ("ชื่อเล่นของแฟนผม บอย อยู่บางนา"), and blanking all of that loses the
+      // question this inbox exists to mine. Every branch of the name rules has to be stripped here,
+      // or the longer excerpt simply survives and the name is stored verbatim (docs §15b).
+      const name = nameInsideExcerpt(ex);
+      if (!name) continue;
+      out = out.replace(new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![ก-๙A-Za-z])`, "giu"), TOKENS.name);
+      continue;
+    }
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
     // Case-insensitive: denylist excerpts are the configured term, not the text's casing.
     out = out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), token);
   }
   return out.slice(0, MAX_LEN);
+}
+
+/** Cue words and labels a name rule may match before the name itself. */
+const CUE_PREFIX_RE =
+  /^(?:ชื่อ(?:เล่น)?(?:ของ|ใน|ที่|และ|หรือ|กับ)[ก-๙\s]{0,25}?(?:คือ|ว่า|\s)|ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ|นางสาว|นาย|นาง|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*/u;
+
+/** The name part of a name finding: one token, or two when a Thai full name is written out. */
+function nameInsideExcerpt(excerpt: string): string {
+  const rest = excerpt.slice((excerpt.match(CUE_PREFIX_RE)?.[0] ?? "").length);
+  // The trailing politeness particle is not part of the name.
+  return rest.match(/^[ก-๙A-Za-z]{2,10}(?:\s(?!ครับ|ค่ะ|คะ|นะ|จ้า|ด้วย|เลย)[ก-๙A-Za-z]{2,10})?/u)?.[0] ?? "";
 }
 
 const TOKENS: Record<string, string> = {

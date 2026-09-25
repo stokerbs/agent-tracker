@@ -63,6 +63,29 @@ describe("redactForInbox", () => {
     expect(redactForInbox("บริษัทนี้มีชื่อเสียงดี")).toContain("ชื่อเสียง");
     expect(redactForInbox("แฟนชื่อสมชาย ทำงานที่กรุงเทพ")).not.toContain("สมชาย");
   });
+  it("takes the name out of a customer's message and leaves the question readable", async () => {
+    // Every branch of the name rules, including the one that ends at a space — the shape a customer
+    // actually writes on LINE. The sentence has to survive: this inbox is what the FAQ mining reads.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone, kept] of [
+      ["อยากสืบแฟนครับ ชื่อเล่นของแฟนผม บอย อยู่บางนา", "บอย", "อยากสืบแฟนครับ"],
+      ["ชื่อของสามี สมชาย ครับ ช่วยดูให้ได้ไหม", "สมชาย", "ช่วยดูให้ได้ไหม"],
+      ["ขอเช็คประวัติ ชื่อของเป้าหมาย สมหญิง ค่ะ", "สมหญิง", "ขอเช็คประวัติ"],
+      ["ชื่อในรายงาน สมหญิง ศรีสุข", "ศรีสุข", "ชื่อในรายงาน"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(gone);
+      expect(out, input).toContain(kept);
+      expect(out, input).toContain("[ชื่อ]");
+    }
+  });
+  it("leaves a sentence alone when the scan grabbed part of a longer word", async () => {
+    // Thai has no spaces inside a word, so a "name" with more letters straight after it is a fragment.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const t of ["ชื่อที่ไม่ชัดว่าเขียนอย่างไร", "ชื่อในรายงานคือเลขคดีที่เปิดไว้", "ชื่อที่ลูกค้าให้มาคือตรงกับทะเบียนบ้าน"]) {
+      expect(redactForInbox(t), t).toBe(t);
+    }
+  });
   it("redacts a name introduced with a label, nickname included", async () => {
     // The intro shape produces a longer excerpt than a bare cue; without stripping it, the
     // length guard reads it as a clause and the nickname is stored verbatim.
