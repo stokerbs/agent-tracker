@@ -51,10 +51,10 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
       // the first name on its own.
       for (const v of new Set([f.name, f.name.split(" ")[0]])) {
         for (const at of occurrences(trimmed, v)) {
-          // A two- or three-letter nickname (เอ, บี, มด, อ้อ) is a substring of ordinary words, and Thai
-          // has no space to tell them apart: "ชื่อเล่นว่าเอ ขอเอกสารด้วย" was redacting the เอ inside
-          // เอกสาร. For a name that short, only take it where a Thai letter does not run into it.
-          if (v.length <= 3 && at > 0 && /[ก-๙]/u.test(trimmed[at - 1]) && at !== trimmed.toLowerCase().indexOf(v.toLowerCase())) continue;
+          // A two- or three-letter nickname (เอ, บี, มด) is a substring of ordinary words and Thai has
+          // no space to separate them, so "ขอเอกสารด้วย" loses its เอ. That is the direction to be
+          // wrong in: a guard that skipped those kept บอย readable in "ผมหาบอยไม่เจอเลย" beside a
+          // token saying it was gone, and both gates hold the same rule — when it is ambiguous, redact.
           spans.push({ start: at, end: surnameEnd(trimmed, wordEnd(trimmed, at + v.length)), token });
         }
       }

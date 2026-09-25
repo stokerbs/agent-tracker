@@ -204,6 +204,14 @@ describe("redactForInbox", () => {
       expect(redactForInbox(input), input).not.toContain(gone);
     }
   });
+  it("does not eat a particle standing on its own as if it were a surname", async () => {
+    // The never-a-surname list earns its place here: without it the token after the name takes a bare
+    // คะ / จ้า / ค่า with it, and 199 rows of the gates' corpus lose their ending for nothing.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const t of ["ชื่อของแฟนคือ สมชาย คะ", "ชื่อของแฟนคือ สมชาย จ้า", "ชื่อของแฟนคือ สมชาย ค่า"]) {
+      expect(redactForInbox(t), t).toBe(t.replace("สมชาย", "[ชื่อ]"));
+    }
+  });
   it("never leaves a name it reported anywhere in the row", async () => {
     // A property, not a list of shapes: whatever the scan says the name is, none of it may survive.
     // Every earlier build passed shape tests while leaking in a shape nobody had written down.
@@ -226,11 +234,20 @@ describe("redactForInbox", () => {
       }
     }
   });
-  it("does not redact a two-letter nickname inside other words", async () => {
-    // เอ is a real nickname and also the first syllable of เอกสาร; Thai has no space between them.
+  it("redacts a two-letter nickname even where it sits inside another word", async () => {
+    // เอ is a real nickname and also the first syllable of เอกสาร, with no space between them. Skipping
+    // those left บอย readable in "ผมหาบอยไม่เจอเลย" next to a token saying it was gone, so the rule is
+    // the one both gates hold: when it is ambiguous, redact, and lose the word instead.
     const { redactForInbox } = await import("./line-inbox");
-    expect(redactForInbox("ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ")).toContain("เอกสาร");
-    expect(redactForInbox("ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ")).toContain("[ชื่อ]");
+    for (const [input, gone] of [
+      ["ชื่อเล่นว่าเอ ขอเอกสารด้วยครับ", "เอกสาร"],
+      ["ชื่อเล่นของเป้าหมายคือ บอย ครับ ผมหาบอยไม่เจอเลย", "บอย"],
+      ["คุณบอย ครับ ตามหาบอยด้วย", "บอย"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(gone);
+      expect(out, input).toContain("[ชื่อ]");
+    }
   });
   it("leaves a message with no personal name in it readable", async () => {
     const { redactForInbox } = await import("./line-inbox");
