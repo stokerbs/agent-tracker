@@ -49,8 +49,10 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
       // and stored them raw. A scan that grabbed a fragment is a scanner bug, fixed in scrub.ts.
       const name = nameInsideExcerpt(ex);
       const next = name ? out.replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : out;
-      // Fail safe: if the name could not be located, blank the whole finding rather than store it.
-      out = next === out ? out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : next;
+      // Fail safe: blank the whole finding unless the name was really located. "Nothing changed" is not
+      // enough of a check — picking the wrong word replaces something and leaves the name in place with
+      // a [ชื่อ] beside it, which reads as redacted and is not.
+      out = next === out || !nameWasLocated(ex, name) ? out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), TOKENS.name) : next;
       continue;
     }
     const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
@@ -66,9 +68,19 @@ const CUE_PREFIX_RE =
 
 /** The name part of a name finding: one token, or two when a Thai full name is written out. */
 function nameInsideExcerpt(excerpt: string): string {
-  const rest = excerpt.slice((excerpt.match(CUE_PREFIX_RE)?.[0] ?? "").length);
+  // Greedy up to the LAST คือ/ว่า: the label between the cue and the name can hold spaces
+  // ("ชื่อของ ผู้ต้องสงสัย คือ สมชาย"), and stopping at the first one picks the label as the name.
+  const prefix = excerpt.match(/^.*(?:คือ|ว่า)\s*/u)?.[0] ?? excerpt.match(CUE_PREFIX_RE)?.[0] ?? "";
+  const rest = excerpt.slice(prefix.length);
   // The trailing politeness particle is not part of the name.
   return rest.match(/^[ก-๙A-Za-z]{2,10}(?:\s(?!ครับ|ค่ะ|คะ|นะ|จ้า|ด้วย|เลย)[ก-๙A-Za-z]{2,10})?/u)?.[0] ?? "";
+}
+
+/** Did we take the name, or a word in front of it? A คือ/ว่า left after it means we took the label. */
+function nameWasLocated(excerpt: string, name: string): boolean {
+  if (!name) return false;
+  const tail = excerpt.slice(excerpt.indexOf(name) + name.length);
+  return !/(?:คือ|ว่า)\s*[ก-๙]{2,}/u.test(tail);
 }
 
 const TOKENS: Record<string, string> = {

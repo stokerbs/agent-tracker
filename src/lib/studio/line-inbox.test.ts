@@ -99,6 +99,20 @@ describe("redactForInbox", () => {
     expect(both).not.toContain("สมชาย");
     expect(both).not.toContain("บอย");
   });
+  it("does not put a [ชื่อ] beside a name it failed to locate", async () => {
+    // A label with spaces between the cue and the name used to make the wrong word get replaced —
+    // the row then read as redacted while the real name sat next to the token.
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["ชื่อของ ผู้ต้องสงสัย คือ สมชาย ครับ", "สมชาย"],
+      ["ชื่อของ แฟน คือ บอย", "บอย"],
+      ["ชื่อใน บัตรประชาชน คือ สมหญิง ค่ะ", "สมหญิง"],
+    ] as const) {
+      const out = redactForInbox(input);
+      expect(out, input).not.toContain(gone);
+      expect(out, input).toContain("[ชื่อ]");
+    }
+  });
   it("leaves a sentence alone when the scan grabbed part of a longer word", async () => {
     // Thai has no spaces inside a word, so a "name" with more letters straight after it is a fragment.
     const { redactForInbox } = await import("./line-inbox");

@@ -65,7 +65,7 @@ const NAME_CUE_RE = new RegExp(
 // out is the particle this rule requires straight after ชื่อ/ชื่อเล่น, which no compound has.
 /**
  * Hedging alone does not mean nobody is named — "ชื่อที่สงสัยว่าเป็นสมชาย" and "ชื่อที่พิสูจน์แล้ว
- * ว่าเป็นสมชาย" identify a person, and "จำไม่ได้ว่าสมชายหรือสมชัย" holds two real names. What
+ * ว่าเป็นสมชาย" identify a person, and "จำไม่ได้ว่าสมชายหรือสมชัย" holds two real names (which no rule here catches — see docs §15b). What
  * decides it is what follows ว่า: a person, or a judgement about a name. So the sentence is only
  * dropped when the gap hedges *and* the slot is one of these — written as whole phrases, because
  * this file has learned twice that a prefix list takes real names with it.
