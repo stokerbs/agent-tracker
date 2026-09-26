@@ -112,11 +112,21 @@ describe("scrubText", () => {
     expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
   it("scans a field the size of the cap without slowing down", () => {
-    // Two patterns here used to retry from every character of a long run: the house number (exponentially
-    // — 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook) and the email local part
-    // (quadratically — 2.7 s at 65,000). Both are anchored by a lookbehind now. The measurement is taken
-    // at the cap, because that is the largest field this function will ever read, and because a budget at
-    // 1,600 characters was too small to notice the quadratic form: it cost 14 ms there and 2.2 s here.
+    // Two patterns here used to retry from every character of a long run: the house number
+    // (exponentially — 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook) and the
+    // email local part (quadratically — 2.7 s at 65,000). Both are anchored by a lookbehind now.
+    //
+    // The measurements are taken at the cap, because that is the largest field this function will ever
+    // read, and a budget at 1,600 characters was too small to see the quadratic form at all: it cost
+    // 14 ms there and 2.2 s here. Three shapes, because each one is the only thing that catches a
+    // particular regression: plain digits for the house-number anchor, alphanumerics for the email
+    // anchor, and digits separated by slashes for a widened lookbehind — `(?<!\d)` instead of
+    // `(?<![\d\/-])` looks like a simplification, costs nothing on plain digits, and brings the
+    // quadratic behaviour back at 1,600 ms on this one (security gate, M-5).
+    //
+    // The budgets are loose on purpose. Every real cost here is under 6 ms and every regression above is
+    // over 500 ms, so there is no value in a tight number — and a flaky guard on main is a guard someone
+    // deletes. An earlier version of this test failed 2 runs in 10 under full-suite load.
     const cost = (make: (n: number) => string, n: number) => {
       const t = make(n);
       const t0 = performance.now();
@@ -125,14 +135,10 @@ describe("scrubText", () => {
     };
     const digits = (n: number) => "1".repeat(n) + "ก";
     const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
-    expect(cost(digits, 20_000)).toBeLessThan(300); // no lookbehind on the house number: ~2,160 ms
-    // The email budget is tight on purpose: anchored costs 0.1 ms, and the unanchored form costs ~298 ms
-    // here, so a 300 ms budget was a coin toss that the security gate measured at 0.99x margin.
-    expect(cost(alnum, 20_000)).toBeLessThan(20);
-    // And the shape of the growth, not just a budget: doubling the input must not multiply the work by
-    // more than a few. The exponential form grew 8x per doubling, the quadratic one 4x.
-    const small = cost(digits, 1600);
-    expect(cost(digits, 3200) / Math.max(small, 0.05)).toBeLessThan(5);
+    const separated = (n: number) => "1/".repeat(n / 2) + "ก";
+    expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~2,800 ms
+    expect(cost(alnum, 20_000)).toBeLessThan(150); // unanchored email: ~535 ms
+    expect(cost(separated, 20_000)).toBeLessThan(150); // lookbehind widened to digits only: ~1,620 ms
   });
   it("finds the house numbers the old form found, with the same excerpt", () => {
     // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
