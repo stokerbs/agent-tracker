@@ -32,8 +32,20 @@ const PLATE_RE = /(?<![ก-๙A-Za-z0-9])(?:\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![�
  * ordinary phrases out, and it cannot tell this from one. The cue can: nothing after ทะเบียน / ป้าย /
  * รถ that looks like consonants-then-digits is a quantity. Measured: this catches the glued forms with
  * no new false positive on the sentences the strict rule exists to protect.
+ *
+ * The shorter cues refuse to be followed by รถ, or the engine backtracks into them and reads the รถ of
+ * "ทะเบียนรถ" as the plate's own letters: "ทะเบียนรถ 1กข 12345" became "ทะเบียน[ทะเบียนรถ]กข 12345",
+ * keeping the number beside a token that says it is gone. It also drops "ทะเบียนรถ 2 คัน" as a plate.
  */
-const PLATE_CUED_RE = /(?:ป้ายทะเบียน|ทะเบียนรถ|ทะเบียน|ป้าย|รถ)\s*(\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![\d๐-๙])/g;
+const PLATE_CUED_RE = /(?:ป้ายทะเบียน(?!รถ)|ทะเบียนรถ|ทะเบียน(?!รถ)|ป้าย)\s*(\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![\d๐-๙])/g;
+/**
+ * รถ is a cue too, but a much weaker one: it is glued to the front of ordinary words, so "รถชน 3 ครั้ง",
+ * "รถวน 2 รอบ", "รถผม 2 คัน" and "ซื้อรถ งบ 5 แสน" all read as plates when it is treated like the rest
+ * — the security gate found every one of them. It earns its place with a space after it and two digits
+ * in the plate, which is what separates a plate from a count. The cost, measured, is a single-digit
+ * plate announced with รถ alone ("รถ ผก 5") — six rows of a 252-row grid, and ทะเบียน catches those.
+ */
+const PLATE_CAR_CUE_RE = /รถ\s+(\d?[ก-ฮ]{1,2}[\s-]?\d{2,4})(?![\d๐-๙])/g;
 const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{4,}|@[A-Za-z][A-Za-z0-9._-]{3,})/gi;
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
@@ -41,10 +53,21 @@ const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
 /**
  * A street or lane written the other way round — "ซอย 5", "ถนน 3", "หมู่ 7" — which the pattern above
- * misses because it expects the house number first. `ม.` is deliberately not here: "ลูกอยู่ ม.5" is a
- * school year, and an address finding is high severity, so that one would hold clips for nothing.
+ * misses because it expects the house number first. On its own that shape is not an address at all:
+ * "ตามรถบนถนน 3 ชั่วโมง", "แบ่งทีมเป็นหมู่ 2 ชุด" and "เดินตามซอย 200 เมตร" are ordinary sentences, and
+ * the QA gate measured 14 of 16 of them becoming high-severity address findings — which blocks a
+ * finished clip and makes `faq-mining` throw the question away. So this pattern only counts when the
+ * text says elsewhere that it is an address. `ม.` stays out of it either way: "ลูกอยู่ ม.5" is a school
+ * year as often as it is a village.
  */
 const ADDRESS_LANE_RE = /(?:ซอย|ซ\.|ถนน|ถ\.|หมู่)\s*\d+[\/\d-]*/g;
+/**
+ * What makes a lane number an address: a word from the postal part of one. These are words nobody
+ * writes about a road they merely drove along. Deliberately not here: บ้าน and อยู่, which appear in
+ * ordinary narration ("คดีนี้เริ่มจากบ้านในหมู่ 3") — the gate's control set counts those as sentences,
+ * not addresses, and a false positive costs a held clip.
+ */
+const ADDRESS_CONTEXT_RE = /ที่อยู่|บ้านเลขที่|เลขที่|ตำบล|อำเภอ|จังหวัด|แขวง|เขต|หมู่บ้าน|คอนโด|หอพัก|อพาร์ท|อพาร์ต|พักอยู่|อาศัยอยู่/;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -204,7 +227,16 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!isAllowlisted(m[0])) push("email", m[0], "พบอีเมลส่วนบุคคล", "high");
   }
   for (const m of text.matchAll(THAI_ID_RE)) push("id_number", m[0], "พบเลข 13 หลักคล้ายเลขบัตรประชาชน", "high");
-  for (const m of text.matchAll(PLATE_CUED_RE)) push("plate", m[1], "พบทะเบียนรถหลังคำบ่งชี้ (ทะเบียน/ป้าย/รถ)", "high");
+  for (const m of [...text.matchAll(PLATE_CUED_RE), ...text.matchAll(PLATE_CAR_CUE_RE)]) {
+    // One consonant and one digit after a cue is a count, not a plate: "รถ ก 1 คันจอดอยู่". Two of
+    // either makes it a plate — the rule below insists on two digits, which would lose the real
+    // single-digit plates ("ทะเบียน ผก 5", 36 rows of a measured grid), and the cue is what earns the
+    // slack here.
+    const letters = m[1].replace(/[^ก-ฮ]/g, "").length;
+    if (m[1].replace(/\D/g, "").length >= 2 || letters >= 2) {
+      push("plate", m[1], "พบทะเบียนรถหลังคำบ่งชี้ (ทะเบียน/ป้าย/รถ)", "high");
+    }
+  }
   for (const m of text.matchAll(PLATE_RE)) {
     // Skip things like "ก 1" false positives that are too short.
     if (m[0].replace(/\D/g, "").length >= 2) push("plate", m[0], "พบรูปแบบคล้ายทะเบียนรถ", "high");
@@ -221,7 +253,9 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!ALLOWLIST_URL_HOSTS.some((h) => host === h || host.endsWith("." + h))) push("url", m[0], "พบลิงก์ภายนอก — ตรวจสอบว่าไม่ชี้ไปยังบุคคล/บัญชีจริง", "low");
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
-  for (const m of text.matchAll(ADDRESS_LANE_RE)) push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข — เป็นส่วนของที่อยู่", "high");
+  if (ADDRESS_CONTEXT_RE.test(text)) {
+    for (const m of text.matchAll(ADDRESS_LANE_RE)) push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข ในข้อความที่เป็นที่อยู่", "high");
+  }
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
   for (const m of text.matchAll(KHUN_NAME_RE)) {

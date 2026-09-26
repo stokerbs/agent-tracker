@@ -329,7 +329,10 @@ describe("redactForInbox", () => {
     ] as const) {
       expect(redactForInbox(input), input).not.toContain(gone);
     }
+    // The cue word stays and only the plate goes — the rule reports the plate, not its whole match.
+    expect(redactForInbox("ทะเบียน กข 1234จอดอยู่หน้าบ้านทุกคืน")).toBe("ทะเบียน [ทะเบียนรถ]จอดอยู่หน้าบ้านทุกคืน");
     expect(redactForInbox("รอ 5นาทีนะครับ")).toBe("รอ 5นาทีนะครับ");
+    expect(redactForInbox("ปิดถนน 2 วัน")).toBe("ปิดถนน 2 วัน");
   });
   it("tokenises the identifier kinds a customer actually sends", async () => {
     const { redactForInbox } = await import("./line-inbox");

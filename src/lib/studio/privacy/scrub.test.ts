@@ -47,13 +47,69 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
     }
   });
-  it("flags a lane or road written before its number, and leaves a school year alone", () => {
-    for (const t of ["อยู่ ซอย 7 ครับ", "บ้านอยู่ ถนน 3 ครับ", "หมู่ 7 ตำบลบางพลี", "ที่อยู่ เลขที่ 12/3 ซอย 5ใกล้ตลาด"]) {
+  it("flags a lane number only where the text is actually an address", () => {
+    // A lane and a number on their own is not an address — "ตามรถบนถนน 3 ชั่วโมง" is a sentence, and the
+    // QA gate measured 14 of 16 such sentences becoming high-severity findings, which blocks a finished
+    // clip and makes faq-mining throw the question away. A postal word in the text is what settles it.
+    for (const t of [
+      "ที่อยู่ เลขที่ 12/3 ซอย 5ใกล้ตลาด",
+      "หมู่ 7 ตำบลบางพลี",
+      "อยู่คอนโด ซอย 39 ครับ",
+      "บ้านเลขที่ 9 ถนน 3 อำเภอเมือง",
+      "หอพัก ซ. 12 เขตบางนา",
+    ]) {
       expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
     }
-    // "ม." is a school year as often as it is a village, and an address finding is high severity.
-    for (const t of ["ลูกอยู่ ม.5ครับ", "เรียนอยู่ ม.6 แล้ว"]) {
+    for (const t of [
+      "ตามรถบนถนน 3 ชั่วโมงกว่าจะได้ภาพที่ชัด",
+      "ทำไมนักสืบต้องเฝ้าถนน 5 ชั่วโมง",
+      "จอดรถบนถนน 2 ชั่วโมงผิดกฎหมายไหม",
+      "แบ่งทีมเป็นหมู่ 2 ชุด สลับกันเฝ้า",
+      "เดินตามซอย 200 เมตรก็ถึงจุดนัดพบ",
+      "คดีนี้เริ่มจากบ้านในหมู่ 3 อย่างที่ลูกค้าเล่า",
+      "ถนน 4 เลนกว้างมาก",
+      "ปิดถนน 1 เลนทำให้เสียรอบการติดตาม",
+      // "ม." is a school year as often as it is a village, and it is left out of the pattern entirely.
+      "ลูกอยู่ ม.5ครับ",
+      "เรียนอยู่ ม.6 แล้ว",
+    ]) {
       expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
+  it("known gap: a lane number with nothing else saying it is an address", () => {
+    // "อยู่ ซอย 7 ครับ" gives a lane and no postal word, so it is not flagged. Using อยู่ or บ้าน as the
+    // signal was measured and rejected: it reads ordinary narration as an address (docs §15b). A lane
+    // number alone is also the weakest part of an address. Pinned so a rule change shows up here.
+    for (const t of ["อยู่ ซอย 7 ครับ", "บ้านอยู่ ถนน 3 ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
+  it("keeps the cued plate's own boundaries", () => {
+    // The digit boundary stops the rule cutting a longer number down to plate length, and stops a
+    // mixed Thai-digit tail being read as the end of one. A mutant removing it passed everything else.
+    expect(scan("ทะเบียน กข 1234567").some((f) => f.kind === "plate" && f.excerpt === "กข 1234")).toBe(false);
+    expect(scan("ทะเบียน กข 1234๕").some((f) => f.kind === "plate")).toBe(false);
+    // One consonant and one digit after a cue is a count; two of either is a plate. The rule without a
+    // cue insists on two digits, which loses real single-digit plates — the cue earns that slack.
+    expect(scan("รถ ก 1 คันจอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+    expect(scan("ป้าย ข 2 ครับ").some((f) => f.kind === "plate")).toBe(false);
+    expect(scan("ทะเบียน ผก 5จอดอยู่").some((f) => f.kind === "plate")).toBe(true);
+    expect(scan("ทะเบียน ก 12จอดอยู่").some((f) => f.kind === "plate")).toBe(true);
+    // The excerpt is the plate, not the cue and the plate: the inbox locates a finding by searching for
+    // its excerpt, and a wider one would take the cue word with it.
+    expect(scan("ทะเบียน กข 1234จอดอยู่").find((f) => f.kind === "plate")?.excerpt).toBe("กข 1234");
+    expect(scan("ป้ายทะเบียน ขก 987ผ่านไป").find((f) => f.kind === "plate")?.excerpt).toBe("ขก 987");
+    // A longer cue must not be raided for its own letters: "ทะเบียนรถ" read as "ทะเบียน" + plate "รถ …"
+    // stored a five-digit number beside a [ทะเบียนรถ] token (security gate, H-1).
+    expect(scan("ทะเบียนรถ 1กข 12345จอดอยู่").some((f) => f.kind === "plate" && f.excerpt.includes("รถ"))).toBe(false);
+    expect(scan("ทะเบียนรถ 2 คันจอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+    // Spacing between the cue and the plate, and the abbreviated cue forms.
+    for (const t of ["ทะเบียน   กข 1234จอดอยู่", "ทะเบียนกข1234จอดอยู่", "ป้าย กข 1234จอดอยู่", "ทะเบียนรถ กข 1234ครับ", "รถ กข 1234มาจอด"]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(true);
+    }
+    // รถ is glued to the front of ordinary words, so as a cue it needs a space and two digits.
+    for (const t of ["รถชน 3 ครั้งแล้ว", "รถวน 2 รอบ", "รถผม 2 คัน", "รถขน 3 เที่ยว", "ซื้อรถ งบ 5 แสน"]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
     }
   });
   it("known gap: a plate with no cue word and no space after it", () => {
