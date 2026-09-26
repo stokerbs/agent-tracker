@@ -325,7 +325,6 @@ describe("redactForInbox", () => {
     for (const [input, gone] of [
       ["ทะเบียน กข 1234จอดอยู่หน้าบ้านทุกคืน", "1234"],
       ["ทะเบียนกข 1234จอดอยู่", "1234"],
-      ["ที่อยู่ เลขที่ 12/3 ซอย 5ใกล้ตลาด", "ซอย 5"],
     ] as const) {
       expect(redactForInbox(input), input).not.toContain(gone);
     }

@@ -51,39 +51,6 @@ const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
-/**
- * A street or lane written the other way round — "ซอย 5", "ถนน 3", "หมู่ 7" — which the pattern above
- * misses because it expects the house number first. On its own that shape is not an address at all:
- * "ตามรถบนถนน 3 ชั่วโมง", "แบ่งทีมเป็นหมู่ 2 ชุด" and "เดินตามซอย 200 เมตร" are ordinary sentences, and
- * the QA gate measured 14 of 16 of them becoming high-severity address findings — which blocks a
- * finished clip and makes `faq-mining` throw the question away. So this pattern only counts when the
- * text says elsewhere that it is an address. `ม.` stays out of it either way: "ลูกอยู่ ม.5" is a school
- * year as often as it is a village.
- */
-const ADDRESS_LANE_RE = /(?:ซอย|ซ\.|ถนน|ถ\.|หมู่)\s*\d+[\/\d-]*/g;
-/**
- * What makes a lane number an address: a word from the postal part of one, standing NEXT TO it. Testing
- * the whole field for one of these words was the same false-positive class one step removed — this
- * business writes "เฝ้าเป้าหมายในเขตลาดพร้าว ตามรถบนถนน 3 ชั่วโมง" and "ลูกค้าอยู่ตำบลบางพลี แบ่งทีมเป็น
- * หมู่ 2 ชุด", and 9 of 10 such sentences went from safe to blocked. The distance is what separates
- * them: in a real address the postal word touches the lane phrase (measured gap 1–6 characters over
- * nine shapes), while in narration a clause sits in between (13–26). The threshold is eight.
- *
- * บ้าน and อยู่ are deliberately not here — "คดีนี้เริ่มจากบ้านในหมู่ 3" is narration — and note that
- * these words have no word boundary of their own: เขต matches inside "นอกเขตกรุงเทพ" and เลขที่ inside
- * "เลขที่บัญชี", which is exactly why proximity has to carry the decision rather than presence.
- */
-const ADDRESS_CONTEXT_RE = /ที่อยู่|บ้านเลขที่|เลขที่|ตำบล|อำเภอ|จังหวัด|แขวง|เขต|หมู่บ้าน|คอนโด|หอพัก|อพาร์ท|อพาร์ต|พักอยู่|อาศัยอยู่/g;
-const ADDRESS_CONTEXT_GAP = 8;
-/** Where every postal word sits, found once — scanning the text again per lane match cost 632 ms on a
- * 52 KB field, against 1 ms before, and the paths that publish and render have no length cap. */
-function addressContextSpans(text: string): [number, number][] {
-  return [...text.matchAll(ADDRESS_CONTEXT_RE)].map((c) => [c.index, c.index + c[0].length]);
-}
-/** Is a postal word within `ADDRESS_CONTEXT_GAP` characters of this span, on either side? */
-function hasAddressContextNear(spans: [number, number][], start: number, end: number): boolean {
-  return spans.some(([cs, ce]) => (start - ce >= 0 && start - ce <= ADDRESS_CONTEXT_GAP) || (cs - end >= 0 && cs - end <= ADDRESS_CONTEXT_GAP));
-}
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -269,12 +236,6 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!ALLOWLIST_URL_HOSTS.some((h) => host === h || host.endsWith("." + h))) push("url", m[0], "พบลิงก์ภายนอก — ตรวจสอบว่าไม่ชี้ไปยังบุคคล/บัญชีจริง", "low");
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
-  const contextSpans = addressContextSpans(text);
-  for (const m of text.matchAll(ADDRESS_LANE_RE)) {
-    if (hasAddressContextNear(contextSpans, m.index, m.index + m[0].length)) {
-      push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข ติดกับคำที่บอกว่าเป็นที่อยู่", "high");
-    }
-  }
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
   for (const m of text.matchAll(KHUN_NAME_RE)) {
