@@ -3,7 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { scrubText } from "@/lib/studio/privacy/scrub";
+import { SURNAME_TAIL, scrubText } from "@/lib/studio/privacy/scrub";
 import { getStudioSettingsStrict } from "@/lib/studio/settings";
 import type { PrivacyRules } from "@/lib/studio/types";
 
@@ -36,19 +36,87 @@ export function redactForInbox(text: string, rules?: Partial<PrivacyRules> | nul
   const trimmed = normalizeThaiDigits(text).replace(/\s+/g, " ").trim().slice(0, MAX_LEN);
   if (!trimmed) return "";
   const findings = scrubText({ fields: { t: trimmed }, rules: rules ?? null });
-  // Longest excerpts first so partial overlaps don't leave fragments behind.
-  const excerpts = Array.from(new Set(findings.map((f) => f.excerpt))).sort((a, b) => b.length - a.length);
-  let out = trimmed;
-  for (const ex of excerpts) {
-    const kind = findings.find((f) => f.excerpt === ex)?.kind ?? "other";
-    // A "name" longer than a real Thai name is a clause the heuristic grabbed — keep the text.
-    // Measure the name portion only (strip cue words/titles) so "ชื่อเล่นว่าคุณ…" is still redacted.
-    if (kind === "name" && ex.replace(/^(?:ชื่อเล่นว่า|ชื่อเล่น|ชื่อว่า|เรียกว่า|ชื่อ|นางสาว|นาย|นาง|น\.ส\.|ดร\.|ด\.ช\.|ด\.ญ\.)\s*(?:คุณ|พี่|น้อง|นาย|นาง)?\s*/u, "").length > 12) continue;
-    const token = TOKENS[kind] ?? "[ข้อมูลส่วนตัว]";
-    // Case-insensitive: denylist excerpts are the configured term, not the text's casing.
-    out = out.replace(new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), token);
+  // One pass over spans, not one pass per finding. Redacting findings in sequence let a wide name
+  // finding erase the text a plate finding was still waiting to match (the row kept the digits), and
+  // redacting identifiers first let the name pass eat a token that had just been inserted.
+  const spans: { start: number; end: number; token: string }[] = [];
+  for (const f of findings) {
+    const token = f.kind === "name" ? TOKENS.name : (TOKENS[f.kind] ?? "[ข้อมูลส่วนตัว]");
+    if (f.kind === "name" && f.name) {
+      // The rule said which part of its match was the name, so redact that name wherever it appears —
+      // not only inside the finding that reported it. Naming the target and then talking about them
+      // ("ชื่อของลูกค้าคือ สมชาย ครับ สมชายหายไป 3 วัน") is the most natural way to write one of these
+      // messages, and redacting only the first mention leaves the name in the row beside a [ชื่อ].
+      // The first token goes too: the คือ form captures a full name, and the later mention is usually
+      // the first name on its own.
+      for (const v of new Set([f.name, f.name.split(" ")[0]])) {
+        for (const at of occurrences(trimmed, v)) {
+          // A two- or three-letter nickname (เอ, บี, มด) is a substring of ordinary words and Thai has
+          // no space to separate them, so "ขอเอกสารด้วย" loses its เอ. That is the direction to be
+          // wrong in: a guard that skipped those kept บอย readable in "ผมหาบอยไม่เจอเลย" beside a
+          // token saying it was gone, and both gates hold the same rule — when it is ambiguous, redact.
+          spans.push({ start: at, end: surnameEnd(trimmed, wordEnd(trimmed, at + v.length)), token });
+        }
+      }
+      continue;
+    }
+    // A finding whose rule could not say where the name is goes whole, and so does every identifier.
+    for (const at of occurrences(trimmed, f.excerpt)) {
+      // The rest of the word goes with a NAME only. A name slot stops at ten letters and Thai writes no
+      // space inside a word, so a name match can end mid-word and leave an orphan syllable. An
+      // identifier match never does — a phone number, a plate or an age ends where its pattern ends —
+      // so extending those only ate the sentence after them ("อายุ 34 ปีที่แล้วเขาหายไปจากบ้าน" became
+      // one token, where main kept the clause).
+      const end = at + f.excerpt.length;
+      spans.push({ start: at, end: f.kind === "name" ? wordEnd(trimmed, end) : end, token });
+    }
   }
+  let out = "";
+  let cursor = 0;
+  for (const s of spans.sort((a, b) => a.start - b.start || b.end - a.end)) {
+    if (s.end <= cursor) continue; // already inside something wider
+    out += trimmed.slice(cursor, Math.max(cursor, s.start)) + s.token;
+    cursor = s.end;
+  }
+  out += trimmed.slice(cursor);
   return out.slice(0, MAX_LEN);
+}
+
+/**
+ * Every index where `find` occurs. Matching ignores case, because a denylist finding carries the term
+ * as the owner configured it, not as the message spells it.
+ */
+function occurrences(text: string, find: string): number[] {
+  const hay = text.toLowerCase();
+  const needle = find.toLowerCase();
+  const out: number[] = [];
+  for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + 1)) out.push(i);
+  return out;
+}
+
+/**
+ * A Thai full name is two tokens and the rules report only the first for most shapes, so the token
+ * after a name goes too — a surname beside the token is the misleading row this design exists to
+ * prevent, and a Thai surname alone identifies a family. The list of words that are never a surname
+ * lives in scrub.ts and is shared, so the rules and this layer cannot disagree, and a word on it
+ * counts only as a whole token: as a prefix it kept มีชัย, ที่รักษ์ and ช่วยชาติ readable.
+ *
+ * The cost is real and not a single word: Thai writes no space inside a word, so a question written as
+ * one run ("เดินทางไปเชียงใหม่เมื่อวานนี้") goes with the name. A question written as separate words
+ * keeps everything after the first. Losing a clause is the cheaper way to be wrong in a store of
+ * customer PII, and it is fail-closed rather than a leak (docs §15b).
+ */
+const SURNAME_TAIL_RE = new RegExp(`^${SURNAME_TAIL}`, "u");
+function surnameEnd(text: string, end: number): number {
+  const m = SURNAME_TAIL_RE.exec(text.slice(end));
+  return m ? end + m[0].length : end;
+}
+
+/** The end of the word a match stops inside. */
+function wordEnd(text: string, end: number): number {
+  let i = end;
+  while (i < text.length && /[ก-๙]/u.test(text[i])) i += 1;
+  return i;
 }
 
 const TOKENS: Record<string, string> = {

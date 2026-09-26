@@ -133,6 +133,177 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
     }
   });
+  it("catches the shapes the security gate measured as lost: whose-word before ชื่อ, and the labels a case actually brings", () => {
+    // Thai puts "whose" in front of ชื่อ at least as often as behind it, and the list of whose-words
+    // (คนหาย, ผู้เช่า, เจ้าหนี้, ทายาท, ชู้…) cannot be enumerated — so the rule enumerates the name slot.
+    for (const t of [
+      "ลูกค้าชื่อ สมชาย",
+      "เป้าหมายชื่อ อนุชา ทองดี",
+      "พยานชื่อ สมหญิง",
+      "ผู้ต้องสงสัยชื่อ สมชาย",
+      "เด็กหญิงชื่อ ใบเตย",
+      "เขาชื่อ ธนากร",
+      "ลูกค้าแจ้งชื่อ สมชาย มาให้",
+      "ชื่อของคนหายคือสมชาย",
+      "ชื่อของผู้เช่าคือสมชาย",
+      "ชื่อของเจ้าหนี้คือสมหญิง",
+      "ชื่อของคู่สมรสคือสมชาย",
+      "ชื่อของทายาทคือสมหญิง",
+      "ชื่อของชู้คือสมหญิง",
+      "ชื่อในโฉนดคือสมชาย",
+      "ชื่อในพาสปอร์ตคือสมหญิง",
+      "ชื่อที่ปรากฏในกล้องวงจรปิดคือสมชาย",
+      "ชื่อของคนหาย สมชาย",
+      "ชื่อ สมชาย ใจดี",
+      "ชื่อเล่น เอ",
+      "เรียกว่า บอย",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("reads a nickname introduction, and a name the text says was spelled out", () => {
+    // ชื่อเล่น is full PII and the rows write it this way constantly; "สะกดว่า X" is naming someone,
+    // not saying the name is unknown. Both were measured as lost against main before this shape.
+    for (const t of [
+      "ชื่อเล่นของลูกค้าคือบอย",
+      "ชื่อเล่นของเป้าหมายคือบอย",
+      "ชื่อเล่นของเขาคือสมชาย",
+      "ชื่อเล่นในกลุ่มไลน์คือบอย",
+      "ชื่อเล่นที่เพื่อนเรียกคือบอย",
+      "ชื่อที่สะกดว่าสมชาย",
+      "ชื่อที่สะกดว่า สมชาย",
+      "ชื่อที่ลูกค้าสะกดให้คือสมชาย",
+      "ชื่อที่ไม่ตรงกับบัตรคือสมชาย",
+      "ชื่อของลูกค้าที่ไม่แน่ใจคือสมชาย",
+      "ชื่อที่ผู้เสียหายบอกว่าคือสมชาย",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    expect(scan("ชื่อเล่นของลูกค้าคือข้อมูลส่วนบุคคล").some((f) => f.kind === "name")).toBe(false);
+  });
+  it("stays quiet on a sentence that says the name is not known", () => {
+    // The 2026-09-24 class, as the QA gate measured it: the word after ว่า varies endlessly, so the
+    // hedge in the gap is what disqualifies these — but only before ว่า, never before คือ.
+    for (const t of [
+      "ชื่อที่ไม่แน่ใจว่าจริงหรือไม่",
+      "ชื่อที่ไม่แน่ใจว่าถูกต้องหรือเปล่า",
+      "ชื่อที่ลูกค้าไม่แน่ใจว่าเป็นคนเดียวกัน",
+      "ชื่อที่ไม่ตรงว่าเป็นคนเดียวกันหรือไม่",
+      "ชื่อที่ลูกค้าจำไม่ได้ว่าครบทุกตัวอักษร",
+      "ชื่อที่เขาบอกว่าเต็มไปด้วยข้อสงสัย",
+      "ชื่อที่พิสูจน์ว่าเป็นคนเดียวกัน",
+      "ชื่อที่ยังไม่รู้ว่าถูกหรือผิด",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("names a hedged sentence when a person follows, and not when a judgement does", () => {
+    // Hedging is not the test — what follows ว่า is. "สงสัยว่าเป็นสมชาย" identifies someone;
+    // "ไม่แน่ใจว่าเป็นคนเดียวกัน" does not, and "จำไม่ได้ว่าสมชายหรือสมชัย" holds two real names.
+    for (const t of [
+      "ชื่อที่ไม่แน่ใจว่าเป็นสมชาย",
+      "ชื่อที่สงสัยว่าเป็นสมชาย",
+      "ชื่อที่พิสูจน์แล้วว่าเป็นสมชาย",
+      "ชื่อที่ตำรวจสงสัยว่าเป็นอนุชา ทองดี",
+      "ชื่อที่ยังไม่รู้ว่าสมชายหรือสมศักดิ์",
+      "ชื่อที่ไม่แน่ใจ สมชาย ใจดี",
+      "ชื่อที่ลูกค้าจำไม่ได้ สมชาย",
+      "ชื่อเล่นที่สงสัยว่าบอย",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("keeps the four shapes a prefix in the slot list was quietly eating", () => {
+    // เลข/รูป/ตรง/แพ็ prevented nothing measurable and cost these names; แพ็ก still blocks แพ็กเกจ.
+    for (const t of ["ลูกค้าชื่อเลขา", "ลูกค้าชื่อ ตรงใจ", "ชื่อเล่น แพ็ตตี้", "เพื่อนเรียกว่าแพ็ท", "ชื่อเล่นของลูกค้าคือแพ็ตตี้", "เป้าหมายชื่อตรงใจ", "ลูกค้าชื่อรูปงาม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    expect(scan("ชื่อของแพ็กเกจนี้คือบริการสืบทรัพย์").some((f) => f.kind === "name")).toBe(false);
+  });
+  it("pins the slot words that carry their weight", () => {
+    // Each of these was added because a real sentence needed it; without a test they drift back out.
+    for (const t of [
+      "ชื่อของลูกค้าคือธนาคารกรุงเทพ",
+      "เมื่อได้ชื่อ ช่องทางติดต่อ และความยินยอม",
+      "ชื่อของคดีนี้คือพยานปากเอก",
+      "ชื่อในใบเสร็จคือยานพาหนะที่ใช้",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("pins the hedge words the predicate rule leans on", () => {
+    for (const t of ["ชื่อที่สงสัยว่าเป็นคนเดียวกัน", "ชื่อที่ไม่ชัดว่าถูกต้อง", "ชื่อที่ไม่แน่ว่าครบทุกตัวอักษร"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("does not read a case number or a match statement as a name", () => {
+    // Removing เลข/ตรง as prefixes brought these back; the phrases are what actually needed excluding.
+    for (const t of [
+      "ชื่อในรายงานคือเลขคดีที่เปิดไว้",
+      "ชื่อของไฟล์คือเลขที่เอกสาร",
+      "ชื่อในใบเสร็จคือเลขที่ใบกำกับภาษี",
+      "ชื่อในบัตรคือตรงกันทุกตัวอักษร",
+      "ชื่อที่ลูกค้าให้มาคือตรงกับทะเบียนบ้าน",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // …while the names those prefixes were eating still flag
+    for (const t of ["ลูกค้าชื่อเลขา", "เป้าหมายชื่อตรงใจ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("gives the gap a boundary — an unbounded one is what caused the 2026-09-24 hold", () => {
+    expect(scan("ชื่อของลูกค้าคือสมชาย").some((f) => f.kind === "name")).toBe(true);
+    expect(scan(`ชื่อของ${"ก".repeat(40)}คือสมชาย`).some((f) => f.kind === "name")).toBe(false);
+  });
+  it("does not mistake a field label for a person", () => {
+    for (const t of ["ชื่อ บัญชี ธนาคาร", "ชื่อ เอกสาร แนบ", "ชื่อ รายงาน ฉบับเต็ม", "ชื่อ สกุล และวันเกิด", "ชื่อ หลักฐาน และพยาน", "ชื่อ บริษัท และตำแหน่ง"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("keeps names that begin with a word from the slot list", () => {
+    // NOT_A_NAME matches a prefix, so every token in it costs real names: these were measured as
+    // costing nothing in return and are gone. การ/จะ/ต้อง/ทีม stay, and take การุณ/จะเด็ด/ต้องตา with them.
+    for (const t of ["ลูกค้าชื่อตามใจ", "เป้าหมายชื่อจากฟ้า", "พยานชื่อเป็นสุข", "ชื่อเล่น ถูกใจ", "เขาชื่อยังยิ้ม", "ลูกค้าชื่อครบพร้อม"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
+  it("leaves the marketing copy that is live on the site alone", () => {
+    // Pins the shape an optional particle in the intro rule would drag back in.
+    for (const t of ["เช็คประวัติบุคคลจากชื่อ นามสกุล และเบอร์โทร", "ค้นหาคนจากชื่อ นามสกุล"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("does not read the brand's own copy as a person", () => {
+    // ชื่อเสียง/ชื่อบัญชี are compounds; an optional particle once let the intro rule reach past them
+    for (const t of [
+      "ชื่อเสียงของลูกค้าคือสิ่งที่เรารักษาไว้เหนืออื่นใด",
+      "การรักษาชื่อเสียงของลูกค้าคือหน้าที่ของเรา",
+      "ชื่อบัญชีคือธนาคารกรุงเทพ",
+      "ชื่อบัญชีธนาคารคือบริษัทของเรา",
+      "บริษัทมีชื่อเสียงดี",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("refuses the shapes that name nobody", () => {
+    // The exact line that held a finished clip for review on 2026-09-24 — no person is named here.
+    expect(scan("ลูกค้าถือชื่อที่ไม่แน่ใจว่าใช่หรือเปล่ามาให้เรา").some((f) => f.kind === "name")).toBe(false);
+    for (const t of [
+      "ชื่อที่ให้มาสะกดไม่ตรงกับเอกสาร",
+      "ชื่อที่เพศไม่ตรงกับที่คาดไว้",
+      "ชื่อ ที่อยู่เก่า และเบอร์โทร",
+      "ชื่อ พิกัด และเวลา",
+      "ชื่อเล่น อาชีพ และรูปถ่าย",
+      "ชื่อหรือเบอร์โทรศัพท์ นักสืบยังสืบต่อได้",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    // …and it still reads one when the text does say whose
+    for (const t of ["ชื่อเป้าหมายคืออนุชา", "ชื่อสามีคือสมชาย", "ชื่อผู้เสียหายคือสมหญิง", "ชื่อที่ใช้สมัครคือสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+  });
   it("finds a name that follows the label with a space, not only after คือ/ว่า", () => {
     for (const t of ["ชื่อของลูกค้า สมชาย ใจดี", "ชื่อในรายงาน สมหญิง ศรีสุข", "ชื่อและนามสกุล สมชาย ใจดี", "ชื่อที่ลูกค้าให้มา สมชาย"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
@@ -166,7 +337,7 @@ describe("scrubText", () => {
   });
   it("keeps catching the shapes an over-eager exclusion list would silence", () => {
     // Every entry below is one someone might be tempted to add to the ชื่อ(?!…) list; each is a real name.
-    for (const t of ["สามีชื่อนายสมชาย", "ชื่อเอ", "ชื่อบี", "เป้าหมายชื่อจากใบสมัคร", "ลูกค้าชื่อใหม่ที่ติดต่อมา"]) {
+    for (const t of ["สามีชื่อนายสมชาย", "ชื่อเอ", "ชื่อบี", "เป้าหมายชื่อสมชายจากใบสมัคร", "ลูกค้าชื่อใหม่ที่ติดต่อมา"]) {
       expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
     }
   });
@@ -209,5 +380,43 @@ describe("summarizeFindings", () => {
   it("summarises by kind", () => {
     expect(summarizeFindings(scan("โทร 081-234-5678 และ 089-111-2222"))).toContain("เบอร์โทร ×2");
     expect(summarizeFindings([])).toContain("ไม่พบ");
+  });
+  it("says where the name is, so nothing downstream has to guess", () => {
+    for (const [text, name] of [
+      ["แฟนชื่อสมชายมาปรึกษาเราเมื่อวาน", "สมชายมาปรึ"],
+      ["ชื่อของลูกหนี้คือ ธนวัฒน์ ครับ", "ธนวัฒน์"],
+      ["ชื่อของภรรยา ครับ คือ สมหญิง ศรีสุข", "สมหญิง ศรีสุข"],
+      ["พบนายสมชายที่คอนโด", "สมชายที่คอ"],
+      ["คุณสมชาย โทรมาเมื่อเช้า", "สมชาย"],
+    ] as const) {
+      const f = scan(text).find((x) => x.kind === "name");
+      expect(f?.name, text).toBe(name);
+    }
+  });
+  it("known gap: a label glued to the name, and a nickname glued to whose it is", () => {
+    // Neither shape has a separator, so no rule can say which token is the name. Opening the rules
+    // wide enough to catch them was measured: ชื่อของ/ชื่อใน flagged 14 of 15 real customer questions,
+    // and a ชื่อเล่น-only version still swallowed 8 of 15 ("ชื่อเล่นของลูกค้าจำเป็นไหมครับ"). A false
+    // positive here holds a finished clip, which cost three weeks of silence in September (docs §15b).
+    for (const t of ["ชื่อของลูกค้าสมชาย ครับ", "ชื่อเล่นของแฟนสมชาย"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+  });
+  it("pins the two traps the particle rules exist for", () => {
+    // PARTICLE_GAP must stay anchored to a space: เจ้าหนี้ contains จ้า, so an unanchored list silences
+    // this real name. A mutant that drops the \s passed every other test in this file.
+    for (const t of ["ชื่อของเจ้าหนี้ สมชาย ช่วยดูให้ด้วย", "ชื่อของมะนาว สมชาย ครับ", "ชื่อของ ผู้ว่าจ้าง คือ สมหญิง ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
+    // PARTICLE_SLOT cuts both ways and both directions need holding. A particle that IS the whole slot
+    // is not a name — the documented trade. But it must stay a whole-slot test: as a prefix it silences
+    // every name that starts with one, and the security gate measured that at 242 leaks with the rest
+    // of this file still green. This file has twice paid for a prefix list taking real names with it.
+    for (const t of ["ชื่อของลูกค้าคือ นะ ครับ", "ชื่อของลูกค้าคือ คะ ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(false);
+    }
+    for (const t of ["ชื่อของลูกค้าคือ คะนอง ครับ", "ชื่อของลูกค้าคือ นะโม ครับ", "ชื่อของ ผู้ต้องสงสัย คือ จ้าวขวัญ ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "name"), t).toBe(true);
+    }
   });
 });
