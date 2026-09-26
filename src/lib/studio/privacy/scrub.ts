@@ -50,7 +50,12 @@ const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
-const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
+// The house number is written `\d+(?:[\/-]\d+)*` rather than `\d+[\/\d-]*`: the second form lets the
+// digits be split between the two parts in exponentially many ways, so a long run of plain digits
+// followed by a Thai letter — no match, maximum backtracking — took 4.7 s at 1,600 digits and 584 s at
+// 8,000. Reachable from the LINE webhook, where the handler has to answer LINE quickly. The form here
+// can only split at a separator, and it finds the same addresses: 28 ms at 3,000 digits.
+const ADDRESS_RE = /(?:เลขที่\s*\d+(?:[\/-]\d+)*|\d+(?:[\/-]\d+)*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -263,11 +268,30 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   }
 }
 
+/**
+ * How much of one field is scanned. The LINE inbox caps its own input at 1,500 characters, but nothing
+ * else does — publishing, rendering, consolidation and history import hand whole documents to this
+ * function — and a pathological pattern anywhere in here would then have no bound at all. Generous
+ * enough that no real script or caption reaches it.
+ */
+const MAX_SCAN = 20_000;
+
 export function scrubText(input: ScrubInput): PrivacyFinding[] {
   const out: PrivacyFinding[] = [];
   for (const [field, text] of Object.entries(input.fields)) {
     if (!text) continue;
-    scanField(field, text, input.rules, out);
+    scanField(field, text.length > MAX_SCAN ? text.slice(0, MAX_SCAN) : text, input.rules, out);
+    if (text.length > MAX_SCAN) {
+      // Say so rather than passing quietly: the tail was never read, so the gate must not call it safe.
+      pushFinding(out, {
+        kind: "other",
+        excerpt: `${field}: ${text.length} ตัวอักษร`,
+        reason: `ข้อความยาวเกิน ${MAX_SCAN} ตัวอักษร — ตรวจได้เพียงส่วนต้น ต้องให้คนตรวจส่วนที่เหลือ`,
+        severity: "high",
+        field,
+        source: "deterministic",
+      });
+    }
   }
   return out;
 }

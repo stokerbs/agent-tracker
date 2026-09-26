@@ -111,6 +111,28 @@ describe("scrubText", () => {
     expect(f.filter((x) => x.kind === "line_id").map((x) => x.excerpt)).toEqual(["@somchai_k"]);
     expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
+  it("reads a long run of digits without collapsing", () => {
+    // A run of plain digits followed by a Thai letter used to make the house-number pattern backtrack
+    // exponentially: 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook. The budget
+    // here is a hundred times the measured cost, so it fails on the old pattern and not on a slow machine.
+    const t0 = performance.now();
+    scan("1".repeat(3000) + "ก");
+    expect(performance.now() - t0).toBeLessThan(3000);
+    // Splitting a house number at its separators still works, which is all the old form could do.
+    for (const t of ["อยู่ 12/3 ซอยอารีย์ ครับ", "เลขที่ 12/3-4 ซอย 7", "9/1-2 หมู่ 3 ตำบลบางพลี", "เลขที่ 8-9 ถ.สุขุมวิท"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
+    }
+  });
+  it("says when a field was too long to read to the end", () => {
+    // Nothing outside the LINE inbox caps what reaches this function. Truncating quietly would let the
+    // tail of a long document pass as safe, so the truncation is itself a high-severity finding.
+    const long = "ข้อความธรรมดาไม่มีข้อมูลส่วนตัว ".repeat(1200);
+    expect(long.length).toBeGreaterThan(20_000);
+    const findings = scan(long);
+    expect(findings.some((f) => f.severity === "high" && f.reason.includes("ยาวเกิน"))).toBe(true);
+    // And a field that fits is not marked.
+    expect(scan("ข้อความสั้น ๆ ไม่มีอะไร").some((f) => f.reason.includes("ยาวเกิน"))).toBe(false);
+  });
   it("flags addresses and dates", () => {
     expect(scan("บ้านเลขที่ 99/12 ซอยสุขุมวิท 49").some((f) => f.kind === "address")).toBe(true);
     expect(scan("เหตุการณ์วันที่ 12/03/2568").some((f) => f.kind === "date")).toBe(true);
