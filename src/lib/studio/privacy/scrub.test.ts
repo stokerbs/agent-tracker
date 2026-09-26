@@ -97,9 +97,12 @@ describe("scrubText", () => {
     for (const t of ["ที่อยู่ ซอย 5 ครับ", "คอนโดอยู่ ซอย 39 เขตวัฒนา", "พักอยู่ ถนน 24 จังหวัดชลบุรี", "ที่อยู่ ซอย 7/1 แขวงคลองเตย"]) {
       expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
     }
-    // ม. is out of the lane pattern on its own account, not because the proximity rule hides it.
-    const withPostal = scan("ที่อยู่ ตำบลบางพลี ลูกอยู่ ม.5");
-    expect(withPostal.some((f) => f.kind === "address" && f.excerpt.includes("ม.5"))).toBe(false);
+    // ม. is out of the lane pattern on its own account. These three shapes put the postal word close
+    // enough that proximity would accept it, so they fail if ม. is ever added — the version with the
+    // postal word far away passed either way and pinned nothing (security gate, L-4).
+    for (const t of ["ลูกอยู่ ม.5 ตำบลบางพลี", "ที่อยู่ ม.5 ครับ", "ม.5 เขตบางนา"]) {
+      expect(scan(t).some((f) => f.kind === "address" && f.excerpt.includes("ม.5")), t).toBe(false);
+    }
   });
   it("known gap: a lane number with nothing else saying it is an address", () => {
     // "อยู่ ซอย 7 ครับ" gives a lane and no postal word, so it is not flagged. Using อยู่ or บ้าน as the

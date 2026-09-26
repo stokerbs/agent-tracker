@@ -75,14 +75,14 @@ const ADDRESS_LANE_RE = /(?:ซอย|ซ\.|ถนน|ถ\.|หมู่)\s*\d+[
  */
 const ADDRESS_CONTEXT_RE = /ที่อยู่|บ้านเลขที่|เลขที่|ตำบล|อำเภอ|จังหวัด|แขวง|เขต|หมู่บ้าน|คอนโด|หอพัก|อพาร์ท|อพาร์ต|พักอยู่|อาศัยอยู่/g;
 const ADDRESS_CONTEXT_GAP = 8;
+/** Where every postal word sits, found once — scanning the text again per lane match cost 632 ms on a
+ * 52 KB field, against 1 ms before, and the paths that publish and render have no length cap. */
+function addressContextSpans(text: string): [number, number][] {
+  return [...text.matchAll(ADDRESS_CONTEXT_RE)].map((c) => [c.index, c.index + c[0].length]);
+}
 /** Is a postal word within `ADDRESS_CONTEXT_GAP` characters of this span, on either side? */
-function hasAddressContextNear(text: string, start: number, end: number): boolean {
-  for (const c of text.matchAll(ADDRESS_CONTEXT_RE)) {
-    const before = start - (c.index + c[0].length);
-    const after = c.index - end;
-    if ((before >= 0 && before <= ADDRESS_CONTEXT_GAP) || (after >= 0 && after <= ADDRESS_CONTEXT_GAP)) return true;
-  }
-  return false;
+function hasAddressContextNear(spans: [number, number][], start: number, end: number): boolean {
+  return spans.some(([cs, ce]) => (start - ce >= 0 && start - ce <= ADDRESS_CONTEXT_GAP) || (cs - end >= 0 && cs - end <= ADDRESS_CONTEXT_GAP));
 }
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
@@ -269,8 +269,9 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!ALLOWLIST_URL_HOSTS.some((h) => host === h || host.endsWith("." + h))) push("url", m[0], "พบลิงก์ภายนอก — ตรวจสอบว่าไม่ชี้ไปยังบุคคล/บัญชีจริง", "low");
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
+  const contextSpans = addressContextSpans(text);
   for (const m of text.matchAll(ADDRESS_LANE_RE)) {
-    if (hasAddressContextNear(text, m.index, m.index + m[0].length)) {
+    if (hasAddressContextNear(contextSpans, m.index, m.index + m[0].length)) {
       push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข ติดกับคำที่บอกว่าเป็นที่อยู่", "high");
     }
   }
