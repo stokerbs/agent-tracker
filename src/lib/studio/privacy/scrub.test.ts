@@ -124,9 +124,10 @@ describe("scrubText", () => {
     // `(?<![\d\/-])` looks like a simplification, costs nothing on plain digits, and brings the
     // quadratic behaviour back at 1,600 ms on this one (security gate, M-5).
     //
-    // The budgets are loose on purpose. Every real cost here is under 6 ms and every regression above is
-    // over 500 ms, so there is no value in a tight number — and a flaky guard on main is a guard someone
-    // deletes. An earlier version of this test failed 2 runs in 10 under full-suite load.
+    // The budgets are loose on purpose. Every real cost here is in single-digit milliseconds when the
+    // machine is idle and reaches about 28 ms when the rest of the suite is competing for the CPU, while
+    // every regression is over 300 ms — so there is nothing to gain from a tight number, and a flaky
+    // guard on main is a guard someone deletes. An earlier version failed 2 runs in 10 under full load.
     const cost = (make: (n: number) => string, n: number) => {
       const t = make(n);
       const t0 = performance.now();
@@ -137,15 +138,18 @@ describe("scrubText", () => {
     const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
     const slashes = (n: number) => "1/".repeat(n / 2) + "ก";
     const dashes = (n: number) => "1-".repeat(n / 2) + "ก";
-    expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~2,800 ms
+    // This one runs first because it is the only budget a badly broken pattern can still reach: the
+    // original exponential form needs about 80 seconds to get through 3,200 characters and hours to get
+    // through 20,000, so a regression to it fails here rather than hanging on the assertions below. It
+    // also catches a merely quadratic form early, which costs about 56 ms at this size.
+    expect(cost(digits, 3200)).toBeLessThan(50);
+    expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
     expect(cost(alnum, 20_000)).toBeLessThan(150); // unbounded email local part: ~470 ms
     expect(cost(slashes, 20_000)).toBeLessThan(150); // lookbehind widened to digits only: ~2,120 ms
     // Both separators, because the lookbehind class has two characters and dropping either one is a
     // one-character edit that no other shape here would notice: `(?<![\d\/])` costs 2,140 ms on this.
     expect(cost(dashes, 20_000)).toBeLessThan(150);
-    // A small one as well, so the original exponential form reports instead of hanging: at 20,000
-    // characters it would take hours, and vitest cannot preempt a synchronous regex.
-    expect(cost(digits, 3200)).toBeLessThan(50); // the exponential form: ~38,000 ms
+
   });
   it("finds the house numbers the old form found, with the same excerpt", () => {
     // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
