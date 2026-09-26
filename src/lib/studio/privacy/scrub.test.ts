@@ -142,10 +142,16 @@ describe("scrubText", () => {
     const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
     const slashes = (n: number) => "1/".repeat(n / 2) + "ก";
     const dashes = (n: number) => "1-".repeat(n / 2) + "ก";
-    // This one runs first because it is the only budget a badly broken pattern can still reach: the
-    // original exponential form needs about 80 seconds to get through 3,200 characters and hours to get
+    // Warm up first. Whichever assertion runs first pays for compiling sixteen regexes and for V8's
+    // first pass over this code, which is 12.7 ms here against 1.3 ms warm — an order of magnitude that
+    // has nothing to do with what these budgets measure, and which flaked once in six runs on a clean
+    // tree after the 3,200 assertion moved to the front (QA gate).
+    scan("ก".repeat(64));
+    // The next one runs first among the real measurements because it is the only budget a badly broken
+    // pattern can still reach: the original exponential form needs about 80 seconds for 3,200 characters
+    // and hours to get
     // through 20,000, so a regression to it fails here rather than hanging on the assertions below. It
-    // also catches a merely quadratic form early, which costs about 56 ms at this size.
+    // also catches a merely quadratic form early, which costs 65 ms at this size.
     expect(cost(digits, 3200)).toBeLessThan(50);
     expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
     expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~830–1,900 ms
