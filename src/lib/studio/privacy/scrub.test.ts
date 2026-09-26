@@ -111,16 +111,41 @@ describe("scrubText", () => {
     expect(f.filter((x) => x.kind === "line_id").map((x) => x.excerpt)).toEqual(["@somchai_k"]);
     expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
-  it("reads a long run of digits without collapsing", () => {
-    // A run of plain digits followed by a Thai letter used to make the house-number pattern backtrack
-    // exponentially: 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook. The budget
-    // here is a hundred times the measured cost, so it fails on the old pattern and not on a slow machine.
-    const t0 = performance.now();
-    scan("1".repeat(3000) + "ก");
-    expect(performance.now() - t0).toBeLessThan(3000);
-    // Splitting a house number at its separators still works, which is all the old form could do.
-    for (const t of ["อยู่ 12/3 ซอยอารีย์ ครับ", "เลขที่ 12/3-4 ซอย 7", "9/1-2 หมู่ 3 ตำบลบางพลี", "เลขที่ 8-9 ถ.สุขุมวิท"]) {
-      expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
+  it("reads a long run of digits without growing superlinearly", () => {
+    // The old house-number form backtracked exponentially on a run of plain digits followed by a Thai
+    // letter: 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook. Two assertions,
+    // because a budget alone pins "not catastrophic" rather than the property we actually want.
+    const cost = (n: number) => {
+      const t = "1".repeat(n) + "ก";
+      const t0 = performance.now();
+      scan(t);
+      return performance.now() - t0;
+    };
+    const small = cost(1600);
+    expect(small).toBeLessThan(250); // the old form: 4,546 ms
+    // Doubling the input must not multiply the work by more than a few: the old form grew 8x per
+    // doubling, the quadratic middle version 4x, this one about 1.2x.
+    expect(cost(3200) / Math.max(small, 0.05)).toBeLessThan(5);
+  });
+  it("finds the house numbers the old form found, with the same excerpt", () => {
+    // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
+    // address but reports a shorter piece of it leaves part of the address in the stored row. Asserting
+    // `some(kind === "address")` passed even with the separator group deleted entirely (QA gate).
+    for (const [text, excerpt] of [
+      ["อยู่ 12/3 ซอยอารีย์ ครับ", "12/3 ซอยอารีย์ ครับ"],
+      ["เลขที่ 12/3-4 ซอย 7", "เลขที่ 12/3-4"],
+      ["บ้านเลขที่ 99/12 ซอยสุขุมวิท 49", "เลขที่ 99/12"],
+      ["9/1-2 หมู่ 3 ตำบลบางพลี", "9/1-2 หมู่ 3 ตำบลบางพลี"],
+      // A separator left hanging is how these are typed, and a stricter form dropped 1,560 such rows.
+      ["เป้าหมายอยู่ 99/ ซอยอารีย์ 2", "99/ ซอยอารีย์ 2"],
+      ["บ้าน 45- ถนนสุขุมวิท", "45- ถนนสุขุมวิท"],
+      ["ที่อยู่ 12// หมู่ 3", "12// หมู่ 3"],
+    ] as const) {
+      expect(scan(text).find((f) => f.kind === "address")?.excerpt, text).toBe(excerpt);
+    }
+    // And none of these becomes an address.
+    for (const t of ["รอ 5 นาที", "ปิดถนน 2 วัน", "ราคา 1,200 บาท", "โทร 081-234-5678", "อายุ 34 ปี"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
     }
   });
   it("says when a field was too long to read to the end", () => {
@@ -132,6 +157,20 @@ describe("scrubText", () => {
     expect(findings.some((f) => f.severity === "high" && f.reason.includes("ยาวเกิน"))).toBe(true);
     // And a field that fits is not marked.
     expect(scan("ข้อความสั้น ๆ ไม่มีอะไร").some((f) => f.reason.includes("ยาวเกิน"))).toBe(false);
+    // The cap really stops the scan, rather than just announcing that it did: a phone number past it is
+    // not reported at all, and that is why the notice has to be high severity. Asserting only the notice
+    // let a version through that scanned the whole document and claimed otherwise (QA gate).
+    const head = "ข้อความธรรมดา ".repeat(1500);
+    expect(head.length).toBeGreaterThan(20_000);
+    expect(scan(`${head} เบอร์ 0812345678`).some((f) => f.kind === "phone")).toBe(false);
+    expect(scan(`เบอร์ 0812345678 ${head}`).some((f) => f.kind === "phone")).toBe(true);
+    // The boundary is exact, and it matters: a script is validated at 20,000 characters, so that length
+    // has to pass. One character more does not.
+    expect(scan("ก".repeat(20_000)).some((f) => f.reason.includes("ยาวเกิน"))).toBe(false);
+    expect(scan("ก".repeat(20_001)).some((f) => f.reason.includes("ยาวเกิน"))).toBe(true);
+    // Every over-length field is named, not just the first one.
+    const both = scrubText({ fields: { script: "ก".repeat(20_001), caption: "ข".repeat(20_001) }, rules: null });
+    expect(both.filter((f) => f.reason.includes("ยาวเกิน")).map((f) => f.field).sort()).toEqual(["caption", "script"]);
   });
   it("flags addresses and dates", () => {
     expect(scan("บ้านเลขที่ 99/12 ซอยสุขุมวิท 49").some((f) => f.kind === "address")).toBe(true);

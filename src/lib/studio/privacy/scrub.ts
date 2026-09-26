@@ -50,12 +50,17 @@ const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
-// The house number is written `\d+(?:[\/-]\d+)*` rather than `\d+[\/\d-]*`: the second form lets the
-// digits be split between the two parts in exponentially many ways, so a long run of plain digits
-// followed by a Thai letter — no match, maximum backtracking — took 4.7 s at 1,600 digits and 584 s at
-// 8,000. Reachable from the LINE webhook, where the handler has to answer LINE quickly. The form here
-// can only split at a separator, and it finds the same addresses: 28 ms at 3,000 digits.
-const ADDRESS_RE = /(?:เลขที่\s*\d+(?:[\/-]\d+)*|\d+(?:[\/-]\d+)*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
+// The house number is written `(?<![\d\/-])\d+(?:[\/-]+\d+)*[\/-]*`, and every part of that earns its
+// place. `\d+[\/\d-]*` — what this was — lets the digits be split between the two parts in
+// exponentially many ways, so a long run of plain digits followed by a Thai letter (no match, maximum
+// backtracking) took 4.7 s at 1,600 digits and 584 s at 8,000, reachable from the LINE webhook. Writing
+// the separators as their own group fixes that but is still quadratic, because the scan restarts at
+// every digit: 1.3 s at 20,000 digits. The lookbehind is what makes it linear — 1.9 ms at 100,000 — by
+// refusing to start in the middle of a run. And `[\/-]+` with a trailing `[\/-]*` keeps the addresses a
+// stricter form silently dropped: "99/ ซอยอารีย์ 2", "45- ถนนสุขุมวิท", "12// หมู่ 3" are typed with a
+// separator left hanging, and the QA gate measured 1,560 such rows going unflagged.
+const HOUSE_NUMBER = String.raw`(?<![\d\/-])\d+(?:[\/-]+\d+)*[\/-]*`;
+const ADDRESS_RE = new RegExp(String.raw`(?:เลขที่\s*${HOUSE_NUMBER}|${HOUSE_NUMBER}\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})`, "g");
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -282,6 +287,9 @@ export function scrubText(input: ScrubInput): PrivacyFinding[] {
     if (!text) continue;
     scanField(field, text.length > MAX_SCAN ? text.slice(0, MAX_SCAN) : text, input.rules, out);
     if (text.length > MAX_SCAN) {
+      // A quiet drop in coverage on the server is the kind of thing this module logs (see the warning
+      // eleven lines up); the field name and its length carry no personal data.
+      console.warn(`[studio:privacy] field ${field} is ${text.length} chars — scanned the first ${MAX_SCAN}`);
       // Say so rather than passing quietly: the tail was never read, so the gate must not call it safe.
       pushFinding(out, {
         kind: "other",
