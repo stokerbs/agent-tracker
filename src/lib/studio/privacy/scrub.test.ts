@@ -111,6 +111,125 @@ describe("scrubText", () => {
     expect(f.filter((x) => x.kind === "line_id").map((x) => x.excerpt)).toEqual(["@somchai_k"]);
     expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
+  it("scans a field the size of the cap without slowing down", () => {
+    // Two patterns here used to retry from every character of a long run: the house number
+    // (exponentially — 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook) and the
+    // email local part (quadratically — 2.7 s at 65,000). Both are anchored by a lookbehind now.
+    //
+    // The measurements are taken at the cap, because that is the largest field this function will ever
+    // read, and a budget at 1,600 characters was too small to see the quadratic form at all: it cost
+    // 14 ms there and 2.2 s here. Three shapes, because each one is the only thing that catches a
+    // particular regression: plain digits for the house-number anchor, alphanumerics for the email
+    // anchor, and digits separated by slashes for a widened lookbehind — `(?<!\d)` instead of
+    // `(?<![\d\/-])` looks like a simplification, costs nothing on plain digits, and brings the
+    // quadratic behaviour back at 1,600 ms on this one (security gate, M-5).
+    //
+    // The budgets are loose on purpose. Idle, each of these costs single-digit milliseconds; with the
+    // whole suite competing for the CPU the QA gate measured worst cases of 60, 46, 13, 60 and 8 ms over
+    // fifteen runs. The regressions, measured the same way — through this function, not on the pattern
+    // alone — cost 800 ms and up across two machines, the cheapest being the unbounded email at 830 to
+    // 1,900 ms. So the numbers below sit about three times above the worst real cost and about three
+    // times below the cheapest regression, using the lowest figure either gate measured —
+    // nothing is gained by a tight budget, and a flaky guard on main is a guard someone deletes. An
+    // earlier version failed 2 runs in 10 under full load, with a 20 ms budget against a 25 ms reality.
+    const cost = (make: (n: number) => string, n: number) => {
+      const t = make(n);
+      const t0 = performance.now();
+      scan(t);
+      return performance.now() - t0;
+    };
+    const digits = (n: number) => "1".repeat(n) + "ก";
+    const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
+    const slashes = (n: number) => "1/".repeat(n / 2) + "ก";
+    const dashes = (n: number) => "1-".repeat(n / 2) + "ก";
+    // Warm up first. Whichever assertion runs first pays for compiling sixteen regexes and for V8's
+    // first pass over this code, which is 12.7 ms here against 1.3 ms warm — an order of magnitude that
+    // has nothing to do with what these budgets measure, and which flaked once in six runs on a clean
+    // tree after the 3,200 assertion moved to the front (QA gate).
+    scan("ก".repeat(64));
+    // The 3,200-character measurement comes first because it is the only budget a badly broken pattern
+    // can still reach: the original exponential form needs somewhere between 80 and 165 seconds at this
+    // size — the two gates and I measured both, on the same machine, because exponential cost swings
+    // with machine state — and hours at 20,000, so a regression to it fails here instead of hanging on
+    // the assertions below.
+    //
+    // Its budget is the same 300 ms as the rest, because it does not need to be tight. A quadratic form
+    // costs 65 ms here and passes, then fails at 20,000 where it costs 2,160 ms; the only thing this
+    // line has to catch is the exponential form, with three orders of magnitude to spare. A 50 ms budget
+    // was tried so that this line would catch the quadratic form too, and it flaked under load — the
+    // tightest budget in a file is where a busy machine breaks first.
+    expect(cost(digits, 3200)).toBeLessThan(300);
+    expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
+    expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~830–1,900 ms
+    expect(cost(slashes, 20_000)).toBeLessThan(300); // lookbehind widened to digits only: ~2,100–2,500 ms
+    // Both separators, because the lookbehind class has two characters and dropping either one is a
+    // one-character edit that no other shape here would notice: `(?<![\d\/])` costs 2,140 ms on this.
+    expect(cost(dashes, 20_000)).toBeLessThan(300);
+
+  });
+  it("finds the house numbers the old form found, with the same excerpt", () => {
+    // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
+    // address but reports a shorter piece of it leaves part of the address in the stored row. Asserting
+    // `some(kind === "address")` passed even with the separator group deleted entirely (QA gate).
+    for (const [text, excerpt] of [
+      ["อยู่ 12/3 ซอยอารีย์ ครับ", "12/3 ซอยอารีย์ ครับ"],
+      ["เลขที่ 12/3-4 ซอย 7", "เลขที่ 12/3-4"],
+      ["บ้านเลขที่ 99/12 ซอยสุขุมวิท 49", "เลขที่ 99/12"],
+      ["9/1-2 หมู่ 3 ตำบลบางพลี", "9/1-2 หมู่ 3 ตำบลบางพลี"],
+      // A separator left hanging is how these are typed, and a stricter form dropped 1,560 such rows.
+      ["เป้าหมายอยู่ 99/ ซอยอารีย์ 2", "99/ ซอยอารีย์ 2"],
+      ["บ้าน 45- ถนนสุขุมวิท", "45- ถนนสุขุมวิท"],
+      ["ที่อยู่ 12// หมู่ 3", "12// หมู่ 3"],
+      // A separator repeated between two numbers, which the `+` in the group is what allows.
+      ["อยู่ 9//1 ซอยอารีย์", "9//1 ซอยอารีย์"],
+      ["บ้าน 12--3 ถนนสุขุมวิท", "12--3 ถนนสุขุมวิท"],
+      // A separator glued to the front of the house number, which is how Thai addresses are written
+      // after a building or unit name. Anchoring the pattern removed every one of these — 454 rows of an
+      // 11,008-row fuzz — because `\d+` has to come first, so no position could start the match at all.
+      ["ที่อยู่เป้าหมาย-99/12 ซอยอารีย์ 2", "-99/12 ซอยอารีย์ 2"],
+      ["อาคารเอ-88/8 ซ.ลาดพร้าว 5", "-88/8 ซ.ลาดพร้าว 5"],
+      ["ยูนิต A-12/3 ซอย 7", "-12/3 ซอย 7"],
+      ["โครงการบ้านสวย-45 ถนนพระราม 4", "-45 ถนนพระราม 4"],
+      ["ส่งเอกสารไปที่/99/12 หมู่ 3", "/99/12 หมู่ 3"],
+    ] as const) {
+      expect(scan(text).find((f) => f.kind === "address")?.excerpt, text).toBe(excerpt);
+    }
+    // And none of these becomes an address.
+    for (const t of ["รอ 5 นาที", "ปิดถนน 2 วัน", "ราคา 1,200 บาท", "โทร 081-234-5678", "อายุ 34 ปี"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
+  it("reports both of two email addresses written with nothing between them", () => {
+    // A lookbehind here was faster than the bound but not equivalent: after the first address matched,
+    // the positions it allowed were inside what had already been consumed, so the second went unreported
+    // and `_nid` would sit in a stored row beside an [อีเมล] token (QA gate).
+    expect(scan("ติดต่อ somchai@gmail.com_nid@hotmail.com").filter((f) => f.kind === "email")).toHaveLength(2);
+    expect(scan("a@b.com.c@d.com").filter((f) => f.kind === "email")).toHaveLength(2);
+  });
+  it("says when a field was too long to read to the end", () => {
+    // Nothing outside the LINE inbox caps what reaches this function. Truncating quietly would let the
+    // tail of a long document pass as safe, so the truncation is itself a high-severity finding.
+    const long = "ข้อความธรรมดาไม่มีข้อมูลส่วนตัว ".repeat(1200);
+    expect(long.length).toBeGreaterThan(20_000);
+    const findings = scan(long);
+    expect(findings.some((f) => f.severity === "high" && f.reason.includes("ยาวเกิน"))).toBe(true);
+    // And a field that fits is not marked.
+    expect(scan("ข้อความสั้น ๆ ไม่มีอะไร").some((f) => f.reason.includes("ยาวเกิน"))).toBe(false);
+    // The cap really stops the scan, rather than just announcing that it did: a phone number past it is
+    // not reported at all, and that is why the notice has to be high severity. Asserting only the notice
+    // let a version through that scanned the whole document and claimed otherwise (QA gate).
+    const head = "ข้อความธรรมดา ".repeat(1500);
+    expect(head.length).toBeGreaterThan(20_000);
+    expect(scan(`${head} เบอร์ 0812345678`).some((f) => f.kind === "phone")).toBe(false);
+    expect(scan(`เบอร์ 0812345678 ${head}`).some((f) => f.kind === "phone")).toBe(true);
+    // The boundary is exact, and it matters: a script is validated at 20,000 characters, so that length
+    // has to pass. One character more does not.
+    expect(scan("ก".repeat(20_000)).some((f) => f.reason.includes("ยาวเกิน"))).toBe(false);
+    expect(scan("ก".repeat(20_001)).some((f) => f.reason.includes("ยาวเกิน"))).toBe(true);
+    // Every over-length field is named, not just the first one.
+    const both = scrubText({ fields: { script: "ก".repeat(20_001), caption: "ข".repeat(20_001) }, rules: null });
+    expect(both.filter((f) => f.reason.includes("ยาวเกิน")).map((f) => f.field).sort()).toEqual(["caption", "script"]);
+  });
   it("flags addresses and dates", () => {
     expect(scan("บ้านเลขที่ 99/12 ซอยสุขุมวิท 49").some((f) => f.kind === "address")).toBe(true);
     expect(scan("เหตุการณ์วันที่ 12/03/2568").some((f) => f.kind === "date")).toBe(true);

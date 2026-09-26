@@ -20,7 +20,18 @@ export interface ScrubInput {
 
 // Thai mobile/landline: 0X-XXX-XXXX / 0XXXXXXXXX / +66 X XXXX XXXX (spaces, dashes, dots)
 const PHONE_RE = /(?:\+66[\s-]?\d(?:[\s.-]?\d){7,8}|(?<!\d)0\d(?:[\s.-]?\d){7,8}(?!\d))/g;
-const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+// The local part is bounded at 64 characters — the RFC 5321 ceiling — rather than left open. Unbounded,
+// it is retried from every character of a long alphanumeric run that contains no `@`, which is
+// quadratic: 470 ms at 20,000 characters and 6.7 s at 65,000. Bounded, the work per starting position is
+// capped and the whole thing is linear: 8.7 ms and 33 ms.
+//
+// A lookbehind was tried here first, the same idiom the house number uses below, and it is faster still
+// (0.2 ms) but it is not equivalent: after one address is matched, the only positions the lookbehind
+// allows are inside what `matchAll` has already consumed, so a second address glued onto the first one's
+// domain went unreported — "somchai@gmail.com_nid@hotmail.com" — leaving `_nid` in a stored row beside
+// an [อีเมล] token. 282 of 394 generated shapes differed. The bound differs from the unbounded form on
+// one shape only: a local part longer than 64 characters, which the RFC does not allow.
+const EMAIL_RE = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 // Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after.
 // The trailing lookahead has to refuse Thai letters, because two bare consonants and a number is an
 // ordinary Thai phrase: relaxing it read "รอ 5นาที", "ขอ 2ชุด" and "คน 3คน" as plates — 8 of 19 measured
@@ -50,7 +61,22 @@ const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
-const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
+// The house number is written `(?<![\d\/-])\d+(?:[\/-]+\d+)*[\/-]*`, and every part of that earns its
+// place. `\d+[\/\d-]*` — what this was — lets the digits be split between the two parts in
+// exponentially many ways, so a long run of plain digits followed by a Thai letter (no match, maximum
+// backtracking) took 4.7 s at 1,600 digits and 584 s at 8,000, reachable from the LINE webhook. Writing
+// the separators as their own group fixes that but is still quadratic, because the scan restarts at
+// every digit: 1.3 s at 20,000 digits. The lookbehind is what makes it linear — 1.9 ms at 100,000 — by
+// refusing to start in the middle of a run. But the lookbehind alone is not symmetric with the email
+// rule below: there, starting further left always succeeds, so anchoring costs nothing; here `\d+` has to
+// come first, so at "อาคารเอ-88/8 ซอย 5" no position can start at all — the `-` cannot and the `8` is
+// refused — and the whole address went unflagged. That is what the leading `[\/-]?` restores: 9 of 9 real
+// Thai shapes the security gate measured, 454 rows of an 11,008-row fuzz, still linear at 2.6 ms per
+// 100,000 characters. What stays silent is two separators before the number ("//99", "--99"), 17 rows of
+// that fuzz. And `[\/-]+` with the trailing `[\/-]*` keeps the addresses typed with a separator left
+// hanging — "99/ ซอยอารีย์ 2", "45- ถนนสุขุมวิท", "12// หมู่ 3" — 1,560 rows the QA gate measured.
+const HOUSE_NUMBER = String.raw`(?<![\d\/-])[\/-]?\d+(?:[\/-]+\d+)*[\/-]*`;
+const ADDRESS_RE = new RegExp(String.raw`(?:เลขที่\s*${HOUSE_NUMBER}|${HOUSE_NUMBER}\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})`, "g");
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -263,11 +289,33 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
   }
 }
 
+/**
+ * How much of one field is scanned. The LINE inbox caps its own input at 1,500 characters, but nothing
+ * else does — publishing, rendering, consolidation and history import hand whole documents to this
+ * function — and a pathological pattern anywhere in here would then have no bound at all. Generous
+ * enough that no real script or caption reaches it.
+ */
+const MAX_SCAN = 20_000;
+
 export function scrubText(input: ScrubInput): PrivacyFinding[] {
   const out: PrivacyFinding[] = [];
   for (const [field, text] of Object.entries(input.fields)) {
     if (!text) continue;
-    scanField(field, text, input.rules, out);
+    scanField(field, text.length > MAX_SCAN ? text.slice(0, MAX_SCAN) : text, input.rules, out);
+    if (text.length > MAX_SCAN) {
+      // A quiet drop in coverage on the server is the kind of thing this module logs (see the warning
+      // eleven lines up); the field name and its length carry no personal data.
+      console.warn(`[studio:privacy] field ${field} is ${text.length} chars — scanned the first ${MAX_SCAN}`);
+      // Say so rather than passing quietly: the tail was never read, so the gate must not call it safe.
+      pushFinding(out, {
+        kind: "other",
+        excerpt: `${field}: ${text.length} ตัวอักษร`,
+        reason: `ข้อความยาวเกิน ${MAX_SCAN} ตัวอักษร — ตรวจได้เพียงส่วนต้น ต้องให้คนตรวจส่วนที่เหลือ`,
+        severity: "high",
+        field,
+        source: "deterministic",
+      });
+    }
   }
   return out;
 }
