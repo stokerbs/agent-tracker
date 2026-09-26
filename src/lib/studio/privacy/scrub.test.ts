@@ -151,8 +151,11 @@ describe("scrubText", () => {
     // pattern can still reach: the original exponential form needs about 80 seconds for 3,200 characters
     // and hours to get
     // through 20,000, so a regression to it fails here rather than hanging on the assertions below. It
-    // also catches a merely quadratic form early, which costs 65 ms at this size.
-    expect(cost(digits, 3200)).toBeLessThan(50);
+    // The budget here is the same 300 ms as the rest, because it does not need to be tight: a quadratic
+    // form costs 65 ms at this size and passes, and then fails at 20,000 where it costs 2,160 ms. Only
+    // the exponential form has to be caught here, and it needs 80 seconds. A 50 ms budget was tried and
+    // flaked under load — the tightest budget in a file is where a busy CI machine breaks first.
+    expect(cost(digits, 3200)).toBeLessThan(300);
     expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
     expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~830–1,900 ms
     expect(cost(slashes, 20_000)).toBeLessThan(300); // lookbehind widened to digits only: ~2,100–2,500 ms
