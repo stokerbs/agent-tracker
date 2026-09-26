@@ -78,6 +78,14 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
     }
   });
+  it("does not flag a lane number: that rule was tried twice and withdrawn", () => {
+    // Both withdrawn forms are covered: the first flagged the shape on sight, the second flagged it when
+    // a place word stood within eight characters — which these rows have (docs §15b records the 240 of
+    // 240 false positives that decided it). A real address with a house number still flags, below.
+    for (const t of ["หมู่บ้านนี้ ถนน 4 เลนกว้างมาก", "ตำบลนี้ หมู่ 2 กลุ่มแยกกันเฝ้า", "แถวคอนโด ถนน 3 ชั่วโมงกว่าจะได้ภาพ", "ที่อยู่ ซอย 5 ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
   it("known gap: a plate with no cue word and no space after it", () => {
     // "เห็น กข 1234จอดอยู่" — nothing says it is a plate and the digits run into the next word, so the
     // strict boundary cannot fire. Pinned so that a rule change which starts catching it shows up here
