@@ -320,6 +320,17 @@ describe("redactForInbox", () => {
     expect(redactForInbox("เขาอายุ 28 ปีทำงานที่สีลม")).toBe("เขา[ข้อมูลส่วนตัว]ทำงานที่สีลม");
     expect(redactForInbox("โทร 0812345678 ได้เลยครับ")).toBe("โทร [เบอร์โทร] ได้เลยครับ");
   });
+  it("redacts a plate and a lane number glued to Thai text", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["ทะเบียน กข 1234จอดอยู่หน้าบ้านทุกคืน", "1234"],
+      ["ทะเบียนกข 1234จอดอยู่", "1234"],
+      ["ที่อยู่ เลขที่ 12/3 ซอย 5ใกล้ตลาด", "ซอย 5"],
+    ] as const) {
+      expect(redactForInbox(input), input).not.toContain(gone);
+    }
+    expect(redactForInbox("รอ 5นาทีนะครับ")).toBe("รอ 5นาทีนะครับ");
+  });
   it("tokenises the identifier kinds a customer actually sends", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("เกิดวันที่ 12/03/2540 ครับ")).toContain("[วันที่]");

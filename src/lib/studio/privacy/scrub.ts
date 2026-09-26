@@ -21,13 +21,30 @@ export interface ScrubInput {
 // Thai mobile/landline: 0X-XXX-XXXX / 0XXXXXXXXX / +66 X XXXX XXXX (spaces, dashes, dots)
 const PHONE_RE = /(?:\+66[\s-]?\d(?:[\s.-]?\d){7,8}|(?<!\d)0\d(?:[\s.-]?\d){7,8}(?!\d))/g;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-// Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after
+// Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after.
+// The trailing lookahead has to refuse Thai letters, because two bare consonants and a number is an
+// ordinary Thai phrase: relaxing it read "รอ 5นาที", "ขอ 2ชุด" and "คน 3คน" as plates — 8 of 19 measured
+// sentences — and a false positive here holds a finished clip in the review queue.
 const PLATE_RE = /(?<![ก-๙A-Za-z0-9])(?:\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![ก-๙0-9])/g;
+/**
+ * The same plate when a cue word says it is one. Thai writes no space between words, so a customer
+ * types "ทะเบียน กข 1234จอดอยู่หน้าบ้าน" and the plate above cannot match — its boundary is what keeps
+ * ordinary phrases out, and it cannot tell this from one. The cue can: nothing after ทะเบียน / ป้าย /
+ * รถ that looks like consonants-then-digits is a quantity. Measured: this catches the glued forms with
+ * no new false positive on the sentences the strict rule exists to protect.
+ */
+const PLATE_CUED_RE = /(?:ป้ายทะเบียน|ทะเบียนรถ|ทะเบียน|ป้าย|รถ)\s*(\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![\d๐-๙])/g;
 const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{4,}|@[A-Za-z][A-Za-z0-9._-]{3,})/gi;
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
 // House number + ซอย/ถนน/หมู่ or "เลขที่"
 const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอย|ซ\.|ถนน|ถ\.|หมู่|ม\.)\s*[ก-๙A-Za-z0-9.\s-]{1,30})/g;
+/**
+ * A street or lane written the other way round — "ซอย 5", "ถนน 3", "หมู่ 7" — which the pattern above
+ * misses because it expects the house number first. `ม.` is deliberately not here: "ลูกอยู่ ม.5" is a
+ * school year, and an address finding is high severity, so that one would hold clips for nothing.
+ */
+const ADDRESS_LANE_RE = /(?:ซอย|ซ\.|ถนน|ถ\.|หมู่)\s*\d+[\/\d-]*/g;
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -187,6 +204,7 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!isAllowlisted(m[0])) push("email", m[0], "พบอีเมลส่วนบุคคล", "high");
   }
   for (const m of text.matchAll(THAI_ID_RE)) push("id_number", m[0], "พบเลข 13 หลักคล้ายเลขบัตรประชาชน", "high");
+  for (const m of text.matchAll(PLATE_CUED_RE)) push("plate", m[1], "พบทะเบียนรถหลังคำบ่งชี้ (ทะเบียน/ป้าย/รถ)", "high");
   for (const m of text.matchAll(PLATE_RE)) {
     // Skip things like "ก 1" false positives that are too short.
     if (m[0].replace(/\D/g, "").length >= 2) push("plate", m[0], "พบรูปแบบคล้ายทะเบียนรถ", "high");
@@ -203,6 +221,7 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!ALLOWLIST_URL_HOSTS.some((h) => host === h || host.endsWith("." + h))) push("url", m[0], "พบลิงก์ภายนอก — ตรวจสอบว่าไม่ชี้ไปยังบุคคล/บัญชีจริง", "low");
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
+  for (const m of text.matchAll(ADDRESS_LANE_RE)) push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข — เป็นส่วนของที่อยู่", "high");
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
   for (const m of text.matchAll(KHUN_NAME_RE)) {

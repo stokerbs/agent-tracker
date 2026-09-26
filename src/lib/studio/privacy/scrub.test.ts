@@ -21,6 +21,47 @@ describe("scrubText", () => {
     expect(scan("รถทะเบียน 1กข 1234 กรุงเทพ").some((f) => f.kind === "plate")).toBe(true);
     expect(scan("ทะเบียน ขข-9876").some((f) => f.kind === "plate")).toBe(true);
   });
+  it("flags a plate whose digits run straight into Thai text", () => {
+    // Thai writes no space between words, so this is how a customer types it. The uncued pattern cannot
+    // match here — its trailing boundary is what keeps "รอ 5นาที" and "ขอ 2ชุด" from being plates — so a
+    // cue word carries it instead. Measured: 166 of 216 cued shapes leaked their digits before this.
+    for (const t of [
+      "ทะเบียน กข 1234จอดอยู่หน้าบ้าน",
+      "ทะเบียนกข 1234จอดอยู่",
+      "ทะเบียน กข-1234ครับ",
+      "ทะเบียน 1กข 234จอดอยู่",
+      "ป้ายทะเบียน ขก 987ผ่านไปเมื่อเช้า",
+      "รถ งจ 45มาจอดทุกคืน",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(true);
+    }
+  });
+  it("does not read an ordinary quantity as a plate", () => {
+    // Two bare Thai consonants and a number is an everyday phrase, and a plate finding is high
+    // severity — one of these would hold a finished clip in the review queue. Relaxing the boundary
+    // instead of adding a cue read 8 of 19 of these as plates.
+    for (const t of [
+      "รอ 5นาทีนะครับ", "ขอ 2ชุดครับ", "คน 3คนพอไหม", "งบ 5พันบาทได้ไหม", "รอ 30นาทีนะ",
+      "รถ 2คันจอดอยู่", "ป้าย 2ป้ายครับ", "มีรถ 4คันในบ้าน", "ผ่อน 12งวดได้ไหม",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
+    }
+  });
+  it("flags a lane or road written before its number, and leaves a school year alone", () => {
+    for (const t of ["อยู่ ซอย 7 ครับ", "บ้านอยู่ ถนน 3 ครับ", "หมู่ 7 ตำบลบางพลี", "ที่อยู่ เลขที่ 12/3 ซอย 5ใกล้ตลาด"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
+    }
+    // "ม." is a school year as often as it is a village, and an address finding is high severity.
+    for (const t of ["ลูกอยู่ ม.5ครับ", "เรียนอยู่ ม.6 แล้ว"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
+  it("known gap: a plate with no cue word and no space after it", () => {
+    // "เห็น กข 1234จอดอยู่" — nothing says it is a plate and the digits run into the next word, so the
+    // strict boundary cannot fire. Pinned so that a rule change which starts catching it shows up here
+    // (docs §15b: the alternative was 8 of 19 ordinary sentences becoming plates).
+    expect(scan("เห็น กข 1234จอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+  });
   it("flags LINE handles but allows @detectivepluse", () => {
     expect(scan("ทัก LINE @somchai_k").some((f) => f.kind === "line_id")).toBe(true);
     expect(scan("ปรึกษาได้ทาง LINE @detectivepluse").some((f) => f.kind === "line_id")).toBe(false);
