@@ -76,6 +76,31 @@ describe("scrubText", () => {
       expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
     }
   });
+  it("does not read narration as an address because it mentions a district somewhere", () => {
+    // The postal word has to stand next to the lane phrase. Testing the whole field for one moved the
+    // false positives rather than removing them: this business writes exactly these sentences, and the
+    // QA gate measured 9 of 10 going from safe to blocked, which holds a clip and drops a mined question.
+    for (const t of [
+      "เฝ้าเป้าหมายในเขตลาดพร้าว ตามรถบนถนน 3 ชั่วโมง",
+      "เป้าหมายอยู่จังหวัดชลบุรี ขับตามถนน 4 ชั่วโมงกว่าจะถึง",
+      "เช็กที่อยู่ให้ลูกค้า แล้วเฝ้าถนน 5 ชั่วโมง",
+      "นอกเขตกรุงเทพ รถติดบนถนน 3 ชั่วโมง",
+      "ลูกค้าอยู่ตำบลบางพลี แบ่งทีมเป็นหมู่ 2 ชุด",
+      "หมู่บ้านนี้เงียบมาก เดินตามซอย 200 เมตรก็ถึงจุดนัดพบ",
+      "คอนโดแถวนั้นสูง 30 ชั้น ปิดถนน 1 เลนทำให้เสียรอบ",
+      "เลขที่บัญชีปลายทางไม่ตรง ตามรถบนถนน 3 ชั่วโมง",
+      "ผู้เช่าพักอยู่ที่นั่น 2 ปี ถนน 4 เลนตอนกลางคืนตามยาก",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+    // And a postal word touching the lane phrase still carries it, from either side.
+    for (const t of ["ที่อยู่ ซอย 5 ครับ", "คอนโดอยู่ ซอย 39 เขตวัฒนา", "พักอยู่ ถนน 24 จังหวัดชลบุรี", "ที่อยู่ ซอย 7/1 แขวงคลองเตย"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(true);
+    }
+    // ม. is out of the lane pattern on its own account, not because the proximity rule hides it.
+    const withPostal = scan("ที่อยู่ ตำบลบางพลี ลูกอยู่ ม.5");
+    expect(withPostal.some((f) => f.kind === "address" && f.excerpt.includes("ม.5"))).toBe(false);
+  });
   it("known gap: a lane number with nothing else saying it is an address", () => {
     // "อยู่ ซอย 7 ครับ" gives a lane and no postal word, so it is not flagged. Using อยู่ or บ้าน as the
     // signal was measured and rejected: it reads ordinary narration as an address (docs §15b). A lane
@@ -107,8 +132,11 @@ describe("scrubText", () => {
     for (const t of ["ทะเบียน   กข 1234จอดอยู่", "ทะเบียนกข1234จอดอยู่", "ป้าย กข 1234จอดอยู่", "ทะเบียนรถ กข 1234ครับ", "รถ กข 1234มาจอด"]) {
       expect(scan(t).some((f) => f.kind === "plate"), t).toBe(true);
     }
-    // รถ is glued to the front of ordinary words, so as a cue it needs a space and two digits.
-    for (const t of ["รถชน 3 ครั้งแล้ว", "รถวน 2 รอบ", "รถผม 2 คัน", "รถขน 3 เที่ยว", "ซื้อรถ งบ 5 แสน"]) {
+    // รถ is glued to the front of ordinary words, so as a cue it needs a space and two digits. Both
+    // halves matter: with two digits the floor does not help, and "รถผม 20 ปีแล้ว" and "รถกข 1234" are
+    // the same shape letter for letter — the QA gate measured 17 false positives when the space goes.
+    for (const t of ["รถชน 3 ครั้งแล้ว", "รถวน 2 รอบ", "รถผม 2 คัน", "รถขน 3 เที่ยว", "ซื้อรถ งบ 5 แสน",
+      "รถผม 20 ปีแล้ว", "รถชน 30 ครั้ง", "รถทน 20 ปี", "รถงบ 50 ล้าน", "รถคน 20 คน"]) {
       expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
     }
   });

@@ -62,12 +62,28 @@ const ADDRESS_RE = /(?:เลขที่\s*\d+[\/\d-]*|\d+[\/\d-]*\s*(?:ซอ�
  */
 const ADDRESS_LANE_RE = /(?:ซอย|ซ\.|ถนน|ถ\.|หมู่)\s*\d+[\/\d-]*/g;
 /**
- * What makes a lane number an address: a word from the postal part of one. These are words nobody
- * writes about a road they merely drove along. Deliberately not here: บ้าน and อยู่, which appear in
- * ordinary narration ("คดีนี้เริ่มจากบ้านในหมู่ 3") — the gate's control set counts those as sentences,
- * not addresses, and a false positive costs a held clip.
+ * What makes a lane number an address: a word from the postal part of one, standing NEXT TO it. Testing
+ * the whole field for one of these words was the same false-positive class one step removed — this
+ * business writes "เฝ้าเป้าหมายในเขตลาดพร้าว ตามรถบนถนน 3 ชั่วโมง" and "ลูกค้าอยู่ตำบลบางพลี แบ่งทีมเป็น
+ * หมู่ 2 ชุด", and 9 of 10 such sentences went from safe to blocked. The distance is what separates
+ * them: in a real address the postal word touches the lane phrase (measured gap 1–6 characters over
+ * nine shapes), while in narration a clause sits in between (13–26). The threshold is eight.
+ *
+ * บ้าน and อยู่ are deliberately not here — "คดีนี้เริ่มจากบ้านในหมู่ 3" is narration — and note that
+ * these words have no word boundary of their own: เขต matches inside "นอกเขตกรุงเทพ" and เลขที่ inside
+ * "เลขที่บัญชี", which is exactly why proximity has to carry the decision rather than presence.
  */
-const ADDRESS_CONTEXT_RE = /ที่อยู่|บ้านเลขที่|เลขที่|ตำบล|อำเภอ|จังหวัด|แขวง|เขต|หมู่บ้าน|คอนโด|หอพัก|อพาร์ท|อพาร์ต|พักอยู่|อาศัยอยู่/;
+const ADDRESS_CONTEXT_RE = /ที่อยู่|บ้านเลขที่|เลขที่|ตำบล|อำเภอ|จังหวัด|แขวง|เขต|หมู่บ้าน|คอนโด|หอพัก|อพาร์ท|อพาร์ต|พักอยู่|อาศัยอยู่/g;
+const ADDRESS_CONTEXT_GAP = 8;
+/** Is a postal word within `ADDRESS_CONTEXT_GAP` characters of this span, on either side? */
+function hasAddressContextNear(text: string, start: number, end: number): boolean {
+  for (const c of text.matchAll(ADDRESS_CONTEXT_RE)) {
+    const before = start - (c.index + c[0].length);
+    const after = c.index - end;
+    if ((before >= 0 && before <= ADDRESS_CONTEXT_GAP) || (after >= 0 && after <= ADDRESS_CONTEXT_GAP)) return true;
+  }
+  return false;
+}
 const DATE_RE = /\b\d{1,2}[\/.-]\d{1,2}[\/.-](?:25|20)\d{2}\b|\b(?:วันที่\s*)?\d{1,2}\s*(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(?:25|20)?\d{2}\b/g;
 /**
  * The token after a name, which in Thai is the surname often enough that leaving it stores half a
@@ -253,8 +269,10 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!ALLOWLIST_URL_HOSTS.some((h) => host === h || host.endsWith("." + h))) push("url", m[0], "พบลิงก์ภายนอก — ตรวจสอบว่าไม่ชี้ไปยังบุคคล/บัญชีจริง", "low");
   }
   for (const m of text.matchAll(ADDRESS_RE)) push("address", m[0], "พบข้อความคล้ายที่อยู่ (บ้านเลขที่/ซอย/ถนน)", "high");
-  if (ADDRESS_CONTEXT_RE.test(text)) {
-    for (const m of text.matchAll(ADDRESS_LANE_RE)) push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข ในข้อความที่เป็นที่อยู่", "high");
+  for (const m of text.matchAll(ADDRESS_LANE_RE)) {
+    if (hasAddressContextNear(text, m.index, m.index + m[0].length)) {
+      push("address", m[0], "พบซอย/ถนน/หมู่ ตามด้วยเลข ติดกับคำที่บอกว่าเป็นที่อยู่", "high");
+    }
   }
   for (const m of text.matchAll(DATE_RE)) push("date", m[0], "พบวันที่ระบุชัด — อาจเชื่อมโยงกับเคสจริงได้", "medium");
   for (const m of text.matchAll(NAME_TITLE_RE)) push("name", m[0], "พบคำนำหน้าชื่อตามด้วยชื่อ — อาจเป็นชื่อบุคคลจริง", "medium", m[1]);
