@@ -126,7 +126,9 @@ describe("scrubText", () => {
     //
     // The budgets are loose on purpose. Idle, each of these costs single-digit milliseconds; with the
     // whole suite competing for the CPU the QA gate measured worst cases of 60, 46, 13, 60 and 8 ms over
-    // fifteen runs. Every regression is over 2,000 ms, so the numbers below sit far from both ends —
+    // fifteen runs. The regressions, measured the same way — through this function, not on the pattern
+    // alone — cost 1,000 ms and up, the smallest being the unbounded email. So the numbers below sit
+    // three times above the worst real cost and three times below the cheapest regression —
     // nothing is gained by a tight budget, and a flaky guard on main is a guard someone deletes. An
     // earlier version failed 2 runs in 10 under full load, with a 20 ms budget against a 25 ms reality.
     const cost = (make: (n: number) => string, n: number) => {
@@ -145,8 +147,8 @@ describe("scrubText", () => {
     // also catches a merely quadratic form early, which costs about 56 ms at this size.
     expect(cost(digits, 3200)).toBeLessThan(50);
     expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
-    expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~470 ms
-    expect(cost(slashes, 20_000)).toBeLessThan(300); // lookbehind widened to digits only: ~2,120 ms
+    expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~1,000–1,900 ms
+    expect(cost(slashes, 20_000)).toBeLessThan(300); // lookbehind widened to digits only: ~2,100–2,500 ms
     // Both separators, because the lookbehind class has two characters and dropping either one is a
     // one-character edit that no other shape here would notice: `(?<![\d\/])` costs 2,140 ms on this.
     expect(cost(dashes, 20_000)).toBeLessThan(300);
