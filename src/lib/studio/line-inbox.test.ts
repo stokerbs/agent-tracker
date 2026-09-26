@@ -272,6 +272,11 @@ describe("redactForInbox", () => {
       ["แฟนชื่อสมชาย ศรีสุขค่ะ", "ศรีสุข"],
       ["ชื่อของลูกค้าคือ สมชาย ใจดีครับ", "ใจดี"],
       ["นายสมชาย ชนะชัยนะ", "ชนะชัย"],
+      // A surname that CONTAINS a speech word but does not end in one. Moving the test back inside the
+      // run passes every other test in this file while leaking these twelve (security gate, round 15).
+      ["พบนายสมชาย ไหมทอง ที่คอนโด", "ไหมทอง"],
+      ["นายสมชาย เลยดี", "เลยดี"],
+      ["คุณบอย ด้วยเดช ครับ", "ด้วยเดช"],
     ] as const) {
       expect(redactForInbox(input), input).not.toContain(gone);
     }
