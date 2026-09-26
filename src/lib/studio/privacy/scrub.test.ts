@@ -147,14 +147,17 @@ describe("scrubText", () => {
     // has nothing to do with what these budgets measure, and which flaked once in six runs on a clean
     // tree after the 3,200 assertion moved to the front (QA gate).
     scan("ก".repeat(64));
-    // The next one runs first among the real measurements because it is the only budget a badly broken
-    // pattern can still reach: the original exponential form needs about 80 seconds for 3,200 characters
-    // and hours to get
-    // through 20,000, so a regression to it fails here rather than hanging on the assertions below. It
-    // The budget here is the same 300 ms as the rest, because it does not need to be tight: a quadratic
-    // form costs 65 ms at this size and passes, and then fails at 20,000 where it costs 2,160 ms. Only
-    // the exponential form has to be caught here, and it needs 80 seconds. A 50 ms budget was tried and
-    // flaked under load — the tightest budget in a file is where a busy CI machine breaks first.
+    // The 3,200-character measurement comes first because it is the only budget a badly broken pattern
+    // can still reach: the original exponential form needs somewhere between 80 and 165 seconds at this
+    // size — the two gates and I measured both, on the same machine, because exponential cost swings
+    // with machine state — and hours at 20,000, so a regression to it fails here instead of hanging on
+    // the assertions below.
+    //
+    // Its budget is the same 300 ms as the rest, because it does not need to be tight. A quadratic form
+    // costs 65 ms here and passes, then fails at 20,000 where it costs 2,160 ms; the only thing this
+    // line has to catch is the exponential form, with three orders of magnitude to spare. A 50 ms budget
+    // was tried so that this line would catch the quadratic form too, and it flaked under load — the
+    // tightest budget in a file is where a busy machine breaks first.
     expect(cost(digits, 3200)).toBeLessThan(300);
     expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~3,700 ms
     expect(cost(alnum, 20_000)).toBeLessThan(300); // unbounded email local part: ~830–1,900 ms
