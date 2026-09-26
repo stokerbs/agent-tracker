@@ -135,10 +135,17 @@ describe("scrubText", () => {
     };
     const digits = (n: number) => "1".repeat(n) + "ก";
     const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
-    const separated = (n: number) => "1/".repeat(n / 2) + "ก";
+    const slashes = (n: number) => "1/".repeat(n / 2) + "ก";
+    const dashes = (n: number) => "1-".repeat(n / 2) + "ก";
     expect(cost(digits, 20_000)).toBeLessThan(300); // unanchored house number: ~2,800 ms
-    expect(cost(alnum, 20_000)).toBeLessThan(150); // unanchored email: ~535 ms
-    expect(cost(separated, 20_000)).toBeLessThan(150); // lookbehind widened to digits only: ~1,620 ms
+    expect(cost(alnum, 20_000)).toBeLessThan(150); // unbounded email local part: ~470 ms
+    expect(cost(slashes, 20_000)).toBeLessThan(150); // lookbehind widened to digits only: ~2,120 ms
+    // Both separators, because the lookbehind class has two characters and dropping either one is a
+    // one-character edit that no other shape here would notice: `(?<![\d\/])` costs 2,140 ms on this.
+    expect(cost(dashes, 20_000)).toBeLessThan(150);
+    // A small one as well, so the original exponential form reports instead of hanging: at 20,000
+    // characters it would take hours, and vitest cannot preempt a synchronous regex.
+    expect(cost(digits, 3200)).toBeLessThan(50); // the exponential form: ~38,000 ms
   });
   it("finds the house numbers the old form found, with the same excerpt", () => {
     // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
@@ -171,6 +178,13 @@ describe("scrubText", () => {
     for (const t of ["รอ 5 นาที", "ปิดถนน 2 วัน", "ราคา 1,200 บาท", "โทร 081-234-5678", "อายุ 34 ปี"]) {
       expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
     }
+  });
+  it("reports both of two email addresses written with nothing between them", () => {
+    // A lookbehind here was faster than the bound but not equivalent: after the first address matched,
+    // the positions it allowed were inside what had already been consumed, so the second went unreported
+    // and `_nid` would sit in a stored row beside an [อีเมล] token (QA gate).
+    expect(scan("ติดต่อ somchai@gmail.com_nid@hotmail.com").filter((f) => f.kind === "email")).toHaveLength(2);
+    expect(scan("a@b.com.c@d.com").filter((f) => f.kind === "email")).toHaveLength(2);
   });
   it("says when a field was too long to read to the end", () => {
     // Nothing outside the LINE inbox caps what reaches this function. Truncating quietly would let the
