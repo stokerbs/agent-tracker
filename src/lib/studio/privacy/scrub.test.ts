@@ -21,6 +21,77 @@ describe("scrubText", () => {
     expect(scan("รถทะเบียน 1กข 1234 กรุงเทพ").some((f) => f.kind === "plate")).toBe(true);
     expect(scan("ทะเบียน ขข-9876").some((f) => f.kind === "plate")).toBe(true);
   });
+  it("flags a plate whose digits run straight into Thai text", () => {
+    // Thai writes no space between words, so this is how a customer types it. The uncued pattern cannot
+    // match here — its trailing boundary is what keeps "รอ 5นาที" and "ขอ 2ชุด" from being plates — so a
+    // cue word carries it instead. Measured: 166 of 216 cued shapes leaked their digits before this.
+    for (const t of [
+      "ทะเบียน กข 1234จอดอยู่หน้าบ้าน",
+      "ทะเบียนกข 1234จอดอยู่",
+      "ทะเบียน กข-1234ครับ",
+      "ทะเบียน 1กข 234จอดอยู่",
+      "ป้ายทะเบียน ขก 987ผ่านไปเมื่อเช้า",
+      "รถ งจ 45มาจอดทุกคืน",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(true);
+    }
+  });
+  it("does not read an ordinary quantity as a plate", () => {
+    // Two bare Thai consonants and a number is an everyday phrase, and a plate finding is high
+    // severity — one of these would hold a finished clip in the review queue. Relaxing the boundary
+    // instead of adding a cue read 8 of 19 of these as plates.
+    for (const t of [
+      "รอ 5นาทีนะครับ", "ขอ 2ชุดครับ", "คน 3คนพอไหม", "งบ 5พันบาทได้ไหม", "รอ 30นาทีนะ",
+      "รถ 2คันจอดอยู่", "ป้าย 2ป้ายครับ", "มีรถ 4คันในบ้าน", "ผ่อน 12งวดได้ไหม",
+    ]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
+    }
+  });
+  it("keeps the cued plate's own boundaries", () => {
+    // The digit boundary stops the rule cutting a longer number down to plate length, and stops a
+    // mixed Thai-digit tail being read as the end of one. A mutant removing it passed everything else.
+    expect(scan("ทะเบียน กข 1234567").some((f) => f.kind === "plate" && f.excerpt === "กข 1234")).toBe(false);
+    expect(scan("ทะเบียน กข 1234๕").some((f) => f.kind === "plate")).toBe(false);
+    // One consonant and one digit after a cue is a count; two of either is a plate. The rule without a
+    // cue insists on two digits, which loses real single-digit plates — the cue earns that slack.
+    expect(scan("รถ ก 1 คันจอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+    expect(scan("ป้าย ข 2 ครับ").some((f) => f.kind === "plate")).toBe(false);
+    expect(scan("ทะเบียน ผก 5จอดอยู่").some((f) => f.kind === "plate")).toBe(true);
+    expect(scan("ทะเบียน ก 12จอดอยู่").some((f) => f.kind === "plate")).toBe(true);
+    // The excerpt is the plate, not the cue and the plate: the inbox locates a finding by searching for
+    // its excerpt, and a wider one would take the cue word with it.
+    expect(scan("ทะเบียน กข 1234จอดอยู่").find((f) => f.kind === "plate")?.excerpt).toBe("กข 1234");
+    expect(scan("ป้ายทะเบียน ขก 987ผ่านไป").find((f) => f.kind === "plate")?.excerpt).toBe("ขก 987");
+    // A longer cue must not be raided for its own letters: "ทะเบียนรถ" read as "ทะเบียน" + plate "รถ …"
+    // stored a five-digit number beside a [ทะเบียนรถ] token (security gate, H-1).
+    expect(scan("ทะเบียนรถ 1กข 12345จอดอยู่").some((f) => f.kind === "plate" && f.excerpt.includes("รถ"))).toBe(false);
+    expect(scan("ทะเบียนรถ 2 คันจอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+    // Spacing between the cue and the plate, and the abbreviated cue forms.
+    for (const t of ["ทะเบียน   กข 1234จอดอยู่", "ทะเบียนกข1234จอดอยู่", "ป้าย กข 1234จอดอยู่", "ทะเบียนรถ กข 1234ครับ", "รถ กข 1234มาจอด"]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(true);
+    }
+    // รถ is glued to the front of ordinary words, so as a cue it needs a space and two digits. Both
+    // halves matter: with two digits the floor does not help, and "รถผม 20 ปีแล้ว" and "รถกข 1234" are
+    // the same shape letter for letter — the QA gate measured 17 false positives when the space goes.
+    for (const t of ["รถชน 3 ครั้งแล้ว", "รถวน 2 รอบ", "รถผม 2 คัน", "รถขน 3 เที่ยว", "ซื้อรถ งบ 5 แสน",
+      "รถผม 20 ปีแล้ว", "รถชน 30 ครั้ง", "รถทน 20 ปี", "รถงบ 50 ล้าน", "รถคน 20 คน"]) {
+      expect(scan(t).some((f) => f.kind === "plate"), t).toBe(false);
+    }
+  });
+  it("does not flag a lane number: that rule was tried twice and withdrawn", () => {
+    // Both withdrawn forms are covered: the first flagged the shape on sight, the second flagged it when
+    // a place word stood within eight characters — which these rows have (docs §15b records the 240 of
+    // 240 false positives that decided it). A real address with a house number still flags, below.
+    for (const t of ["หมู่บ้านนี้ ถนน 4 เลนกว้างมาก", "ตำบลนี้ หมู่ 2 กลุ่มแยกกันเฝ้า", "แถวคอนโด ถนน 3 ชั่วโมงกว่าจะได้ภาพ", "ที่อยู่ ซอย 5 ครับ"]) {
+      expect(scan(t).some((f) => f.kind === "address"), t).toBe(false);
+    }
+  });
+  it("known gap: a plate with no cue word and no space after it", () => {
+    // "เห็น กข 1234จอดอยู่" — nothing says it is a plate and the digits run into the next word, so the
+    // strict boundary cannot fire. Pinned so that a rule change which starts catching it shows up here
+    // (docs §15b: the alternative was 8 of 19 ordinary sentences becoming plates).
+    expect(scan("เห็น กข 1234จอดอยู่").some((f) => f.kind === "plate")).toBe(false);
+  });
   it("flags LINE handles but allows @detectivepluse", () => {
     expect(scan("ทัก LINE @somchai_k").some((f) => f.kind === "line_id")).toBe(true);
     expect(scan("ปรึกษาได้ทาง LINE @detectivepluse").some((f) => f.kind === "line_id")).toBe(false);

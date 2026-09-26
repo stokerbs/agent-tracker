@@ -320,6 +320,23 @@ describe("redactForInbox", () => {
     expect(redactForInbox("เขาอายุ 28 ปีทำงานที่สีลม")).toBe("เขา[ข้อมูลส่วนตัว]ทำงานที่สีลม");
     expect(redactForInbox("โทร 0812345678 ได้เลยครับ")).toBe("โทร [เบอร์โทร] ได้เลยครับ");
   });
+  it("redacts a plate glued to Thai text", async () => {
+    const { redactForInbox } = await import("./line-inbox");
+    for (const [input, gone] of [
+      ["ทะเบียน กข 1234จอดอยู่หน้าบ้านทุกคืน", "1234"],
+      ["ทะเบียนกข 1234จอดอยู่", "1234"],
+    ] as const) {
+      expect(redactForInbox(input), input).not.toContain(gone);
+    }
+    // The cue word stays and only the plate goes — the rule reports the plate, not its whole match.
+    expect(redactForInbox("ทะเบียน กข 1234จอดอยู่หน้าบ้านทุกคืน")).toBe("ทะเบียน [ทะเบียนรถ]จอดอยู่หน้าบ้านทุกคืน");
+    expect(redactForInbox("รอ 5นาทีนะครับ")).toBe("รอ 5นาทีนะครับ");
+    expect(redactForInbox("ปิดถนน 2 วัน")).toBe("ปิดถนน 2 วัน");
+    // A rule for "ซอย 5" / "ถนน 3" / "หมู่ 7" was tried in two forms and withdrawn (docs §15b). This row
+    // carries a place word within the eight characters the second form allowed, so it fails if either
+    // form comes back — the first form is caught by the row above, which has no place word at all.
+    expect(redactForInbox("หมู่บ้านนี้ ถนน 4 เลนกว้างมาก")).toBe("หมู่บ้านนี้ ถนน 4 เลนกว้างมาก");
+  });
   it("tokenises the identifier kinds a customer actually sends", async () => {
     const { redactForInbox } = await import("./line-inbox");
     expect(redactForInbox("เกิดวันที่ 12/03/2540 ครับ")).toContain("[วันที่]");

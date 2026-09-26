@@ -21,8 +21,31 @@ export interface ScrubInput {
 // Thai mobile/landline: 0X-XXX-XXXX / 0XXXXXXXXX / +66 X XXXX XXXX (spaces, dashes, dots)
 const PHONE_RE = /(?:\+66[\s-]?\d(?:[\s.-]?\d){7,8}|(?<!\d)0\d(?:[\s.-]?\d){7,8}(?!\d))/g;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-// Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after
+// Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after.
+// The trailing lookahead has to refuse Thai letters, because two bare consonants and a number is an
+// ordinary Thai phrase: relaxing it read "รอ 5นาที", "ขอ 2ชุด" and "คน 3คน" as plates — 8 of 19 measured
+// sentences — and a false positive here holds a finished clip in the review queue.
 const PLATE_RE = /(?<![ก-๙A-Za-z0-9])(?:\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![ก-๙0-9])/g;
+/**
+ * The same plate when a cue word says it is one. Thai writes no space between words, so a customer
+ * types "ทะเบียน กข 1234จอดอยู่หน้าบ้าน" and the plate above cannot match — its boundary is what keeps
+ * ordinary phrases out, and it cannot tell this from one. The cue can: nothing after ทะเบียน / ป้าย /
+ * รถ that looks like consonants-then-digits is a quantity. Measured: this catches the glued forms with
+ * no new false positive on the sentences the strict rule exists to protect.
+ *
+ * The shorter cues refuse to be followed by รถ, or the engine backtracks into them and reads the รถ of
+ * "ทะเบียนรถ" as the plate's own letters: "ทะเบียนรถ 1กข 12345" became "ทะเบียน[ทะเบียนรถ]กข 12345",
+ * keeping the number beside a token that says it is gone. It also drops "ทะเบียนรถ 2 คัน" as a plate.
+ */
+const PLATE_CUED_RE = /(?:ป้ายทะเบียน(?!รถ)|ทะเบียนรถ|ทะเบียน(?!รถ)|ป้าย)\s*(\d?[ก-ฮ]{1,2}[\s-]?\d{1,4})(?![\d๐-๙])/g;
+/**
+ * รถ is a cue too, but a much weaker one: it is glued to the front of ordinary words, so "รถชน 3 ครั้ง",
+ * "รถวน 2 รอบ", "รถผม 2 คัน" and "ซื้อรถ งบ 5 แสน" all read as plates when it is treated like the rest
+ * — the security gate found every one of them. It earns its place with a space after it and two digits
+ * in the plate, which is what separates a plate from a count. The cost, measured, is a single-digit
+ * plate announced with รถ alone ("รถ ผก 5") — six rows of a 252-row grid, and ทะเบียน catches those.
+ */
+const PLATE_CAR_CUE_RE = /รถ\s+(\d?[ก-ฮ]{1,2}[\s-]?\d{2,4})(?![\d๐-๙])/g;
 const LINE_ID_RE = /(?:LINE\s*(?:ID|ไอดี)?\s*[:：]?\s*@?[A-Za-z0-9._-]{4,}|@[A-Za-z][A-Za-z0-9._-]{3,})/gi;
 const URL_RE = /https?:\/\/[^\s)]+|www\.[^\s)]+/gi;
 const THAI_ID_RE = /(?<!\d)\d(?:[\s-]?\d){12}(?!\d)/g; // 13 digits
@@ -187,6 +210,16 @@ function scanField(field: string, text: string, rules: Partial<PrivacyRules> | n
     if (!isAllowlisted(m[0])) push("email", m[0], "พบอีเมลส่วนบุคคล", "high");
   }
   for (const m of text.matchAll(THAI_ID_RE)) push("id_number", m[0], "พบเลข 13 หลักคล้ายเลขบัตรประชาชน", "high");
+  for (const m of [...text.matchAll(PLATE_CUED_RE), ...text.matchAll(PLATE_CAR_CUE_RE)]) {
+    // One consonant and one digit after a cue is a count, not a plate: "รถ ก 1 คันจอดอยู่". Two of
+    // either makes it a plate — the rule below insists on two digits, which would lose the real
+    // single-digit plates ("ทะเบียน ผก 5", 36 rows of a measured grid), and the cue is what earns the
+    // slack here.
+    const letters = m[1].replace(/[^ก-ฮ]/g, "").length;
+    if (m[1].replace(/\D/g, "").length >= 2 || letters >= 2) {
+      push("plate", m[1], "พบทะเบียนรถหลังคำบ่งชี้ (ทะเบียน/ป้าย/รถ)", "high");
+    }
+  }
   for (const m of text.matchAll(PLATE_RE)) {
     // Skip things like "ก 1" false positives that are too short.
     if (m[0].replace(/\D/g, "").length >= 2) push("plate", m[0], "พบรูปแบบคล้ายทะเบียนรถ", "high");
