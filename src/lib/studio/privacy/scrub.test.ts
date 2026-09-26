@@ -126,7 +126,9 @@ describe("scrubText", () => {
     const digits = (n: number) => "1".repeat(n) + "ก";
     const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
     expect(cost(digits, 20_000)).toBeLessThan(300); // no lookbehind on the house number: ~2,160 ms
-    expect(cost(alnum, 20_000)).toBeLessThan(300); // no lookbehind on the email: ~255 ms, and 2.7 s at 65k
+    // The email budget is tight on purpose: anchored costs 0.1 ms, and the unanchored form costs ~298 ms
+    // here, so a 300 ms budget was a coin toss that the security gate measured at 0.99x margin.
+    expect(cost(alnum, 20_000)).toBeLessThan(20);
     // And the shape of the growth, not just a budget: doubling the input must not multiply the work by
     // more than a few. The exponential form grew 8x per doubling, the quadratic one 4x.
     const small = cost(digits, 1600);
@@ -148,6 +150,14 @@ describe("scrubText", () => {
       // A separator repeated between two numbers, which the `+` in the group is what allows.
       ["อยู่ 9//1 ซอยอารีย์", "9//1 ซอยอารีย์"],
       ["บ้าน 12--3 ถนนสุขุมวิท", "12--3 ถนนสุขุมวิท"],
+      // A separator glued to the front of the house number, which is how Thai addresses are written
+      // after a building or unit name. Anchoring the pattern removed every one of these — 454 rows of an
+      // 11,008-row fuzz — because `\d+` has to come first, so no position could start the match at all.
+      ["ที่อยู่เป้าหมาย-99/12 ซอยอารีย์ 2", "-99/12 ซอยอารีย์ 2"],
+      ["อาคารเอ-88/8 ซ.ลาดพร้าว 5", "-88/8 ซ.ลาดพร้าว 5"],
+      ["ยูนิต A-12/3 ซอย 7", "-12/3 ซอย 7"],
+      ["โครงการบ้านสวย-45 ถนนพระราม 4", "-45 ถนนพระราม 4"],
+      ["ส่งเอกสารไปที่/99/12 หมู่ 3", "/99/12 หมู่ 3"],
     ] as const) {
       expect(scan(text).find((f) => f.kind === "address")?.excerpt, text).toBe(excerpt);
     }
