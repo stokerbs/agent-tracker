@@ -111,21 +111,26 @@ describe("scrubText", () => {
     expect(f.filter((x) => x.kind === "line_id").map((x) => x.excerpt)).toEqual(["@somchai_k"]);
     expect(f.some((x) => x.kind === "email" && x.excerpt === "a@b.com")).toBe(true);
   });
-  it("reads a long run of digits without growing superlinearly", () => {
-    // The old house-number form backtracked exponentially on a run of plain digits followed by a Thai
-    // letter: 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook. Two assertions,
-    // because a budget alone pins "not catastrophic" rather than the property we actually want.
-    const cost = (n: number) => {
-      const t = "1".repeat(n) + "ก";
+  it("scans a field the size of the cap without slowing down", () => {
+    // Two patterns here used to retry from every character of a long run: the house number (exponentially
+    // — 4.7 s at 1,600 digits, 584 s at 8,000, reachable from the LINE webhook) and the email local part
+    // (quadratically — 2.7 s at 65,000). Both are anchored by a lookbehind now. The measurement is taken
+    // at the cap, because that is the largest field this function will ever read, and because a budget at
+    // 1,600 characters was too small to notice the quadratic form: it cost 14 ms there and 2.2 s here.
+    const cost = (make: (n: number) => string, n: number) => {
+      const t = make(n);
       const t0 = performance.now();
       scan(t);
       return performance.now() - t0;
     };
-    const small = cost(1600);
-    expect(small).toBeLessThan(250); // the old form: 4,546 ms
-    // Doubling the input must not multiply the work by more than a few: the old form grew 8x per
-    // doubling, the quadratic middle version 4x, this one about 1.2x.
-    expect(cost(3200) / Math.max(small, 0.05)).toBeLessThan(5);
+    const digits = (n: number) => "1".repeat(n) + "ก";
+    const alnum = (n: number) => "a1._%+-".repeat(Math.ceil(n / 7)).slice(0, n) + "ก";
+    expect(cost(digits, 20_000)).toBeLessThan(300); // no lookbehind on the house number: ~2,160 ms
+    expect(cost(alnum, 20_000)).toBeLessThan(300); // no lookbehind on the email: ~255 ms, and 2.7 s at 65k
+    // And the shape of the growth, not just a budget: doubling the input must not multiply the work by
+    // more than a few. The exponential form grew 8x per doubling, the quadratic one 4x.
+    const small = cost(digits, 1600);
+    expect(cost(digits, 3200) / Math.max(small, 0.05)).toBeLessThan(5);
   });
   it("finds the house numbers the old form found, with the same excerpt", () => {
     // The excerpt is load-bearing: `redactForInbox` replaces exactly that span, so a rule that finds an
@@ -140,6 +145,9 @@ describe("scrubText", () => {
       ["เป้าหมายอยู่ 99/ ซอยอารีย์ 2", "99/ ซอยอารีย์ 2"],
       ["บ้าน 45- ถนนสุขุมวิท", "45- ถนนสุขุมวิท"],
       ["ที่อยู่ 12// หมู่ 3", "12// หมู่ 3"],
+      // A separator repeated between two numbers, which the `+` in the group is what allows.
+      ["อยู่ 9//1 ซอยอารีย์", "9//1 ซอยอารีย์"],
+      ["บ้าน 12--3 ถนนสุขุมวิท", "12--3 ถนนสุขุมวิท"],
     ] as const) {
       expect(scan(text).find((f) => f.kind === "address")?.excerpt, text).toBe(excerpt);
     }

@@ -20,7 +20,12 @@ export interface ScrubInput {
 
 // Thai mobile/landline: 0X-XXX-XXXX / 0XXXXXXXXX / +66 X XXXX XXXX (spaces, dashes, dots)
 const PHONE_RE = /(?:\+66[\s-]?\d(?:[\s.-]?\d){7,8}|(?<!\d)0\d(?:[\s.-]?\d){7,8}(?!\d))/g;
-const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+// The lookbehind is the same idiom as the house number below, for the same reason: without it the local
+// part is retried from every character of a long alphanumeric run that has no `@` in it, which is
+// quadratic — 163 ms at 16,000 characters and 2.7 s at 65,000. With it, 0.1 ms and 0.3 ms. It changes no
+// match: an address is only ever recognised from its first character anyway (measured on 14 shapes,
+// including "..a@b.com", "-a@b.com", "a..b@c.de" and "1234a@b.com").
+const EMAIL_RE = /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 // Thai plates: "กข 1234", "1กข 1234", "กข-1234", optional province after.
 // The trailing lookahead has to refuse Thai letters, because two bare consonants and a number is an
 // ordinary Thai phrase: relaxing it read "รอ 5นาที", "ขอ 2ชุด" and "คน 3คน" as plates — 8 of 19 measured
