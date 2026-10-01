@@ -19,7 +19,7 @@ Owners: **Growth** (Chinese market owner), **Eng** (frontend-builder / backend-a
 | F-1 | Confirm all facts in `16-facts-requiring-confirmation.md` | P0 | DP | – | no false claims | register fully ticked | ⏳ |
 | F-2 | Confirm WeChat account/QR + Chinese-speaking responder + hours | P0 | DP | – | CTA actually converts | reply SLA ≤ 24 h met | ⏳ |
 | L-1 | Chinese privacy policy + terms + refund page | P0 | Legal | – | trust, PDPA/PIPL | page live, linked from form | ⏳ |
-| G-1 | Chinese company profile (web `/zh/about` ✅ + PDF) | P1 | Growth + DP | F-1 | B2B trust | PDF downloadable | ⏳ |
+| G-1 | Chinese company profile (web `/zh/about` ✅ + PDF) | P1 | Growth + DP | F-1 | B2B trust | PDF downloadable | ✅ `/zh/company-profile` (print to PDF) |
 | O-1 | Apply migration, set `NEXT_PUBLIC_WECHAT_ID/QR`, verify bucket policies | P0 | DevOps | DB-1 | live | prod smoke test | ⏳ |
 | Q-1 | Security + QA review of this PR | P0 | Sec/QA | all E-* | production-ready | both gates pass | see PR |
 
@@ -39,15 +39,15 @@ Owners: **Growth** (Chinese market owner), **Eng** (frontend-builder / backend-a
 
 ## Phase 3 — Days 31–60
 
-| ID | Task | P | Owner | Depends | Impact | Metric |
-|---|---|---|---|---|---|---|
-| C-4 | Articles 11–20 based on K-1 data | P1 | Growth | K-1 | organic | 20 published |
-| B-1 | Partner database + outreach sequence; 100 contacts | P1 | Growth + DP | G-1 | B2B pipeline | 10 partner calls |
-| B-2 | `/zh/partners` landing page + partner intake | P1 | Eng | B-1 | B2B leads | page live |
-| B-3 | B2B service sheets (PDF, zh/en) | P2 | Growth | G-1 | B2B trust | 7 sheets |
-| A-3 | Conversion review: CTA placement, form drop-off, WeChat reply time | P1 | Growth | A-1 | conversion | lead→quote ≥ 40 % |
-| L-2 | NDA + service agreement templates (zh/en) | P1 | Legal | – | B2B closing | templates in use |
-| P-1 | Payment rails for CNY/USD clients (requires confirmation) | P1 | DP | – | quote→paid | documented on /zh/pricing |
+| ID | Task | P | Owner | Depends | Impact | Metric | Status |
+|---|---|---|---|---|---|---|---|
+| C-4 | Articles 11–20 based on K-1 data | P1 | Growth | K-1 | organic | 20 published | ⏳ |
+| B-1 | Partner database + outreach sequence; 100 contacts | P1 | Growth + DP | G-1 | B2B pipeline | 10 partner calls | ✅ DB + `/partners` admin + referral links + templates (doc 13); contacts ⏳ DP |
+| B-2 | `/zh/partners` landing page + partner intake | P1 | Eng | B-1 | B2B leads | page live | ✅ |
+| B-3 | B2B service sheets (PDF, zh/en) | P2 | Growth | G-1 | B2B trust | 7 sheets | ⏳ |
+| A-3 | Conversion review: CTA placement, form drop-off, WeChat reply time | P1 | Growth | A-1 | conversion | lead→quote ≥ 40 % | ⏳ |
+| L-2 | NDA + service agreement templates (zh/en) | P1 | Legal | – | B2B closing | templates in use | ⏳ |
+| P-1 | Payment rails for CNY/USD clients (requires confirmation) | P1 | DP | – | quote→paid | documented on /zh/pricing | ⏳ |
 
 ## Phase 4 — Days 61–90
 

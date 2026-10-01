@@ -37,6 +37,8 @@ export const RATE_LIMITS = {
   lead:       { limit:  5, windowMs: 3_600_000 },
   /** 3 Chinese intake submissions (multipart, with files) per hour per IP — anti-spam + storage guard. */
   zh_intake:  { limit:  3, windowMs: 3_600_000 },
+  /** 5 B2B partner applications per hour per IP — anti-spam. */
+  partner:    { limit:  5, windowMs: 3_600_000 },
   /** 5 public recruitment applications per hour per IP — anti-spam. */
   careers:    { limit:  5, windowMs: 3_600_000 },
   /** 30 public AI-assistant messages per hour per IP — cost + abuse guard. */

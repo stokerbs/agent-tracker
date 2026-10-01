@@ -162,3 +162,10 @@ service it supports (relationship | find_person | background | due_diligence |
 on_site | asset | pricing | general) so `/zh/articles/*` link to their service
 page and service pages list related articles; older rows are null and fall
 back to a cover-category guess (`articleServiceKey()`).
+
+`marketing_partners` (migration `0126`) holds B2B partner applications from
+`/zh/partners` (org, type, contact, services wanted, expected volume, stage
+`new → contacted → call_scheduled → agreement → active → inactive`, notes) and a
+unique `referral_slug`; leads carry it in `marketing_leads.utm_source`, which
+is indexed for the per-partner attribution shown in `/partners`. Service-role
+writes only; admin-only RLS reads/updates.

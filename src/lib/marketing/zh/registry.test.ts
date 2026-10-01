@@ -8,7 +8,7 @@ import { ZH_BANNED_PHRASES as BANNED } from "./compliance";
 const REQUIRED_SLUGS = [
   "private-investigator-thailand", "bangkok-investigation", "relationship-investigation", "background-check",
   "find-person-thailand", "business-due-diligence", "on-site-verification", "asset-investigation",
-  "how-it-works", "pricing", "case-studies", "about", "contact",
+  "how-it-works", "pricing", "case-studies", "about", "contact", "partners", "company-profile",
   "bangkok", "pattaya", "phuket", "chiang-mai", "chonburi", "samui",
 ];
 
@@ -84,8 +84,8 @@ describe("Chinese page registry", () => {
     }
   });
 
-  it("case-studies is noindexed while empty; nothing else is", () => {
+  it("only case-studies (while empty) and the printable company profile are noindexed", () => {
     expect(getZhPage("case-studies")?.noindex).toBe(true);
-    expect(ZH_PAGES.filter((p) => p.noindex).map((p) => p.slug)).toEqual(["case-studies"]);
+    expect(ZH_PAGES.filter((p) => p.noindex).map((p) => p.slug).sort()).toEqual(["case-studies", "company-profile"]);
   });
 });

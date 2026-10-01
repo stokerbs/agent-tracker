@@ -18,7 +18,10 @@ export type MarketingEvent =
   | { event: "contact_click"; channel: "line" | "whatsapp" | "email" | "phone"; page: string }
   | { event: "zh_intake_start"; page: string; service: string }
   | { event: "zh_intake_submitted"; service: string; country: string; budget_range: string; urgency: string; lead_ref: string; page: string }
-  | { event: "zh_intake_error"; reason: string; page: string };
+  | { event: "zh_intake_error"; reason: string; page: string }
+  | { event: "partner_intake_start"; page: string }
+  | { event: "partner_intake_submitted"; partner_type: string; country: string; services_count: number; page: string }
+  | { event: "partner_intake_error"; reason: string; page: string };
 
 export type WeChatPlacement = "header" | "hero" | "service" | "case_study" | "contact" | "sticky" | "footer" | "intake_success";
 

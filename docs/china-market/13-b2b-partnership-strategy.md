@@ -32,3 +32,33 @@ Referral fee % / reciprocal referral / volume pricing / NDA template / invoicing
 - No B2B content on relationship pages and vice-versa; B2B emails never mention 婚外情.
 - Separate GTM audience: `service ∈ {due_diligence, on_site}`.
 - Separate email signature and a dedicated WeChat account for B2B is recommended (requires confirmation).
+
+---
+
+## Implementation (Phase 3, shipped)
+
+- **Landing page** `/zh/partners` — partner types, B2B service list, three cooperation models (转介 / 分包 / 白标), process, FAQ, application form.
+- **Partner database** `marketing_partners` (migration 0126): org, type, contact (WeChat/email/phone), city/country, services wanted, expected volume, stage (`new → contacted → call_scheduled → agreement → active → inactive`), notes, and a unique **referral slug**.
+- **Attribution**: each partner's referral link is `https://detectivepulse.com/zh?utm_source=<referral_slug>&utm_medium=referral`; the intake form stores `utm_source` on every lead, so `/partners` shows leads and paid cases per partner and `/marketing-insights` shows revenue by source.
+- **Admin** `/partners`: stage/notes editor (audited), copy-referral-link button, lead counts.
+
+## Outreach sequence (templates — adapt, never mass-send; respect platform rules)
+
+**Step 1 · WeChat / email intro (zh)**
+
+> 您好，我是泰国 Detective Pulse 的 [姓名]。我们是一支常驻曼谷的调查与核实团队，自 2016 年起为海外客户提供商业尽职调查、公司与实地核实、资产调查与诉讼支持，报告中英文交付。
+> 我们正在与服务中国客户的律所 / 顾问机构建立合作：转介、分包或白标报告三种方式均可。
+> 如果方便，我可以发一份已脱敏的示例报告，并安排 20 分钟通话了解贵所客户的常见需求。合作计划详情：https://detectivepulse.com/zh/partners
+
+**Step 2 · after reply — send**: redacted sample report (C-3) + `/zh/company-profile` PDF + NDA template (L-2).
+
+**Step 3 · 20-min call agenda**: their client types → our scope and limits (what we refuse) → turnaround and pricing model → cooperation model → referral link.
+
+**Step 4 · follow-up (zh, +7 days, once)**
+
+> [姓名]您好，上周提到的合作资料不知是否已收到？如贵所近期有泰国公司或合作方需要核实，我们可以先做一次小范围核实作为试用，费用按项目计。
+
+**Step 5 · agreement**: move to `agreement` in `/partners`, send the referral link, set a 30-day check-in.
+
+## Seed-list sourcing (manual, no scraping of personal data)
+Public law-firm directories (Thai Bar / Lawyers Council listings with Chinese desks), chamber of commerce member lists (Thai-Chinese Chamber, EEC industrial-estate tenant lists), LinkedIn company pages, exhibition exhibitor lists. Record only business contact details, with the source noted in `admin_notes`.

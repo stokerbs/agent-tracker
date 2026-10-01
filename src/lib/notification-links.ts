@@ -21,6 +21,7 @@ export const notificationLinks = {
   gpsMonitor: () => `/gps-monitor`,
   leads: () => `/leads`,
   recruitment: () => `/recruitment`,
+  partners: () => `/partners`,
 } as const;
 
 /**

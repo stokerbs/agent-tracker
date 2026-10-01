@@ -2684,6 +2684,81 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_partners: {
+        Row: {
+          admin_notes: string | null
+          city: string | null
+          consent_at: string | null
+          contact_name: string
+          country: string | null
+          created_at: string
+          email: string | null
+          expected_volume: string | null
+          id: string
+          locale: string
+          message: string | null
+          org_name: string
+          org_website: string | null
+          partner_type: string
+          phone: string | null
+          referral_slug: string
+          services: string[]
+          source: string
+          stage: string
+          stage_changed_at: string | null
+          user_agent: string | null
+          wechat_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          city?: string | null
+          consent_at?: string | null
+          contact_name: string
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          expected_volume?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          org_name: string
+          org_website?: string | null
+          partner_type: string
+          phone?: string | null
+          referral_slug: string
+          services?: string[]
+          source?: string
+          stage?: string
+          stage_changed_at?: string | null
+          user_agent?: string | null
+          wechat_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          city?: string | null
+          consent_at?: string | null
+          contact_name?: string
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          expected_volume?: string | null
+          id?: string
+          locale?: string
+          message?: string | null
+          org_name?: string
+          org_website?: string | null
+          partner_type?: string
+          phone?: string | null
+          referral_slug?: string
+          services?: string[]
+          source?: string
+          stage?: string
+          stage_changed_at?: string | null
+          user_agent?: string | null
+          wechat_id?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null

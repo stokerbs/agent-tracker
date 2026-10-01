@@ -7,6 +7,11 @@ import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { ZhContactLinks } from "@/components/marketing/zh/contact-links";
 import { ZhPageView } from "@/components/marketing/zh/zh-page-view";
 import { ZhIntakeForm } from "@/components/marketing/zh/zh-intake-form";
+import { ZhPartnerForm } from "@/components/marketing/zh/zh-partner-form";
+import { PrintButton } from "@/components/marketing/zh/zh-company-profile";
+import { ZH_COMPANY } from "@/lib/marketing/zh/company";
+import { ZH_HOME } from "@/lib/marketing/zh/home";
+import { ZH_NAV } from "@/lib/marketing/zh/nav";
 import { ZhCaseStudies } from "@/components/marketing/zh/zh-case-studies";
 import { ZhServiceJsonLd } from "@/components/marketing/zh/zh-json-ld";
 import { RelatedArticles, type RelatedItem } from "@/components/marketing/related-articles";
@@ -24,6 +29,8 @@ export function ZhMarketingPage({ page, articles = [] }: { page: ZhPage; article
   const path = `/zh/${page.slug}`;
   const isContact = page.slug === "contact";
   const isCases = page.slug === "case-studies";
+  const isPartners = page.slug === "partners";
+  const isProfile = page.slug === "company-profile";
   const ctaService = page.service;
 
   return (
@@ -49,9 +56,13 @@ export function ZhMarketingPage({ page, articles = [] }: { page: ZhPage; article
                 </>
               ) : (
                 <>
-                  <Link href={isContact ? "#intake" : "/zh/contact#intake"} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90">
-                    提交案件资料 <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  {isProfile ? (
+                    <PrintButton />
+                  ) : (
+                    <Link href={isContact || isPartners ? "#intake" : "/zh/contact#intake"} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90">
+                      {isPartners ? "提交合作申请" : "提交案件资料"} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  )}
                   <WeChatCta placement="hero" service={ctaService} variant="secondary" />
                 </>
               )}
@@ -120,6 +131,60 @@ export function ZhMarketingPage({ page, articles = [] }: { page: ZhPage; article
 
       {isCases && <ZhCaseStudies />}
 
+      {/* Partners: application form */}
+      {isPartners && (
+        <section id="intake" className="border-t border-border/60 bg-card/30 scroll-mt-24">
+          <div className="mx-auto max-w-3xl px-4 py-16">
+            <SectionHeading eyebrow="Partner · 合作申请" title="提交合作申请" sub="2 个工作日内安排通话。企业信息仅用于评估合作，不会向第三方披露。" />
+            <div className="mt-10"><ZhPartnerForm /></div>
+          </div>
+        </section>
+      )}
+
+      {/* Printable company profile (facts from zh/company.ts + home.ts only) */}
+      {isProfile && (
+        <section className="mx-auto max-w-3xl px-4 py-12 print:py-0">
+          <style>{`@media print { header, footer, nav, [data-print-hide], .dp-hero { display: none !important; } body { background: #fff !important; color: #000 !important; } }`}</style>
+          <div className="space-y-10">
+            <div>
+              <h2 className="font-serif text-2xl font-bold">关于我们</h2>
+              <p className="mt-3 leading-relaxed">Detective Pulse 是一家在泰国运营的专业调查公司，自 {ZH_COMPANY.since} 年起为泰国本地与海外客户提供调查与核实服务。核心团队常驻曼谷，可在全泰国范围执行任务；中文客户服务团队负责沟通、进度与报告。</p>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">服务范围</h2>
+              <ul className="mt-3 space-y-2">
+                {ZH_HOME.services.map((s) => <li key={s.slug} className="relative pl-6 before:absolute before:left-0 before:text-primary before:content-['▸']"><span className="font-medium">{s.label}</span> — {s.blurb}</li>)}
+              </ul>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">工作流程</h2>
+              <ol className="mt-3 space-y-1.5">
+                {ZH_HOME.process.map((p, i) => <li key={p.step}><span className="font-mono text-primary">{String(i + 1).padStart(2, "0")}</span> <span className="font-medium">{p.step}</span> — {p.desc}</li>)}
+              </ol>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">您将收到</h2>
+              <ul className="mt-3 space-y-1.5">{ZH_HOME.deliverables.map((d) => <li key={d} className="relative pl-6 before:absolute before:left-0 before:text-primary before:content-['▸']">{d}</li>)}</ul>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">覆盖地区</h2>
+              <p className="mt-3">{ZH_NAV.locations.map((l) => l.label).join(" · ")} 及泰国其他府</p>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">原则与保密</h2>
+              <ul className="mt-3 space-y-1.5">{ZH_HOME.why.map((w) => <li key={w.title} className="relative pl-6 before:absolute before:left-0 before:text-primary before:content-['▸']"><span className="font-medium">{w.title}</span> — {w.desc}</li>)}</ul>
+              <p className="mt-3 text-sm text-muted-foreground">{ZH_HOME.confidentiality}</p>
+            </div>
+            <div>
+              <h2 className="font-serif text-2xl font-bold">联系方式</h2>
+              <p className="mt-3">微信：{ZH_COMPANY.wechatId} · WhatsApp：{ZH_COMPANY.whatsapp} · 邮箱：{ZH_COMPANY.email}</p>
+              <p className="mt-1">网站：https://detectivepulse.com/zh · 合作伙伴：https://detectivepulse.com/zh/partners</p>
+            </div>
+            <div data-print-hide><PrintButton /></div>
+          </div>
+        </section>
+      )}
+
       {/* Contact: intake form */}
       {isContact && (
         <section id="intake" className="border-t border-border/60 bg-card/30 scroll-mt-24">
@@ -158,7 +223,7 @@ export function ZhMarketingPage({ page, articles = [] }: { page: ZhPage; article
       )}
 
       {/* CTA band */}
-      {!isContact && (
+      {!isContact && !isProfile && (
         <section className="relative overflow-hidden border-t border-border/60 bg-card/30">
           <Crosshair aria-hidden className="pointer-events-none absolute -left-8 bottom-0 h-64 w-64 text-primary/[0.04]" />
           <Fingerprint aria-hidden className="pointer-events-none absolute -right-10 top-10 h-72 w-72 text-primary/[0.03]" />
