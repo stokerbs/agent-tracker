@@ -71,7 +71,8 @@ describe("generateArticle", () => {
     expect(retryBody.messages[0].content).toContain("PREVIOUS DRAFT REJECTED");
     expect(retryBody.messages[0].content).toContain("/zh/background-check");
 
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(toolResponse(bad));
+    // A fresh Response per call — a body can only be read once.
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => toolResponse(bad));
     await expect(generateArticle(seed)).rejects.toThrow(/prohibited phrases/);
   });
 
