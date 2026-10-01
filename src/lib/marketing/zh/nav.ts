@@ -17,6 +17,7 @@ export const ZH_NAV = {
     { slug: "how-it-works", label: "流程" },
     { slug: "pricing", label: "收费" },
     { slug: "case-studies", label: "案例" },
+    { slug: "partners", label: "合作伙伴" },
     { slug: "about", label: "关于" },
     { slug: "contact", label: "联系" },
   ],

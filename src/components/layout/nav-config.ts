@@ -70,6 +70,7 @@ export const NAV_SECTIONS: NavSection[] = [
     sectionKey: "administration",
     items: [
       { labelKey: "leads", href: "/leads", icon: "Inbox", roles: ["admin"] },
+      { labelKey: "partners", href: "/partners", icon: "Handshake", roles: ["admin"] },
       { labelKey: "recruitment", href: "/recruitment", icon: "UserPlus", roles: ["admin"] },
       { labelKey: "aiArticles", href: "/marketing-articles", icon: "Sparkles", roles: ["admin"] },
       { labelKey: "marketingInsights", href: "/marketing-insights", icon: "BarChart2", roles: ["admin"] },
