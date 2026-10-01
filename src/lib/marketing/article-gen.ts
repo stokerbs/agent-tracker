@@ -5,6 +5,9 @@ import { findBannedPhrases } from "@/lib/marketing/zh/compliance";
 import { ZH_SERVICE_PAGE } from "@/lib/marketing/zh/nav";
 
 const MODEL = process.env.MARKETING_AI_MODEL ?? "claude-haiku-4-5-20251001";
+/** Per-call timeout. Two calls (draft + one compliance retry) must fit inside
+ *  the 120 s budget of the cron route / admin action (maxDuration = 120). */
+export const ARTICLE_CALL_TIMEOUT_MS = 55_000;
 
 // Keyword pool seeded from Detective Pulse's real Google Ads search-keyword
 // report — the terms that actually drove clicks/conversions. Each entry pairs a
@@ -52,6 +55,14 @@ export const KEYWORD_TOPICS: KeywordTopic[] = [
   { th: "สำนักงานนักสืบ", en: "private investigator office", zh: "私家侦探事务所", angle: "นักสืบเอกชนทำงานอย่างไร (ฟรีแลนซ์ ไม่มีสำนักงานประจำ)" },
   { th: "เช็คประวัติก่อนแต่งงาน", en: "pre-marriage background check", zh: "婚前背景调查", angle: "ตรวจสอบว่าที่คู่ครองก่อนตัดสินใจแต่งงาน" },
 ];
+
+/** Thrown when the Chinese draft still contains prohibited phrases after one rewrite. */
+export class ComplianceRejectedError extends Error {
+  constructor(public readonly topic: string, public readonly violations: string[]) {
+    super(`chinese draft contains prohibited phrases after retry: ${violations.join(", ")}`);
+    this.name = "ComplianceRejectedError";
+  }
+}
 
 export interface GeneratedArticle {
   topic: string;
@@ -144,10 +155,10 @@ export function sanitizeSlug(raw: string, lang: "th" | "en" | "zh"): string {
 export async function generateArticle(seed: KeywordTopic, feedback?: string): Promise<GeneratedArticle> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const servicePath = seed.service ? ZH_SERVICE_PAGE[seed.service] : undefined;
+  const servicePath = seed.service && Object.hasOwn(ZH_SERVICE_PAGE, seed.service) ? ZH_SERVICE_PAGE[seed.service] : undefined;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
+  const timeout = setTimeout(() => controller.abort(), ARTICLE_CALL_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -190,7 +201,7 @@ export async function generateArticle(seed: KeywordTopic, feedback?: string): Pr
 
   const violations = findBannedPhrases(`${input.zh_title}\n${input.zh_description ?? ""}\n${input.zh_body}`);
   if (violations.length > 0) {
-    if (feedback) throw new Error(`chinese draft contains prohibited phrases after retry: ${violations.join(", ")}`);
+    if (feedback) throw new ComplianceRejectedError(seed.th, violations);
     console.warn("[article-gen] zh draft contained banned phrases, retrying once", { topic: seed.th, violations });
     return generateArticle(seed, `the Chinese text contained prohibited phrases (${violations.join("、")}). Rewrite WITHOUT them and without implying access to restricted data.`);
   }

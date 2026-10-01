@@ -44,6 +44,16 @@ describe("computeFunnel", () => {
     expect(m.byService[1]).toEqual({ key: "unspecified", leads: 1, paid: 1, revenue: 10 });
   });
 
+  it("keeps the funnel monotonic when a converted lead is moved back a stage", () => {
+    const m = computeFunnel([row({ stage: "qualified", converted_at: "2026-09-01T00:00:00Z", final_revenue: 5000 })]);
+    expect(m).toMatchObject({ leads: 1, qualified: 1, quoted: 1, paid: 1, quoteToPaid: 1 });
+  });
+
+  it("lists stages in pipeline order", () => {
+    const m = computeFunnel([row({ stage: "closed" }), row({ stage: "new" }), row({ stage: "quotation_sent" })]);
+    expect(m.byStage.map((s) => s.stage)).toEqual(["new", "quotation_sent", "closed"]);
+  });
+
   it("treats unknown stages as new and ignores negative/invalid money", () => {
     const m = computeFunnel([row({ stage: "bogus", final_revenue: "-5" }), row({ stage: null, quoted_value: "abc" })]);
     expect(m.byStage).toEqual([{ stage: "new", count: 2 }]);

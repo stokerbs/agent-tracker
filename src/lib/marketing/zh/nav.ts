@@ -55,7 +55,7 @@ export const ZH_SERVICE_PAGE: Record<string, string> = {
 
 /** Service key for an article: its stored service, else a guess from the cover category. */
 export function articleServiceKey(service: string | null | undefined, coverCategory: string | null | undefined): string {
-  if (service && ZH_SERVICE_PAGE[service]) return service;
+  if (service && Object.hasOwn(ZH_SERVICE_PAGE, service)) return service;
   switch (coverCategory) {
     case "infidelity": return "relationship";
     case "asset": return "asset";

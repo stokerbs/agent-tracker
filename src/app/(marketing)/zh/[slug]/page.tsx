@@ -9,6 +9,9 @@ import { getPublishedArticlesZhByService } from "@/lib/marketing/articles-db";
 // Every Chinese service / info / location page is pre-rendered from the
 // registry (src/lib/marketing/zh). Unknown slugs 404 at build time.
 export const dynamicParams = false;
+// Related articles are fetched at render time; revalidate hourly so newly
+// published Chinese articles appear without a redeploy.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return ZH_PAGES.map((p) => ({ slug: p.slug }));
@@ -46,7 +49,7 @@ export default async function ZhRegistryPage({ params }: { params: Promise<{ slu
   if (!page) notFound();
   // Related Chinese articles for this service (S-2 internal linking). Info
   // pages (pricing/about/contact/how-it-works) skip it; "general" gets any.
-  const articles = page.kind === "info" ? [] : await getPublishedArticlesZhByService(page.service, 3);
+  const articles = page.kind === "info" ? [] : await getPublishedArticlesZhByService(page.service, 3).catch(() => []);
   return (
     <ZhMarketingPage
       page={page}

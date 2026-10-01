@@ -50,21 +50,30 @@ export async function getPublishedArticlesZh(): Promise<DbArticle[]> {
   return (data as DbArticle[]) ?? [];
 }
 
+export type DbArticleCard = Pick<DbArticle, "id" | "zh_slug" | "zh_title" | "en_slug" | "cover_category" | "service" | "published_at">;
+
 /** Published Chinese articles for one service key (newest first). "general"
- *  returns any Chinese article so the pillar page is never empty. */
-export async function getPublishedArticlesZhByService(service: string, limit = 3): Promise<DbArticle[]> {
-  const svc = createServiceClient();
-  let q = svc
-    .from("marketing_articles")
-    .select("*")
-    .eq("status", "published")
-    .not("zh_slug", "is", null)
-    .order("published_at", { ascending: false })
-    .limit(limit);
-  if (service !== "general") q = q.eq("service", service);
-  const { data, error } = await q;
-  if (error) console.error("[articles-db] by-service query failed", { service, message: error.message });
-  return (data as DbArticle[]) ?? [];
+ *  returns any Chinese article so the pillar page is never empty. Selects only
+ *  card columns (never approve_token) and degrades to [] on any failure — it
+ *  feeds a public, statically rendered page. */
+export async function getPublishedArticlesZhByService(service: string, limit = 3): Promise<DbArticleCard[]> {
+  try {
+    const svc = createServiceClient();
+    let q = svc
+      .from("marketing_articles")
+      .select("id, zh_slug, zh_title, en_slug, cover_category, service, published_at")
+      .eq("status", "published")
+      .not("zh_slug", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(limit);
+    if (service !== "general") q = q.eq("service", service);
+    const { data, error } = await q;
+    if (error) console.error("[articles-db] by-service query failed", { service, message: error.message });
+    return (data as DbArticleCard[]) ?? [];
+  } catch (e) {
+    console.error("[articles-db] by-service query threw", { service, message: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
 }
 
 /** A single published article by its TH or EN slug (public reads). The route
@@ -131,6 +140,33 @@ export async function insertDraft(a: GeneratedArticle, token: string): Promise<{
     .single();
   if (error) throw error;
   return data as { id: string };
+}
+
+/**
+ * Tombstone for a topic whose Chinese draft failed compliance twice. Stored as a
+ * `rejected` row (never published, visible to admins in /marketing-articles) so
+ * getUsedTopicsAndSlugs() marks the topic as used and the next run moves on
+ * instead of re-burning two model calls on it every Tue/Fri.
+ */
+export async function insertComplianceTombstone(topic: string, violations: string[], model: string): Promise<void> {
+  const svc = createServiceClient();
+  const stamp = Date.now().toString(36);
+  const note = `ร่างภาษาจีนถูกปฏิเสธโดยตัวกรองความถูกต้องตามกฎหมาย (${violations.join(", ")}) — หัวข้อนี้จะถูกข้ามไป`;
+  const { error } = await svc.from("marketing_articles").insert({
+    topic,
+    th_slug: `rejected-${stamp}`,
+    en_slug: `rejected-${stamp}`,
+    th_title: `[ปฏิเสธอัตโนมัติ] ${topic}`,
+    th_description: note,
+    th_body: note,
+    en_title: `[auto-rejected] ${topic}`,
+    en_description: `Chinese draft failed the compliance filter (${violations.join(", ")}); topic skipped.`,
+    en_body: `Chinese draft failed the compliance filter (${violations.join(", ")}); topic skipped.`,
+    status: "rejected",
+    approve_token: `rejected-${stamp}-${Math.random().toString(36).slice(2, 10)}`,
+    model,
+  });
+  if (error) throw error;
 }
 
 /** Look up a draft by its approve token (any status — used by the review page). */

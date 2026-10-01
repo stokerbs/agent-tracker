@@ -24,7 +24,6 @@ export function FunnelPanel({ all, zh, error }: { all: FunnelMetrics; zh: Funnel
     { label: "รายได้ต่อลีด", a: money(all.revenuePerLead), z: money(zh.revenuePerLead) },
     { label: "มูลค่าเฉลี่ยต่อเคส", a: money(all.avgCaseValue), z: money(zh.avgCaseValue) },
   ];
-  const stages = zh.byStage.length ? zh.byStage : all.byStage;
 
   return (
     <Card>
@@ -74,7 +73,8 @@ export function FunnelPanel({ all, zh, error }: { all: FunnelMetrics; zh: Funnel
               </div>
               <div>
                 <div className="mb-1.5 font-medium">ลีดจีนตาม stage</div>
-                {stages.map((s) => (
+                {zh.byStage.length === 0 && <p className="border-t border-border/60 py-1 text-muted-foreground">ยังไม่มีลีดจีน</p>}
+                {zh.byStage.map((s) => (
                   <div key={s.stage} className="flex justify-between gap-3 border-t border-border/60 py-1">
                     <span>{LEAD_STAGE_LABELS[s.stage].th}</span>
                     <span className="tabular-nums text-muted-foreground">{s.count}</span>

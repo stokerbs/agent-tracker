@@ -1,9 +1,10 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import { generateArticle } from "@/lib/marketing/article-gen";
+import { generateArticle, ComplianceRejectedError } from "@/lib/marketing/article-gen";
 import { pickSeed } from "@/lib/marketing/article-selection";
-import { getUsedTopicsAndSlugs, insertDraft } from "@/lib/marketing/articles-db";
+import { getUsedTopicsAndSlugs, insertDraft, insertComplianceTombstone } from "@/lib/marketing/articles-db";
+import { reportError } from "@/lib/errors";
 import { pushLineNotify } from "@/lib/line/notify";
 import { notifyRole } from "@/lib/notifications";
 
@@ -28,15 +29,31 @@ export async function runArticleGeneration(): Promise<GenerationResult> {
   const { topics, slugs } = await getUsedTopicsAndSlugs();
   const seed = pickSeed(topics, topics.size);
 
-  const article = await generateArticle(seed);
+  let article;
+  try {
+    article = await generateArticle(seed);
+  } catch (e) {
+    // A twice-rejected Chinese draft marks its topic as used (tombstone) so
+    // the next run picks the next topic instead of stalling on this one.
+    if (e instanceof ComplianceRejectedError) {
+      try {
+        await insertComplianceTombstone(e.topic, e.violations, "compliance-filter");
+      } catch (err) {
+        reportError(err, "article:tombstone");
+      }
+    }
+    throw e;
+  }
 
-  // Avoid slug collisions with earlier AI articles.
+  // Avoid slug collisions with earlier AI articles — suffix from the base
+  // slugs (not cumulatively), so the third attempt is "slug-3", not "slug-2-3".
+  const base = { th: article.thSlug, en: article.enSlug, zh: article.zhSlug };
   let n = 1;
   while (slugs.has(article.thSlug) || slugs.has(article.enSlug) || slugs.has(article.zhSlug)) {
     n += 1;
-    article.thSlug = `${article.thSlug}-${n}`;
-    article.enSlug = `${article.enSlug}-${n}`;
-    article.zhSlug = `${article.zhSlug}-${n}`;
+    article.thSlug = `${base.th}-${n}`;
+    article.enSlug = `${base.en}-${n}`;
+    article.zhSlug = `${base.zh}-${n}`;
   }
 
   const token = crypto.randomBytes(24).toString("base64url");

@@ -1,4 +1,4 @@
-import { funnelStep, isLeadStage, type LeadStage } from "./pipeline";
+import { funnelStep, isLeadStage, LEAD_STAGES, type LeadStage } from "./pipeline";
 
 /**
  * Funnel aggregation for /marketing-insights (docs/china-market/12).
@@ -66,10 +66,13 @@ export function computeFunnel(rows: FunnelLeadRow[]): FunnelMetrics {
   for (const r of rows) {
     const stage: LeadStage = isLeadStage(r.stage) ? r.stage : "new";
     stageCounts.set(stage, (stageCounts.get(stage) ?? 0) + 1);
-    const step = funnelStep(stage);
+    // converted_at is evidence the lead reached "paid" even if an admin later
+    // moved the stage back, so it also counts as qualified + quoted — the
+    // funnel stays monotonic (paid ≤ quoted ≤ qualified ≤ leads).
+    const step = r.converted_at ? "paid" : funnelStep(stage);
     if (step === "qualified" || step === "quote" || step === "paid") qualified += 1;
     if (step === "quote" || step === "paid") quoted += 1;
-    if (step === "paid" || r.converted_at) paid += 1;
+    if (step === "paid") paid += 1;
     revenue += num(r.final_revenue);
     quotedTotal += num(r.quoted_value);
   }
@@ -87,6 +90,6 @@ export function computeFunnel(rows: FunnelLeadRow[]): FunnelMetrics {
     avgCaseValue: paid ? revenue / paid : null,
     bySource: breakdown(rows, (r) => (r.utm_source?.trim() ? `${r.source} / ${r.utm_source.trim()}` : r.source)),
     byService: breakdown(rows, (r) => r.service?.trim() || "unspecified"),
-    byStage: [...stageCounts.entries()].map(([stage, count]) => ({ stage, count })),
+    byStage: LEAD_STAGES.filter((st) => stageCounts.has(st)).map((stage) => ({ stage, count: stageCounts.get(stage)! })),
   };
 }

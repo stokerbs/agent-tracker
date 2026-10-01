@@ -25,17 +25,17 @@ Owners: **Growth** (Chinese market owner), **Eng** (frontend-builder / backend-a
 
 ## Phase 2 — Days 15–30
 
-| ID | Task | P | Owner | Depends | Impact | Metric |
-|---|---|---|---|---|---|---|
+| ID | Task | P | Owner | Depends | Impact | Metric | Status |
+|---|---|---|---|---|---|---|---|
 | C-1 | Update AI article generator prompt with 30-topic plan + compliance rules; publish 10 zh articles | P0 | Growth + Eng (ai-engineer) | E-3 | organic reach | 10 published, indexed | ✅ engine (`zh/topics.ts`, `article-selection.ts`, banned-phrase guard); publishing = approve drafts in LINE/`/review` ⏳ |
 | C-2 | 3 anonymised case studies supplied by DP → `case-studies.ts` (page auto-indexes) | P0 | DP + Growth | F-1 | trust | 3 live | ⏳ needs DP input (template in doc 13) |
-| C-3 | Redacted sample report images for `/zh/how-it-works` | P1 | DP | – | trust | asset live |
-| S-1 | Location pages QA with DP for local accuracy (Bangkok, Pattaya, Phuket, Chiang Mai) | P1 | DP | E-3 | truthfulness | sign-off |
+| C-3 | Redacted sample report images for `/zh/how-it-works` | P1 | DP | – | trust | asset live | ⏳ |
+| S-1 | Location pages QA with DP for local accuracy (Bangkok, Pattaya, Phuket, Chiang Mai) | P1 | DP | E-3 | truthfulness | sign-off | ⏳ |
 | S-2 | Internal-link pass: tag articles with a service for `RelatedArticles` | P1 | Eng | C-1 | crawl depth | every article links to 1 service | ✅ migration 0125, article → service box, service → 相关文章 |
 | S-3 | Submit sitemap in GSC; Bing Webmaster; test Baidu site submission (free) | P0 | Growth | E-3 | indexing | 19 URLs indexed in Google | GSC ✅ (2026-10-01) · Bing/Baidu ⏳ |
-| A-1 | GTM: GA4 tags for all events; conversions; dimensions | P0 | Growth | E-9 | measurement | GA4 report populated |
+| A-1 | GTM: GA4 tags for all events; conversions; dimensions | P0 | Growth | E-9 | measurement | GA4 report populated | ⏳ |
 | A-2 | `/marketing-insights` funnel panel (stages, rates, revenue by source) | P1 | Eng | DB-1 | decisions | panel live | ✅ |
-| K-1 | SERP competitor sheet + Baidu Index / GKP validation of keyword map | P1 | Growth | – | focus | sheet complete |
+| K-1 | SERP competitor sheet + Baidu Index / GKP validation of keyword map | P1 | Growth | – | focus | sheet complete | ⏳ |
 
 ## Phase 3 — Days 31–60
 
