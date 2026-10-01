@@ -56,10 +56,11 @@ export function generateReferralSlug(orgName: string, random: () => number = cry
   const base = orgName
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[^a-z0-9一-鿿]+/g, "-")
-    .replace(/[一-鿿]/g, "")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
+    .replace(/\p{M}/gu, "")                 // "Café" → "cafe", not "cafe-"
+    .replace(/[^a-z0-9]+/g, "-")             // CJK and symbols → single hyphen
+    .replace(/-+/g, "-")
+    .slice(0, 24)
+    .replace(/^-+|-+$/g, "");                // trim after the cut so no "--" before the tail
   let tail = "";
   for (let i = 0; i < TAIL_LENGTH; i++) tail += ALPHABET[Math.floor(random() * ALPHABET.length)];
   return `partner-${base ? `${base}-` : ""}${tail}`;
