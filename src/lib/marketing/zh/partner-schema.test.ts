@@ -43,6 +43,8 @@ describe("referral slug", () => {
     expect(s).toBe("partner-siam-legal-partners-222222");
     expect(REFERRAL_SLUG_PATTERN.test(s)).toBe(true);
     expect(generateReferralSlug("律师事务所", () => 0)).toBe("partner-222222");
+    expect(generateReferralSlug("Café Légal", () => 0)).toBe("partner-cafe-legal-222222");
+    expect(generateReferralSlug("siam legal partners abc d", () => 0)).not.toContain("--");
     expect(generateReferralSlug("A".repeat(40), () => 0.99)).toMatch(/^partner-a{24}-[a-z0-9]{6}$/);
     // Default randomness is crypto-backed and never repeats across a sample.
     const sample = new Set(Array.from({ length: 50 }, () => generateReferralSlug("x")));

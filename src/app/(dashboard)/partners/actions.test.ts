@@ -40,6 +40,7 @@ describe("updatePartner", () => {
     await expect(updatePartner(fd())).rejects.toThrow();
     expect(await updatePartner(fd({ stage: "won" }))).toEqual({ error: "invalid_input" });
     expect(await updatePartner(fd({ id: "x" }))).toEqual({ error: "invalid_input" });
+    expect(await updatePartner(fd({ adminNotes: "x".repeat(2001) }))).toEqual({ error: "invalid_input" });
   });
   it("stamps stage_changed_at only on change, nulls empty notes, audits without contact data", async () => {
     expect(await updatePartner(fd({ stage: "agreement", adminNotes: "" }))).toEqual({ ok: true });

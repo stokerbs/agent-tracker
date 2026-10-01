@@ -14,6 +14,7 @@ import { POST } from "./route";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyRole } from "@/lib/notifications";
+import { reportError } from "@/lib/errors";
 import { REFERRAL_SLUG_PATTERN } from "@/lib/marketing/zh/partner-schema";
 
 function svc(errors: ({ code: string; message: string } | null)[] = [null]) {
@@ -61,6 +62,12 @@ describe("POST /api/marketing/partner", () => {
     expect((await POST(req(null, { badJson: true }))).status).toBe(400);
     expect((await POST(req({ ...valid, services: [] }))).status).toBe(400);
     expect((await POST(req({ ...valid, wechatId: "" }))).status).toBe(400);
+  });
+  it("500 + reportError on a non-duplicate insert error", async () => {
+    const s = svc([{ code: "42501", message: "permission denied" }]); vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    expect((await POST(req(valid))).status).toBe(500);
+    expect(s.insert).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reportError)).toHaveBeenCalledWith(expect.anything(), "marketing:partner:insert");
   });
   it("retries the slug on a unique violation, 500 after three", async () => {
     const dup = { code: "23505", message: "dup" };

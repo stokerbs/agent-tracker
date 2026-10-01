@@ -23,9 +23,11 @@ export function ZhPartnerForm() {
   const [error, setError] = useState("");
   const started = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (state === "done") heading.current?.focus();
-  }, [state]);
+    if (state === "error") errorRef.current?.focus();
+  }, [state, error]);
 
   function onFirstInteraction() {
     if (started.current) return;
@@ -161,7 +163,7 @@ export function ZhPartnerForm() {
         <span>我已阅读并同意 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">隐私政策</a>，同意贵公司存储并使用以上信息以便联系我讨论合作。*</span>
       </label>
 
-      {state === "error" && <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive" role="alert">{error}</p>}
+      {state === "error" && <p ref={errorRef} tabIndex={-1} className="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive outline-none" role="alert">{error}</p>}
 
       <button type="submit" disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 sm:w-auto">
         {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> 提交中…</> : "提交合作申请"}

@@ -24,7 +24,7 @@ create table if not exists public.marketing_partners (
   message          text,
   locale           text not null default 'zh',
   source           text not null default 'website',
-  referral_slug    text not null unique,          -- partner-<org>-<xxxx>; used as utm_source
+  referral_slug    text not null unique,          -- partner-<org>-<xxxxxx>; used as utm_source
   stage            text not null default 'new',
   stage_changed_at timestamptz,
   admin_notes      text,
