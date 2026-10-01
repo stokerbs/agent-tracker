@@ -36,8 +36,11 @@ const normalise = (t: string) => t.replace(/[\s\p{P}\p{S}]/gu, "");
  * un-negated mention counts. The window is 12 normalised characters — enough
  * for "没有任何合法机构能够查" without reaching back into a previous clause.
  */
-const NEGATION = /(不|无法|无|没有|没法|不能|不会|不提供|不做|不可能|非法|违法|禁止|拒绝|无权|并非|绝不|严禁|杜绝)/;
+const NEGATION = /(不|无法|无|没有|没法|不能|不会|不提供|不做|不可能|违法|禁止|拒绝|无权|并非|绝不|严禁|杜绝)/;
 const LOOKBACK = 12;
+/** Clause boundaries: a negation in one clause must not excuse the next
+ *  ("我们不提供开房记录。但我们提供手机定位"). 、 and · stay inside a clause. */
+const CLAUSE_SPLIT = /[。！？；，,.!?;\n]/;
 
 function unNegatedMention(normalised: string, phrase: string): boolean {
   let from = 0;
@@ -51,9 +54,12 @@ function unNegatedMention(normalised: string, phrase: string): boolean {
 }
 
 export function findBannedPhrases(text: string): string[] {
-  const n = normalise(text);
   const hits = new Set<string>();
-  for (const p of ZH_BANNED_PHRASES) if (unNegatedMention(n, p)) hits.add(p);
-  for (const [trad, simp] of Object.entries(TRADITIONAL_VARIANTS)) if (unNegatedMention(n, trad)) hits.add(simp);
+  for (const clause of text.split(CLAUSE_SPLIT)) {
+    const n = normalise(clause);
+    if (!n) continue;
+    for (const p of ZH_BANNED_PHRASES) if (unNegatedMention(n, p)) hits.add(p);
+    for (const [trad, simp] of Object.entries(TRADITIONAL_VARIANTS)) if (unNegatedMention(n, trad)) hits.add(simp);
+  }
   return ZH_BANNED_PHRASES.filter((p) => hits.has(p));
 }
