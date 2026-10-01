@@ -48,7 +48,9 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
   const [error, setError] = useState("");
   const [leadRef, setLeadRef] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [filesFailed, setFilesFailed] = useState(0);
   const started = useRef(false);
+  const successHeading = useRef<HTMLHeadingElement>(null);
   const attribution = useRef({ landingPage: "", referrer: "", utmSource: "", utmMedium: "", utmCampaign: "", utmTerm: "" });
 
   useEffect(() => {
@@ -97,12 +99,21 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
       return;
     }
     setFiles(next);
+    // A valid add clears a stale file error so the user isn't told off twice.
+    if (state === "error") { setState("idle"); setError(""); }
     e.target.value = "";
   }
+
+  useEffect(() => {
+    if (state === "done") successHeading.current?.focus();
+  }, [state]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    // Native constraint validation first (required / minLength / email) so the
+    // browser points at the offending field; the server re-validates anyway.
+    if (!form.reportValidity()) return;
     const fd = new FormData(form);
     if (!fd.get("consent")) {
       setState("error");
@@ -118,9 +129,10 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
     setError("");
     try {
       const res = await fetch("/api/marketing/zh-intake", { method: "POST", body: fd });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; leadRef?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; leadRef?: string; error?: string; filesFailed?: number };
       if (res.ok && data.ok && data.leadRef) {
         setLeadRef(data.leadRef);
+        setFilesFailed(data.filesFailed ?? 0);
         setState("done");
         track({
           event: "zh_intake_submitted",
@@ -135,7 +147,8 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
         setFiles([]);
         return;
       }
-      const reason = data.error ?? (res.status === 429 ? "rate_limited" : "server_error");
+      // A platform-level 413 (body too large) arrives with no JSON body.
+      const reason = data.error ?? (res.status === 429 ? "rate_limited" : res.status === 413 ? "file_rejected" : "server_error");
       track({ event: "zh_intake_error", reason, page: currentPage() });
       setState("error");
       setError(
@@ -155,10 +168,15 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
     return (
       <div className="rounded-xl border border-success/40 bg-success/5 p-8 text-center" role="status" aria-live="polite">
         <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
-        <h3 className="mt-3 font-serif text-xl font-bold">已收到您的案件资料</h3>
+        <h3 ref={successHeading} tabIndex={-1} className="mt-3 font-serif text-xl font-bold outline-none">已收到您的案件资料</h3>
         <p className="mt-2 text-sm text-muted-foreground">您的案件编号：</p>
         <code className="mt-2 inline-block rounded-md border border-border bg-background px-4 py-2 font-mono text-lg tracking-wider">{leadRef}</code>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">请保存此编号。我们会在 24 小时内通过您留下的微信或邮箱联系您。想更快开始？添加微信并告诉我们这个编号。</p>
+        {filesFailed > 0 && (
+          <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
+            资料已收到，但有 {filesFailed} 个附件上传失败。请通过微信补发，并注明案件编号。
+          </p>
+        )}
         <div className="mt-5">
           <WeChatCta placement="intake_success" />
         </div>
@@ -166,12 +184,13 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
     );
   }
 
+  const errorLink = state === "error" ? { "aria-describedby": "zi-error" } : {};
   const field = "w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-primary";
   const label = "mb-1.5 block text-sm font-medium";
   const busy = state === "sending";
 
   return (
-    <form onSubmit={onSubmit} onFocusCapture={onFirstInteraction} className="space-y-5 text-left" noValidate>
+    <form onSubmit={onSubmit} onFocusCapture={onFirstInteraction} className="space-y-5 text-left">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor="zi-name">姓名或昵称 *</label>
@@ -248,6 +267,7 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
           <Paperclip className="h-4 w-4" /> 添加文件
           <input type="file" name="files" multiple accept={ZH_INTAKE_ALLOWED_MIME.join(",")} onChange={onFiles} className="sr-only" disabled={busy || files.length >= ZH_INTAKE_MAX_FILES} />
         </label>
+        {files.length >= ZH_INTAKE_MAX_FILES && <span className="ml-2 text-xs text-muted-foreground">已达上限</span>}
         {files.length > 0 && (
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {files.map((f, i) => (
@@ -273,10 +293,10 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
       </label>
 
       {state === "error" && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive" role="alert">{error}</p>
+        <p id="zi-error" className="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive" role="alert">{error}</p>
       )}
 
-      <button type="submit" disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 sm:w-auto">
+      <button type="submit" disabled={busy} {...errorLink} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 sm:w-auto">
         {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> 提交中…</> : "提交案件资料，获取案件编号"}
       </button>
       <p className="text-xs text-muted-foreground">提交后不产生任何费用。我们不会向第三方披露您的信息。</p>

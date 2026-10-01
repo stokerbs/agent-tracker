@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ZH_PAGES, ZH_NAV, ZH_SLUG_LINKS, getZhPage } from "./registry";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
+import { zhSlugForEn } from "./nav";
 
 /** Phrases that would claim unlawful access — must never appear in copy. */
 const BANNED = ["开房记录", "通话记录", "手机定位", "银行流水", "查身份证", "监听", "黑客", "出入境记录查询", "数据库查询"];
@@ -75,8 +76,13 @@ describe("Chinese page registry", () => {
     const expected = ZH_PAGES.filter((p) => p.en || p.th).map((p) => ({ slug: p.slug, en: p.en, th: p.th }));
     expect(ZH_SLUG_LINKS.map((l) => ({ slug: l.slug, en: l.en, th: l.th })).sort((a, b) => a.slug.localeCompare(b.slug)))
       .toEqual(expected.sort((a, b) => a.slug.localeCompare(b.slug)));
-    // Every EN counterpart must be a real English page with a Thai twin.
-    for (const l of ZH_SLUG_LINKS) if (l.en) expect(EN_TO_TH[l.en], l.en).toBe(l.th);
+    // Every EN counterpart must be a real English page with a Thai twin, and
+    // the reverse lookup used by the TH/EN pages' hreflang must round-trip.
+    for (const l of ZH_SLUG_LINKS) {
+      if (!l.en) continue;
+      expect(EN_TO_TH[l.en], l.en).toBe(l.th);
+      expect(zhSlugForEn(l.en)).toBe(l.slug);
+    }
   });
 
   it("case-studies is noindexed while empty; nothing else is", () => {

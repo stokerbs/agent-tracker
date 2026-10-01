@@ -28,7 +28,8 @@ export function WeChatCta({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
+  const copied = copy === "copied";
 
   const base =
     variant === "primary"
@@ -45,12 +46,13 @@ export function WeChatCta({
   async function copyId() {
     try {
       await navigator.clipboard.writeText(ZH_COMPANY.wechatId);
-      setCopied(true);
+      setCopy("copied");
       track({ event: "wechat_id_copied", page: currentPage() });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopy("idle"), 2000);
     } catch {
-      // Clipboard can be unavailable (insecure context / permissions); the ID
-      // is still visible as text for manual copy.
+      // Clipboard can be unavailable (insecure context / permissions); tell the
+      // user so they copy the visible ID by hand.
+      setCopy("failed");
     }
   }
 
@@ -84,12 +86,14 @@ export function WeChatCta({
               type="button"
               onClick={copyId}
               className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
-              aria-live="polite"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? "已复制" : "复制微信号"}
             </button>
           </div>
+          <span role="status" aria-live="polite" className={copy === "failed" ? "mt-2 block text-xs text-destructive" : "sr-only"}>
+            {copy === "copied" ? "微信号已复制" : copy === "failed" ? "复制失败，请手动复制上方微信号" : ""}
+          </span>
           <p className="mt-4 text-xs text-muted-foreground">
             也可以 <a href={`mailto:${ZH_COMPANY.email}`} className="text-primary underline-offset-2 hover:underline">发送邮件</a> 或{" "}
             <Link href="/zh/contact#intake" className="text-primary underline-offset-2 hover:underline" onClick={() => setOpen(false)}>提交案件资料</Link>

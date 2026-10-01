@@ -31,10 +31,17 @@ function safeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(0, 120) || "file";
 }
 
+/** Rejections are logged with the reason + IP only — never form content. */
+function rejected(reason: string, ip: string, status: number) {
+  console.warn("[marketing:zh-intake] rejected", { reason, ip });
+  return NextResponse.json({ ok: false, error: reason }, { status });
+}
+
 export async function POST(request: NextRequest) {
   const ip = clientIp(request);
   const rl = await checkRateLimit("zh_intake", ip);
   if (!rl.allowed) {
+    console.warn("[marketing:zh-intake] rejected", { reason: "rate_limited", ip });
     return NextResponse.json(
       { ok: false, error: "rate_limited" },
       { status: 429, headers: { "retry-after": String(Math.ceil(rl.retryAfterMs / 1000)) } },
@@ -44,26 +51,27 @@ export async function POST(request: NextRequest) {
   // Refuse oversized bodies before buffering the multipart payload.
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (!Number.isFinite(declared) || declared > ZH_INTAKE_MAX_BODY_BYTES) {
-    return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 413 });
+    return rejected("file_rejected", ip, 413);
   }
 
   let fd: FormData;
   try {
     fd = await request.formData();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
+    return rejected("invalid_body", ip, 400);
   }
 
   // Honeypot first — a bot that filled it must never learn whether the rest
   // of its payload would have validated. Pretend success, store nothing.
   const website = fd.get("website");
   if (typeof website === "string" && website.length > 0) {
+    console.warn("[marketing:zh-intake] rejected", { reason: "honeypot", ip });
     return NextResponse.json({ ok: true, leadRef: generateLeadRef() });
   }
 
   const parsed = zhIntakeSchema.safeParse(intakeFromFormData(fd));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "invalid_input" }, { status: 400 });
+    return rejected("invalid_input", ip, 400);
   }
   const { website: _hp, ...data } = parsed.data;
 
@@ -71,17 +79,15 @@ export async function POST(request: NextRequest) {
   // half-created lead behind. The declared MIME type is only an assertion —
   // the first bytes must agree with it.
   const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length > ZH_INTAKE_MAX_FILES) return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
+  if (files.length > ZH_INTAKE_MAX_FILES) return rejected("file_rejected", ip, 400);
   let total = 0;
   for (const f of files) {
     total += f.size;
     if (f.size > ZH_INTAKE_MAX_FILE_BYTES || total > ZH_INTAKE_MAX_TOTAL_BYTES || !(ZH_INTAKE_ALLOWED_MIME as readonly string[]).includes(f.type)) {
-      return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
+      return rejected("file_rejected", ip, 400);
     }
     const head = new Uint8Array(await f.slice(0, 16).arrayBuffer());
-    if (sniffMime(head) !== f.type) {
-      return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
-    }
+    if (sniffMime(head) !== f.type) return rejected("file_rejected", ip, 400);
   }
 
   const svc = createServiceClient();
@@ -157,22 +163,28 @@ export async function POST(request: NextRequest) {
       mime_type: f.type,
       size_bytes: f.size,
     });
-    if (fileErr) reportError(fileErr, "marketing:zh-intake:file-row");
-    else uploaded++;
+    if (fileErr) {
+      reportError(fileErr, "marketing:zh-intake:file-row");
+      // Don't leave an orphaned object nobody can see from the admin side.
+      await svc.storage.from(BUCKET).remove([key]);
+    } else {
+      uploaded++;
+    }
   }
+  const filesFailed = files.length - uploaded;
 
-  console.info("[marketing:zh-intake] lead created", { leadRef, service: data.service, country: data.country, files: uploaded });
+  console.info("[marketing:zh-intake] lead created", { leadRef, service: data.service, country: data.country, files: uploaded, filesFailed });
 
   after(async () => {
     await notifyRole(["admin"], {
       type: "system",
       title: "ลูกค้าจีนใหม่ (Chinese lead)",
-      body: `${leadRef} · ${data.service} · ${data.country} · ${data.targetLocation}${uploaded ? ` · ${uploaded} ไฟล์` : ""}`,
+      body: `${leadRef} · ${data.service} · ${data.country} · ${data.targetLocation}${uploaded ? ` · ${uploaded} ไฟล์` : ""}${filesFailed ? ` · ${filesFailed} ไฟล์ล้มเหลว` : ""}`,
       url: notificationLinks.leads(),
       priority: "high",
       line: true,
     });
   });
 
-  return NextResponse.json({ ok: true, leadRef });
+  return NextResponse.json({ ok: true, leadRef, filesUploaded: uploaded, filesFailed });
 }

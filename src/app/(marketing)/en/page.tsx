@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Private Investigator in Thailand | Detective Pulse",
   description:
     "Detective Pulse — professional private investigators in Thailand. Infidelity, asset searches, missing persons, background checks and cyber investigations. Confidential, nationwide.",
-  alternates: { canonical: "/en", languages: { en: "/en", th: "/", zh: "/zh" } },
+  alternates: { canonical: "/en", languages: { en: "/en", th: "/", "zh-CN": "/zh", "x-default": "/en" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/en",

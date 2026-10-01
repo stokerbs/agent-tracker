@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inbox } from "lucide-react";
+import { Inbox, AlertTriangle } from "lucide-react";
+import { reportError } from "@/lib/errors";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
@@ -80,17 +81,21 @@ function ZhDetails({ l }: { l: Lead }) {
 export default async function LeadsPage() {
   await requireRole(["admin"]);
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error: leadsError } = await supabase
     .from("marketing_leads")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(500);
+  if (leadsError) reportError(leadsError, "leads:list");
   const leads = (data as Lead[]) ?? [];
   // Intake attachments (admin RLS) grouped by lead for the pipeline controls.
-  const { data: fileRows } = await supabase
-    .from("marketing_lead_files")
-    .select("id, lead_id, file_name, size_bytes")
-    .in("lead_id", leads.map((l) => l.id));
+  const { data: fileRows, error: filesError } = leads.length
+    ? await supabase
+        .from("marketing_lead_files")
+        .select("id, lead_id, file_name, size_bytes")
+        .in("lead_id", leads.map((l) => l.id))
+    : { data: [], error: null };
+  if (filesError) reportError(filesError, "leads:files");
   const filesByLead = new Map<string, LeadFileSummary[]>();
   for (const f of fileRows ?? []) {
     const list = filesByLead.get(f.lead_id) ?? [];
@@ -118,7 +123,19 @@ export default async function LeadsPage() {
         title="ลูกค้าที่ติดต่อเข้ามา"
         description="รายชื่อที่กรอกฟอร์มติดต่อจากหน้าเว็บ detectivepulse.com"
       />
-      {leads.length === 0 ? (
+      {leadsError ? (
+        // Error state — distinct from "no leads yet" so a failing query is
+        // never mistaken for an empty inbox.
+        <Card className="border-destructive/40">
+          <CardContent className="flex items-start gap-3 p-4 text-sm">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div>
+              <div className="font-medium">โหลดรายชื่อลูกค้าไม่สำเร็จ</div>
+              <p className="text-muted-foreground">ลองรีเฟรชหน้าอีกครั้ง หากยังไม่ได้ กรุณาแจ้งผู้ดูแลระบบ</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : leads.length === 0 ? (
         <EmptyState
           icon={<Inbox className="h-6 w-6" />}
           title="ยังไม่มีลูกค้าติดต่อเข้ามา"
@@ -126,6 +143,9 @@ export default async function LeadsPage() {
         />
       ) : (
         <>
+          {filesError && (
+            <p className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">โหลดไฟล์แนบไม่สำเร็จ — รายชื่อแสดงได้ แต่ปุ่มไฟล์อาจหายไปชั่วคราว</p>
+          )}
           {/* Mobile: readable stacked cards with clear labels */}
           <div className="space-y-3 md:hidden">
             {leads.map((l) => (

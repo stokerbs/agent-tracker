@@ -27,7 +27,7 @@ export async function generateMetadata(
     description: a.zh_description ?? undefined,
     alternates: {
       canonical,
-      languages: { zh: canonical, th: `/articles/${a.th_slug}`, en: `/en/articles/${a.en_slug}` },
+      languages: { "zh-CN": canonical, th: `/articles/${a.th_slug}`, en: `/en/articles/${a.en_slug}`, "x-default": `/en/articles/${a.en_slug}` },
     },
     openGraph: {
       type: "article",

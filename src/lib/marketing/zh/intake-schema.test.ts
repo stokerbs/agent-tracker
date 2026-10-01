@@ -45,6 +45,19 @@ describe("zhIntakeSchema", () => {
     expect(zhIntakeSchema.safeParse({ ...valid, email: "a@b.co" }).success).toBe(true);
     expect(zhIntakeSchema.safeParse({ ...valid, preferredStart: "15/10/2026" }).success).toBe(false);
     expect(zhIntakeSchema.safeParse({ ...valid, preferredStart: "" }).success).toBe(true);
+    // Well-formed but impossible dates must fail here, not at the DB.
+    expect(zhIntakeSchema.safeParse({ ...valid, preferredStart: "2026-02-31" }).success).toBe(false);
+    expect(zhIntakeSchema.safeParse({ ...valid, preferredStart: "2026-13-01" }).success).toBe(false);
+    expect(zhIntakeSchema.safeParse({ ...valid, preferredStart: "2028-02-29" }).success).toBe(true);
+  });
+
+  it("FormData with a missing key or a File value does not validate", () => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(valid)) if (k !== "wechatId") fd.set(k, String(v));
+    expect(intakeFromFormData(fd).wechatId).toBeUndefined();
+    expect(zhIntakeSchema.safeParse(intakeFromFormData(fd)).success).toBe(false);
+    fd.set("wechatId", new File([new Uint8Array([1])], "x.bin"));
+    expect(intakeFromFormData(fd).wechatId).toBeUndefined();
   });
 
   it("round-trips FormData (consent 'true' → true)", () => {

@@ -42,11 +42,16 @@ export const zhIntakeSchema = z.object({
   service: z.enum(ZH_SERVICES),
   knownInfo: z.string().trim().min(10).max(3000),
   objective: z.string().trim().min(5).max(1500),
-  // ISO date (yyyy-mm-dd) or empty — the form uses <input type=date>.
+  // ISO calendar date (yyyy-mm-dd) or empty — the form uses <input type=date>.
+  // Must be a real date: the column is `date`, so 2026-02-31 would 500 later.
   preferredStart: z
     .string()
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((d) => {
+      const t = new Date(`${d}T00:00:00Z`);
+      return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d;
+    }, "invalid calendar date")
     .optional()
     .or(z.literal("")),
   estimatedDuration: z.enum(ZH_DURATIONS),

@@ -8,6 +8,12 @@ import { LEAD_STAGES, LEAD_STAGE_LABELS, type LeadStage } from "@/lib/marketing/
 
 export interface LeadFileSummary { id: string; file_name: string; size_bytes: number }
 
+const ERROR_TH: Record<string, string> = {
+  invalid_input: "ข้อมูลไม่ถูกต้อง",
+  not_found: "ไม่พบรายการ",
+  storage_error: "ระบบไฟล์ขัดข้อง",
+};
+
 /** Inline pipeline editor for one lead row (stage, values, notes, files). */
 export function LeadPipelineControls({
   id, stage, estimatedValue, quotedValue, finalRevenue, adminNotes, files,
@@ -22,14 +28,21 @@ export function LeadPipelineControls({
 }) {
   const [pending, start] = useTransition();
   const [opening, setOpening] = useState<string | null>(null);
+  // Signed URLs resolved so far — rendered as real links (a window.open after
+  // an await is blocked by Safari/iOS popup blockers).
+  const [urls, setUrls] = useState<Record<string, string>>({});
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     start(async () => {
-      const res = await updateLeadPipeline(fd);
-      if ("error" in res) toast.error(`บันทึกไม่สำเร็จ: ${res.error}`);
-      else toast.success("บันทึก pipeline แล้ว");
+      try {
+        const res = await updateLeadPipeline(fd);
+        if ("error" in res) toast.error(`บันทึกไม่สำเร็จ: ${ERROR_TH[res.error] ?? res.error}`);
+        else toast.success("บันทึก pipeline แล้ว");
+      } catch {
+        toast.error("บันทึกไม่สำเร็จ: เครือข่ายขัดข้อง");
+      }
     });
   }
 
@@ -37,8 +50,10 @@ export function LeadPipelineControls({
     setOpening(fileId);
     try {
       const res = await getLeadFileUrl(fileId);
-      if ("url" in res) window.open(res.url, "_blank", "noopener");
-      else toast.error("เปิดไฟล์ไม่ได้");
+      if ("url" in res) setUrls((u) => ({ ...u, [fileId]: res.url }));
+      else toast.error(`เปิดไฟล์ไม่ได้: ${ERROR_TH[res.error] ?? res.error}`);
+    } catch {
+      toast.error("เปิดไฟล์ไม่ได้: เครือข่ายขัดข้อง");
     } finally {
       setOpening(null);
     }
@@ -64,10 +79,16 @@ export function LeadPipelineControls({
         <ul className="flex flex-wrap gap-2">
           {files.map((f) => (
             <li key={f.id}>
-              <button type="button" onClick={() => openFile(f.id)} disabled={opening === f.id} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted disabled:opacity-60">
-                {opening === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
-                {f.file_name} ({Math.ceil(f.size_bytes / 1024)} KB)
-              </button>
+              {urls[f.id] ? (
+                <a href={urls[f.id]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded border border-primary/50 px-2 py-1 text-primary hover:bg-primary/10">
+                  <Paperclip className="h-3 w-3" /> ดาวน์โหลด {f.file_name} ({Math.ceil(f.size_bytes / 1024)} KB)
+                </a>
+              ) : (
+                <button type="button" onClick={() => openFile(f.id)} disabled={opening === f.id} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted disabled:opacity-60">
+                  {opening === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
+                  {f.file_name} ({Math.ceil(f.size_bytes / 1024)} KB)
+                </button>
+              )}
             </li>
           ))}
         </ul>

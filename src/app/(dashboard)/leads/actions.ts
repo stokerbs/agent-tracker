@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
-import { handleDbError } from "@/lib/errors";
+import { handleDbError, reportError } from "@/lib/errors";
 import { LEAD_STAGES, PAID_STAGES, legacyStatusFor } from "@/lib/marketing/zh/pipeline";
 
 const money = z.preprocess(
@@ -96,7 +96,10 @@ export async function getLeadFileUrl(fileId: string): Promise<{ url: string } | 
   const objectPath = file.storage_path.slice(LEAD_FILES_BUCKET.length + 1);
   const svc = createServiceClient();
   const { data, error } = await svc.storage.from(LEAD_FILES_BUCKET).createSignedUrl(objectPath, 600, { download: file.file_name });
-  if (error || !data) return { error: "storage_error" };
+  if (error || !data) {
+    reportError(error ?? new Error("signed url missing"), "leads:fileUrl");
+    return { error: "storage_error" };
+  }
   await logAudit({ actorId: profile.id, action: "LEAD_FILE_VIEW", entity: "marketing_lead_files", entityId: file.id, metadata: { lead_id: file.lead_id } });
   return { url: data.signedUrl };
 }
