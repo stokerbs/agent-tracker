@@ -4,7 +4,7 @@ import { ContactFab } from "@/components/marketing/contact-fab";
 import { AssistantWidget } from "@/components/marketing/assistant-widget";
 import { StickyContactBar } from "@/components/marketing/sticky-contact-bar";
 import { ExitIntent } from "@/components/marketing/exit-intent";
-import { LangSwitch } from "@/components/marketing/lang-switch";
+import { SiteNav, SiteFooterLinks } from "@/components/marketing/site-nav";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com.
@@ -51,18 +51,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 Detective<span className="text-primary">Pulse</span>
               </span>
             </Link>
-            <nav className="flex items-center gap-3 font-mono text-xs uppercase tracking-wider text-muted-foreground sm:gap-5">
-              <Link href="/" className="hover:text-foreground">
-                หน้าแรก
-              </Link>
-              <Link href="/careers" className="hover:text-foreground">
-                ร่วมงาน
-              </Link>
-              <Link href="/ติดต่อนักสืบ/" className="hover:text-foreground">
-                ติดต่อ
-              </Link>
-              <LangSwitch />
-            </nav>
+            <SiteNav />
           </div>
         </header>
 
@@ -80,11 +69,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 © {new Date().getFullYear()} · Since 2016 · นักสืบเอกชนมืออาชีพ
               </p>
-              <nav className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                <Link href="/careers" className="hover:text-primary">ร่วมงานกับเรา · Careers</Link>
-                <span aria-hidden className="text-border">·</span>
-                <Link href="/privacy" className="hover:text-primary">นโยบายความเป็นส่วนตัว</Link>
-              </nav>
+              <SiteFooterLinks />
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/80">
                 {"// End of file — all case data confidential"}
               </p>

@@ -141,3 +141,18 @@ erDiagram
 |-------|---------|
 | `ai_prompts` | Editable AI prompt templates (intake, reports). |
 | `ai_prompt_versions` | Version history for prompt edits. |
+
+## Marketing leads pipeline (migration `0124`)
+
+`marketing_leads` grew from a 3-state contact inbox into the Chinese-market
+lead pipeline (`docs/china-market/11-crm-pipeline.md`): `stage` (13 values,
+check-constrained; legacy `status` derived by the app), `lead_ref`
+(`CN-YYMMDD-XXXX`, partial unique), qualification fields (`wechat_id`,
+`country`, `target_location`, `service`, `known_info`, `objective`,
+`preferred_start`, `estimated_duration`, `urgency`, `budget_range`),
+attribution (`landing_page`, `referrer`, `utm_*`) and value tracking
+(`estimated_value`, `quoted_value`, `final_revenue`, `converted_at`). `phone`
+is now nullable with a check that at least one of phone / wechat_id / email is
+present. `marketing_lead_files` (admin-only RLS) records intake attachments
+stored in the **private** `lead-files` bucket; uploads happen only through the
+service-role route `/api/marketing/zh-intake`.

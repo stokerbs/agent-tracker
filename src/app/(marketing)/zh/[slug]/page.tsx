@@ -1,0 +1,47 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ZhMarketingPage } from "@/components/marketing/zh/zh-page";
+import { ZH_PAGES, getZhPage } from "@/lib/marketing/zh/registry";
+import { zhAlternates, enPathFor, thPathFor } from "@/lib/marketing/zh/alternates";
+import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
+
+// Every Chinese service / info / location page is pre-rendered from the
+// registry (src/lib/marketing/zh). Unknown slugs 404 at build time.
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return ZH_PAGES.map((p) => ({ slug: p.slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const page = getZhPage(slug);
+  if (!page) return {};
+  const path = `/zh/${page.slug}`;
+  const title = `${page.title} | Detective Pulse`;
+  // case-studies stays out of the index until the first real case is published.
+  const noindex = page.noindex && (page.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0);
+  return {
+    title,
+    description: page.description,
+    alternates: zhAlternates({ zh: path, en: enPathFor(page.en), th: thPathFor(page.th) }),
+    ...(noindex ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      type: "website",
+      url: `https://detectivepulse.com${path}`,
+      title,
+      description: page.description,
+      siteName: "Detective Pulse",
+      locale: "zh_CN",
+      images: [{ url: "https://detectivepulse.com/api/og", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image", title, description: page.description },
+  };
+}
+
+export default async function ZhRegistryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const page = getZhPage(slug);
+  if (!page) notFound();
+  return <ZhMarketingPage page={page} />;
+}

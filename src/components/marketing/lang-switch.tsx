@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Globe, ChevronDown, Check } from "lucide-react";
 import { EN_TO_TH, TH_TO_EN } from "@/lib/marketing/i18n";
+import { zhLinkFor, zhSlugForEn } from "@/lib/marketing/zh/nav";
 
 /**
  * Marketing language switcher (TH / EN / 中文) as a compact dropdown — the button
  * shows the current language, opening a small menu of the three. Keeps the mobile
  * header tidy vs. three inline links. TH/EN link to the counterpart of the
- * current page (falling back to the language's home); ZH only has a home.
+ * current page (falling back to the language's home); ZH maps via the registry.
  */
 export function LangSwitch() {
   const pathname = usePathname() || "/";
@@ -35,19 +36,30 @@ export function LangSwitch() {
     const en = decodeURIComponent(pathname.replace(/^\/en\/?/, "").replace(/\/$/, ""));
     thHref = en && EN_TO_TH[en] ? `/${EN_TO_TH[en]}/` : "/";
   } else if (onZH) {
-    thHref = "/";
-    enHref = "/en";
+    // Chinese registry pages map to their TH/EN counterparts where one exists.
+    const zh = decodeURIComponent(pathname.replace(/^\/zh\/?/, "").replace(/\/$/, ""));
+    const link = zh ? zhLinkFor(zh) : undefined;
+    thHref = link?.th ? `/${link.th}/` : "/";
+    enHref = link?.en ? `/en/${link.en}` : "/en";
   } else {
     thHref = pathname;
     const th = decodeURIComponent(pathname.replace(/^\//, "").replace(/\/$/, ""));
     enHref = th && TH_TO_EN[th] ? `/en/${TH_TO_EN[th]}` : "/en";
   }
 
+  let zhHref = "/zh";
+  if (!onZH) {
+    const enSlug = onEN
+      ? decodeURIComponent(pathname.replace(/^\/en\/?/, "").replace(/\/$/, ""))
+      : TH_TO_EN[decodeURIComponent(pathname.replace(/^\//, "").replace(/\/$/, ""))];
+    const match = enSlug ? zhSlugForEn(enSlug) : undefined;
+    if (match) zhHref = `/zh/${match}`;
+  }
   const current = onZH ? { flag: "🇨🇳", code: "中文" } : onEN ? { flag: "🇬🇧", code: "EN" } : { flag: "🇹🇭", code: "TH" };
   const options = [
     { key: "th", flag: "🇹🇭", label: "ไทย", href: thHref, active: !onEN && !onZH },
     { key: "en", flag: "🇬🇧", label: "English", href: enHref, active: onEN },
-    { key: "zh", flag: "🇨🇳", label: "中文", href: "/zh", active: onZH },
+    { key: "zh", flag: "🇨🇳", label: "中文", href: zhHref, active: onZH },
   ];
 
   return (

@@ -81,11 +81,15 @@ export default async function RootLayout({
   // Google Tag Manager — marketing site only (ad conversion tracking for
   // detectivepulse.com), inert unless NEXT_PUBLIC_GTM_ID is configured.
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
-  const host = (await headers()).get("host");
+  const hdrs = await headers();
+  const host = hdrs.get("host");
   const showGtm = Boolean(gtmId) && isMarketingHost(host);
+  // /zh and /en marketing pages declare their own language (set by middleware);
+  // everything else follows the app locale cookie.
+  const htmlLang = hdrs.get("x-marketing-lang") ?? locale;
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={htmlLang} suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans antialiased`}>
         {showGtm && <DeferredGTM gtmId={gtmId!} />}
         {showGtm && (
