@@ -107,7 +107,9 @@ export default async function PartnersPage() {
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
                     {(p.city || p.country) && <span><span className="text-muted-foreground">พื้นที่:</span> {[p.city, p.country].filter(Boolean).join(", ")}</span>}
                     {p.expected_volume && <span><span className="text-muted-foreground">ปริมาณ:</span> {p.expected_volume}</span>}
-                    {p.org_website && <a href={p.org_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">เว็บไซต์</a>}
+                    {p.org_website && /^https?:\/\//i.test(p.org_website) && (
+                      <a href={p.org_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">เว็บไซต์</a>
+                    )}
                     <span><span className="text-muted-foreground">บริการ:</span> {p.services.map((s) => PARTNER_SERVICE_LABELS[s]?.th ?? s).join(", ")}</span>
                   </div>
                   {p.message && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{p.message}</p>}

@@ -28,7 +28,8 @@ export const zhPartnerSchema = z
     phone: optionalText(30),
     city: optionalText(60),
     country: z.enum(ZH_COUNTRIES),
-    orgWebsite: z.string().trim().max(200).url().optional().or(z.literal("")),
+    // http(s) only — zod's .url() alone accepts javascript:/data: schemes.
+    orgWebsite: z.string().trim().max(200).url().refine((u) => /^https?:\/\//i.test(u), "http(s) only").optional().or(z.literal("")),
     services: z.array(z.enum(ZH_PARTNER_SERVICES)).min(1).max(ZH_PARTNER_SERVICES.length),
     expectedVolume: z.enum(ZH_PARTNER_VOLUMES),
     message: optionalText(1500),
@@ -40,9 +41,18 @@ export const zhPartnerSchema = z
 
 export type ZhPartnerInput = z.infer<typeof zhPartnerSchema>;
 
-/** Referral slug used as utm_source on links the partner shares. */
+/** Referral slug used as utm_source on links the partner shares. The tail is
+ *  6 crypto-random symbols (31^6 ≈ 887M) so a slug cannot be guessed from the
+ *  org name and used to spoof attribution. Counts stay indicative, never
+ *  payable, until a lead is explicitly linked to a partner by an admin. */
 const ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
-export function generateReferralSlug(orgName: string, random: () => number = Math.random): string {
+const TAIL_LENGTH = 6;
+function cryptoRandom(): number {
+  const buf = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(buf);
+  return buf[0]! / 0x1_0000_0000;
+}
+export function generateReferralSlug(orgName: string, random: () => number = cryptoRandom): string {
   const base = orgName
     .toLowerCase()
     .normalize("NFKD")
@@ -51,11 +61,11 @@ export function generateReferralSlug(orgName: string, random: () => number = Mat
     .replace(/^-+|-+$/g, "")
     .slice(0, 24);
   let tail = "";
-  for (let i = 0; i < 4; i++) tail += ALPHABET[Math.floor(random() * ALPHABET.length)];
+  for (let i = 0; i < TAIL_LENGTH; i++) tail += ALPHABET[Math.floor(random() * ALPHABET.length)];
   return `partner-${base ? `${base}-` : ""}${tail}`;
 }
 
-export const REFERRAL_SLUG_PATTERN = /^partner-(?:[a-z0-9-]{1,24}-)?[23456789abcdefghjkmnpqrstuvwxyz]{4}$/;
+export const REFERRAL_SLUG_PATTERN = /^partner-(?:[a-z0-9-]{1,24}-)?[23456789abcdefghjkmnpqrstuvwxyz]{6}$/;
 
 /** Public link a partner shares; the visit's utm_source lands on every lead from it. */
 export function referralLink(slug: string): string {

@@ -41,6 +41,11 @@ alter table public.marketing_partners add constraint marketing_partners_contact_
     nullif(btrim(phone), '')     is not null
   );
 
+-- org_website is rendered as a link in the admin UI: http(s) only, enforced here too.
+alter table public.marketing_partners drop constraint if exists marketing_partners_website_scheme;
+alter table public.marketing_partners add constraint marketing_partners_website_scheme
+  check (org_website is null or org_website ~* '^https?://');
+
 alter table public.marketing_partners drop constraint if exists marketing_partners_stage_check;
 alter table public.marketing_partners add constraint marketing_partners_stage_check
   check (stage in ('new','contacted','call_scheduled','agreement','active','inactive'));
