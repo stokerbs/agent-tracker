@@ -63,7 +63,7 @@ export async function MarketingHomeZH() {
         subtitle="婚外情、财产调查、寻人、背景核查与网络调查 —— 以专业手法取得清晰证据，全程严格保密。"
         ctas={[
           { href: "https://lin.ee/SSqk98x", label: "LINE 免费咨询", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: "https://api.whatsapp.com/send?phone=+66809188324", label: "WhatsApp 联系", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
+          { href: "https://api.whatsapp.com/send?phone=+66968461406", label: "WhatsApp 联系", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
           { href: "#contact", label: "联系我们", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
         ]}
         tagline="// 锲而不舍 · 保密 · 全国"
@@ -232,7 +232,7 @@ export async function MarketingHomeZH() {
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</a>
-            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</a>
+            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</a>
             <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</a>
             <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
             <span className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-xs text-muted-foreground"><WeChatIcon className="h-4 w-4 text-primary" /> WeChat: DetectivePulse</span>
