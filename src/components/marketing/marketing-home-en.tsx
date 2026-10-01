@@ -249,7 +249,6 @@ export function MarketingHomeEN() {
             <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</a>
             <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</a>
             <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</a>
-            <a href="tel:+66809188324" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> +66 80 918 8324</a>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 font-medium text-primary hover:bg-primary/10">All contact options</Link>
             )}
