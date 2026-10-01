@@ -102,7 +102,7 @@ Server patterns reused: rate-limit → zod → honeypot → service-role insert 
 
 ## 10. Facts present in the project that must stay verifiable
 
-Already displayed on `/zh` and reused unchanged — **confirm before launch** (see `16-facts-requiring-confirmation.md`): Est. 2016 · 1,953+ closed cases · 77 provinces · 4.8★ / 63 Fastwork reviews · phone numbers +66 96 846 1406 and +66 80 918 8324 · email detectivepluse@gmail.com · WeChat ID "DetectivePulse" + QR image · 50 % deposit / non-refundable on cancellation.
+Already displayed on `/zh` and reused unchanged — **confirm before launch** (see `16-facts-requiring-confirmation.md`): Est. 2016 · 1,953+ closed cases · 77 provinces · 4.8★ / 63 Fastwork reviews · phone / WhatsApp +66 96 846 1406 (unified in PR #268) · email detectivepluse@gmail.com · WeChat ID "DetectivePulse" + QR image · 50 % deposit / non-refundable on cancellation.
 
 ## 11. Verdict
 

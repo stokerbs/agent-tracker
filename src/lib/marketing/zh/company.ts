@@ -14,9 +14,9 @@ export const ZH_COMPANY = {
   /** WeChat QR image (public path). The existing asset is a WeChat QR. */
   wechatQr: process.env.NEXT_PUBLIC_WECHAT_QR || "/marketing/btn-wechat.jpg",
   email: "detectivepluse@gmail.com",
-  /** Number used by the WhatsApp links on the existing /zh page. */
-  whatsapp: "+66809188324",
-  whatsappHref: "https://api.whatsapp.com/send?phone=+66809188324",
+  /** Firm's main number — WhatsApp links were unified on it in PR #268. */
+  whatsapp: "+66968461406",
+  whatsappHref: "https://api.whatsapp.com/send?phone=+66968461406",
   lineHref: "https://lin.ee/SSqk98x",
   /** Review figures displayed on the existing homepages (Fastwork). */
   reviews: { rating: "4.8", count: 63, source: "Fastwork" },

@@ -80,7 +80,7 @@ export function ExitIntent() {
             <LineIcon className="h-5 w-5" /> {t.line}
           </a>
           <div className="flex gap-2">
-            <a href="https://api.whatsapp.com/send?phone=+66809188324" target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
+            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
               <WhatsAppIcon className="h-5 w-5" /> {t.whatsapp}
             </a>
             <a href="tel:+66968461406" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">

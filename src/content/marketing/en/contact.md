@@ -15,7 +15,7 @@ The initial consultation is free. Tell us your situation and our team will advis
 ## Get in touch
 
 - **LINE:** [@detectivepluse](https://lin.ee/SSqk98x)
-- **WhatsApp:** [+66 80 918 8324](https://api.whatsapp.com/send?phone=+66809188324)
+- **WhatsApp:** [096 846 1406](https://api.whatsapp.com/send?phone=+66968461406)
 - **Phone:** [096 846 1406](tel:+66968461406) · [+66 80 918 8324](tel:+66809188324)
 - **Email:** [detectivepluse@gmail.com](mailto:detectivepluse@gmail.com)
 - **Facebook:** [Detectivepulse.th](https://www.facebook.com/Detectivepluse.th)
