@@ -9,6 +9,7 @@ import { ZhPageView } from "@/components/marketing/zh/zh-page-view";
 import { ZhIntakeForm } from "@/components/marketing/zh/zh-intake-form";
 import { ZhCaseStudies } from "@/components/marketing/zh/zh-case-studies";
 import { ZhServiceJsonLd } from "@/components/marketing/zh/zh-json-ld";
+import { RelatedArticles, type RelatedItem } from "@/components/marketing/related-articles";
 import { zhPageLabel, type ZhPage } from "@/lib/marketing/zh/registry";
 
 const BASE = "https://detectivepulse.com";
@@ -19,7 +20,7 @@ const BASE = "https://detectivepulse.com";
  * Server component; the only client islands are the WeChat dialog, the
  * page-view tracker and (on /zh/contact) the intake form.
  */
-export function ZhMarketingPage({ page }: { page: ZhPage }) {
+export function ZhMarketingPage({ page, articles = [] }: { page: ZhPage; articles?: RelatedItem[] }) {
   const path = `/zh/${page.slug}`;
   const isContact = page.slug === "contact";
   const isCases = page.slug === "case-studies";
@@ -137,6 +138,9 @@ export function ZhMarketingPage({ page }: { page: ZhPage }) {
           <Faq items={page.faq} eyebrow="Briefing · 常见问题" title="常见问题" />
         </div>
       )}
+
+      {/* Related articles (published Chinese articles tagged with this service) */}
+      <RelatedArticles heading="相关文章" items={articles} lang="en" />
 
       {/* Related */}
       {page.related.length > 0 && (

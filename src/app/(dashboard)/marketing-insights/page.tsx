@@ -5,6 +5,9 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeadsChart, type WeeklyPoint } from "@/components/marketing/insights-chart";
+import { FunnelPanel } from "./funnel-panel";
+import { computeFunnel, type FunnelLeadRow } from "@/lib/marketing/zh/funnel";
+import { reportError } from "@/lib/errors";
 
 export const metadata: Metadata = { title: "Marketing Insights" };
 export const dynamic = "force-dynamic";
@@ -42,11 +45,18 @@ export default async function MarketingInsightsPage() {
   const svc = createServiceClient();
   const since = new Date(Date.now() - WEEKS * 7 * DAY);
 
-  const [leadsRes, careersRes, articlesRes] = await Promise.all([
+  const [leadsRes, careersRes, articlesRes, funnelRes] = await Promise.all([
     svc.from("marketing_leads").select("created_at, source, case_type").gte("created_at", since.toISOString()),
     svc.from("recruitment_applications").select("created_at").gte("created_at", since.toISOString()),
     svc.from("marketing_articles").select("status, published_at"),
+    // Funnel (docs/china-market/12): all-time pipeline state, not windowed —
+    // conversions lag first contact by weeks.
+    svc.from("marketing_leads").select("locale, source, stage, quoted_value, final_revenue, converted_at, service, utm_source"),
   ]);
+  if (funnelRes.error) reportError(funnelRes.error, "marketing-insights:funnel");
+  const funnelRows = (funnelRes.data as FunnelLeadRow[] | null) ?? [];
+  const funnelAll = computeFunnel(funnelRows);
+  const funnelZh = computeFunnel(funnelRows.filter((r) => r.locale === "zh"));
   const leads = (leadsRes.data as Array<{ created_at: string; source: string; case_type: string | null }>) ?? [];
   const careers = (careersRes.data as Array<{ created_at: string }>) ?? [];
   const articles = (articlesRes.data as Array<{ status: string; published_at: string | null }>) ?? [];
@@ -112,6 +122,9 @@ export default async function MarketingInsightsPage() {
           </Card>
         ))}
       </div>
+
+      {/* Lead → quote → paid funnel (all leads vs Chinese market) */}
+      <FunnelPanel all={funnelAll} zh={funnelZh} error={Boolean(funnelRes.error)} />
 
       {/* Weekly leads chart */}
       <Card>

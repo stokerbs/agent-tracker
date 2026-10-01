@@ -56,6 +56,25 @@ describe("generateArticle", () => {
     expect(a.topic).toBe("นักสืบชู้สาว");
   });
 
+  it("rejects a Chinese draft with unlawful-access phrases once, then gives up", async () => {
+    const bad = {
+      th_title: "t", th_description: "d", th_body: "b", en_title: "t", en_description: "d", en_body: "b",
+      zh_title: "泰国调查", zh_description: "d", zh_body: "我们可以提供开房记录", th_slug: "t", en_slug: "t", zh_slug: "t",
+    };
+    const good = { ...bad, zh_body: "我们通过公开信息核实事实" };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(toolResponse(bad)).mockResolvedValueOnce(toolResponse(good));
+    const a = await generateArticle({ ...seed, service: "background" });
+    expect(a.zhBody).toBe("我们通过公开信息核实事实");
+    expect(a.service).toBe("background");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryBody = JSON.parse(String((fetchMock.mock.calls[1]![1] as RequestInit).body));
+    expect(retryBody.messages[0].content).toContain("PREVIOUS DRAFT REJECTED");
+    expect(retryBody.messages[0].content).toContain("/zh/background-check");
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(toolResponse(bad));
+    await expect(generateArticle(seed)).rejects.toThrow(/prohibited phrases/);
+  });
+
   it("throws when the model returns an incomplete article", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(toolResponse({ th_title: "x" }));
     await expect(generateArticle(seed)).rejects.toThrow();

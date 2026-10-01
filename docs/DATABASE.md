@@ -156,3 +156,9 @@ is now nullable with a check that at least one of phone / wechat_id / email is
 present. `marketing_lead_files` (admin-only RLS) records intake attachments
 stored in the **private** `lead-files` bucket; uploads happen only through the
 service-role route `/api/marketing/zh-intake`.
+
+`marketing_articles.service` (migration `0125`) tags each AI article with the
+service it supports (relationship | find_person | background | due_diligence |
+on_site | asset | pricing | general) so `/zh/articles/*` link to their service
+page and service pages list related articles; older rows are null and fall
+back to a cover-category guess (`articleServiceKey()`).

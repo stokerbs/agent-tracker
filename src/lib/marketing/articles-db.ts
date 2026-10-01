@@ -19,6 +19,8 @@ export interface DbArticle {
   zh_description: string | null;
   zh_body: string | null;
   cover_category: string | null;
+  /** Service key (migration 0125); null for older rows — see articleServiceKey(). */
+  service: string | null;
   status: string;
   approve_token: string;
   created_at: string;
@@ -45,6 +47,23 @@ export async function getPublishedArticlesZh(): Promise<DbArticle[]> {
     .eq("status", "published")
     .not("zh_slug", "is", null)
     .order("published_at", { ascending: false });
+  return (data as DbArticle[]) ?? [];
+}
+
+/** Published Chinese articles for one service key (newest first). "general"
+ *  returns any Chinese article so the pillar page is never empty. */
+export async function getPublishedArticlesZhByService(service: string, limit = 3): Promise<DbArticle[]> {
+  const svc = createServiceClient();
+  let q = svc
+    .from("marketing_articles")
+    .select("*")
+    .eq("status", "published")
+    .not("zh_slug", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  if (service !== "general") q = q.eq("service", service);
+  const { data, error } = await q;
+  if (error) console.error("[articles-db] by-service query failed", { service, message: error.message });
   return (data as DbArticle[]) ?? [];
 }
 
@@ -103,6 +122,7 @@ export async function insertDraft(a: GeneratedArticle, token: string): Promise<{
       zh_description: a.zhDescription,
       zh_body: a.zhBody,
       cover_category: a.coverCategory,
+      service: a.service,
       status: "draft",
       approve_token: token,
       model: a.model,

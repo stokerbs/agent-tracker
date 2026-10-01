@@ -4,6 +4,7 @@ import { ZhMarketingPage } from "@/components/marketing/zh/zh-page";
 import { ZH_PAGES, getZhPage } from "@/lib/marketing/zh/registry";
 import { zhAlternates, enPathFor, thPathFor } from "@/lib/marketing/zh/alternates";
 import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
+import { getPublishedArticlesZhByService } from "@/lib/marketing/articles-db";
 
 // Every Chinese service / info / location page is pre-rendered from the
 // registry (src/lib/marketing/zh). Unknown slugs 404 at build time.
@@ -43,5 +44,13 @@ export default async function ZhRegistryPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const page = getZhPage(slug);
   if (!page) notFound();
-  return <ZhMarketingPage page={page} />;
+  // Related Chinese articles for this service (S-2 internal linking). Info
+  // pages (pricing/about/contact/how-it-works) skip it; "general" gets any.
+  const articles = page.kind === "info" ? [] : await getPublishedArticlesZhByService(page.service, 3);
+  return (
+    <ZhMarketingPage
+      page={page}
+      articles={articles.filter((a) => a.zh_slug && a.zh_title).map((a) => ({ href: `/zh/articles/${a.zh_slug}`, slug: a.zh_slug!, title: a.zh_title! }))}
+    />
+  );
 }

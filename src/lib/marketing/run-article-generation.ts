@@ -1,7 +1,8 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import { generateArticle, KEYWORD_TOPICS } from "@/lib/marketing/article-gen";
+import { generateArticle } from "@/lib/marketing/article-gen";
+import { pickSeed } from "@/lib/marketing/article-selection";
 import { getUsedTopicsAndSlugs, insertDraft } from "@/lib/marketing/articles-db";
 import { pushLineNotify } from "@/lib/line/notify";
 import { notifyRole } from "@/lib/notifications";
@@ -21,25 +22,21 @@ export interface GenerationResult {
  * admin "generate now" button. Never publishes — approval happens in /review.
  */
 export async function runArticleGeneration(): Promise<GenerationResult> {
-  // Pick the highest-priority keyword topic not generated before. KEYWORD_TOPICS
-  // is ordered by proven intent (real Google Search Console winners first), so
-  // take the first unused rather than a random one — that way the near-page-1
-  // keywords get their article next. Fall back to random only once every topic
-  // has been covered, to keep the back-catalogue varied.
+  // Topic policy lives in article-selection.ts: the Chinese 30-topic plan gets
+  // two of every three runs during the China push, the proven Thai keyword
+  // list the third, each falling back to the other when exhausted.
   const { topics, slugs } = await getUsedTopicsAndSlugs();
-  const fresh = KEYWORD_TOPICS.filter((t) => !topics.has(t.th));
-  const seed = fresh.length
-    ? fresh[0]!
-    : KEYWORD_TOPICS[Math.floor(Math.random() * KEYWORD_TOPICS.length)]!;
+  const seed = pickSeed(topics, topics.size);
 
   const article = await generateArticle(seed);
 
   // Avoid slug collisions with earlier AI articles.
   let n = 1;
-  while (slugs.has(article.thSlug) || slugs.has(article.enSlug)) {
+  while (slugs.has(article.thSlug) || slugs.has(article.enSlug) || slugs.has(article.zhSlug)) {
     n += 1;
     article.thSlug = `${article.thSlug}-${n}`;
     article.enSlug = `${article.enSlug}-${n}`;
+    article.zhSlug = `${article.zhSlug}-${n}`;
   }
 
   const token = crypto.randomBytes(24).toString("base64url");

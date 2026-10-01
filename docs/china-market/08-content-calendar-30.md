@@ -37,4 +37,6 @@ Pillars: R = Relationship · B = Background verification · F = Finding people �
 | 29 | 12 | P | 与律师配合：调查公司能为诉讼准备提供什么 | 泰国 诉讼 证据 | /zh/asset-investigation | Growth |
 | 30 | 12 | H | 常见误区：为什么“什么都能查”的服务不可信 | 泰国 侦探 推荐 | /zh/private-investigator-thailand | Growth |
 
+**Implementation:** the plan is live in `src/lib/marketing/zh/topics.ts`; the article cron (Tue/Fri) takes a Chinese topic on two of every three runs (`src/lib/marketing/article-selection.ts`), each draft is screened against `zh/compliance.ts` before it reaches the review queue, and every article is tagged with its service (`marketing_articles.service`) so it links to its `/zh` service page. To publish faster than the cron, use the "generate now" button in `/marketing-articles` and approve the drafts in `/review`.
+
 Cadence: 3 articles/week from week 3 (Phase 2 target: 10 articles by day 30, 30 by day 90). Each article: 900–1,500 characters, H2 structure, one internal link to a service page, one to contact, FAQ block of 2–3 questions, `BlogPosting` JSON-LD (existing).
