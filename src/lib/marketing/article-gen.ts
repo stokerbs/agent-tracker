@@ -1,8 +1,13 @@
 import "server-only";
 
 import { classifyArticle } from "@/lib/marketing/article-category";
+import { findBannedPhrases } from "@/lib/marketing/zh/compliance";
+import { ZH_SERVICE_PAGE } from "@/lib/marketing/zh/nav";
 
 const MODEL = process.env.MARKETING_AI_MODEL ?? "claude-haiku-4-5-20251001";
+/** Per-call timeout. Two calls (draft + one compliance retry) must fit inside
+ *  the 120 s budget of the cron route / admin action (maxDuration = 120). */
+export const ARTICLE_CALL_TIMEOUT_MS = 55_000;
 
 // Keyword pool seeded from Detective Pulse's real Google Ads search-keyword
 // report — the terms that actually drove clicks/conversions. Each entry pairs a
@@ -19,6 +24,8 @@ export interface KeywordTopic {
   zh: string;
   /** Short angle to steer the article. */
   angle: string;
+  /** Service key (ZhPage.service / "pricing") — links the article to its /zh service page. */
+  service?: string;
 }
 
 export const KEYWORD_TOPICS: KeywordTopic[] = [
@@ -49,6 +56,14 @@ export const KEYWORD_TOPICS: KeywordTopic[] = [
   { th: "เช็คประวัติก่อนแต่งงาน", en: "pre-marriage background check", zh: "婚前背景调查", angle: "ตรวจสอบว่าที่คู่ครองก่อนตัดสินใจแต่งงาน" },
 ];
 
+/** Thrown when the Chinese draft still contains prohibited phrases after one rewrite. */
+export class ComplianceRejectedError extends Error {
+  constructor(public readonly topic: string, public readonly violations: string[]) {
+    super(`chinese draft contains prohibited phrases after retry: ${violations.join(", ")}`);
+    this.name = "ComplianceRejectedError";
+  }
+}
+
 export interface GeneratedArticle {
   topic: string;
   thTitle: string;
@@ -65,6 +80,8 @@ export interface GeneratedArticle {
   zhSlug: string;
   coverCategory: string;
   model: string;
+  /** Service key stored on the row (marketing_articles.service). */
+  service: string | null;
 }
 
 const SYSTEM = `You are an expert multilingual SEO content writer for "Detective Pulse", a professional private-investigation firm in Thailand. You are given a TARGET KEYWORD (Thai + English + Chinese) that the firm actually advertises on, plus an angle. Write a genuinely helpful, accurate blog article that ranks for it — a Thai version, an English version, AND a Simplified Chinese version.
@@ -81,6 +98,13 @@ RULES:
 - End with a short, soft call-to-action to consult Detective Pulse (LINE @detectivepluse / phone 096-846-1406) — one line, not pushy.
 - Do NOT invent statistics, case numbers, prices, or legal citations. For legal questions, suggest consulting a lawyer.
 - Do NOT guarantee investigation outcomes, and do NOT describe illegal or unethical methods (hacking, illegal tracking, impersonation). Keep everything within the law.
+
+CHINESE VERSION — COMPLIANCE (strict):
+- The Chinese reader is usually OUTSIDE Thailand and commissions remotely. Write for that reader: lawful observation, open-source research, on-site visits, document checks.
+- NEVER promise or imply access to restricted data: no 开房记录 / 通话记录 / 手机定位 / 银行流水 / 查身份证 / 出入境记录 / 监听 / 黑客 / 数据库查询. If relevant, state plainly that no legitimate firm can obtain such data.
+- Do not describe surveillance tactics or anything that could compromise investigators or cases. Do not sensationalise.
+- The Chinese call-to-action is 微信咨询 (WeChat) or the online form at https://detectivepulse.com/zh/contact — NOT LINE/phone.
+- When a SERVICE PAGE URL is given, link to it once naturally in the Chinese body (Markdown link) and mention the English/Thai equivalents are available.
 - The meta description must be a single plain sentence, 120–155 characters, no Markdown.
 - Titles: compelling but honest, ≤60 characters, include "| Detective Pulse" is NOT needed (the template adds branding).
 - Provide URL slugs: en_slug in lowercase kebab-case (a–z, 0–9, hyphens); th_slug a short Thai slug and zh_slug a short Chinese slug (concise, no spaces — use hyphens between words if needed).
@@ -125,13 +149,16 @@ export function sanitizeSlug(raw: string, lang: "th" | "en" | "zh"): string {
   return raw.trim().replace(/\s+/g, "-").replace(/["'`/\\?#]+/g, "").slice(0, 80) || (lang === "zh" ? "文章" : "บทความ");
 }
 
-/** Generate one bilingual, keyword-targeted article via Claude. Throws on failure. */
-export async function generateArticle(seed: KeywordTopic): Promise<GeneratedArticle> {
+/** Generate one bilingual, keyword-targeted article via Claude. Throws on failure.
+ *  A Chinese draft that contains a banned (unlawful-access) phrase is sent back
+ *  once with the violations; a second violation rejects the draft. */
+export async function generateArticle(seed: KeywordTopic, feedback?: string): Promise<GeneratedArticle> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+  const servicePath = seed.service && Object.hasOwn(ZH_SERVICE_PAGE, seed.service) ? ZH_SERVICE_PAGE[seed.service] : undefined;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
+  const timeout = setTimeout(() => controller.abort(), ARTICLE_CALL_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -151,8 +178,10 @@ export async function generateArticle(seed: KeywordTopic): Promise<GeneratedArti
               `TARGET KEYWORD (Thai): ${seed.th}\n` +
               `TARGET KEYWORD (English): ${seed.en}\n` +
               `TARGET KEYWORD (Chinese): ${seed.zh}\n` +
-              `ANGLE: ${seed.angle}\n\n` +
-              `Write the article in all three languages and call save_article.`,
+              `ANGLE: ${seed.angle}\n` +
+              (servicePath ? `SERVICE PAGE URL (link once in the Chinese body): https://detectivepulse.com${servicePath}\n` : "") +
+              (feedback ? `\nPREVIOUS DRAFT REJECTED — ${feedback}\n` : "") +
+              `\nWrite the article in all three languages and call save_article.`,
           },
         ],
       }),
@@ -168,6 +197,13 @@ export async function generateArticle(seed: KeywordTopic): Promise<GeneratedArti
   const input = tool?.input;
   if (!input?.th_title || !input.th_body || !input.en_title || !input.en_body || !input.zh_title || !input.zh_body) {
     throw new Error("model did not return a complete article");
+  }
+
+  const violations = findBannedPhrases(`${input.zh_title}\n${input.zh_description ?? ""}\n${input.zh_body}`);
+  if (violations.length > 0) {
+    if (feedback) throw new ComplianceRejectedError(seed.th, violations);
+    console.warn("[article-gen] zh draft contained banned phrases, retrying once", { topic: seed.th, violations });
+    return generateArticle(seed, `the Chinese text contained prohibited phrases (${violations.join("、")}). Rewrite WITHOUT them and without implying access to restricted data.`);
   }
 
   const coverCategory = classifyArticle(`${seed.th} ${seed.en} ${input.th_title}`).key;
@@ -187,5 +223,6 @@ export async function generateArticle(seed: KeywordTopic): Promise<GeneratedArti
     zhSlug: sanitizeSlug(input.zh_slug, "zh"),
     coverCategory,
     model: MODEL,
+    service: seed.service ?? null,
   };
 }

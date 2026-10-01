@@ -3,8 +3,7 @@ import { ZH_PAGES, ZH_NAV, ZH_SLUG_LINKS, getZhPage } from "./registry";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "./nav";
 
-/** Phrases that would claim unlawful access — must never appear in copy. */
-const BANNED = ["开房记录", "通话记录", "手机定位", "银行流水", "查身份证", "监听", "黑客", "出入境记录查询", "数据库查询"];
+import { ZH_BANNED_PHRASES as BANNED } from "./compliance";
 
 const REQUIRED_SLUGS = [
   "private-investigator-thailand", "bangkok-investigation", "relationship-investigation", "background-check",

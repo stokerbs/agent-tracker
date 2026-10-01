@@ -2469,6 +2469,7 @@ export type Database = {
           id: string
           model: string | null
           published_at: string | null
+          service: string | null
           status: string
           th_body: string
           th_description: string
@@ -2491,6 +2492,7 @@ export type Database = {
           id?: string
           model?: string | null
           published_at?: string | null
+          service?: string | null
           status?: string
           th_body: string
           th_description: string
@@ -2513,6 +2515,7 @@ export type Database = {
           id?: string
           model?: string | null
           published_at?: string | null
+          service?: string | null
           status?: string
           th_body?: string
           th_description?: string

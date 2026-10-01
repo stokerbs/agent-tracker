@@ -41,6 +41,31 @@ export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
   { slug: "contact", en: "contact", th: "ติดต่อนักสืบ" },
 ];
 
+/** Service key (ZhPage.service / article service) → /zh page path. */
+export const ZH_SERVICE_PAGE: Record<string, string> = {
+  relationship: "/zh/relationship-investigation",
+  find_person: "/zh/find-person-thailand",
+  background: "/zh/background-check",
+  due_diligence: "/zh/business-due-diligence",
+  on_site: "/zh/on-site-verification",
+  asset: "/zh/asset-investigation",
+  pricing: "/zh/pricing",
+  general: "/zh/private-investigator-thailand",
+};
+
+/** Service key for an article: its stored service, else a guess from the cover category. */
+export function articleServiceKey(service: string | null | undefined, coverCategory: string | null | undefined): string {
+  if (service && Object.hasOwn(ZH_SERVICE_PAGE, service)) return service;
+  switch (coverCategory) {
+    case "infidelity": return "relationship";
+    case "asset": return "asset";
+    case "background": case "cyber": return "background";
+    case "find-person": return "find_person";
+    case "pricing": return "pricing";
+    default: return "general";
+  }
+}
+
 export function zhLinkFor(slug: string) {
   return ZH_SLUG_LINKS.find((l) => l.slug === slug);
 }

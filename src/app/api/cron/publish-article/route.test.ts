@@ -31,7 +31,7 @@ const article = {
   topic: "topic-a", thTitle: "T", thDescription: "D", thBody: "B",
   enTitle: "T", enDescription: "D", enBody: "B",
   zhTitle: "T", zhDescription: "D", zhBody: "B",
-  thSlug: "s", enSlug: "s", zhSlug: "s", coverCategory: "hire", model: "m",
+  thSlug: "s", enSlug: "s", zhSlug: "s", coverCategory: "hire", model: "m", service: null,
 };
 
 const OLD = { ...process.env };

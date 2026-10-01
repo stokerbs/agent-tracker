@@ -13,7 +13,7 @@ Owners: **Growth** (Chinese market owner), **Eng** (frontend-builder / backend-a
 | E-5 | `<html lang=zh-CN>`, hreflang zh-CN + x-default | P0 | Eng | – | correct language targeting | GSC international targeting report clean | ✅ |
 | E-6 | WeChat CTA + placements + sticky | P0 | Eng | – | primary conversion path | `wechat_id_copied` ≥ 5 % of zh sessions | ✅ |
 | E-7 | Intake form + API + files + lead_ref | P0 | Eng | DB-1 | qualified leads | ≥ 80 % of intakes have all required fields | ✅ |
-| DB-1 | Migration 0124 (pipeline, attribution, files bucket) | P0 | Eng (data-migration-author) | – | CRM + attribution | migration applied on prod | ✅ code; **apply via DevOps** |
+| DB-1 | Migration 0124 (pipeline, attribution, files bucket) | P0 | Eng (data-migration-author) | – | CRM + attribution | migration applied on prod | ✅ applied 2026-10-01 |
 | E-8 | Admin pipeline controls + audit log | P0 | Eng | DB-1 | stage tracking | 100 % of zh leads staged within 24 h | ✅ |
 | E-9 | Analytics events + spec | P0 | Eng | – | funnel measurement | events visible in GA4 debug | ✅ code; **GTM tags by Growth** |
 | F-1 | Confirm all facts in `16-facts-requiring-confirmation.md` | P0 | DP | – | no false claims | register fully ticked | ⏳ |
@@ -25,17 +25,17 @@ Owners: **Growth** (Chinese market owner), **Eng** (frontend-builder / backend-a
 
 ## Phase 2 — Days 15–30
 
-| ID | Task | P | Owner | Depends | Impact | Metric |
-|---|---|---|---|---|---|---|
-| C-1 | Update AI article generator prompt with 30-topic plan + compliance rules; publish 10 zh articles | P0 | Growth + Eng (ai-engineer) | E-3 | organic reach | 10 published, indexed |
-| C-2 | 3 anonymised case studies supplied by DP → `case-studies.ts` (page auto-indexes) | P0 | DP + Growth | F-1 | trust | 3 live |
-| C-3 | Redacted sample report images for `/zh/how-it-works` | P1 | DP | – | trust | asset live |
-| S-1 | Location pages QA with DP for local accuracy (Bangkok, Pattaya, Phuket, Chiang Mai) | P1 | DP | E-3 | truthfulness | sign-off |
-| S-2 | Internal-link pass: tag articles with a service for `RelatedArticles` | P1 | Eng | C-1 | crawl depth | every article links to 1 service |
-| S-3 | Submit sitemap in GSC; Bing Webmaster; test Baidu site submission (free) | P0 | Growth | E-3 | indexing | 19 URLs indexed in Google |
-| A-1 | GTM: GA4 tags for all events; conversions; dimensions | P0 | Growth | E-9 | measurement | GA4 report populated |
-| A-2 | `/marketing-insights` funnel panel (stages, rates, revenue by source) | P1 | Eng | DB-1 | decisions | panel live |
-| K-1 | SERP competitor sheet + Baidu Index / GKP validation of keyword map | P1 | Growth | – | focus | sheet complete |
+| ID | Task | P | Owner | Depends | Impact | Metric | Status |
+|---|---|---|---|---|---|---|---|
+| C-1 | Update AI article generator prompt with 30-topic plan + compliance rules; publish 10 zh articles | P0 | Growth + Eng (ai-engineer) | E-3 | organic reach | 10 published, indexed | ✅ engine (`zh/topics.ts`, `article-selection.ts`, banned-phrase guard); publishing = approve drafts in LINE/`/review` ⏳ |
+| C-2 | 3 anonymised case studies supplied by DP → `case-studies.ts` (page auto-indexes) | P0 | DP + Growth | F-1 | trust | 3 live | ⏳ needs DP input (template in doc 13) |
+| C-3 | Redacted sample report images for `/zh/how-it-works` | P1 | DP | – | trust | asset live | ⏳ |
+| S-1 | Location pages QA with DP for local accuracy (Bangkok, Pattaya, Phuket, Chiang Mai) | P1 | DP | E-3 | truthfulness | sign-off | ⏳ |
+| S-2 | Internal-link pass: tag articles with a service for `RelatedArticles` | P1 | Eng | C-1 | crawl depth | every article links to 1 service | ✅ migration 0125, article → service box, service → 相关文章 |
+| S-3 | Submit sitemap in GSC; Bing Webmaster; test Baidu site submission (free) | P0 | Growth | E-3 | indexing | 19 URLs indexed in Google | GSC ✅ (2026-10-01) · Bing/Baidu ⏳ |
+| A-1 | GTM: GA4 tags for all events; conversions; dimensions | P0 | Growth | E-9 | measurement | GA4 report populated | ⏳ |
+| A-2 | `/marketing-insights` funnel panel (stages, rates, revenue by source) | P1 | Eng | DB-1 | decisions | panel live | ✅ |
+| K-1 | SERP competitor sheet + Baidu Index / GKP validation of keyword map | P1 | Growth | – | focus | sheet complete | ⏳ |
 
 ## Phase 3 — Days 31–60
 
