@@ -166,7 +166,8 @@ export async function POST(request: NextRequest) {
     if (fileErr) {
       reportError(fileErr, "marketing:zh-intake:file-row");
       // Don't leave an orphaned object nobody can see from the admin side.
-      await svc.storage.from(BUCKET).remove([key]);
+      const { error: rmErr } = await svc.storage.from(BUCKET).remove([key]);
+      if (rmErr) reportError(rmErr, "marketing:zh-intake:orphan-remove");
     } else {
       uploaded++;
     }

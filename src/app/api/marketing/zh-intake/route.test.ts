@@ -36,11 +36,12 @@ function svc(opts: { leadErrors?: ({ code: string; message: string } | null)[]; 
   }));
   const fileInsert = vi.fn().mockResolvedValue({ error: opts.fileInsertError ?? null });
   const upload = vi.fn().mockResolvedValue({ error: opts.uploadError ?? null });
+  const remove = vi.fn().mockResolvedValue({ error: null });
   const client = {
     from: (table: string) => (table === "marketing_leads" ? { insert: leadInsert } : { insert: fileInsert }),
-    storage: { from: () => ({ upload }) },
+    storage: { from: () => ({ upload, remove }) },
   };
-  return { client, leadInsert, fileInsert, upload };
+  return { client, leadInsert, fileInsert, upload, remove };
 }
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0]);
@@ -160,6 +161,17 @@ describe("POST /api/marketing/zh-intake", () => {
     expect(res.status).toBe(200);
     expect(s.fileInsert).not.toHaveBeenCalled();
     expect(vi.mocked(reportError)).toHaveBeenCalledWith(expect.anything(), "marketing:zh-intake:upload");
+  });
+
+  it("removes the uploaded object when its file row cannot be written", async () => {
+    const s = svc({ fileInsertError: { message: "row failed" } });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req(valid, [new File([JPEG], "a.jpg", { type: "image/jpeg" })]));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ ok: true, filesUploaded: 0, filesFailed: 1 });
+    const [key] = s.upload.mock.calls[0]!;
+    expect(s.remove).toHaveBeenCalledWith([key]);
+    expect(vi.mocked(reportError)).toHaveBeenCalledWith(expect.anything(), "marketing:zh-intake:file-row");
   });
 
   it("retries the lead_ref on a unique-violation and gives up after 3", async () => {

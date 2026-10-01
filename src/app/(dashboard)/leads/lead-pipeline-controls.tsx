@@ -29,8 +29,14 @@ export function LeadPipelineControls({
   const [pending, start] = useTransition();
   const [opening, setOpening] = useState<string | null>(null);
   // Signed URLs resolved so far — rendered as real links (a window.open after
-  // an await is blocked by Safari/iOS popup blockers).
-  const [urls, setUrls] = useState<Record<string, string>>({});
+  // an await is blocked by Safari/iOS popup blockers). Each expires with the
+  // 10-minute signature; afterwards the button comes back to re-mint.
+  const [urls, setUrls] = useState<Record<string, { url: string; expiresAt: number }>>({});
+  const SIGNED_URL_TTL_MS = 600_000;
+  const live = (id: string) => {
+    const u = urls[id];
+    return u && u.expiresAt > Date.now() ? u.url : null;
+  };
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,7 +56,7 @@ export function LeadPipelineControls({
     setOpening(fileId);
     try {
       const res = await getLeadFileUrl(fileId);
-      if ("url" in res) setUrls((u) => ({ ...u, [fileId]: res.url }));
+      if ("url" in res) setUrls((u) => ({ ...u, [fileId]: { url: res.url, expiresAt: Date.now() + SIGNED_URL_TTL_MS - 5_000 } }));
       else toast.error(`เปิดไฟล์ไม่ได้: ${ERROR_TH[res.error] ?? res.error}`);
     } catch {
       toast.error("เปิดไฟล์ไม่ได้: เครือข่ายขัดข้อง");
@@ -79,8 +85,8 @@ export function LeadPipelineControls({
         <ul className="flex flex-wrap gap-2">
           {files.map((f) => (
             <li key={f.id}>
-              {urls[f.id] ? (
-                <a href={urls[f.id]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded border border-primary/50 px-2 py-1 text-primary hover:bg-primary/10">
+              {live(f.id) ? (
+                <a href={live(f.id)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded border border-primary/50 px-2 py-1 text-primary hover:bg-primary/10">
                   <Paperclip className="h-3 w-3" /> ดาวน์โหลด {f.file_name} ({Math.ceil(f.size_bytes / 1024)} KB)
                 </a>
               ) : (
