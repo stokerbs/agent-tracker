@@ -70,6 +70,10 @@ const nextConfig: NextConfig = {
   // 301 the old WordPress cruft paths (no longer migrated) to the homepage.
   async redirects() {
     return [
+      // Chinese site lives at /zh (ISO 639-1 language code, already indexed).
+      // /cn/* is the prefix used in the China-market brief — keep it working.
+      { source: "/cn", destination: "/zh", permanent: true },
+      { source: "/cn/:path*", destination: "/zh/:path*", permanent: true },
       { source: "/sample-page", destination: "/", permanent: true },
       { source: "/home", destination: "/", permanent: true },
       { source: "/author/:path*", destination: "/", permanent: true },

@@ -1,0 +1,49 @@
+/**
+ * Lightweight navigation + slug-link data for CLIENT components (header, lang
+ * switcher, sticky bar). Deliberately separate from registry.ts so the full
+ * Chinese page copy never ships in the client bundle. registry.test.ts asserts
+ * this file stays consistent with the registry.
+ */
+export const ZH_NAV = {
+  services: [
+    { slug: "relationship-investigation", label: "感情调查" },
+    { slug: "find-person-thailand", label: "寻人" },
+    { slug: "background-check", label: "背景核实" },
+    { slug: "business-due-diligence", label: "商业尽调" },
+    { slug: "on-site-verification", label: "实地核实" },
+    { slug: "asset-investigation", label: "资产调查" },
+  ],
+  primary: [
+    { slug: "how-it-works", label: "流程" },
+    { slug: "pricing", label: "收费" },
+    { slug: "case-studies", label: "案例" },
+    { slug: "about", label: "关于" },
+    { slug: "contact", label: "联系" },
+  ],
+  locations: [
+    { slug: "bangkok", label: "曼谷" },
+    { slug: "pattaya", label: "芭提雅" },
+    { slug: "phuket", label: "普吉" },
+    { slug: "chiang-mai", label: "清迈" },
+    { slug: "chonburi", label: "春武里" },
+    { slug: "samui", label: "苏梅岛" },
+  ],
+} as const;
+
+/** zh slug ↔ EN / TH counterparts (hreflang + language switcher). */
+export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
+  { slug: "private-investigator-thailand", en: "private-investigator", th: "private-investigator" },
+  { slug: "relationship-investigation", en: "cheating-spouse-investigator", th: "นักสืบชู้สาว" },
+  { slug: "background-check", en: "background-check", th: "เช็คประวัติบุคคล" },
+  { slug: "find-person-thailand", en: "find-missing-person", th: "สืบตามหาคน" },
+  { slug: "asset-investigation", en: "asset-investigation", th: "สืบทรัพย์สิน" },
+  { slug: "pricing", en: "private-detective-pricing", th: "วิธีการคิดราคาจ้างนักส" },
+  { slug: "contact", en: "contact", th: "ติดต่อนักสืบ" },
+];
+
+export function zhLinkFor(slug: string) {
+  return ZH_SLUG_LINKS.find((l) => l.slug === slug);
+}
+export function zhSlugForEn(en: string): string | undefined {
+  return ZH_SLUG_LINKS.find((l) => l.en === en)?.slug;
+}

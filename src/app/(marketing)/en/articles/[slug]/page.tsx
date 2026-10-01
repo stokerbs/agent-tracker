@@ -25,7 +25,7 @@ export async function generateMetadata(
   return {
     title: `${a.en_title} | Detective Pulse`,
     description: a.en_description,
-    alternates: { canonical, languages: { en: canonical, th: `/articles/${a.th_slug}` } },
+    alternates: { canonical, languages: { en: canonical, th: `/articles/${a.th_slug}`, ...(a.zh_slug ? { "zh-CN": `/zh/articles/${a.zh_slug}` } : {}) } },
     openGraph: {
       type: "article",
       url: `https://detectivepulse.com${canonical}`,

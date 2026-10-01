@@ -2526,8 +2526,70 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_lead_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          lead_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          lead_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          lead_id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_lead_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_leads: {
         Row: {
+          admin_notes: string | null
+          budget_range: string | null
+          converted_at: string | null
+          country: string | null
+          estimated_duration: string | null
+          estimated_value: number | null
+          final_revenue: number | null
+          known_info: string | null
+          landing_page: string | null
+          lead_ref: string | null
+          objective: string | null
+          preferred_start: string | null
+          quoted_value: number | null
+          referrer: string | null
+          service: string | null
+          stage: string
+          stage_changed_at: string | null
+          target_location: string | null
+          urgency: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          wechat_id: string | null
           case_type: string | null
           consent_at: string | null
           created_at: string
@@ -2536,12 +2598,36 @@ export type Database = {
           locale: string
           message: string | null
           name: string
-          phone: string
+          phone: string | null
           source: string
           status: string
           user_agent: string | null
         }
         Insert: {
+          admin_notes?: string | null
+          budget_range?: string | null
+          converted_at?: string | null
+          country?: string | null
+          estimated_duration?: string | null
+          estimated_value?: number | null
+          final_revenue?: number | null
+          known_info?: string | null
+          landing_page?: string | null
+          lead_ref?: string | null
+          objective?: string | null
+          preferred_start?: string | null
+          quoted_value?: number | null
+          referrer?: string | null
+          service?: string | null
+          stage?: string
+          stage_changed_at?: string | null
+          target_location?: string | null
+          urgency?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null
           created_at?: string
@@ -2550,12 +2636,36 @@ export type Database = {
           locale?: string
           message?: string | null
           name: string
-          phone: string
+          phone?: string | null
           source?: string
           status?: string
           user_agent?: string | null
         }
         Update: {
+          admin_notes?: string | null
+          budget_range?: string | null
+          converted_at?: string | null
+          country?: string | null
+          estimated_duration?: string | null
+          estimated_value?: number | null
+          final_revenue?: number | null
+          known_info?: string | null
+          landing_page?: string | null
+          lead_ref?: string | null
+          objective?: string | null
+          preferred_start?: string | null
+          quoted_value?: number | null
+          referrer?: string | null
+          service?: string | null
+          stage?: string
+          stage_changed_at?: string | null
+          target_location?: string | null
+          urgency?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null
           created_at?: string
@@ -2564,7 +2674,7 @@ export type Database = {
           locale?: string
           message?: string | null
           name?: string
-          phone?: string
+          phone?: string | null
           source?: string
           status?: string
           user_agent?: string | null

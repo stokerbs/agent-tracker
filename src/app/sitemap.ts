@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
+import { ZH_PAGES } from "@/lib/marketing/zh/registry";
+import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
 
 const BASE = "https://detectivepulse.com";
 
@@ -22,8 +24,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly",
     priority: 0.7,
   }));
+  // Chinese site: home + every registry page (services 0.8, info/locations
+  // 0.7) + the article hub. Noindexed pages (case-studies while empty) stay out.
   const chinese: MetadataRoute.Sitemap = [
-    { url: `${BASE}/zh`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/zh`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    ...ZH_PAGES.filter((p) => !(p.noindex && (p.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0))).map((p) => ({
+      url: `${BASE}/zh/${p.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: p.kind === "service" ? 0.8 : 0.7,
+    })),
     { url: `${BASE}/zh/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
   ];
   const english: MetadataRoute.Sitemap = [

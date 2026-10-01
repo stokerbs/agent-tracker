@@ -11,6 +11,7 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
+import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 
 export const dynamicParams = false; // only the migrated pages; everything else 404s
 
@@ -29,6 +30,8 @@ export async function generateMetadata(
   // redirect. The old WP trailing-slash URLs 308 here (Google honors it).
   const canonicalPath = page.path.replace(/\/+$/, "") || "/";
   const en = TH_TO_EN[page.slug];
+  // Reciprocal hreflang: the Chinese registry page for this slug, if any.
+  const zh = en ? zhSlugForEn(en) : undefined;
   const cover = getArticleCover(page.slug, page.title, "th", page);
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
@@ -36,7 +39,7 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { th: canonicalPath, ...(en ? { en: `/en/${en}` } : {}) },
+      languages: { th: canonicalPath, ...(en ? { en: `/en/${en}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
     },
     openGraph: {
       type: "article",

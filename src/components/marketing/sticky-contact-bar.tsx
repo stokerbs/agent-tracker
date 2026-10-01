@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
+import Link from "next/link";
+import { FileText } from "lucide-react";
 import { LineIcon } from "@/components/marketing/brand-icons";
+import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
 
 const COPY: Record<MarketingLang, { call: string; line: string }> = {
@@ -18,7 +21,8 @@ const COPY: Record<MarketingLang, { call: string; line: string }> = {
  * one-tap Call / LINE — a proven mobile conversion lift.
  */
 export function StickyContactBar() {
-  const t = COPY[useMarketingLang()];
+  const lang = useMarketingLang();
+  const t = COPY[lang];
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -35,6 +39,17 @@ export function StickyContactBar() {
       }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
+      {lang === "zh" ? (
+        // Chinese visitors: WeChat is the primary channel; the structured
+        // intake is the secondary. (LINE/phone are kept for TH/EN.)
+        <>
+          <Link href="/zh/contact#intake" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
+            <FileText className="h-5 w-5" /> 提交案件资料
+          </Link>
+          <WeChatCta placement="sticky" className="flex-1 !rounded-none py-3" />
+        </>
+      ) : (
+      <>
       <a href="tel:+66968461406" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
         <Phone className="h-5 w-5" /> {t.call}
       </a>
@@ -46,6 +61,8 @@ export function StickyContactBar() {
       >
         <LineIcon className="h-5 w-5" /> {t.line}
       </a>
+      </>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Articles & Resources | Detective Pulse",
   description:
     "Guides and resources on private investigation in Thailand — infidelity, asset searches, background checks, finding a person, cyber investigations and hiring a detective.",
-  alternates: { canonical: "/en/articles", languages: { en: "/en/articles", th: "/articles" } },
+  alternates: { canonical: "/en/articles", languages: { en: "/en/articles", th: "/articles", "zh-CN": "/zh/articles" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/en/articles",

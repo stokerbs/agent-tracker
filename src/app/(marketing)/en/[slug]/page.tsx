@@ -11,6 +11,7 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
+import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 
 export const dynamicParams = false; // only translated pages; everything else 404s
 
@@ -26,6 +27,8 @@ export async function generateMetadata(
   if (!page) return {};
   const canonicalPath = page.path; // /en/<slug> (no trailing slash)
   const th = EN_TO_TH[page.slug];
+  // Reciprocal hreflang: the Chinese registry page for this slug, if any.
+  const zh = zhSlugForEn(page.slug);
   const cover = getArticleCover(page.slug, page.title, "en", page);
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
@@ -33,7 +36,7 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { en: canonicalPath, ...(th ? { th: `/${th}/` } : {}) },
+      languages: { en: canonicalPath, ...(th ? { th: `/${th}/` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
     },
     openGraph: {
       type: "article",
