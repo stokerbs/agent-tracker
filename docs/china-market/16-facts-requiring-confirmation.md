@@ -8,7 +8,7 @@ Per the brief: nothing about Detective Pulse was invented. Every item below is e
 - [ ] **77** provinces covered (stat band)
 - [ ] Fastwork rating **4.8 / 63 reviews** and the 4 testimonials (dates 2025–2026) — provide the public Fastwork profile URL to link it
 - [ ] WeChat ID **`DetectivePulse`** and the QR at `public/marketing/btn-wechat.jpg` open the correct account (set `NEXT_PUBLIC_WECHAT_ID` / `NEXT_PUBLIC_WECHAT_QR` if different)
-- [x] WhatsApp **+66 96 846 1406** — unified across the site in PR #268; `/zh` uses it. (+66 80 918 8324 still appears as a secondary `tel:` on the TH/EN homes — confirm it should stay there.)
+- [x] Phone / WhatsApp **+66 96 846 1406** — the single number site-wide after PRs #268 and #270; `/zh` uses it for WhatsApp
 - [ ] Email **detectivepluse@gmail.com**
 - [ ] Deposit **50 %** before work; balance before delivery; deposit non-refundable on client cancellation
 - [ ] "首次咨询免费" (free first consultation) and "24 小时内回复" (reply within 24 h) — confirm staffing can meet this for Chinese-language enquiries
