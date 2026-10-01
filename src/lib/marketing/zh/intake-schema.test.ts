@@ -5,7 +5,7 @@ const valid = {
   name: "王先生",
   wechatId: "wang_88",
   email: "",
-  country: "中国",
+  country: "china",
   targetLocation: "bangkok",
   service: "relationship",
   knownInfo: "对方在曼谷素坤逸工作，有照片。",
@@ -27,8 +27,9 @@ describe("zhIntakeSchema", () => {
     expect(zhIntakeSchema.safeParse({ ...valid, consent: "yes" }).success).toBe(false);
   });
 
-  it("rejects unknown enum values (service / location / budget)", () => {
+  it("rejects unknown enum values (service / location / budget / country)", () => {
     expect(zhIntakeSchema.safeParse({ ...valid, service: "phone_tracking" }).success).toBe(false);
+    expect(zhIntakeSchema.safeParse({ ...valid, country: "中国" }).success).toBe(false);
     expect(zhIntakeSchema.safeParse({ ...valid, targetLocation: "hanoi" }).success).toBe(false);
     expect(zhIntakeSchema.safeParse({ ...valid, budgetRange: "1m" }).success).toBe(false);
   });

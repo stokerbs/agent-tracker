@@ -9,6 +9,8 @@ export async function middleware(request: NextRequest) {
   // as a request header so <html lang> is correct for /zh (zh-CN) and /en
   // pages — the app's `locale` cookie only knows th/en. Set before
   // updateSession() so the header rides on the forwarded request.
+  // Always strip a client-supplied value first so only the middleware decides.
+  request.headers.delete("x-marketing-lang");
   const path = request.nextUrl.pathname;
   const lang = path === "/zh" || path.startsWith("/zh/") ? "zh-CN" : path === "/en" || path.startsWith("/en/") ? "en" : null;
   if (lang) request.headers.set("x-marketing-lang", lang);

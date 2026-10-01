@@ -86,7 +86,8 @@ export default async function RootLayout({
   const showGtm = Boolean(gtmId) && isMarketingHost(host);
   // /zh and /en marketing pages declare their own language (set by middleware);
   // everything else follows the app locale cookie.
-  const htmlLang = hdrs.get("x-marketing-lang") ?? locale;
+  const marketingLang = hdrs.get("x-marketing-lang");
+  const htmlLang = marketingLang === "zh-CN" || marketingLang === "en" ? marketingLang : locale;
 
   return (
     <html lang={htmlLang} suppressHydrationWarning>

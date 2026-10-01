@@ -5,9 +5,10 @@ import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { reportError } from "@/lib/errors";
 import {
   zhIntakeSchema, intakeFromFormData,
-  ZH_INTAKE_MAX_FILES, ZH_INTAKE_MAX_FILE_BYTES, ZH_INTAKE_ALLOWED_MIME,
+  ZH_INTAKE_MAX_FILES, ZH_INTAKE_MAX_FILE_BYTES, ZH_INTAKE_MAX_TOTAL_BYTES, ZH_INTAKE_MAX_BODY_BYTES, ZH_INTAKE_ALLOWED_MIME,
 } from "@/lib/marketing/zh/intake-schema";
 import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
+import { sniffMime } from "@/lib/marketing/zh/file-sniff";
 
 /**
  * Public, unauthenticated endpoint — the Chinese intake form posts here as
@@ -40,6 +41,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Refuse oversized bodies before buffering the multipart payload.
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(declared) || declared > ZH_INTAKE_MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 413 });
+  }
+
   let fd: FormData;
   try {
     fd = await request.formData();
@@ -47,20 +54,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
   }
 
+  // Honeypot first — a bot that filled it must never learn whether the rest
+  // of its payload would have validated. Pretend success, store nothing.
+  const website = fd.get("website");
+  if (typeof website === "string" && website.length > 0) {
+    return NextResponse.json({ ok: true, leadRef: generateLeadRef() });
+  }
+
   const parsed = zhIntakeSchema.safeParse(intakeFromFormData(fd));
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: "invalid_input" }, { status: 400 });
   }
-  const { website, ...data } = parsed.data;
-  // Honeypot tripped → pretend success with a throwaway ref, store nothing.
-  if (website) return NextResponse.json({ ok: true, leadRef: generateLeadRef() });
+  const { website: _hp, ...data } = parsed.data;
 
   // Files: validate BEFORE any DB write so a bad attachment never leaves a
-  // half-created lead behind.
+  // half-created lead behind. The declared MIME type is only an assertion —
+  // the first bytes must agree with it.
   const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length > ZH_INTAKE_MAX_FILES) return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
+  let total = 0;
   for (const f of files) {
-    if (f.size > ZH_INTAKE_MAX_FILE_BYTES || !(ZH_INTAKE_ALLOWED_MIME as readonly string[]).includes(f.type)) {
+    total += f.size;
+    if (f.size > ZH_INTAKE_MAX_FILE_BYTES || total > ZH_INTAKE_MAX_TOTAL_BYTES || !(ZH_INTAKE_ALLOWED_MIME as readonly string[]).includes(f.type)) {
+      return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
+    }
+    const head = new Uint8Array(await f.slice(0, 16).arrayBuffer());
+    if (sniffMime(head) !== f.type) {
       return NextResponse.json({ ok: false, error: "file_rejected" }, { status: 400 });
     }
   }

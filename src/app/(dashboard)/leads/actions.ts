@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { handleDbError } from "@/lib/errors";
 import { LEAD_STAGES, PAID_STAGES, legacyStatusFor } from "@/lib/marketing/zh/pipeline";
 
 const money = z.preprocess(
@@ -64,7 +65,7 @@ export async function updateLeadPipeline(formData: FormData): Promise<{ ok: true
       admin_notes: d.adminNotes ? d.adminNotes : null,
     })
     .eq("id", d.id);
-  if (error) return { error: error.message };
+  if (error) return { error: handleDbError(error, "leads:updateLeadPipeline") };
 
   await logAudit({
     actorId: profile.id,
@@ -78,16 +79,23 @@ export async function updateLeadPipeline(formData: FormData): Promise<{ ok: true
   return { ok: true };
 }
 
-/** Short-lived signed URL for an intake attachment (admin only; audited). */
+const LEAD_FILES_BUCKET = "lead-files";
+
+/**
+ * Short-lived signed URL for an intake attachment (admin only; audited). Served
+ * as a download (Content-Disposition: attachment) rather than rendered inline —
+ * the bytes were uploaded by an anonymous visitor.
+ */
 export async function getLeadFileUrl(fileId: string): Promise<{ url: string } | { error: string }> {
   const profile = await requireRole(["admin"]);
   if (!z.string().uuid().safeParse(fileId).success) return { error: "invalid_input" };
   const supabase = await createClient(); // RLS: admin read policy on marketing_lead_files
-  const { data: file } = await supabase.from("marketing_lead_files").select("id, lead_id, storage_path").eq("id", fileId).single();
+  const { data: file } = await supabase.from("marketing_lead_files").select("id, lead_id, storage_path, file_name").eq("id", fileId).single();
   if (!file) return { error: "not_found" };
-  const [bucket, ...rest] = file.storage_path.split("/");
+  if (!file.storage_path.startsWith(`${LEAD_FILES_BUCKET}/`)) return { error: "not_found" };
+  const objectPath = file.storage_path.slice(LEAD_FILES_BUCKET.length + 1);
   const svc = createServiceClient();
-  const { data, error } = await svc.storage.from(bucket).createSignedUrl(rest.join("/"), 600);
+  const { data, error } = await svc.storage.from(LEAD_FILES_BUCKET).createSignedUrl(objectPath, 600, { download: file.file_name });
   if (error || !data) return { error: "storage_error" };
   await logAudit({ actorId: profile.id, action: "LEAD_FILE_VIEW", entity: "marketing_lead_files", entityId: file.id, metadata: { lead_id: file.lead_id } });
   return { url: data.signedUrl };

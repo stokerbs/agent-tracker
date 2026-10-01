@@ -5,9 +5,13 @@ import { Loader2, CheckCircle2, Paperclip, X } from "lucide-react";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { track, currentPage } from "@/lib/marketing/analytics";
 import {
-  ZH_SERVICES, ZH_LOCATIONS, ZH_DURATIONS, ZH_URGENCY, ZH_BUDGETS,
-  ZH_INTAKE_MAX_FILES, ZH_INTAKE_MAX_FILE_BYTES, ZH_INTAKE_ALLOWED_MIME,
+  ZH_SERVICES, ZH_LOCATIONS, ZH_COUNTRIES, ZH_DURATIONS, ZH_URGENCY, ZH_BUDGETS,
+  ZH_INTAKE_MAX_FILES, ZH_INTAKE_MAX_FILE_BYTES, ZH_INTAKE_MAX_TOTAL_BYTES, ZH_INTAKE_ALLOWED_MIME,
 } from "@/lib/marketing/zh/intake-schema";
+
+const COUNTRY_LABELS: Record<(typeof ZH_COUNTRIES)[number], string> = {
+  china: "中国大陆", hong_kong: "香港", macau: "澳门", taiwan: "台湾", singapore: "新加坡", malaysia: "马来西亚", thailand: "泰国", other: "其他国家 / 地区",
+};
 
 const SERVICE_LABELS: Record<(typeof ZH_SERVICES)[number], string> = {
   relationship: "婚姻 / 感情调查",
@@ -30,6 +34,7 @@ const BUDGET_LABELS: Record<(typeof ZH_BUDGETS)[number], string> = {
 };
 
 type State = "idle" | "sending" | "done" | "error";
+const MB = (bytes: number) => Math.round(bytes / 1024 / 1024);
 
 /**
  * Structured Chinese intake (docs/china-market/10). Client validation is UX
@@ -81,7 +86,13 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
     const bad = next.find((f) => f.size > ZH_INTAKE_MAX_FILE_BYTES || !(ZH_INTAKE_ALLOWED_MIME as readonly string[]).includes(f.type));
     if (bad) {
       setState("error");
-      setError(`文件「${bad.name}」不符合要求：仅支持 JPG / PNG / WebP / PDF，每个不超过 10 MB。`);
+      setError(`文件「${bad.name}」不符合要求：仅支持 JPG / PNG / WebP / PDF，每个不超过 ${MB(ZH_INTAKE_MAX_FILE_BYTES)} MB。`);
+      e.target.value = "";
+      return;
+    }
+    if (next.reduce((sum, f) => sum + f.size, 0) > ZH_INTAKE_MAX_TOTAL_BYTES) {
+      setState("error");
+      setError(`附件合计不能超过 ${MB(ZH_INTAKE_MAX_TOTAL_BYTES)} MB，请压缩或减少文件。`);
       e.target.value = "";
       return;
     }
@@ -130,7 +141,7 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
       setError(
         reason === "rate_limited" ? "提交过于频繁，请稍后再试，或直接微信联系我们。"
         : reason === "invalid_input" ? "部分信息格式不正确，请检查必填项后重试。"
-        : reason === "file_rejected" ? "附件不符合要求（仅支持 JPG / PNG / WebP / PDF，每个不超过 10 MB，最多 5 个）。"
+        : reason === "file_rejected" ? `附件不符合要求（仅支持 JPG / PNG / WebP / PDF，每个不超过 ${MB(ZH_INTAKE_MAX_FILE_BYTES)} MB，合计不超过 ${MB(ZH_INTAKE_MAX_TOTAL_BYTES)} MB，最多 ${ZH_INTAKE_MAX_FILES} 个）。`
         : "提交失败，请重试，或直接微信联系我们。",
       );
     } catch {
@@ -176,7 +187,10 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
         </div>
         <div>
           <label className={label} htmlFor="zi-country">您所在的国家 / 地区 *</label>
-          <input id="zi-country" name="country" required minLength={2} maxLength={60} className={field} placeholder="例如：中国、新加坡、马来西亚" />
+          <select id="zi-country" name="country" required className={field} defaultValue="">
+            <option value="" disabled>— 请选择 —</option>
+            {ZH_COUNTRIES.map((v) => <option key={v} value={v}>{COUNTRY_LABELS[v]}</option>)}
+          </select>
         </div>
         <div>
           <label className={label} htmlFor="zi-location">泰国目标地点 *</label>
@@ -229,7 +243,7 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
       </div>
 
       <div>
-        <span className={label}>支持文件（选填，最多 {ZH_INTAKE_MAX_FILES} 个，JPG / PNG / WebP / PDF）</span>
+        <span className={label}>支持文件（选填，最多 {ZH_INTAKE_MAX_FILES} 个，JPG / PNG / WebP / PDF，合计不超过 {MB(ZH_INTAKE_MAX_TOTAL_BYTES)} MB）</span>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm hover:bg-muted">
           <Paperclip className="h-4 w-4" /> 添加文件
           <input type="file" name="files" multiple accept={ZH_INTAKE_ALLOWED_MIME.join(",")} onChange={onFiles} className="sr-only" disabled={busy || files.length >= ZH_INTAKE_MAX_FILES} />

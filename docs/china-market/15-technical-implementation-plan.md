@@ -11,7 +11,7 @@
 | Lead pipeline | `supabase/migrations/0124_marketing_leads_pipeline.sql`, `src/lib/database.types.ts`, `src/app/api/marketing/zh-intake/route.ts`, `src/lib/rate-limit.ts` (`zh_intake`), `src/lib/marketing/zh/{intake-schema,lead-ref,pipeline}.ts` | service-role writes only; admin RLS reads; private bucket |
 | Admin | `src/app/(dashboard)/leads/{page,actions,lead-pipeline-controls}.tsx` | stage/value editing, signed file URLs, audit log |
 | Analytics | `src/lib/marketing/analytics.ts` | typed `track()` |
-| Tests | `src/lib/marketing/zh/*.test.ts` | lead-ref, schema, registry, pipeline, alternates |
+| Tests | `src/lib/marketing/zh/*.test.ts`, `src/app/api/marketing/zh-intake/route.test.ts` | lead-ref, schema, registry, pipeline, alternates, magic bytes, intake route |
 | Docs | `docs/china-market/*`, `docs/DATABASE.md`, `.env.example` | |
 
 ## Deployment steps (DevOps)
@@ -30,7 +30,7 @@
 - Revisit ICP/mainland CDN only if Baidu organic becomes a measurable channel (Phase 4 data).
 
 ## Security posture (for the security-reviewer gate)
-- Public intake: rate-limited (3/h/IP), zod-validated server-side, honeypot, consent literal, file count/type/size validated **before** any write, storage key is a UUID (user filename only stored as a sanitised display string), private bucket with no anon policies, service-role client used only inside the route handler.
+- Public intake: rate-limited (3/h/IP), `Content-Length` capped at ~4.06 MB before parsing (Vercel's 4.5 MB function body limit is the hard ceiling — larger uploads would need direct-to-storage signed uploads, a Phase 3 option), honeypot evaluated before validation, zod-validated server-side, consent literal, file count/size/total/declared-type **and magic bytes** validated **before** any write, admin downloads served with `Content-Disposition: attachment`, storage key is a UUID (user filename only stored as a sanitised display string), private bucket with no anon policies, service-role client used only inside the route handler.
 - Admin surface: `requireRole(['admin'])` on page and actions; RLS policies for select/update on `marketing_leads` and select/delete on `marketing_lead_files`; signed URLs are 10-minute and audited (`LEAD_FILE_VIEW`); pipeline edits audited (`LEAD_STAGE_CHANGE`).
 - No secrets added; env vars are `NEXT_PUBLIC_*` display values only.
 - Analytics payloads carry no PII.

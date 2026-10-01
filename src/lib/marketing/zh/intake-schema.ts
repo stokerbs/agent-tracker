@@ -15,13 +15,20 @@ export const ZH_SERVICES = [
   "other",
 ] as const;
 
+/** Client's own country/region — enum so nothing free-text reaches analytics. */
+export const ZH_COUNTRIES = ["china", "hong_kong", "macau", "taiwan", "singapore", "malaysia", "thailand", "other"] as const;
 export const ZH_LOCATIONS = ["bangkok", "pattaya", "phuket", "chiang-mai", "samui", "hua-hin", "chonburi", "other", "unknown"] as const;
 export const ZH_DURATIONS = ["1-3_days", "4-7_days", "1-2_weeks", "2-4_weeks", "over_1_month", "unknown"] as const;
 export const ZH_URGENCY = ["normal", "urgent", "critical"] as const;
 export const ZH_BUDGETS = ["under_20k", "20k-50k", "50k-100k", "100k-300k", "over_300k", "undecided"] as const; // THB
 
 export const ZH_INTAKE_MAX_FILES = 5;
-export const ZH_INTAKE_MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB each
+// Vercel serverless functions reject request bodies over 4.5 MB at the edge,
+// so the whole multipart upload (all files + fields) must stay under that.
+export const ZH_INTAKE_MAX_FILE_BYTES = 4 * 1024 * 1024; // 4 MB each
+export const ZH_INTAKE_MAX_TOTAL_BYTES = 4 * 1024 * 1024; // 4 MB per submission
+/** Hard cap for the raw request body (files + ~64 KB of fields/boundaries). */
+export const ZH_INTAKE_MAX_BODY_BYTES = ZH_INTAKE_MAX_TOTAL_BYTES + 64 * 1024;
 export const ZH_INTAKE_ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
@@ -30,7 +37,7 @@ export const zhIntakeSchema = z.object({
   name: z.string().trim().min(1).max(80),
   wechatId: z.string().trim().min(2).max(60),
   email: z.string().trim().max(120).email().optional().or(z.literal("")),
-  country: z.string().trim().min(2).max(60),
+  country: z.enum(ZH_COUNTRIES),
   targetLocation: z.enum(ZH_LOCATIONS),
   service: z.enum(ZH_SERVICES),
   knownInfo: z.string().trim().min(10).max(3000),

@@ -44,7 +44,11 @@ alter table public.marketing_leads
 alter table public.marketing_leads alter column phone drop not null;
 alter table public.marketing_leads drop constraint if exists marketing_leads_contact_present;
 alter table public.marketing_leads add constraint marketing_leads_contact_present
-  check (phone is not null or wechat_id is not null or email is not null);
+  check (
+    nullif(btrim(phone), '')     is not null or
+    nullif(btrim(wechat_id), '') is not null or
+    nullif(btrim(email), '')     is not null
+  );
 
 alter table public.marketing_leads drop constraint if exists marketing_leads_stage_check;
 alter table public.marketing_leads add constraint marketing_leads_stage_check
@@ -61,6 +65,13 @@ alter table public.marketing_leads add constraint marketing_leads_values_nonneg
     (quoted_value    is null or quoted_value    >= 0) and
     (final_revenue   is null or final_revenue   >= 0)
   );
+
+-- Backfill: leads already triaged under the legacy status keep their place in
+-- the pipeline instead of all reappearing as "new".
+update public.marketing_leads
+   set stage = status,
+       stage_changed_at = coalesce(stage_changed_at, created_at)
+ where status in ('contacted', 'closed');
 
 create unique index if not exists marketing_leads_lead_ref_key
   on public.marketing_leads (lead_ref) where lead_ref is not null;
@@ -99,9 +110,9 @@ create policy "admin delete marketing lead files" on public.marketing_lead_files
 create index if not exists marketing_lead_files_lead_idx on public.marketing_lead_files (lead_id);
 
 -- Private bucket. No anon/authenticated insert policy: uploads happen through
--- the service-role route handler after validation (type + size + count).
+-- the service-role route handler after validation (magic bytes + size + count).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('lead-files', 'lead-files', false, 10485760, array['image/jpeg','image/png','image/webp','application/pdf'])
+values ('lead-files', 'lead-files', false, 4194304, array['image/jpeg','image/png','image/webp','application/pdf'])
 on conflict (id) do nothing;
 
 drop policy if exists "lead-files admin read" on storage.objects;
