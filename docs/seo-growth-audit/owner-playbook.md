@@ -102,6 +102,23 @@
 
 ---
 
+## ไฟล์พร้อมใช้ (สร้าง 2026-10-02 · โฟลเดอร์ `docs/seo-growth-audit/assets/`)
+
+| ไฟล์ | ใช้ที่ไหน |
+|---|---|
+| `gbp-logo-720.png` | GBP → รูปภาพ → โลโก้ (สี่เหลี่ยมจัตุรัส 720×720) |
+| `gbp-cover-1024x576.png` | GBP → รูปภาพ → รูปปก (1024×576) |
+| `gtm-container-marketing-conversions.json` | GTM → Admin → Import Container (แท็ก GA4 5 ตัว + Google Ads conversion 2 ตัว + Conversion Linker + ตัวแปร/ทริกเกอร์ครบ) |
+| `line-rich-menu-2500x1686.png` + `line-rich-menu.json` | ทางเลือกสำรองเท่านั้น — เจ้าของมี rich menu อยู่แล้ว |
+
+**วิธีนำเข้า GTM (Agency หรือเจ้าของ, 5 นาที)**
+1. เปิด https://tagmanager.google.com → เลือก container ของ detectivepulse.com → **Admin** → **Import Container**
+2. เลือกไฟล์ `gtm-container-marketing-conversions.json` → Workspace: **New** (ตั้งชื่อ "Marketing conversions 2026-10") → ตัวเลือก **Merge** → **Rename conflicting tags, triggers, and variables** → Confirm
+3. ไปที่ **Variables** แก้ค่าคงที่ 3 ตัว: `Const - GA4 Measurement ID` (G-… จาก GA4 Admin → Data streams), `Const - Google Ads Conversion ID` (AW-… จาก Google Ads → Goals → Conversions → Tag setup) และ label ของ conversion "Lead form" / "Contact click" (สร้าง conversion action 2 ตัวนี้ใน Google Ads แบบ "Website" ก่อน แล้วคัดลอก label)
+4. กด **Preview** → เปิดเว็บ → ส่งฟอร์มทดสอบ 1 ครั้ง → ต้องเห็นแท็ก `GA4 - lead_submitted` และ `Ads - Conversion - Lead form` ยิง → กด **Submit / Publish**
+5. ใน GA4 → Admin → Events → ติ๊ก **Mark as key event** ให้ `lead_submitted`, `assistant_lead_created`, `zh_intake_submitted`, `contact_click`
+ถ้า container เดิมมีแท็ก GA4 config อยู่แล้ว ไม่ต้องสร้างเพิ่ม แท็กที่นำเข้ามาส่ง Measurement ID ของตัวเองอยู่แล้ว
+
 ## 4. โปรแกรมพาร์ตเนอร์สำนักงานกฎหมาย — ติดต่อ 20 แห่ง
 
 หน้า landing พร้อมแล้ว: `/สำหรับทนายความ` และ `/en/for-law-firms` สิ่งที่ยังต้องการจากเจ้าของ: เงื่อนไขค่าแนะนำ/ราคาต่อเนื่อง (ยังไม่กำหนด) และตัวอย่างรายงานที่ปกปิดข้อมูล (C10)

@@ -1,0 +1,89 @@
+{
+  "size": {
+    "width": 2500,
+    "height": 1686
+  },
+  "selected": true,
+  "name": "Detective Pulse — บริการ (2026-10)",
+  "chatBarText": "เมนูบริการ",
+  "areas": [
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "สืบชู้สาว",
+        "uri": "https://detectivepulse.com/นักสืบชู้สาว?utm_source=line&utm_medium=richmenu&utm_campaign=oa"
+      }
+    },
+    {
+      "bounds": {
+        "x": 833,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "เช็คประวัติ · ตรวจสอ",
+        "uri": "https://detectivepulse.com/เช็คประวัติบุคคล?utm_source=line&utm_medium=richmenu&utm_campaign=oa"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1666,
+        "y": 0,
+        "width": 834,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "ตามหาคน · สืบทรัพย์",
+        "uri": "https://detectivepulse.com/สืบตามหาคน?utm_source=line&utm_medium=richmenu&utm_campaign=oa"
+      }
+    },
+    {
+      "bounds": {
+        "x": 0,
+        "y": 843,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "ราคาและขั้นตอน",
+        "uri": "https://detectivepulse.com/ราคานักสืบ?utm_source=line&utm_medium=richmenu&utm_campaign=oa"
+      }
+    },
+    {
+      "bounds": {
+        "x": 833,
+        "y": 843,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "message",
+        "label": "เริ่มปรึกษาฟรี",
+        "text": "เริ่มปรึกษา"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1666,
+        "y": 843,
+        "width": 834,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "โทร 096 846 1406",
+        "uri": "tel:+66968461406"
+      }
+    }
+  ]
+}
