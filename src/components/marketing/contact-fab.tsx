@@ -6,6 +6,7 @@ import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { CONTACT } from "@/lib/marketing/contact";
+import { FAB_AUTO_OPEN_DELAY_MS, shouldAutoOpenFab } from "@/lib/marketing/overlay-policy";
 
 type Lang = "th" | "en" | "zh";
 
@@ -23,8 +24,9 @@ function detectLang(pathname: string): Lang {
 
 /**
  * Floating contact widget for the marketing site — always visible on every page,
- * expands to the firm's contact channels. Auto-opens once shortly after load
- * (like the old WP popup) so customers immediately see how to reach us.
+ * expands to the firm's contact channels. On desktop it auto-opens once per
+ * session shortly after load; on mobile it stays closed (the sticky contact bar
+ * already shows the channels) — see lib/marketing/overlay-policy.ts.
  */
 export function ContactFab() {
   const lang = detectLang(usePathname() || "/");
@@ -41,13 +43,16 @@ export function ContactFab() {
   const [nudged, setNudged] = useState(false);
 
   useEffect(() => {
-    // Pop the panel open once on first visit, then leave it to the user.
-    if (sessionStorage.getItem("dp_contact_nudged")) { setNudged(true); return; }
+    // Pop the panel open once per session on desktop only, then leave it to the user.
+    let alreadyShown = false;
+    try { alreadyShown = !!sessionStorage.getItem("dp_contact_nudged"); } catch { /* storage blocked */ }
+    if (alreadyShown) { setNudged(true); return; }
+    if (!shouldAutoOpenFab({ viewportWidth: window.innerWidth, alreadyShown })) return;
     const t = setTimeout(() => {
       setOpen(true);
       setNudged(true);
-      sessionStorage.setItem("dp_contact_nudged", "1");
-    }, 1800);
+      try { sessionStorage.setItem("dp_contact_nudged", "1"); } catch { /* storage blocked */ }
+    }, FAB_AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(t);
   }, []);
 

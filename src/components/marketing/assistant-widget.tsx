@@ -8,6 +8,7 @@ import { TrackedLink } from "@/components/marketing/tracked-link";
 import { track, currentPage } from "@/lib/marketing/analytics";
 import { getAttribution } from "@/lib/marketing/attribution";
 import { CONTACT } from "@/lib/marketing/contact";
+import { ASSISTANT_LAUNCHER_DELAY_MS } from "@/lib/marketing/overlay-policy";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Lang = "th" | "en" | "zh";
@@ -65,6 +66,8 @@ function detectLang(pathname: string): Lang {
  * Floating AI assistant for the marketing site. UI + prompt locale follow the
  * page language (TH / EN / ZH). Answers via /api/marketing/assistant (Claude);
  * the raw chat isn't stored. Sits bottom-left (contact FAB is bottom-right).
+ * The launcher is hidden on first paint and appears after the visitor's first
+ * interaction (scroll / tap / key) or a short grace period — see overlay-policy.
  */
 export function AssistantWidget() {
   const lang = detectLang(usePathname() || "/");
@@ -74,7 +77,20 @@ export function AssistantWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
+  const [launcherVisible, setLauncherVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const show = () => setLauncherVisible(true);
+    const opts: AddEventListenerOptions = { once: true, passive: true };
+    const events: (keyof WindowEventMap)[] = ["scroll", "pointerdown", "keydown"];
+    events.forEach((ev) => window.addEventListener(ev, show, opts));
+    const timer = window.setTimeout(show, ASSISTANT_LAUNCHER_DELAY_MS);
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, show));
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -110,6 +126,8 @@ export function AssistantWidget() {
       setLoading(false);
     }
   }
+
+  if (!launcherVisible && !open) return null;
 
   return (
     <div className="fixed bottom-[4.75rem] left-5 z-50 lg:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>

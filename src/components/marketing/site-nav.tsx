@@ -102,7 +102,7 @@ export function SiteFooterLinks() {
           {ZH_NAV.primary.map((s) => (
             <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
           ))}
-          <Link href="/privacy" className="hover:text-primary">隐私政策</Link>
+          <Link href="/zh/privacy" className="hover:text-primary">隐私声明</Link>
         </nav>
       </div>
     );

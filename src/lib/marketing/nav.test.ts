@@ -3,7 +3,7 @@ import { TH_NAV, EN_NAV } from "./nav";
 import { getMarketingPages, getMarketingPagesEN } from "./content";
 import { SERVICE_PAGES } from "./pages";
 
-const STATIC = new Set(["/articles", "/careers", "/privacy", "/en/articles", "/en/careers"]);
+const STATIC = new Set(["/articles", "/careers", "/privacy", "/en/articles", "/en/careers", "/en/privacy"]);
 
 describe("marketing navigation", () => {
   it("every Thai nav href resolves to a content page or a static route, without a trailing slash", () => {

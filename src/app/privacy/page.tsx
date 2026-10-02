@@ -1,11 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { CONTACT } from "@/lib/marketing/contact";
+import { isMarketingHost } from "@/lib/marketing/host";
+import { SiteChrome } from "@/components/marketing/site-chrome";
+import { PrivacyNotice } from "@/components/marketing/privacy-notice";
+import { getPrivacyNotice, PRIVACY_PATH } from "@/lib/marketing/privacy-notice";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy · Detective Pulse",
-  description: "How the Detective Pulse Field Agent app collects, uses, and protects your data.",
-};
+// On detectivepulse.com "/privacy" is the Thai website privacy notice (PDPA,
+// lead form / assistant / analytics); on the app host it is the Field Agent
+// app policy below. Same host switch as src/app/page.tsx.
+export async function generateMetadata(): Promise<Metadata> {
+  const host = (await headers()).get("host");
+  if (!isMarketingHost(host)) {
+    return {
+      title: "Privacy Policy · Detective Pulse",
+      description: "How the Detective Pulse Field Agent app collects, uses, and protects your data.",
+    };
+  }
+  const notice = getPrivacyNotice("th");
+  return {
+    title: { absolute: `${notice.title} | ${CONTACT.brand}` },
+    description: notice.description,
+    alternates: {
+      canonical: PRIVACY_PATH.th,
+      languages: { th: PRIVACY_PATH.th, en: PRIVACY_PATH.en, "zh-CN": PRIVACY_PATH.zh, "x-default": PRIVACY_PATH.en },
+    },
+  };
+}
 
 const UPDATED = "1 July 2026";
 const CONTACT_EMAIL = CONTACT.email;
@@ -26,7 +48,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  * NOTE: this is a solid baseline; have it reviewed by counsel and confirm it
  * matches your actual data practices before publishing to the stores.
  */
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const host = (await headers()).get("host");
+  if (isMarketingHost(host)) {
+    return (
+      <SiteChrome>
+        <PrivacyNotice notice={getPrivacyNotice("th")} />
+      </SiteChrome>
+    );
+  }
   return (
     <main className="mx-auto max-w-2xl px-5 py-12">
       <Link href="/login" className="text-xs text-muted-foreground hover:text-foreground">

@@ -160,7 +160,7 @@ export function ZhPartnerForm() {
 
       <label className="flex items-start gap-2.5 text-sm">
         <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 accent-primary" />
-        <span>我已阅读并同意 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">隐私政策</a>，同意贵公司存储并使用以上信息以便联系我讨论合作。*</span>
+        <span>我已阅读并同意 <a href="/zh/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">隐私政策</a>，同意贵公司存储并使用以上信息以便联系我讨论合作。*</span>
       </label>
 
       {state === "error" && <p ref={errorRef} tabIndex={-1} className="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive outline-none" role="alert">{error}</p>}

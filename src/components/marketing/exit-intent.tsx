@@ -6,6 +6,7 @@ import { LineIcon, WhatsAppIcon as WaIcon } from "@/components/marketing/brand-i
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
 import { CONTACT } from "@/lib/marketing/contact";
+import { exitIntentMode, isExitMouseOut } from "@/lib/marketing/overlay-policy";
 
 const COPY: Record<MarketingLang, {
   eyebrow: string; title: string; body: string; line: string; whatsapp: string; call: string; dismiss: string; close: string;
@@ -33,10 +34,10 @@ const COPY: Record<MarketingLang, {
 const SEEN_KEY = "dp_exit_seen";
 
 /**
- * One-time exit-intent lead recovery. Desktop: fires when the cursor leaves the
- * top of the viewport. Mobile (no mouseout): a fallback timer. Shows once per
- * session and offers the firm's direct contact channels — a low-friction way to
- * recover visitors who are about to leave without converting.
+ * One-time exit-intent lead recovery. Desktop only: fires when the cursor leaves
+ * the top of the viewport. Never on touch / small screens (no timer — a timed
+ * modal on mobile is an intrusive interstitial and hides content). Shows once
+ * per session and offers the firm's direct contact channels.
  */
 export function ExitIntent() {
   const lang = useMarketingLang();
@@ -51,24 +52,19 @@ export function ExitIntent() {
     : { href: CONTACT.whatsappUrl, label: t.whatsapp, bg: "bg-[#178741]", Icon: WaIcon };
 
   useEffect(() => {
-    if (sessionStorage.getItem(SEEN_KEY)) return;
+    let alreadyShown = false;
+    try { alreadyShown = !!sessionStorage.getItem(SEEN_KEY); } catch { /* storage blocked */ }
+    const finePointer = typeof window.matchMedia === "function" && window.matchMedia("(pointer: fine)").matches;
+    if (exitIntentMode({ viewportWidth: window.innerWidth, finePointer, alreadyShown }) !== "mouse") return;
     let done = false;
-    const trigger = () => {
-      if (done) return;
+    const onMouseOut = (e: MouseEvent) => {
+      if (done || !isExitMouseOut(e)) return;
       done = true;
-      sessionStorage.setItem(SEEN_KEY, "1");
+      try { sessionStorage.setItem(SEEN_KEY, "1"); } catch { /* storage blocked */ }
       setOpen(true);
     };
-    const onMouseOut = (e: MouseEvent) => {
-      if (e.clientY <= 0 && !e.relatedTarget) trigger();
-    };
     document.addEventListener("mouseout", onMouseOut);
-    // Mobile fallback — no exit-intent event; nudge after a while of browsing.
-    const timer = window.setTimeout(trigger, 40_000);
-    return () => {
-      document.removeEventListener("mouseout", onMouseOut);
-      window.clearTimeout(timer);
-    };
+    return () => document.removeEventListener("mouseout", onMouseOut);
   }, []);
 
   if (!open) return null;

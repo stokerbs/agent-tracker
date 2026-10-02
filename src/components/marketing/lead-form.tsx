@@ -7,6 +7,7 @@ import { getAttribution } from "@/lib/marketing/attribution";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
+import { PRIVACY_PATH } from "@/lib/marketing/privacy-notice";
 
 type Lang = "th" | "en" | "zh";
 
@@ -200,7 +201,7 @@ export function LeadForm({ lang = "th", defaultCaseType }: { lang?: Lang; defaul
         <input type="checkbox" name="consent" required className="mt-0.5 h-4 w-4 shrink-0 accent-primary" />
         <span>
           {t.consent}{" "}
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">
+          <a href={PRIVACY_PATH[lang]} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">
             {t.consentLink}
           </a>
         </span>

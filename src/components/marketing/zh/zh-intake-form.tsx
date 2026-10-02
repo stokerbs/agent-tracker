@@ -289,7 +289,7 @@ export function ZhIntakeForm({ defaultService }: { defaultService?: (typeof ZH_S
 
       <label className="flex items-start gap-2.5 text-sm">
         <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 accent-primary" />
-        <span>我已阅读并同意 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">隐私政策</a>，同意贵公司存储并使用以上信息以评估并联系我。我确认所提供的信息仅用于合法目的。*</span>
+        <span>我已阅读并同意 <a href="/zh/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">隐私政策</a>，同意贵公司存储并使用以上信息以评估并联系我。我确认所提供的信息仅用于合法目的。*</span>
       </label>
 
       {state === "error" && (

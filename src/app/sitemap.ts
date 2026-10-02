@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE}/articles`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/careers`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
   const thMd = getMarketingPages();
   const marketing: MetadataRoute.Sitemap = [
@@ -46,11 +47,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: p.kind === "service" ? 0.8 : 0.7,
     })),
     { url: `${BASE}/zh/articles`, changeFrequency: "weekly", priority: 0.5 },
+    { url: `${BASE}/zh/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
   const english: MetadataRoute.Sitemap = [
     { url: `${BASE}/en`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/en/articles`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/en/careers`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/en/privacy`, changeFrequency: "yearly", priority: 0.3 },
     ...getMarketingPagesEN().map((p) => ({
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
       changeFrequency: "monthly" as const,

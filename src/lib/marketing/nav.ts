@@ -53,6 +53,6 @@ export const EN_NAV = {
   footer: [
     { href: "/en/articles", label: "All articles" },
     { href: "/en/careers", label: "Careers" },
-    { href: "/privacy", label: "Privacy policy" },
+    { href: "/en/privacy", label: "Privacy notice" },
   ] as NavLink[],
 };
