@@ -11,7 +11,7 @@ type Props = Omit<ComponentProps<"a">, "href" | "onClick" | "target" | "rel" | "
 export function MdLink({ href, children, node: _node, ...rest }: Props) {
   void _node; // react-markdown passes the hast node; never forward it to the DOM
   const channel = channelForHref(href);
-  const external = typeof href === "string" && /^https?:\/\//i.test(href);
+  const external = typeof href === "string" && /^(https?:)?\/\//i.test(href);
   return (
     <a
       href={href}

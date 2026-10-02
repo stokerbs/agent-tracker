@@ -24,7 +24,7 @@ type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick" | 
  */
 export function TrackedLink({ href, placement, channel, external, children, ...rest }: Props) {
   const resolved = channel ?? channelForHref(href);
-  const isHttp = /^https?:\/\//i.test(href);
+  const isHttp = /^(https?:)?\/\//i.test(href);
   const openExternal = external ?? isHttp;
   return (
     <a
