@@ -23,9 +23,13 @@ export async function approveArticle(token: string, formData?: FormData): Promis
     const th = formData?.get("humanParagraphTh");
     const en = formData?.get("humanParagraphEn");
     if (typeof th !== "string" || !th.trim() || typeof en !== "string" || !en.trim()) {
+      console.warn("[review] publish refused: human paragraph required", { topic: draft.topic });
       return { ok: false, error: "human_paragraph_required" };
     }
-    if (!isValidHumanParagraph(th) || !isValidHumanParagraph(en)) return { ok: false, error: "human_paragraph_invalid" };
+    if (!isValidHumanParagraph(th) || !isValidHumanParagraph(en)) {
+      console.warn("[review] publish refused: human paragraph invalid", { topic: draft.topic, thChars: th.trim().length, enChars: en.trim().length });
+      return { ok: false, error: "human_paragraph_invalid" };
+    }
     try {
       const updated = await setDraftBodies(token, {
         th_body: insertHumanParagraph(draft.th_body, th),
@@ -41,7 +45,14 @@ export async function approveArticle(token: string, formData?: FormData): Promis
     console.info("[review] human paragraph added", { topic: draft.topic, thChars: th.trim().length, enChars: en.trim().length });
   }
   const status = await decideArticle(token, "published");
-  if (status === "published") {
+  // Already decided elsewhere (double click / second device): say so instead of a silent no-op.
+  if (status !== "published") {
+    console.warn("[review] publish no-op: draft no longer pending", { topic: draft.topic, status: draft.status });
+    return { ok: false, error: "not_found" };
+  }
+  console.info("[review] published", { topic: draft.topic, service: draft.service ?? null });
+  revalidatePath(`/review/${token}`); // re-render the review page into its "published" state
+  {
     revalidatePath("/articles");
     revalidatePath("/en/articles");
     revalidatePath("/zh/articles");
@@ -59,5 +70,7 @@ export async function approveArticle(token: string, formData?: FormData): Promis
 
 /** Reject a draft (token-gated). */
 export async function rejectArticle(token: string): Promise<void> {
-  await decideArticle(token, "rejected");
+  const status = await decideArticle(token, "rejected");
+  console.info("[review] rejected", { token_suffix: token.slice(-4), status });
+  revalidatePath(`/review/${token}`);
 }

@@ -881,7 +881,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
         body: [],
         bullets: [
           "Every item dated, timed, located and sourced; reports formatted for filing",
-          "Strictly lawful scope, so there is no admissibility risk and no exposure for counsel",
+          "Strictly lawful scope, which minimises admissibility risk and exposure for counsel",
           "Fast assessment and quotes; urgent matters accepted",
           "Confidentiality and a conflict check before every engagement",
           "English-language reporting and direct contact for the firm; invoicing on agreed terms",

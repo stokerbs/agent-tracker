@@ -38,6 +38,7 @@ describe("ad spend CSV", () => {
       { platform: "google_ads", locale: "th", cost: 1000, spend_date: "2026-09-02" },
       { platform: "meta", locale: "all", cost: 500, spend_date: "2026-09-02" },
       { platform: "google_ads", locale: "th", cost: 9999, spend_date: "2026-08-01" }, // outside window
+      { platform: "google_ads", locale: "th", cost: 1, spend_date: "2026-09-30" }, // last day of the window (day granularity)
     ];
     const leads = [
       { channel: "paid_search", locale: "th", created_at: "2026-09-01T10:00:00Z", lead_quality: "qualified", converted_at: "2026-09-05T00:00:00Z", final_revenue: 15000 },
@@ -46,9 +47,11 @@ describe("ad spend CSV", () => {
       { channel: "paid_social", locale: "en", created_at: "2026-09-02T10:00:00Z", lead_quality: "unrated" },
       { channel: "organic_search", locale: "th", created_at: "2026-09-02T10:00:00Z", lead_quality: "qualified" },
     ];
-    const rows = costPerLead(spend, leads, { from: new Date("2026-09-01T00:00:00Z"), to: new Date("2026-09-30T23:59:59Z") });
+    // `from` carries a time-of-day: the 1 Sep rows must still count (day granularity).
+    const rows = costPerLead(spend, leads, { from: new Date("2026-09-01T15:30:00Z"), to: new Date("2026-09-30T03:00:00Z") });
     const g = rows.find((r) => r.platform === "google_ads")!;
-    expect(g).toMatchObject({ cost: 2000, leads: 2, qualified: 1, paid: 1, revenue: 15000, cpl: 1000, cpql: 2000, roas: 7.5 });
+    expect(g).toMatchObject({ cost: 2001, leads: 2, qualified: 1, paid: 1, revenue: 15000, cpl: 1000.5, cpql: 2001 });
+    expect(g.roas).toBeCloseTo(15000 / 2001, 6);
     const m = rows.find((r) => r.platform === "meta")!;
     expect(m).toMatchObject({ cost: 500, leads: 1, qualified: 0, cpl: 500, cpql: null, roas: 0 });
     expect(rows.find((r) => r.platform === "line")).toBeUndefined();

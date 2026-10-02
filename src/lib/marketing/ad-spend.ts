@@ -170,12 +170,18 @@ export interface CplRow {
 /**
  * Cost per lead per platform for a window: spend in the window vs paid-channel
  * leads created in the window (same locale when the spend is locale-tagged).
+ * The window is compared at DAY granularity (UTC dates) so a spend row dated
+ * "today" or exactly N days ago is included alongside the leads of that day.
+ * Note: meta / line / other all map to paid_social, so a paid-social lead
+ * counts toward each of those platforms that had spend in the window.
  */
 export function costPerLead(spend: SpendLike[], leads: LeadLike[], window: { from: Date; to: Date }): CplRow[] {
-  const inWin = (iso: string) => { const t = new Date(iso).getTime(); return t >= window.from.getTime() && t <= window.to.getTime(); };
+  const day = (d: Date | string) => (typeof d === "string" ? d.slice(0, 10) : d.toISOString().slice(0, 10));
+  const fromDay = day(window.from), toDay = day(window.to);
+  const inWin = (iso: string) => { const d = day(new Date(iso)); return d >= fromDay && d <= toDay; };
   const out: CplRow[] = [];
   for (const platform of AD_PLATFORMS) {
-    const rows = spend.filter((s) => s.platform === platform && inWin(`${s.spend_date}T12:00:00Z`));
+    const rows = spend.filter((s) => s.platform === platform && s.spend_date >= fromDay && s.spend_date <= toDay);
     if (rows.length === 0) continue;
     const cost = rows.reduce((a, r) => a + num(r.cost), 0);
     const locales = new Set(rows.map((r) => r.locale));
