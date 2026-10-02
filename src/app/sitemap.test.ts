@@ -38,7 +38,7 @@ describe("sitemap.xml", () => {
 
   it("excludes the app-only pages and anything with a trailing slash; keeps every TH/EN content page and the 3 privacy notices", async () => {
     const urls = (await sitemap()).map((e) => e.url);
-    expect(urls.some((u) => u.endsWith("/support"))).toBe(false);
+    expect(urls.some((u) => u.endsWith("/support") || u.endsWith("/sample-report"))).toBe(false);
     // /privacy on detectivepulse.com is the marketing (PDPA) notice, in TH/EN/ZH.
     for (const p of ["/privacy", "/en/privacy", "/zh/privacy"]) expect(urls).toContain(`https://detectivepulse.com${p}`);
     for (const u of urls) if (u !== "https://detectivepulse.com/") expect(u.endsWith("/"), u).toBe(false);

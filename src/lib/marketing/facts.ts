@@ -38,12 +38,16 @@ export const FACTS = {
     bangkokStartDays: "1–2",
   },
   pending: {
-    /** Registered legal entity name (Thai) — appears in About, footer and schema `legalName`. */
+    /** Registered legal entity name — B1 answered 2026-10-02: the business trades as a sole proprietor (บุคคลธรรมดา), so there is no entity name or DBD number to show. Stays null by design. */
     legalName: null as string | null,
-    /** DBD registration number — appears next to legalName. */
     registrationNo: null as string | null,
-    /** How/where clients can meet the team — replaces the "freelance, no office" FAQ answer. (B3: still awaited) */
-    officeNote: { th: null, en: null, zh: null } as Localized,
+    legalForm: "sole_proprietor" as "sole_proprietor" | "company" | null,
+    /** How/where clients can meet the team (B3, confirmed 2026-10-02). */
+    officeNote: {
+      th: "ทีมนักสืบของเราทำงานภาคสนามเป็นหลัก ลูกค้าสามารถนัดพูดคุยและเลือกสถานที่นัดพบได้ตามสะดวก ทั้งออนไลน์ ทางโทรศัพท์ หรือพบตัวในกรุงเทพฯ",
+      en: "Our investigators work in the field. You can arrange a briefing and choose where to meet, at your convenience — online, by phone, or in person in Bangkok.",
+      zh: "我们的调查团队以外勤为主。您可以预约沟通并自行选择会面方式和地点：线上、电话，或在曼谷面谈。",
+    } as Localized,
     /** Response-time commitment (B4, confirmed 2026-10-02) — shown on service pages and contact. */
     responseTime: {
       th: "ตอบกลับภายใน 1 ชั่วโมง เวลา 08:00–22:00",
@@ -52,12 +56,16 @@ export const FACTS = {
     } as Localized,
     /** Accepted payment methods (B5, confirmed 2026-10-02): bank transfer (long-standing) + PayPal for clients abroad. Receipts/tax invoices: not yet confirmed. */
     paymentMethods: ["bank_transfer", "paypal"] as ("bank_transfer" | "paypal")[],
+    /** B5 (2026-10-02): the firm does NOT issue receipts or tax invoices; proof of payment is the transfer slip / PayPal confirmation. null = unknown. */
+    issuesTaxInvoice: false as boolean | null,
+    /** Languages the team actually serves in (B7, confirmed 2026-10-02). */
+    serviceLanguages: ["th", "en", "zh"] as FactLang[],
     /** Named awards only (name, issuer, year). Empty = no award claim anywhere. */
     awards: [] as { name: string; issuer: string; year: number }[],
     /** Public first name + role of the lead investigator for About / author schema (B7, confirmed 2026-10-02). */
     leadInvestigator: { name: "Tommy", role: { th: "ผู้ก่อตั้ง", en: "Founder", zh: "创始人" } } as { name: string; role: Record<FactLang, string> } | null,
-    /** Public URL (PDF or image) of a redacted sample report — shown on the how-it-works pages when set. */
-    sampleReportUrl: null as string | null,
+    /** Redacted sample report (C10, 2026-10-02: a template page in the app's report layout, not a real case) — shown on the how-it-works pages. */
+    sampleReportUrl: { th: "/sample-report", en: "/en/sample-report", zh: "/en/sample-report" } as Localized,
   },
 } as const;
 
@@ -96,4 +104,16 @@ export function paymentMethodsText(lang: FactLang): string {
 export function leadInvestigatorText(lang: FactLang): string | null {
   const li = FACTS.pending.leadInvestigator;
   return li ? `${li.name} (${li.role[lang]})` : null;
+}
+
+/** Receipt / tax-invoice statement for pricing pages, or null when unconfirmed. */
+export function receiptNote(lang: FactLang): string | null {
+  const v = FACTS.pending.issuesTaxInvoice;
+  if (v === null) return null;
+  if (v) return { th: "ออกใบเสร็จและใบกำกับภาษีได้", en: "We issue receipts and tax invoices.", zh: "可开具收据与税务发票。" }[lang];
+  return {
+    th: "ขณะนี้ยังไม่สามารถออกใบเสร็จหรือใบกำกับภาษีได้ หลักฐานการชำระคือสลิปโอนธนาคารหรือใบยืนยัน PayPal และใบเสนอราคาที่ตกลงกัน",
+    en: "We do not currently issue receipts or tax invoices; your proof of payment is the bank-transfer slip or PayPal confirmation together with the agreed written quote.",
+    zh: "目前暂不开具收据或税务发票；付款凭证为银行转账单或 PayPal 确认，以及双方确认的书面报价。",
+  }[lang];
 }

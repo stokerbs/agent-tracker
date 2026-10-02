@@ -1,5 +1,5 @@
 import type { MarketingServicePage } from "./types";
-import { FACTS, officeAnswer, paymentMethodsText } from "@/lib/marketing/facts";
+import { FACTS, officeAnswer, paymentMethodsText, receiptNote } from "@/lib/marketing/facts";
 
 const YEAR = FACTS.confirmed.foundingYear;
 
@@ -432,7 +432,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     faq: [
       { q: "Is the first consultation free?", a: "Yes. Feasibility and scope are assessed free of charge before we quote." },
       { q: "Do I need to be in Thailand?", a: "No. Most international clients brief us on WhatsApp or email, pay by transfer and receive the report electronically. A meeting in Bangkok or a video call is available if you prefer." },
-      { q: "How do I pay from abroad?", a: `International bank transfer or PayPal; we provide the details with the written quote. We never ask for payment in gift cards or crypto.` },
+      { q: "How do I pay from abroad?", a: `International ${paymentMethodsText("en").replace(" and ", " or ")}; we provide the details with the written quote. We never ask for payment in gift cards or crypto.` },
       { q: "Can I cancel?", a: "Yes, but the deposit is non-refundable once field work has started. This is stated in every quote." },
     ],
     related: ["pricing", "cheating-spouse-investigator", "background-check", "private-investigator-bangkok"],
@@ -483,13 +483,14 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       },
       {
         heading: "Paying from abroad",
-        body: [`International bank transfer or PayPal. Details come with the written quote. We never ask for payment by gift card or cryptocurrency, and we never ask for full payment before the quote is agreed.`],
+        body: [`International ${paymentMethodsText("en").replace(" and ", " or ")}. Details come with the written quote. We never ask for payment by gift card or cryptocurrency, and we never ask for full payment before the quote is agreed.`],
       },
     ],
     faq: [
       { q: "Can you give a rough price on chat?", a: `Yes. Most assignments start ${FACTS.confirmed.priceFrom.en}; once we know the case type, location and approximate days we give a range at once, and a firm written quote follows once we have the full picture.` },
       { q: "Are there hidden costs?", a: "No. Every cost that may arise is listed in the quote as included or itemised." },
-      { q: "Which payment methods do you accept?", a: `${paymentMethodsText("en").replace(/^./, (c) => c.toUpperCase())}. Details come with the written quote; clients abroad can pay by PayPal.` },
+      { q: "Which payment methods do you accept?", a: `${paymentMethodsText("en").replace(/^./, (c) => c.toUpperCase())}. Details come with the written quote${FACTS.pending.paymentMethods.includes("paypal") ? "; clients abroad can pay by PayPal" : ""}.` },
+      ...(receiptNote("en") ? [{ q: "Do you issue receipts or tax invoices?", a: receiptNote("en")! }] : []),
       { q: "If you find nothing, do I still pay in full?", a: "Yes. You pay for the work performed to plan, not for a particular result. A \"nothing found\" result is equally valuable information, and we never embellish findings to make an assignment look worthwhile." },
     ],
     related: ["hire-a-private-detective", "cheating-spouse-investigator", "asset-investigation", "contact"],
@@ -567,7 +568,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     sections: [
       {
         heading: "What we do",
-        body: [`Infidelity and behaviour observation, background checks, locating people, asset tracing, online investigations and company verification. The core team is based in Bangkok and we take assignments nationwide.`, `The firm is led by ${FACTS.pending.leadInvestigator?.name ?? "its founder"}, ${FACTS.pending.leadInvestigator?.role.en.toLowerCase() ?? "founder"}, with a team of ${FACTS.confirmed.teamSize} investigators and support staff.`],
+        body: [`Infidelity and behaviour observation, background checks, locating people, asset tracing, online investigations and company verification. The core team is based in Bangkok and we take assignments nationwide.`, `The firm is led by its ${FACTS.pending.leadInvestigator?.role.en.toLowerCase() ?? "founder"}${FACTS.pending.leadInvestigator ? `, ${FACTS.pending.leadInvestigator.name},` : ""} with a team of ${FACTS.confirmed.teamSize} investigators and support staff.`],
       },
       {
         heading: "How we work",
@@ -909,7 +910,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       { q: "Can your investigator testify?", a: "Where necessary, yes. The investigator who obtained the evidence can speak to how it was obtained and the accuracy of the record, on terms agreed in advance." },
       { q: "Do you run conflict checks?", a: "Yes. Before accepting a matter we confirm we are not acting for the other side in the same dispute." },
       { q: "Can you take urgent matters?", a: "Yes, especially in Bangkok and its suburbs. Tell us the deadline and we assess at once." },
-      { q: "Can you invoice the firm and work on account?", a: "Yes, and payment terms can be agreed for ongoing work." },
+      { q: "Can you invoice the firm and work on account?", a: `Payment terms can be agreed for ongoing work. ${receiptNote("en") ?? ""}`.trim() },
     ],
     related: ["asset-investigation", "find-missing-person", "surveillance-thailand", "due-diligence-thailand"],
     caseType: "Other",

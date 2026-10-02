@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FACTS, officeAnswer, responseTimeNote, paymentMethodsText, leadInvestigatorText } from "./facts";
+import { FACTS, officeAnswer, responseTimeNote, paymentMethodsText, leadInvestigatorText, receiptNote } from "./facts";
 import { FAQ_TH, FAQ_EN } from "./faq";
 import { ZH_COMPANY } from "./zh/company";
 import { ZH_PAGES } from "./zh/registry";
@@ -24,10 +24,18 @@ describe("business facts registry", () => {
       expect(paymentMethodsText(l)).toContain("PayPal");
       expect(leadInvestigatorText(l)).toContain("Tommy");
     }
-    // Still awaited from the owner — must stay null until confirmed (never guessed).
+    // B1: sole proprietor → no legal entity name is ever shown; A5 Fastwork URL still awaited.
+    expect(FACTS.pending.legalForm).toBe("sole_proprietor");
     expect(FACTS.pending.legalName).toBeNull();
-    expect(FACTS.pending.officeNote.th).toBeNull();
     expect(FACTS.confirmed.reviews.url).toBeNull();
+    // B3 / B5 / C10 answered.
+    for (const l of ["th", "en", "zh"] as const) {
+      expect(officeAnswer(l)).toBe(FACTS.pending.officeNote[l]);
+      expect(receiptNote(l)).toMatch(/PayPal/);
+      expect(FACTS.pending.sampleReportUrl[l]).toMatch(/^\/(en\/)?sample-report$/);
+    }
+    expect(FACTS.pending.issuesTaxInvoice).toBe(false);
+    expect(FACTS.pending.serviceLanguages).toEqual(["th", "en", "zh"]);
   });
 
   it("any URL in the registry is https (it is rendered straight into an href)", () => {

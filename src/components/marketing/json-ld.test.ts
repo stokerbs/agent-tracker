@@ -19,6 +19,16 @@ describe("businessJsonLd", () => {
     expect(b["@id"]).toBe("https://detectivepulse.com/#business");
     expect(b.aggregateRating.reviewCount).toBe(String(FACTS.confirmed.reviews.count));
   });
+  it("carries the confirmed founder and team size, localised, and omits founder when unknown", () => {
+    const th = businessJsonLd("th") as { founder?: { name: string; jobTitle: string }; numberOfEmployees: { value: number } };
+    const en = businessJsonLd("en") as typeof th;
+    expect(th.founder).toEqual({ "@type": "Person", name: FACTS.pending.leadInvestigator!.name, jobTitle: "ผู้ก่อตั้ง" });
+    expect(en.founder?.jobTitle).toBe("Founder");
+    expect(th.numberOfEmployees.value).toBe(FACTS.confirmed.teamSize);
+    const anon = { ...FACTS, pending: { ...FACTS.pending, leadInvestigator: null } } as typeof FACTS;
+    expect("founder" in businessJsonLd("en", anon)).toBe(false);
+  });
+
   it("includes legalName and award once the owner supplies them", () => {
     const facts = {
       ...FACTS,

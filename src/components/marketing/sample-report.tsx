@@ -9,13 +9,13 @@ const COPY: Record<PageLang, { tag: string; title: string; body: string; cta: st
     tag: "Sample · ตัวอย่างรายงาน",
     title: "ตัวอย่างรายงานที่ปกปิดข้อมูลแล้ว",
     body: "ดูว่ารายงานจริงหน้าตาเป็นอย่างไร: สรุปผู้บริหาร ไทม์ไลน์ ภาพประกอบ และแหล่งที่มา ชื่อ สถานที่ และรายละเอียดที่ระบุตัวตนถูกลบออกทั้งหมด",
-    cta: "เปิดตัวอย่างรายงาน (PDF)",
+    cta: "เปิดตัวอย่างรายงาน (พิมพ์เป็น PDF ได้)",
   },
   en: {
     tag: "Sample · Redacted report",
     title: "A redacted sample report",
     body: "See what a real report looks like: executive summary, timeline, photos and sources. Names, places and every identifying detail have been removed.",
-    cta: "Open the sample report (PDF)",
+    cta: "Open the sample report (printable)",
   },
 };
 
@@ -25,7 +25,7 @@ const COPY: Record<PageLang, { tag: string; title: string; body: string; cta: st
  * "redacted sample report on how-it-works") — never a placeholder document.
  */
 export function SampleReport({ lang }: { lang: PageLang }) {
-  const url = FACTS.pending.sampleReportUrl;
+  const url = FACTS.pending.sampleReportUrl[lang];
   if (!url) return null;
   const t = COPY[lang];
   return (
