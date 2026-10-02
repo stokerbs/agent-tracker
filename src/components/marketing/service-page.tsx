@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, XCircle, PhoneCall, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, XCircle, PhoneCall, ShieldCheck, Clock } from "lucide-react";
 import { SectionHeading, FileTag, Stamp, CornerTicks, Eyebrow } from "@/components/marketing/ui";
 import { Faq } from "@/components/marketing/faq";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
@@ -9,7 +9,7 @@ import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { ServiceJsonLd } from "@/components/marketing/service-json-ld";
 import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
-import { FACTS } from "@/lib/marketing/facts";
+import { FACTS, responseTimeNote } from "@/lib/marketing/facts";
 import { SampleReport } from "@/components/marketing/sample-report";
 import { CaseStudies } from "@/components/marketing/case-studies";
 import type { MarketingServicePage } from "@/lib/marketing/pages";
@@ -105,6 +105,7 @@ export function ServicePage({ page, related }: { page: MarketingServicePage; rel
                 ))}
               </ol>
               {page.priceNote && <p className="mt-4 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{page.priceNote}</p>}
+              {responseTimeNote(page.lang) && <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="h-3.5 w-3.5 text-primary" /> {responseTimeNote(page.lang)}</p>}
               <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> {t.since} {FACTS.confirmed.foundingYear}</span>
                 <span>· {FACTS.confirmed.closedCases.toLocaleString("en-US")}+ {t.cases}</span>

@@ -90,6 +90,8 @@ export function businessJsonLd(lang: "th" | "en", facts: typeof FACTS = FACTS) {
     logo: `${BASE}/marketing/logo.png`,
     foundingDate: String(facts.confirmed.foundingYear),
     ...(facts.pending.awards.length > 0 ? { award: facts.pending.awards.map((a) => `${a.name} (${a.issuer}, ${a.year})`) } : {}),
+    ...(facts.pending.leadInvestigator ? { founder: { "@type": "Person", name: facts.pending.leadInvestigator.name, jobTitle: facts.pending.leadInvestigator.role[lang] } } : {}),
+    numberOfEmployees: { "@type": "QuantitativeValue", value: facts.confirmed.teamSize },
     telephone: CONTACT.phoneE164,
     email: CONTACT.email,
     address: { "@type": "PostalAddress", addressLocality: CONTACT.city, addressCountry: CONTACT.countryCode },

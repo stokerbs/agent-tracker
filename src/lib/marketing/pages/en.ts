@@ -1,5 +1,5 @@
 import type { MarketingServicePage } from "./types";
-import { FACTS, officeAnswer } from "@/lib/marketing/facts";
+import { FACTS, officeAnswer, paymentMethodsText } from "@/lib/marketing/facts";
 
 const YEAR = FACTS.confirmed.foundingYear;
 
@@ -432,7 +432,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     faq: [
       { q: "Is the first consultation free?", a: "Yes. Feasibility and scope are assessed free of charge before we quote." },
       { q: "Do I need to be in Thailand?", a: "No. Most international clients brief us on WhatsApp or email, pay by transfer and receive the report electronically. A meeting in Bangkok or a video call is available if you prefer." },
-      { q: "How do I pay from abroad?", a: "International bank transfer is standard; we provide the details with the written quote. We never ask for payment in gift cards or crypto." },
+      { q: "How do I pay from abroad?", a: `International bank transfer or PayPal; we provide the details with the written quote. We never ask for payment in gift cards or crypto.` },
       { q: "Can I cancel?", a: "Yes, but the deposit is non-refundable once field work has started. This is stated in every quote." },
     ],
     related: ["pricing", "cheating-spouse-investigator", "background-check", "private-investigator-bangkok"],
@@ -483,13 +483,13 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       },
       {
         heading: "Paying from abroad",
-        body: ["International bank transfer is standard. Details come with the written quote. We never ask for payment by gift card or cryptocurrency, and we never ask for full payment before the quote is agreed."],
+        body: [`International bank transfer or PayPal. Details come with the written quote. We never ask for payment by gift card or cryptocurrency, and we never ask for full payment before the quote is agreed.`],
       },
     ],
     faq: [
-      { q: "Can you give a rough price on chat?", a: "Yes, once we know the case type, location and approximate days. A firm written quote follows once we have the full picture." },
+      { q: "Can you give a rough price on chat?", a: `Yes. Most assignments start ${FACTS.confirmed.priceFrom.en}; once we know the case type, location and approximate days we give a range at once, and a firm written quote follows once we have the full picture.` },
       { q: "Are there hidden costs?", a: "No. Every cost that may arise is listed in the quote as included or itemised." },
-      { q: "Which payment methods do you accept?", a: "Bank transfer, domestic or international. Other options can be discussed when the assignment is agreed." },
+      { q: "Which payment methods do you accept?", a: `${paymentMethodsText("en").replace(/^./, (c) => c.toUpperCase())}. Details come with the written quote; clients abroad can pay by PayPal.` },
       { q: "If you find nothing, do I still pay in full?", a: "Yes. You pay for the work performed to plan, not for a particular result. A \"nothing found\" result is equally valuable information, and we never embellish findings to make an assignment look worthwhile." },
     ],
     related: ["hire-a-private-detective", "cheating-spouse-investigator", "asset-investigation", "contact"],
@@ -567,7 +567,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     sections: [
       {
         heading: "What we do",
-        body: ["Infidelity and behaviour observation, background checks, locating people, asset tracing, online investigations and company verification. The core team is based in Bangkok and we take assignments nationwide."],
+        body: [`Infidelity and behaviour observation, background checks, locating people, asset tracing, online investigations and company verification. The core team is based in Bangkok and we take assignments nationwide.`, `The firm is led by ${FACTS.pending.leadInvestigator?.name ?? "its founder"}, ${FACTS.pending.leadInvestigator?.role.en.toLowerCase() ?? "founder"}, with a team of ${FACTS.confirmed.teamSize} investigators and support staff.`],
       },
       {
         heading: "How we work",
@@ -723,7 +723,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     ],
     faq: [
       { q: "Can you check a foreign company operating in Thailand?", a: "Yes, for the part registered or operating in Thailand. For the overseas part we use that country's public sources as far as they are accessible and state the limits clearly." },
-      { q: "How long does it take?", a: "A registry-based check usually completes in 2–5 working days; site visits add time depending on locations and provinces." },
+      { q: "How long does it take?", a: "A registry-based check usually completes within a few working days; site visits add time depending on locations and provinces." },
       { q: "How is this different from pulling the DBD record myself?", a: "The registry is the starting point. We add the site visit, litigation search, related-company map, principals' reputation and a comparison with what the counterparty claimed, which is where problems usually appear." },
       { q: "Is it confidential?", a: "Yes. The target company does not learn of the check, and the client's identity is confidential." },
     ],

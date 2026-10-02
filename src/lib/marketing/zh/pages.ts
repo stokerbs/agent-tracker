@@ -498,7 +498,7 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     sections: [
       {
         heading: "我们是谁",
-        body: ["一支由泰国本地调查员组成的团队，常驻曼谷，可在全泰国范围执行任务。我们服务个人客户与企业客户，案件管理采用统一的内部系统，确保每一步有记录、可追溯。"],
+        body: [`一支由泰国本地调查员组成的团队，常驻曼谷，可在全泰国范围执行任务。我们服务个人客户与企业客户，案件管理采用统一的内部系统，确保每一步有记录、可追溯。`, `团队由${FACTS.pending.leadInvestigator ? `${FACTS.pending.leadInvestigator.role.zh} ${FACTS.pending.leadInvestigator.name}` : "创始人"}带领，共 ${FACTS.confirmed.teamSize} 名调查员与支持人员。`],
       },
       {
         heading: "我们的原则",

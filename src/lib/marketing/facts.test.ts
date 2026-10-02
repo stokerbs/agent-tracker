@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FACTS, officeAnswer } from "./facts";
+import { FACTS, officeAnswer, responseTimeNote, paymentMethodsText, leadInvestigatorText } from "./facts";
 import { FAQ_TH, FAQ_EN } from "./faq";
 import { ZH_COMPANY } from "./zh/company";
 import { ZH_PAGES } from "./zh/registry";
@@ -12,6 +12,22 @@ describe("business facts registry", () => {
     expect(FACTS.confirmed.provinces).toBe(77);
     expect(FACTS.confirmed.reviews).toMatchObject({ rating: "4.8", count: 63, source: "Fastwork" });
     expect(FACTS.pending.awards).toHaveLength(0);
+  });
+
+  it("owner-confirmed facts of 2026-10-02 are present and localized in all three languages", () => {
+    expect(FACTS.confirmed.teamSize).toBe(17);
+    expect(FACTS.confirmed.surveillanceDays).toBe("3–7");
+    expect(FACTS.confirmed.bangkokStartDays).toBe("1–2");
+    for (const l of ["th", "en", "zh"] as const) {
+      expect(FACTS.confirmed.priceFrom[l].length).toBeGreaterThan(0);
+      expect(responseTimeNote(l)).toMatch(/1|08:00/);
+      expect(paymentMethodsText(l)).toContain("PayPal");
+      expect(leadInvestigatorText(l)).toContain("Tommy");
+    }
+    // Still awaited from the owner — must stay null until confirmed (never guessed).
+    expect(FACTS.pending.legalName).toBeNull();
+    expect(FACTS.pending.officeNote.th).toBeNull();
+    expect(FACTS.confirmed.reviews.url).toBeNull();
   });
 
   it("any URL in the registry is https (it is rendered straight into an href)", () => {

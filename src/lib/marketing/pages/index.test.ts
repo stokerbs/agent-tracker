@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SERVICE_PAGES, getServicePage, registryOnlySlugs } from "./index";
 import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content";
 import { ZH_PAGES } from "@/lib/marketing/zh/registry";
+import { FACTS } from "@/lib/marketing/facts";
 
 const BANNED = /เครดิตบูโร|รายการเดินบัญชี|ทะเบียนราษฎร|ประกันสังคม|เข้า-?ออกประเทศ|ประวัติการโทร|credit bureau|bank statement|call (logs|history|records)|immigration record|phone records|licensed|guarantee(d)? result|#1|อันดับ 1|รับประกันผล/i;
 const TH_CASE = ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "อื่น ๆ"];
@@ -37,6 +38,11 @@ describe("service-page registry (TH/EN)", () => {
       const prose = [p.title, p.description, p.h1, p.intro, ...p.sections.flatMap((s) => [s.heading, ...s.body, ...(s.bullets ?? [])]), ...(p.deliverables ?? []), ...p.faq.flatMap((f) => [f.q, f.a])].join("\n");
       // notOffered intentionally names the forbidden data; everything else must not.
       expect(prose.match(BANNED)?.[0] ?? null, `${p.lang}/${p.slug}`).toBeNull();
+      // Durations are claims: any "N–M วัน/days" must be an owner-confirmed range (facts-to-confirm C11).
+      const allowed = new Set<string>([FACTS.confirmed.surveillanceDays, FACTS.confirmed.bangkokStartDays]);
+      for (const m of prose.matchAll(/(\d+\s*[–-]\s*\d+)\s*(?:วันทำการ|วัน|working days|days)/g)) {
+        expect(allowed.has(m[1]!.replace(/\s/g, "")), `${p.lang}/${p.slug}: unconfirmed duration "${m[0]}"`).toBe(true);
+      }
     }
   });
 
