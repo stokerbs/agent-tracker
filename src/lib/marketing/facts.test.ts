@@ -11,6 +11,11 @@ describe("business facts registry", () => {
     expect(FACTS.pending.awards).toHaveLength(0);
   });
 
+  it("any URL in the registry is https (it is rendered straight into an href)", () => {
+    const url = FACTS.confirmed.reviews.url as string | null;
+    expect(url === null || /^https:\/\//.test(url)).toBe(true);
+  });
+
   it("the Chinese company facts read from the same registry (one business, one set of numbers)", () => {
     expect(ZH_COMPANY.closedCases).toBe(FACTS.confirmed.closedCases);
     expect(ZH_COMPANY.provinces).toBe(FACTS.confirmed.provinces);

@@ -6,9 +6,11 @@ import { FACTS } from "@/lib/marketing/facts";
  * Structured data (JSON-LD) for the marketing homepages — drives Google rich
  * results and gives search / AI engines one unambiguous business entity:
  * ProfessionalService (+ LocalBusiness) with NAP, founding date, service area,
- * languages, contact points, sameAs profiles and the 4.8★ / 63-review rating,
- * plus the FAQ box. All values are static, first-party content from
- * src/lib/marketing/contact.ts (no user input); the standard Next.js JSON-LD
+ * languages, contact points, sameAs profiles and the review rating, plus the
+ * FAQ box. All values are static, first-party constants from
+ * src/lib/marketing/contact.ts (NAP) and src/lib/marketing/facts.ts (verifiable
+ * figures; optional legalName/award appear only once confirmed) — no user
+ * input; the standard Next.js JSON-LD
  * pattern is a <script> with stringified data, with `<` escaped so the payload
  * can't break out of the script element.
  */

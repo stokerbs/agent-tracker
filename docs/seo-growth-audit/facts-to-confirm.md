@@ -24,7 +24,7 @@
 | # | Fact | Why it matters | What appears once supplied | Your answer |
 |---|---|---|---|---|
 | B1 | Registered legal entity name (Thai) + DBD registration no. | #1 trust gap for foreign and B2B clients; required for Google Business Profile verification | About pages, footer line, schema `legalName`; GBP | ____________________ |
-| B2 | Address usable for Google verification (can stay hidden from the public) | GBP as a service-area business needs it | GBP only (not shown on site unless you want it) | ____________________ |
+| B2 | Address usable for Google verification (can stay hidden from the public) | GBP as a service-area business needs it | GBP only (not shown on site unless you want it) | **Send privately (LINE/phone), not in this file or in facts.ts** |
 | B3 | How clients meet you | FAQ currently says briefings happen online, by phone or in person in Bangkok | replaces the FAQ "office" answer in TH/EN/ZH | TH: ______ EN: ______ ZH: ______ |
 | B4 | Response-time commitment (e.g. "within 1 hour, 08:00–22:00") | strongest conversion lever after price | trust bar, contact pages, exit popup | ☐ 1 h ☐ 3 h ☐ same day ☐ other: ____ hours: ____ |
 | B5 | Accepted payment methods (Thai bank transfer, Wise, PayPal, card, …) and whether a company receipt/invoice is issued | foreign clients ask before they contact | pricing + how-it-works pages | ______________________ |
@@ -55,7 +55,7 @@ A1 ก่อตั้ง/เปิดดำเนินการตั้งแ�
 
 ## B. ยังไม่แสดง — ส่งข้อมูลเพื่อปลดล็อก
 
-B1 ชื่อนิติบุคคลและเลขทะเบียน DBD (ช่องว่างความน่าเชื่อถืออันดับหนึ่งสำหรับลูกค้าต่างชาติและองค์กร และจำเป็นต่อการยืนยัน Google Business Profile) · B2 ที่อยู่สำหรับยืนยัน GBP (ซ่อนจากสาธารณะได้) · B3 วิธีนัดพบลูกค้า (จะแทนคำตอบ FAQ เรื่องสำนักงาน 3 ภาษา) · B4 เวลาตอบกลับที่รับปากได้ เช่น “ภายใน 1 ชั่วโมง 08:00–22:00” · B5 ช่องทางชำระเงินสำหรับลูกค้าต่างประเทศ และออกใบเสร็จ/ใบกำกับได้หรือไม่ · B6 รางวัลหรือสมาชิกภาพที่ระบุชื่อ ผู้มอบ และปีได้ (ถ้าไม่มี ให้ตอบว่าไม่มี) · B7 ชื่อเล่น/บทบาทของหัวหน้านักสืบที่เปิดเผยได้ ขนาดทีม ภาษาที่ให้บริการ · B8 ช่วงราคาที่ยินดีเผยแพร่ · B9 เคสจริงแบบไม่ระบุตัวตน 6 เคสสำหรับชุดแรกของ case study · B10 ตัวอย่างรายงานที่ปกปิดข้อมูลแล้ว
+B1 ชื่อนิติบุคคลและเลขทะเบียน DBD (ช่องว่างความน่าเชื่อถืออันดับหนึ่งสำหรับลูกค้าต่างชาติและองค์กร และจำเป็นต่อการยืนยัน Google Business Profile) · B2 ที่อยู่สำหรับยืนยัน GBP (ซ่อนจากสาธารณะได้ — ส่งทางช่องทางส่วนตัว ห้ามกรอกในไฟล์นี้หรือใน facts.ts) · B3 วิธีนัดพบลูกค้า (จะแทนคำตอบ FAQ เรื่องสำนักงาน 3 ภาษา) · B4 เวลาตอบกลับที่รับปากได้ เช่น “ภายใน 1 ชั่วโมง 08:00–22:00” · B5 ช่องทางชำระเงินสำหรับลูกค้าต่างประเทศ และออกใบเสร็จ/ใบกำกับได้หรือไม่ · B6 รางวัลหรือสมาชิกภาพที่ระบุชื่อ ผู้มอบ และปีได้ (ถ้าไม่มี ให้ตอบว่าไม่มี) · B7 ชื่อเล่น/บทบาทของหัวหน้านักสืบที่เปิดเผยได้ ขนาดทีม ภาษาที่ให้บริการ · B8 ช่วงราคาที่ยินดีเผยแพร่ · B9 เคสจริงแบบไม่ระบุตัวตน 6 เคสสำหรับชุดแรกของ case study · B10 ตัวอย่างรายงานที่ปกปิดข้อมูลแล้ว
 
 ## C. การตัดสินใจที่ปลดล็อกงานวิศวกรรมที่ออกแบบไว้แล้ว
 
