@@ -169,3 +169,32 @@ back to a cover-category guess (`articleServiceKey()`).
 unique `referral_slug`; leads carry it in `marketing_leads.utm_source`, which
 is indexed for the per-partner attribution shown in `/partners`. Service-role
 writes only; admin-only RLS reads/updates.
+
+Migration `0127` extends lead attribution to the Thai / English site: every
+lead written by `/api/marketing/lead` and `/api/marketing/assistant` now carries
+first-touch `landing_page`, `referrer`, `utm_*` (incl. new `utm_content`), the
+paid click ids `gclid` / `fbclid` (indexed) and `stage = 'new'`. Form leads from
+`/api/marketing/lead` additionally get a `lead_ref` with a `TH-` or `EN-` prefix
+(same format as the Chinese `CN-` refs; same partial unique index); assistant
+leads have no ref yet. Values are client-supplied, bounded by the API,
+informational only.
+
+Migration `0128` adds the CRM fields from the SEO/growth audit (Days 31–90):
+`marketing_leads.lead_quality` (`unrated | spam | unqualified | qualified |
+high_value`, admin-set after first contact), `lost_reason` (nullable, fixed
+list) and `channel` (acquisition channel derived at insert from first-touch
+attribution by `channelFor()` in `src/lib/marketing/crm.ts`; backfilled in the
+migration with the same rules). New table `marketing_ad_spend` (daily cost per
+platform / campaign / locale, unique on that tuple) is written by admins through
+the RLS insert/update policies from the `/marketing-insights` CSV importer and
+read for CPL / CPQL / ROAS. `qualified` / `high_value` and `converted_at` drive
+the Google Ads offline-conversion export at
+`/marketing-insights/offline-conversions` (admin, audited).
+
+Lead retention: `/api/cron/purge-marketing-leads` (monthly) deletes
+non-converted, dead leads (closed / referral, rated spam or unqualified, or
+never-touched `new`) whose last change is older than 12 months, removing their
+`lead-files` objects first (rows in `marketing_lead_files` cascade). It is a
+no-op until `MARKETING_LEAD_PURGE` is set to `dry` (report only) or `1`
+(delete); the rule lives in `src/lib/marketing/lead-retention.ts`. Converted
+leads are never purged by this job.

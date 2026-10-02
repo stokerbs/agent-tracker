@@ -4,8 +4,8 @@ kind: "post"
 slug: "/qualities-of-a-good-detective/"
 path: "/en/qualities-of-a-good-detective"
 title: "What Makes a Good Detective — Qualities and Vision"
-seoTitle: "What Makes a Good Detective — Qualities & Vision | Detective Pulse"
-description: "The qualities a good detective should have, plus the vision that matters in investigative work. Read this to learn how to choose a detective for your important case."
+seoTitle: "What Makes a Good Detective — Qualities & Vision"
+description: "The qualities a good detective needs and the mindset that matters in investigative work — a guide to choosing the right detective for your case."
 coverImage: "/marketing/articles/investigation.jpg"
 coverAlt: "The qualities of a good private detective — Detective Pulse"
 ---
@@ -45,4 +45,4 @@ What detectives do isn't only tailing people or taking covert photos, as in thri
 
 A detective's work isn't only tracking or gathering information — it's using skill to find the truth with honesty and professionalism. A good detective needs many qualities: patience, attention to detail, and quick problem-solving. And their vision is to work for justice. If you're looking for an excellent detective who does good work, we recommend Detective Pulse.
 
-Contact us easily online — **LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+Contact us easily online — **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

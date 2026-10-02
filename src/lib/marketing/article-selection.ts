@@ -1,5 +1,6 @@
 import { KEYWORD_TOPICS, type KeywordTopic } from "@/lib/marketing/article-gen";
 import { ZH_PLAN_ORDERED } from "@/lib/marketing/zh/topics";
+import { CONTENT_CALENDAR } from "@/lib/marketing/content-calendar";
 
 /**
  * Which topic the next article run should target. During the China push the
@@ -11,10 +12,11 @@ import { ZH_PLAN_ORDERED } from "@/lib/marketing/zh/topics";
  */
 export function pickSeed(usedTopics: Set<string>, totalUsed: number, random: () => number = Math.random): KeywordTopic {
   const zhFresh = ZH_PLAN_ORDERED.filter((t) => !usedTopics.has(t.th));
-  const thFresh = KEYWORD_TOPICS.filter((t) => !usedTopics.has(t.th));
+  // Thai slot: the months 1–3 content calendar (audit Days 31–90) runs first.
+  const thFresh = [...CONTENT_CALENDAR, ...KEYWORD_TOPICS].filter((t) => !usedTopics.has(t.th));
   const preferZh = totalUsed % 3 !== 2;
   const pick = preferZh ? (zhFresh[0] ?? thFresh[0]) : (thFresh[0] ?? zhFresh[0]);
   if (pick) return pick;
-  const all = [...ZH_PLAN_ORDERED, ...KEYWORD_TOPICS];
+  const all = [...ZH_PLAN_ORDERED, ...CONTENT_CALENDAR, ...KEYWORD_TOPICS];
   return all[Math.floor(random() * all.length)]!;
 }

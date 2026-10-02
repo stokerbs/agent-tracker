@@ -4,7 +4,7 @@ kind: "post"
 slug: "/leading-detective-services/"
 path: "/en/leading-detective-services"
 title: "Leading Detective Services — Find the Facts and Evidence You Need"
-seoTitle: "Leading Detective Services in Thailand | Detective Pulse"
+seoTitle: "Leading Detective Services in Thailand"
 description: "Need to find key information and evidence for your case? Our leading detective service is the best choice — with superior experience and expertise."
 coverImage: "/marketing/articles/investigation.jpg"
 coverAlt: "Leading private investigation services — Detective Pulse"
@@ -28,4 +28,4 @@ We use modern data-analysis techniques and tools to reach accurate results and a
 
 Our leading detective service brings expertise and experience to finding the key information and evidence in any case. With good coordination and sound planning, we deliver the best possible results in your search for the facts and evidence you need.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on WhatsApp: [+66 96 846 1406](https://api.whatsapp.com/send?phone=+66968461406) or LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

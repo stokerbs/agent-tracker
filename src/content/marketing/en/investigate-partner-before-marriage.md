@@ -4,7 +4,7 @@ kind: "post"
 slug: "/investigate-partner-before-marriage/"
 path: "/en/investigate-partner-before-marriage"
 title: "Investigate a Partner Before You Decide to Marry"
-seoTitle: "Investigate a Partner Before Marriage | Detective Pulse"
+seoTitle: "Investigate a Partner Before Marriage"
 description: "Hiring a detective to check on a partner before deciding to marry — ideal for couples with doubts, or who want certainty before settling down."
 ---
 
@@ -22,4 +22,4 @@ There are several reasons someone might want to check on a partner before marria
 
 ## In summary
 
-For investigating a partner, we recommend talking openly first, as a couple in a relationship. But if doubt or suspicion remains, hiring a detective to follow a partner is worth considering — because if nothing turns up, you can trust more fully, and if something does, you'll have the information to decide how the relationship should go. To consult or ask more, reach us any time on **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+For investigating a partner, we recommend talking openly first, as a couple in a relationship. But if doubt or suspicion remains, hiring a detective to follow a partner is worth considering — because if nothing turns up, you can trust more fully, and if something does, you'll have the information to decide how the relationship should go. To consult or ask more, reach us any time on **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

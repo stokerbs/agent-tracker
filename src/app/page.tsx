@@ -15,18 +15,20 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { isMarketingHost } from "@/lib/marketing/host";
 import { MarketingHome } from "@/components/marketing/marketing-home";
+import { FACTS } from "@/lib/marketing/facts";
 
 // On detectivepulse.com "/" is the public PI marketing home; on the app host
 // (.app, previews, localhost) it's the app's product landing.
 export async function generateMetadata(): Promise<Metadata> {
   const host = (await headers()).get("host");
   if (!isMarketingHost(host)) return {};
-  const title = "นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร | Detective Pulse";
+  const title = "นักสืบเอกชน Detective Pulse | สืบชู้สาว เช็คประวัติ ตามหาคน ทั่วไทย";
   const description =
-    "นักสืบเอกชน รับสืบชู้สาว สืบทรัพย์สิน ตามหาคน เช็คประวัติบุคคล งานสืบทุกประเภท เป็นความลับ มืออาชีพ ทั่วประเทศไทย";
+    `นักสืบเอกชนมืออาชีพ ตั้งแต่ปี ${FACTS.confirmed.foundingYear} รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ กรุงเทพฯ และทั่วประเทศ ทำงานถูกกฎหมาย เป็นความลับ ปรึกษาฟรีทาง LINE`;
   const ogImage = { url: "https://detectivepulse.com/api/og", width: 1200, height: 630 };
   return {
-    title,
+    // Absolute: the root layout template ("%s · Detective Pulse") must not append a second brand.
+    title: { absolute: title },
     description,
     alternates: { canonical: "/", languages: { th: "/", en: "/en", "zh-CN": "/zh", "x-default": "/en" } },
     openGraph: { type: "website", url: "https://detectivepulse.com", title, description, siteName: "Detective Pulse", images: [ogImage] },

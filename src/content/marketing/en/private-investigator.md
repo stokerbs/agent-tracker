@@ -4,8 +4,8 @@ kind: "post"
 slug: "/private-investigator/"
 path: "/en/private-investigator"
 title: "Private Investigator in Thailand — Services for Individuals"
-seoTitle: "Private Investigator in Thailand for Individuals | Detective Pulse"
-description: "A professional private investigator for individuals — social-media checks, infidelity evidence, asset searches, background checks and more. Discreet and reliable."
+seoTitle: "Private Investigator in Thailand for Individuals"
+description: "A professional private investigator for individuals in Thailand — social-media checks, infidelity evidence, asset searches and background checks."
 ---
 
 In an age where relationships and information overlap across the online world and a fast-changing society, getting to the truth on your own is rarely easy. Accurate, clear information matters — whether the issue is personal or business-related — and a **private investigator** has become an indispensable ally for ordinary people.
@@ -52,4 +52,4 @@ Whether it's a loved one who has disappeared or someone important you've lost co
 
 Investigating on your own may look easy and convenient, but it carries risks and limits you may overlook. Hiring a private investigator from Detective Pulse means accurate, safe information — and peace of mind.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on WhatsApp: [+66 96 846 1406](https://api.whatsapp.com/send?phone=+66968461406) or LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

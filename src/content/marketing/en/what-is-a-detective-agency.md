@@ -4,8 +4,8 @@ kind: "post"
 slug: "/what-is-a-detective-agency/"
 path: "/en/what-is-a-detective-agency"
 title: "What Is a Detective Agency, and What Cases Does It Take?"
-seoTitle: "What Is a Detective Agency & What Cases It Handles | Detective Pulse"
-description: "A professional private detective agency covering the whole kingdom — missing persons, infidelity, asset searches, vehicle tracing and other cases. Free consultation."
+seoTitle: "What Is a Detective Agency & What Cases It Handles"
+description: "What a private detective agency in Thailand does — missing persons, infidelity, asset searches, vehicle tracing — and how to use one. Free consultation."
 ---
 
 When we talk about a detective agency, [Detective Pulse](/en) is a private company — not connected to the government or any state agency — that brings together many skilled investigators, working across the whole kingdom. We hold the range of skills different investigations demand: we can reach various databases and we specialise in tracking people. We work as a team — a highly experienced, professional group offering many kinds of investigation: background checks, asset searches, tracing debtors, finding people named in warrants, and more.
@@ -28,4 +28,4 @@ The work we take on comes in many forms. Here are the main categories clients mo
 - Vehicle searches — finding a missing car, whether pawned or lent to a friend or relative; we find it.
 - Missing persons — people with or without a warrant, and reuniting separated relatives.
 
-Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

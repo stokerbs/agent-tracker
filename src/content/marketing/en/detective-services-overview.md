@@ -4,7 +4,7 @@ kind: "post"
 slug: "/detective-services-overview/"
 path: "/en/detective-services-overview"
 title: "Detective Services — What They Include and How to Choose an Agency"
-seoTitle: "Detective Services & How to Choose an Agency | Detective Pulse"
+seoTitle: "Detective Services & How to Choose an Agency"
 description: "Detective services with expertise across many areas — infidelity, cyber, asset investigation — plus how to choose a trustworthy detective agency."
 coverImage: "/marketing/articles/investigation.jpg"
 coverAlt: "Overview of private detective services — Detective Pulse"
@@ -34,4 +34,4 @@ Detective services provide advice and investigation on matters tied to the doubt
 
 Detective services are a compelling option for anyone with doubts or problems that need answers — relationships, asset searches, or finding information in the digital world. Choosing the right agency matters just as much: consider reputation, client reviews, and confidentiality, so you get the best service from a detective you trust. If you want a professional, reliable detective ready to help with anything, think of Detective Pulse.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on WhatsApp: [+66 96 846 1406](https://api.whatsapp.com/send?phone=+66968461406) or LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

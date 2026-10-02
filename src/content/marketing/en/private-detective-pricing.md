@@ -4,7 +4,7 @@ kind: "post"
 slug: "/private-detective-pricing/"
 path: "/en/private-detective-pricing"
 title: "How Private Detective Pricing Works — Why Costs Differ"
-seoTitle: "Private Detective Pricing — Why Costs Differ | Detective Pulse"
+seoTitle: "Private Detective Pricing — Why Costs Differ"
 description: "How private investigators set their prices, why investigation costs differ from case to case, and advice on hiring a detective so you get fair value."
 ---
 
@@ -26,4 +26,4 @@ Contact a credible, experienced private investigator or agency. Be clear about w
 
 We hope this article makes it clear that a detective's price depends on the complexity, duration and difficulty of the work. So when you want to hire one, gather full information and contact a detective or agency you trust and who can handle your case.
 
-See our [private-detective services and process](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [private-detective services and process](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -4,7 +4,7 @@ kind: "post"
 slug: "/trace-assets-before-lawsuit/"
 path: "/en/trace-assets-before-lawsuit"
 title: "How to Trace Assets Before Filing Suit — Verify and Value"
-seoTitle: "How to Trace Assets Before Filing a Lawsuit | Detective Pulse"
+seoTitle: "How to Trace Assets Before Filing a Lawsuit"
 description: "Prepare an asset case before you file: how to trace, verify and value the assets involved so your claim stands the best chance in court."
 ---
 
@@ -22,4 +22,4 @@ Tracing assets before you begin legal proceedings is essential when property or 
 
 Preparation before you file matters. A well-prepared asset search — with the accuracy and value of the assets properly assessed — is a key ingredient in a case that has a real chance of succeeding in court.
 
-If you'd like professional help tracing and valuing assets, Detective Pulse can search discreetly and give you the complete information you need. See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+If you'd like professional help tracing and valuing assets, Detective Pulse can search discreetly and give you the complete information you need. See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { FACTS } from "@/lib/marketing/facts";
 
 export const runtime = "edge";
 
@@ -94,7 +95,7 @@ export function GET() {
               <Star /><Star /><Star /><Star /><Star />
             </div>
             <div style={{ display: "flex", fontSize: "26px", color: TEXT, marginLeft: "8px" }}>
-              4.8 · 63 reviews
+              {FACTS.confirmed.reviews.rating} · {FACTS.confirmed.reviews.count} reviews
             </div>
           </div>
           <div style={{ display: "flex", fontSize: "24px", letterSpacing: "2px", color: GOLD }}>

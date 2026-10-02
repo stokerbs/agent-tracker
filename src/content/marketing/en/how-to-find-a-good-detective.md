@@ -4,7 +4,7 @@ kind: "post"
 slug: "/how-to-find-a-good-detective/"
 path: "/en/how-to-find-a-good-detective"
 title: "How to Find a Skilled, Trustworthy Detective"
-seoTitle: "How to Find a Skilled, Trustworthy Detective | Detective Pulse"
+seoTitle: "How to Find a Skilled, Trustworthy Detective"
 description: "Advice on how to find a capable, expert detective who delivers quality, accurate information — so you can use the service with confidence."
 coverImage: "/marketing/articles/hire.jpg"
 coverAlt: "Choosing a trustworthy private detective — Detective Pulse"
@@ -22,4 +22,4 @@ To avoid these problems, here's the best choice: our agency has a professional t
 
 Finding a skilled detective isn't hard if you know how to choose. With quality investigative skills, sharp observation, and modern technology, you can trust that you've found the right detective for your important work. We hope you find this article useful — and that you can find a trustworthy detective with more confidence and speed.
 
-Ready to start? See [how to hire a private detective](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+Ready to start? See [how to hire a private detective](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

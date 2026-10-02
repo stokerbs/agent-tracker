@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { X, Phone } from "lucide-react";
-import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
+import { LineIcon, WhatsAppIcon as WaIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
+import { CONTACT } from "@/lib/marketing/contact";
+import { exitIntentMode, isExitMouseOut } from "@/lib/marketing/overlay-policy";
 
 const COPY: Record<MarketingLang, {
   eyebrow: string; title: string; body: string; line: string; whatsapp: string; call: string; dismiss: string; close: string;
@@ -12,53 +15,56 @@ const COPY: Record<MarketingLang, {
     eyebrow: "ปรึกษาฟรี · เป็นความลับ",
     title: "เดี๋ยวก่อน — ให้เราช่วยไหม?",
     body: "ปรึกษานักสืบฟรี ไม่มีค่าใช้จ่าย ข้อมูลทุกอย่างเก็บเป็นความลับ ทักมาคุยได้เลย",
-    line: "ปรึกษาฟรีทาง LINE", whatsapp: "WhatsApp", call: "โทร 096 846 1406", dismiss: "ไว้ก่อน", close: "ปิด",
+    line: "ปรึกษาฟรีทาง LINE", whatsapp: "WhatsApp", call: `โทร ${CONTACT.phoneDisplay}`, dismiss: "ไว้ก่อน", close: "ปิด",
   },
   en: {
     eyebrow: "Free consult · Confidential",
     title: "Wait — can we help?",
     body: "Free consultation with an investigator, no obligation, always confidential. Reach out and let's talk.",
-    line: "Free consult on LINE", whatsapp: "WhatsApp", call: "Call 096 846 1406", dismiss: "Maybe later", close: "Close",
+    line: "LINE", whatsapp: "Free consult on WhatsApp", call: `Call ${CONTACT.phoneDisplay}`, dismiss: "Maybe later", close: "Close",
   },
   zh: {
     eyebrow: "免费咨询 · 严格保密",
     title: "先别走 —— 需要帮忙吗？",
     body: "免费咨询侦探，无任何义务，所有信息严格保密。随时联系我们聊聊。",
-    line: "LINE 免费咨询", whatsapp: "WhatsApp", call: "致电 096 846 1406", dismiss: "稍后再说", close: "关闭",
+    line: "LINE 免费咨询", whatsapp: "WhatsApp", call: `致电 ${CONTACT.phoneDisplay}`, dismiss: "稍后再说", close: "关闭",
   },
 };
 
 const SEEN_KEY = "dp_exit_seen";
 
 /**
- * One-time exit-intent lead recovery. Desktop: fires when the cursor leaves the
- * top of the viewport. Mobile (no mouseout): a fallback timer. Shows once per
- * session and offers the firm's direct contact channels — a low-friction way to
- * recover visitors who are about to leave without converting.
+ * One-time exit-intent lead recovery. Desktop only: fires when the cursor leaves
+ * the top of the viewport. Never on touch / small screens (no timer — a timed
+ * modal on mobile is an intrusive interstitial and hides content). Shows once
+ * per session and offers the firm's direct contact channels.
  */
 export function ExitIntent() {
-  const t = COPY[useMarketingLang()];
+  const lang = useMarketingLang();
+  const t = COPY[lang];
   const [open, setOpen] = useState(false);
+  // Primary channel by audience: WhatsApp for English visitors, LINE otherwise.
+  const primary = lang === "en"
+    ? { href: CONTACT.whatsappUrl, label: t.whatsapp, bg: "bg-[#178741]", Icon: WaIcon }
+    : { href: CONTACT.lineUrl, label: t.line, bg: "bg-[#048739]", Icon: LineIcon };
+  const secondary = lang === "en"
+    ? { href: CONTACT.lineUrl, label: t.line, bg: "bg-[#048739]", Icon: LineIcon }
+    : { href: CONTACT.whatsappUrl, label: t.whatsapp, bg: "bg-[#178741]", Icon: WaIcon };
 
   useEffect(() => {
-    if (sessionStorage.getItem(SEEN_KEY)) return;
+    let alreadyShown = false;
+    try { alreadyShown = !!sessionStorage.getItem(SEEN_KEY); } catch { /* storage blocked */ }
+    const finePointer = typeof window.matchMedia === "function" && window.matchMedia("(pointer: fine)").matches;
+    if (exitIntentMode({ viewportWidth: window.innerWidth, finePointer, alreadyShown }) !== "mouse") return;
     let done = false;
-    const trigger = () => {
-      if (done) return;
+    const onMouseOut = (e: MouseEvent) => {
+      if (done || !isExitMouseOut(e)) return;
       done = true;
-      sessionStorage.setItem(SEEN_KEY, "1");
+      try { sessionStorage.setItem(SEEN_KEY, "1"); } catch { /* storage blocked */ }
       setOpen(true);
     };
-    const onMouseOut = (e: MouseEvent) => {
-      if (e.clientY <= 0 && !e.relatedTarget) trigger();
-    };
     document.addEventListener("mouseout", onMouseOut);
-    // Mobile fallback — no exit-intent event; nudge after a while of browsing.
-    const timer = window.setTimeout(trigger, 40_000);
-    return () => {
-      document.removeEventListener("mouseout", onMouseOut);
-      window.clearTimeout(timer);
-    };
+    return () => document.removeEventListener("mouseout", onMouseOut);
   }, []);
 
   if (!open) return null;
@@ -76,16 +82,16 @@ export function ExitIntent() {
         <h2 className="mt-3 font-serif text-2xl font-bold">{t.title}</h2>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{t.body}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90">
-            <LineIcon className="h-5 w-5" /> {t.line}
-          </a>
+          <TrackedLink href={primary.href} placement="exit" className={`inline-flex items-center justify-center gap-2 rounded-lg ${primary.bg} px-5 py-2.5 font-medium text-white hover:opacity-90`}>
+            <primary.Icon className="h-5 w-5" /> {primary.label}
+          </TrackedLink>
           <div className="flex gap-2">
-            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
-              <WhatsAppIcon className="h-5 w-5" /> {t.whatsapp}
-            </a>
-            <a href="tel:+66968461406" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">
+            <TrackedLink href={secondary.href} placement="exit" className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg ${secondary.bg} px-4 py-2.5 font-medium text-white hover:opacity-90`}>
+              <secondary.Icon className="h-5 w-5" /> {secondary.label}
+            </TrackedLink>
+            <TrackedLink href={CONTACT.phoneTel} placement="exit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">
               <Phone className="h-4 w-4 text-primary" /> {t.call}
-            </a>
+            </TrackedLink>
           </div>
         </div>
         <button onClick={() => setOpen(false)} className="mt-4 text-xs text-muted-foreground/70 hover:text-muted-foreground">

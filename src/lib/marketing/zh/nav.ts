@@ -33,13 +33,18 @@ export const ZH_NAV = {
 
 /** zh slug ↔ EN / TH counterparts (hreflang + language switcher). */
 export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
-  { slug: "private-investigator-thailand", en: "private-investigator", th: "private-investigator" },
+  { slug: "private-investigator-thailand", th: "private-investigator" },
   { slug: "relationship-investigation", en: "cheating-spouse-investigator", th: "นักสืบชู้สาว" },
   { slug: "background-check", en: "background-check", th: "เช็คประวัติบุคคล" },
   { slug: "find-person-thailand", en: "find-missing-person", th: "สืบตามหาคน" },
   { slug: "asset-investigation", en: "asset-investigation", th: "สืบทรัพย์สิน" },
-  { slug: "pricing", en: "private-detective-pricing", th: "วิธีการคิดราคาจ้างนักส" },
+  { slug: "pricing", en: "pricing", th: "ราคานักสืบ" },
   { slug: "contact", en: "contact", th: "ติดต่อนักสืบ" },
+  { slug: "bangkok", en: "private-investigator-bangkok", th: "นักสืบกรุงเทพ" },
+  { slug: "about", en: "about", th: "เกี่ยวกับเรา" },
+  { slug: "how-it-works", en: "how-it-works", th: "ขั้นตอนการทำงาน" },
+  { slug: "case-studies", en: "case-studies", th: "กรณีศึกษา" },
+  { slug: "business-due-diligence", en: "due-diligence-thailand", th: "ตรวจสอบธุรกิจและคู่ค้า" },
 ];
 
 /** Service key (ZhPage.service / article service) → /zh page path. */

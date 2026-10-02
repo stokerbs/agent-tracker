@@ -1,4 +1,5 @@
 import type { ZhPage } from "./types";
+import { FACTS, officeAnswer } from "@/lib/marketing/facts";
 
 /**
  * Service + info pages for the Chinese market site (/zh/<slug>). Copy is
@@ -57,7 +58,7 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["relationship-investigation", "business-due-diligence", "find-person-thailand", "how-it-works"],
     primaryCta: "wechat",
-    en: "private-investigator",
+    // No en: /en/private-investigator is a consolidation-redirect source (→ /en).
     th: "private-investigator",
   },
 
@@ -296,6 +297,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["partners", "on-site-verification", "background-check", "asset-investigation"],
     primaryCta: "intake",
+    en: "due-diligence-thailand",
+    th: "ตรวจสอบธุรกิจและคู่ค้า",
   },
 
   // ── Segment E ────────────────────────────────────────────────────────────
@@ -424,6 +427,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["pricing", "about", "contact"],
     primaryCta: "wechat",
+    en: "how-it-works",
+    th: "ขั้นตอนการทำงาน",
   },
   {
     slug: "pricing",
@@ -461,8 +466,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["how-it-works", "contact"],
     primaryCta: "wechat",
-    en: "private-detective-pricing",
-    th: "วิธีการคิดราคาจ้างนักส",
+    en: "pricing",
+    th: "ราคานักสืบ",
   },
   {
     slug: "case-studies",
@@ -477,6 +482,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     faq: [],
     related: ["how-it-works", "contact"],
     primaryCta: "wechat",
+    en: "case-studies",
+    th: "กรณีศึกษา",
     noindex: true,
   },
   {
@@ -484,14 +491,14 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     kind: "info",
     service: "general",
     title: "关于 Detective Pulse — 泰国本地调查团队",
-    description: "2016 年起在泰国运营的专业调查团队。了解我们的团队、覆盖范围、保密政策与沟通方式。",
+    description: `${FACTS.confirmed.foundingYear} 年起在泰国运营的专业调查团队。了解我们的团队、覆盖范围、保密政策与沟通方式。`,
     h1: "关于 Detective Pulse",
     eyebrow: "Dossier · 关于我们",
-    intro: "Detective Pulse 是一家在泰国运营的专业调查公司，自 2016 年起为泰国本地与海外客户提供调查与核实服务。中文客户服务团队负责您的沟通、进度与报告。",
+    intro: `Detective Pulse 是一家在泰国运营的专业调查公司，自 ${FACTS.confirmed.foundingYear} 年起为泰国本地与海外客户提供调查与核实服务。中文客户服务团队负责您的沟通、进度与报告。`,
     sections: [
       {
         heading: "我们是谁",
-        body: ["一支由泰国本地调查员组成的团队，常驻曼谷，可在全泰国范围执行任务。我们服务个人客户与企业客户，案件管理采用统一的内部系统，确保每一步有记录、可追溯。"],
+        body: [`一支由泰国本地调查员组成的团队，常驻曼谷，可在全泰国范围执行任务。我们服务个人客户与企业客户，案件管理采用统一的内部系统，确保每一步有记录、可追溯。`, `团队由${FACTS.pending.leadInvestigator ? `${FACTS.pending.leadInvestigator.role.zh} ${FACTS.pending.leadInvestigator.name} ` : "创始人"}带领，共 ${FACTS.confirmed.teamSize} 名调查员与支持人员。`],
       },
       {
         heading: "我们的原则",
@@ -508,11 +515,13 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
       },
     ],
     faq: [
-      { q: "你们有实体办公室吗？", a: "有，位于泰国。企业客户可预约到访；个人客户通常无需到场。" },
+      { q: "你们有实体办公室吗？", a: officeAnswer("zh") },
       { q: "可以视频沟通吗？", a: "可以，重要节点可安排微信语音或视频。" },
     ],
     related: ["how-it-works", "contact", "case-studies"],
     primaryCta: "wechat",
+    en: "about",
+    th: "เกี่ยวกับเรา",
   },
   {
     slug: "partners",

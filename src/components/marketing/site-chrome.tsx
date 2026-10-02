@@ -5,6 +5,8 @@ import { AssistantWidget } from "@/components/marketing/assistant-widget";
 import { StickyContactBar } from "@/components/marketing/sticky-contact-bar";
 import { ExitIntent } from "@/components/marketing/exit-intent";
 import { SiteNav, SiteFooterLinks } from "@/components/marketing/site-nav";
+import { FACTS } from "@/lib/marketing/facts";
+import { AttributionCapture } from "@/components/marketing/attribution-capture";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com.
@@ -16,7 +18,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <div className="theme-detective relative min-h-screen overflow-hidden bg-background font-sans text-foreground">
       {/* Surveillance backdrop */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 print:hidden">
         <div className="dp-grid absolute inset-0" />
         <div className="dp-grain absolute inset-0" />
         <div className="dp-vignette absolute inset-0" />
@@ -34,12 +36,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               Field unit online
             </span>
             <span className="hidden sm:inline text-primary/70">Confidential // Detective Pulse</span>
-            <span>Est. 2016</span>
+            <span>Est. {FACTS.confirmed.foundingYear}</span>
           </div>
         </div>
 
         {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md print:hidden">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
             <Link href="/" className="group flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary transition-colors group-hover:border-primary/70">
@@ -58,7 +60,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <main>{children}</main>
 
         {/* Footer */}
-        <footer className="border-t border-border/60 bg-background/60">
+        <footer className="border-t border-border/60 bg-background/60 print:hidden">
           <div className="mx-auto max-w-5xl px-4 py-8">
             <div className="dp-hairline mb-6" />
             <div className="flex flex-col items-center gap-2 text-center">
@@ -67,7 +69,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 Detective<span className="text-primary">Pulse</span>
               </span>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                © {new Date().getFullYear()} · Since 2016 · นักสืบเอกชนมืออาชีพ
+                © {new Date().getFullYear()} · Since {FACTS.confirmed.foundingYear} · นักสืบเอกชนมืออาชีพ
               </p>
               <SiteFooterLinks />
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/80">
@@ -78,10 +80,14 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </footer>
       </div>
 
-      <ContactFab />
-      <AssistantWidget />
-      <StickyContactBar />
-      <ExitIntent />
+      <AttributionCapture />
+      {/* Floating chrome never prints (e.g. the sample report saved as PDF). */}
+      <div className="print:hidden">
+        <ContactFab />
+        <AssistantWidget />
+        <StickyContactBar />
+        <ExitIntent />
+      </div>
     </div>
   );
 }

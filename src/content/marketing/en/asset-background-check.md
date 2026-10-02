@@ -4,8 +4,8 @@ kind: "post"
 slug: "/asset-background-check/"
 path: "/en/asset-background-check"
 title: "Asset Background Check — Verify a Person's Property"
-seoTitle: "Asset Background Check Service in Thailand | Detective Pulse"
-description: "Search a person's assets by name or ID — land, house, condo, and other property such as vehicle and motorcycle registrations, including the legal owner. Fast and easy."
+seoTitle: "Asset Background Check Service in Thailand"
+description: "Lawful asset checks on a person or debtor — land, houses, condos, vehicles and businesses from accessible sources, to support a claim or enforcement."
 ---
 
 In an age where technology and information shape daily life, we can reach useful data more easily than ever — such as checking the assets of a person involved, so we can make transactions and decisions correctly and with confidence in the accuracy of the information.
@@ -18,4 +18,4 @@ For this service, once we receive your information, we pass this confidential da
 
 Whether you're an investor interested in buying or selling property, or an owner wanting to check further details, our asset background-check service is always glad to help. We guarantee accurate, complete information so you can decide with confidence.
 
-See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -9,6 +9,8 @@ import {
 } from "@/lib/marketing/zh/intake-schema";
 import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
 import { sniffMime } from "@/lib/marketing/zh/file-sniff";
+import { channelFor } from "@/lib/marketing/crm";
+import { insertLeadResilient } from "@/lib/marketing/lead-insert";
 
 /**
  * Public, unauthenticated endpoint — the Chinese intake form posts here as
@@ -115,6 +117,7 @@ export async function POST(request: NextRequest) {
     utm_medium: data.utmMedium || null,
     utm_campaign: data.utmCampaign || null,
     utm_term: data.utmTerm || null,
+    channel: channelFor({ utm_source: data.utmSource, utm_medium: data.utmMedium, referrer: data.referrer, landing_page: data.landingPage }),
     locale: "zh",
     source: "zh_intake",
     stage: "new",
@@ -129,11 +132,11 @@ export async function POST(request: NextRequest) {
   let leadRef = "";
   for (let attempt = 0; attempt < 3 && !leadId; attempt++) {
     leadRef = generateLeadRef();
-    const { data: inserted, error } = await svc
-      .from("marketing_leads")
-      .insert({ ...row, lead_ref: leadRef })
-      .select("id")
-      .single();
+    const { data: inserted, error } = await insertLeadResilient(
+      { ...row, lead_ref: leadRef },
+      (r) => svc.from("marketing_leads").insert(r).select("id").single(),
+      "marketing:zh-intake",
+    );
     if (!error && inserted) {
       leadId = inserted.id;
     } else if (error && error.code !== "23505") {

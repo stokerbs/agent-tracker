@@ -4,8 +4,8 @@ kind: "post"
 slug: "/trusted-detective-agency/"
 path: "/en/trusted-detective-agency"
 title: "A Trusted, Professional Detective Agency — Every Type of Case"
-seoTitle: "Trusted Professional Detective Agency in Thailand | Detective Pulse"
-description: "A trusted, professional detective agency handling investigations across real estate, criminal, business and family cases — with a skilled, highly experienced team."
+seoTitle: "Trusted Professional Detective Agency in Thailand"
+description: "A trusted, professional detective agency in Thailand handling family, business, property and fraud-related investigations with an experienced team."
 ---
 
 When you need help investigating and resolving a case, we recommend finding an agency that is both expert and trustworthy. Detective agencies come in many forms — look for one whose expertise and experience will be your ally in finding the truth and solving problems across a wide range of case types.
@@ -30,4 +30,4 @@ Professional detectives focused on family cases handle matters that may involve 
 
 A trusted, professional detective agency is one with a skilled team experienced in investigating every type of case. With modern techniques and tools, you can be confident of accurate, reliable results — whether your case is business, real estate, criminal or family related.
 
-See [all our detective services](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See [all our detective services](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { Fingerprint, Crosshair } from "lucide-react";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 
 type Cta = {
   href: string;
@@ -90,14 +91,15 @@ export function DetectiveHero(p: DetectiveHeroProps) {
 
         <div className="dp-hero-in mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: ".4s" }}>
           {p.ctas.map((c) => (
-            <a
+            <TrackedLink
               key={c.label}
               href={c.href}
-              {...(c.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              placement="hero"
+              external={Boolean(c.external)}
               className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 transition-opacity hover:opacity-90 ${c.className}`}
             >
               {c.icon} {c.label}
-            </a>
+            </TrackedLink>
           ))}
         </div>
 

@@ -42,6 +42,8 @@ export const ZH_LOCATION_PAGES: ZhPage[] = [
     ],
     related: ["bangkok-investigation", "relationship-investigation", "on-site-verification", "contact"],
     primaryCta: "wechat",
+    en: "private-investigator-bangkok",
+    th: "นักสืบกรุงเทพ",
   },
   {
     slug: "pattaya",

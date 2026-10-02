@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CONTACT } from "@/lib/marketing/contact";
 
 export const metadata: Metadata = {
   title: "Support · Detective Pulse",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const UPDATED = "28 June 2026";
-const SUPPORT_EMAIL = "detectivepluse@gmail.com";
+const SUPPORT_EMAIL = CONTACT.email;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

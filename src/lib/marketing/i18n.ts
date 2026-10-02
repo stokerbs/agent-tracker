@@ -35,13 +35,20 @@ export const EN_TO_TH: Record<string, string> = {
   "online-fraud-investigation": "การฉ้อโกงออนไลน์และบทบ",
   "qualities-of-a-good-detective": "นักสืบ",
   "detective-services-overview": "บริการนักสืบ",
+  // Registry-only pages (src/lib/marketing/pages) — no markdown file.
+  "pricing": "ราคานักสืบ",
+  "about": "เกี่ยวกับเรา",
+  "private-investigator-bangkok": "นักสืบกรุงเทพ",
+  "how-it-works": "ขั้นตอนการทำงาน",
+  "due-diligence-thailand": "ตรวจสอบธุรกิจและคู่ค้า",
+  "surveillance-thailand": "ติดตามพฤติกรรม",
+  "for-law-firms": "สำหรับทนายความ",
+  "case-studies": "กรณีศึกษา",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(
   Object.entries(EN_TO_TH).map(([en, th]) => [th, en]),
 );
 
-/** Thai path (decoded, slash-wrapped) for a Thai slug. */
-export const thPath = (thSlug: string) => `/${thSlug}/`;
 /** English path for an English slug. */
 export const enPath = (enSlug: string) => `/en/${enSlug}`;

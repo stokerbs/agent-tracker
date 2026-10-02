@@ -1,3 +1,6 @@
+import { CONTACT } from "@/lib/marketing/contact";
+import { officeAnswer } from "@/lib/marketing/facts";
+
 /** Frequently-asked questions for the public marketing site (TH + EN). Used for
  *  both the visible FAQ section and the FAQPage structured data (rich results).
  *  The visible list and the JSON-LD must stay in sync — both read these arrays. */
@@ -13,11 +16,11 @@ export const FAQ_TH: QA[] = [
   },
   {
     q: "Detective Pulse มีบริการอะไรบ้าง?",
-    a: "เราให้บริการหลายด้าน — สืบคดีชู้สาว (ติดตามพฤติกรรมของคู่สมรสหรือผู้ที่สงสัยว่านอกใจ), สืบหาบุคคลและสืบประวัติ (หาที่อยู่บุคคล สืบพฤติกรรม หรือเช็คประวัติก่อนเข้าทำงาน), สืบทรัพย์สิน (บ้าน คอนโด รถ ที่ดิน หรือเงินในบัญชีธนาคาร), สืบยานพาหนะ (เช็คทะเบียนรถ ตรวจสอบการโจรกรรม หรือติดตามรถหาย) และสืบข้อมูลไอที (เฟซบุ๊ก ไลน์ หรือสื่อออนไลน์อื่น ๆ)",
+    a: "เราให้บริการหลายด้าน — สืบคดีชู้สาว (ติดตามพฤติกรรมของคู่สมรสหรือผู้ที่สงสัยว่านอกใจ), สืบหาบุคคลและสืบประวัติ (หาที่อยู่บุคคล สืบพฤติกรรม หรือเช็คประวัติก่อนเข้าทำงาน), สืบทรัพย์สินเพื่อประกอบการฟ้องหรือบังคับคดี (บ้าน คอนโด รถ ที่ดิน จากแหล่งข้อมูลที่เข้าถึงได้ตามกฎหมาย — ข้อมูลบัญชีธนาคารต้องผ่านกระบวนการศาลเท่านั้น), สืบยานพาหนะ (ตรวจสอบและติดตามรถที่ถูกโจรกรรม) และสืบข้อมูลไอทีจากแหล่งข้อมูลเปิด (เฟซบุ๊ก ไลน์ หรือสื่อออนไลน์อื่น ๆ) — ทุกบริการทำงานภายใต้กฎหมาย PDPA ไม่เข้าถึงฐานข้อมูลราชการ ธนาคาร หรือข้อมูลโทรศัพท์ของผู้อื่น",
   },
   {
     q: "ติดต่อ Detective Pulse ได้อย่างไร?",
-    a: "ติดต่อได้ที่ โทรศัพท์ 096-846-1406, อีเมล detectivepluse@gmail.com หรือ LINE: @detectivepluse",
+    a: `ติดต่อได้ที่ โทรศัพท์ ${CONTACT.phoneDisplay}, อีเมล ${CONTACT.email} หรือ LINE: ${CONTACT.lineId}`,
   },
   {
     q: "ความเป็นส่วนตัวของข้อมูลลูกค้าได้รับการป้องกันอย่างไร?",
@@ -41,7 +44,7 @@ export const FAQ_TH: QA[] = [
   },
   {
     q: "สำนักงานตั้งอยู่ที่ไหน?",
-    a: "Detective Pulse เป็นฟรีแลนซ์นักสืบเอกชน ไม่มีที่ตั้งสำนักงาน แต่สามารถนัดพูดคุยรายละเอียดของงานได้",
+    a: officeAnswer("th"),
   },
   {
     q: "ฉันจะได้รับรายงานผลการสืบสวนอย่างไร?",
@@ -60,11 +63,11 @@ export const FAQ_EN: QA[] = [
   },
   {
     q: "What services does Detective Pulse offer?",
-    a: "We offer a range of services — infidelity investigation (tracking a spouse or a partner suspected of cheating), finding people and background checks (locating a person, checking behaviour, or pre-employment checks), asset investigation (house, condo, car, land, or funds in bank accounts), vehicle investigation (checking a registration, investigating theft, or tracing a missing vehicle), and cyber/IT investigation (Facebook, LINE, and other online media).",
+    a: "We offer a range of services — infidelity investigation (tracking a spouse or a partner suspected of cheating), finding people and background checks (locating a person, checking behaviour, or pre-employment checks), asset investigation to support a lawsuit or enforcement (house, condo, car, land — from lawfully accessible sources; bank information is only obtainable through court process), vehicle investigation (verifying and tracing a stolen vehicle), and cyber/IT investigation from open sources (Facebook, LINE, and other online media). Every service works within Thailand's PDPA: we never access government, bank or telecom data about another person.",
   },
   {
     q: "How do I contact Detective Pulse?",
-    a: "You can reach us by phone at +66 96-846-1406, by email at detectivepluse@gmail.com, or on LINE: @detectivepluse",
+    a: `You can reach us by phone or WhatsApp at ${CONTACT.phoneE164}, by email at ${CONTACT.email}, or on LINE: ${CONTACT.lineId}`,
   },
   {
     q: "How is my personal data protected?",
@@ -88,7 +91,7 @@ export const FAQ_EN: QA[] = [
   },
   {
     q: "Where is your office located?",
-    a: "Detective Pulse is a freelance private investigator with no fixed office, but we can arrange a meeting to discuss the details of your case.",
+    a: officeAnswer("en"),
   },
   {
     q: "How will I receive the investigation report?",
@@ -97,52 +100,5 @@ export const FAQ_EN: QA[] = [
   {
     q: "Can I cancel the service?",
     a: "If the client cancels, the deposit is non-refundable. Please contact us for further details.",
-  },
-];
-
-export const FAQ_ZH: QA[] = [
-  {
-    q: "Detective Pulse 是什么？",
-    a: "Detective Pulse 是泰国的专业私家侦探机构，在全国范围内提供多种调查与信息追查服务。",
-  },
-  {
-    q: "Detective Pulse 提供哪些服务？",
-    a: "我们提供多项服务 —— 婚外情调查（追踪配偶或疑似出轨伴侣的行为）、寻人与背景调查（查找某人地址、行为调查或入职前背景核查）、财产调查（房产、公寓、车辆、土地或银行账户资金）、车辆调查（查车牌、盗窃调查或追查失踪车辆），以及网络调查（Facebook、LINE 及其他线上媒体）。",
-  },
-  {
-    q: "如何联系 Detective Pulse？",
-    a: "电话 096-846-1406、邮箱 detectivepluse@gmail.com，或 LINE：@detectivepluse",
-  },
-  {
-    q: "客户资料的隐私如何保障？",
-    a: "我们对客户信息严格保密，所有资料都会安全存储并保持私密。",
-  },
-  {
-    q: "服务费用如何计算？",
-    a: "费用取决于工作的类型与复杂程度，请联系我们进行咨询与报价。",
-  },
-  {
-    q: "如何付款？",
-    a: "在确认工作细节与价格后，开始工作前先支付 50% 定金，交付结果前再支付尾款。",
-  },
-  {
-    q: "调查需要多长时间？",
-    a: "时间取决于案件的复杂程度，但我们会尽力在约定时间内完成，并全程向您更新进度。",
-  },
-  {
-    q: "服务覆盖哪些地区？",
-    a: "我们承接全泰国的案件 —— 无论是曼谷还是其他府。",
-  },
-  {
-    q: "我会如何收到调查报告？",
-    a: "我们会通过您方便的渠道（邮箱或其他方式）交付报告与所获取的证据。",
-  },
-  {
-    q: "可以取消服务吗？",
-    a: "若客户取消，定金将不予退还，详情请联系我们。",
-  },
-  {
-    q: "你们的办公室在哪里？",
-    a: "Detective Pulse 是自由职业私家侦探，没有固定办公室，但可以约见面详谈案件细节。",
   },
 ];

@@ -4,8 +4,8 @@ kind: "post"
 slug: "/evidence-for-adultery-lawsuit/"
 path: "/en/evidence-for-adultery-lawsuit"
 title: "What to Know Before Hiring a Detective to Gather Adultery Evidence"
-seoTitle: "Evidence for an Adultery Lawsuit — What to Know | Detective Pulse"
-description: "An adultery claim relies on proper, complete evidence — which a detective can help you gather. What to know before hiring, the key types of evidence, why timing matters, and why some choose to sue rather than divorce."
+seoTitle: "Evidence for an Adultery Lawsuit — What to Know"
+description: "What to know before hiring a detective for an adultery claim: the evidence that matters, why timing counts, and when people sue rather than divorce."
 ---
 
 When love turns to conflict and betrayal, many people look for a way forward by filing an adultery claim. But such a claim relies on proper, complete evidence — and a detective is the expert in gathering it. In this article, we'll help you understand what to know before hiring a detective to collect evidence for an adultery case.
@@ -18,4 +18,4 @@ One point worth noting: you can claim damages from the third party without getti
 
 In the end, choosing to hire a detective to gather adultery evidence takes careful thought. The information in this article should help you understand what to expect and what to know before taking the next step.
 
-See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

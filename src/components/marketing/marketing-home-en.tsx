@@ -12,10 +12,14 @@ import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPageEN } from "@/lib/marketing/content";
 import { FAQ_EN } from "@/lib/marketing/faq";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
+const YOUTUBE_URL = CONTACT.youtubeUrl;
 
 const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "cheating-spouse-investigator", label: "Cheating Spouse", blurb: "Discreetly track a partner's behaviour and gather court-admissible evidence.", Icon: HeartCrack },
@@ -35,8 +39,8 @@ const WHY = [
 ];
 
 // Verified customer reviews from the firm's Fastwork profile.
-const REVIEW_RATING = "4.8";
-const REVIEW_COUNT = 63;
+const REVIEW_RATING = FACTS.confirmed.reviews.rating;
+const REVIEW_COUNT = FACTS.confirmed.reviews.count;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
   { name: "pingpong27", date: "07/02/2026", stars: 5, text: "Fast and 100% accurate. Far quicker than promised — they said 1–2 days, but I had the complete, correct information in under half a day." },
   { name: "Nattavara", date: "13/01/2026", stars: 5, text: "I was stunned by how much they uncovered — genuinely deep detail on the person. Highly recommend." },
@@ -64,7 +68,7 @@ export function MarketingHomeEN() {
 
   return (
     <>
-      <MarketingJsonLd faq={FAQ_EN} />
+      <MarketingJsonLd faq={FAQ_EN} lang="en" />
       {/* Hero */}
       <DetectiveHero
         caseNo="CASE FILE №DP-∞"
@@ -76,9 +80,10 @@ export function MarketingHomeEN() {
         titleRest="in Thailand"
         subtitle="Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence."
         ctas={[
-          { href: "https://lin.ee/SSqk98x", label: "Free consult on LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: "https://api.whatsapp.com/send?phone=+66968461406", label: "WhatsApp us", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
-          { href: "#contact", label: "Contact", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
+          // International visitors rarely have LINE: WhatsApp leads, the form is second, LINE stays available.
+          { href: CONTACT.whatsappUrl, label: "Chat on WhatsApp", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
+          { href: "#contact", label: "Request a free assessment", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: CONTACT.lineUrl, label: "LINE", icon: <LineIcon className="h-5 w-5" />, className: "border border-border font-medium hover:bg-muted", external: true },
         ]}
         tagline="// Relentless · discreet · nationwide"
         scrollLabel="Scroll to investigate"
@@ -88,10 +93,10 @@ export function MarketingHomeEN() {
       <StatBand
         eyebrow="Track Record · By the numbers"
         stats={[
-          { value: new Date().getFullYear() - 2016, suffix: "+", label: "Years of experience" },
-          { value: 1953, suffix: "+", label: "Cases closed" },
+          { value: new Date().getFullYear() - FACTS.confirmed.foundingYear, suffix: "+", label: "Years of experience" },
+          { value: FACTS.confirmed.closedCases, suffix: "+", label: "Cases closed" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "Average rating (of 5)" },
-          { value: 77, label: "Provinces covered" },
+          { value: FACTS.confirmed.provinces, label: "Provinces covered" },
         ]}
       />
 
@@ -114,7 +119,7 @@ export function MarketingHomeEN() {
           <SectionHeading eyebrow="Active Cases · Services" title="Our Services" />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s, i) => (
-              <Link key={s.slug} href={s.page!.path} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+              <Link key={s.slug} href={s.page!.href} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
                 <CornerTicks />
                 <div className="flex items-center justify-between">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
@@ -149,6 +154,11 @@ export function MarketingHomeEN() {
         </div>
       </section>
 
+      {/* Lawful scope — the same boundary statement as the Chinese pages */}
+      <section className="mx-auto max-w-5xl px-4 pb-16">
+        <LawfulScope lang="en" />
+      </section>
+
       {/* Process — evidence chain */}
       <section className="border-y border-border/60 bg-card/30">
         <div className="mx-auto max-w-3xl px-4 py-16">
@@ -180,7 +190,11 @@ export function MarketingHomeEN() {
                 <Star key={i} className="h-4 w-4 fill-primary text-primary" />
               ))}
             </span>
-            <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} reviews · Fastwork</span>
+            {FACTS.confirmed.reviews.url ? (
+              <a href={FACTS.confirmed.reviews.url} target="_blank" rel="noopener noreferrer" className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground underline-offset-2 hover:underline">{REVIEW_COUNT} reviews · {FACTS.confirmed.reviews.source} ↗</a>
+            ) : (
+              <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} reviews · {FACTS.confirmed.reviews.source}</span>
+            )}
           </div>
         </div>
 
@@ -212,7 +226,7 @@ export function MarketingHomeEN() {
           <SectionHeading eyebrow="Field Notes · Guides" title="Articles &amp; Guides" sub="scroll →" />
           <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {articles.map((p, i) => (
-              <Link key={p!.slug} href={p!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+              <Link key={p!.slug} href={p!.href} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
                 <ArticleCover slug={p!.slug} title={p!.title} index={i} lang="en" />
                 <div className="p-3.5">
                   <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{p!.title}</h3>
@@ -246,11 +260,11 @@ export function MarketingHomeEN() {
             <span className="h-px w-8 bg-border" /> or chat directly <span className="h-px w-8 bg-border" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</a>
-            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</a>
-            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</a>
+            <TrackedLink href={CONTACT.whatsappUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</TrackedLink>
+            <TrackedLink href={CONTACT.lineUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</TrackedLink>
+            <TrackedLink href={CONTACT.facebookUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</TrackedLink>
             {contact && (
-              <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 font-medium text-primary hover:bg-primary/10">All contact options</Link>
+              <Link href={contact.href} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 font-medium text-primary hover:bg-primary/10">All contact options</Link>
             )}
           </div>
         </div>

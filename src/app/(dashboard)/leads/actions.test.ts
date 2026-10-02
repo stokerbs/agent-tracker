@@ -111,6 +111,24 @@ describe("updateLeadPipeline", () => {
     expect(meta).not.toContain("0812345678");
   });
 
+  it("CRM fields (0128): quality and lost reason are validated, written and audited; clearing works", async () => {
+    await updateLeadPipeline(fd({ leadQuality: "qualified", lostReason: "price" }));
+    expect(h.updatedWith).toMatchObject({ lead_quality: "qualified", lost_reason: "price" });
+    expect(h.logAudit).toHaveBeenLastCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ lead_quality: "qualified", lost_reason: "price" }) }));
+    // "— ไม่ระบุ —" with a previously stored reason → explicit null.
+    await updateLeadPipeline(fd({ lostReason: "", clearLostReason: "1" }));
+    expect(h.updatedWith).toMatchObject({ lost_reason: null });
+    // Blank without the clear flag (nothing was stored) → column untouched.
+    await updateLeadPipeline(fd({ lostReason: "" }));
+    expect(Object.hasOwn(h.updatedWith as object, "lost_reason")).toBe(false);
+    expect(Object.hasOwn(h.updatedWith as object, "lead_quality")).toBe(false);
+    // Unknown values are rejected before any write.
+    h.updatedWith = undefined;
+    expect(await updateLeadPipeline(fd({ leadQuality: "great" }))).toEqual({ error: "invalid_input" });
+    expect(await updateLeadPipeline(fd({ lostReason: "weather" }))).toEqual({ error: "invalid_input" });
+    expect(h.updatedWith).toBeUndefined();
+  });
+
   it("returns a safe message on a DB error", async () => {
     h.updateResult = { error: { message: 'relation "marketing_leads" violates constraint marketing_leads_stage_check' } };
     expect(await updateLeadPipeline(fd())).toEqual({ error: "safe message" });

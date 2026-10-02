@@ -5,24 +5,29 @@
  * docs/china-market/16-facts-requiring-confirmation.md. Do not add figures
  * that cannot be verified by Detective Pulse.
  */
+import { CONTACT, SAME_AS } from "@/lib/marketing/contact";
+import { FACTS } from "@/lib/marketing/facts";
+
 export const ZH_COMPANY = {
-  name: "Detective Pulse",
+  name: CONTACT.brand,
   /** Year the site has displayed as "Est." / "Since". */
-  since: 2016,
+  since: CONTACT.foundingYear,
   /** WeChat ID shown next to the QR. Overridable per deployment. */
   wechatId: process.env.NEXT_PUBLIC_WECHAT_ID || "DetectivePulse",
   /** WeChat QR image (public path). The existing asset is a WeChat QR. */
   wechatQr: process.env.NEXT_PUBLIC_WECHAT_QR || "/marketing/btn-wechat.jpg",
-  email: "detectivepluse@gmail.com",
+  email: CONTACT.email,
   /** Firm's main number — WhatsApp links were unified on it in PR #268. */
-  whatsapp: "+66968461406",
-  whatsappHref: "https://api.whatsapp.com/send?phone=+66968461406",
-  lineHref: "https://lin.ee/SSqk98x",
+  whatsapp: CONTACT.phoneE164,
+  whatsappHref: CONTACT.whatsappUrl,
+  lineHref: CONTACT.lineUrl,
+  /** schema.org sameAs — shared with the TH/EN entity so Google sees one business. */
+  sameAs: SAME_AS,
   /** Review figures displayed on the existing homepages (Fastwork). */
-  reviews: { rating: "4.8", count: 63, source: "Fastwork" },
+  reviews: { rating: FACTS.confirmed.reviews.rating, count: FACTS.confirmed.reviews.count, source: FACTS.confirmed.reviews.source },
   /** Closed-case figure displayed on the existing homepages. */
-  closedCases: 1953,
-  provinces: 77,
+  closedCases: FACTS.confirmed.closedCases,
+  provinces: FACTS.confirmed.provinces,
   /** Deposit rule from the existing FAQ / process copy. */
-  depositPercent: 50,
+  depositPercent: FACTS.confirmed.depositPercent,
 } as const;

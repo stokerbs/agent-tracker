@@ -4,8 +4,8 @@ kind: "post"
 slug: "/social-media-investigation/"
 path: "/en/social-media-investigation"
 title: "Social-Media Investigation — Facebook, LINE, Instagram and Beyond"
-seoTitle: "Social-Media & Online Investigation Service | Detective Pulse"
-description: "Investigate information across digital platforms — Facebook, LINE, Instagram and other online media — with modern technology and a capable team, for complete, accurate, up-to-date results."
+seoTitle: "Social-Media & Online Investigation Service"
+description: "Lawful social-media and online investigations across Facebook, LINE, Instagram and more — identity checks, fake accounts and digital footprints."
 ---
 
 In today's digital age we can reach information anywhere, any time, from many sources — online and offline. With a modern IT-investigation service, finding that information becomes easier: with up-to-date technology and a capable team, we can search out the data you need quickly and accurately.
@@ -18,4 +18,4 @@ On **Instagram**, focused on sharing images and video, we can investigate images
 
 In short, our IT-investigation service isn't only about convenience and speed — it covers detailed investigation of every kind of data: commercial, market and general information — so you receive the most complete, accurate and current results. You can be confident you'll get the information you need, quickly and with the highest accuracy.
 
-See our [cyber & online investigation service](/en/cyber-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [cyber & online investigation service](/en/cyber-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

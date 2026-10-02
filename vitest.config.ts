@@ -2,6 +2,9 @@ import { defineConfig } from "vitest/config";
 import { resolve } from "path";
 
 export default defineConfig({
+  // tsconfig uses `jsx: "preserve"` for Next; vitest (vite 8 / oxc) needs real
+  // JSX output to import .tsx modules (e.g. json-ld.tsx) from node tests.
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),

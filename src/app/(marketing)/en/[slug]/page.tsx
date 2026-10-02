@@ -10,19 +10,57 @@ import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
+import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { ServicePage } from "@/components/marketing/service-page";
+import { getRelatedPages } from "@/lib/marketing/related";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
+import { getServicePage, registryOnlySlugs, SERVICE_PAGES } from "@/lib/marketing/pages";
+import { CONTACT } from "@/lib/marketing/contact";
+import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
 
-export const dynamicParams = false; // only translated pages; everything else 404s
+export const dynamicParams = false; // translated pages + registry pages only; everything else 404s
 
 export function generateStaticParams() {
-  return getMarketingPagesEN().map((p) => ({ slug: p.slug }));
+  const md = getMarketingPagesEN().map((p) => p.slug);
+  return [...md, ...registryOnlySlugs("en", new Set(md))].map((slug) => ({ slug }));
+}
+
+function titleFor(slug: string): string | undefined {
+  return getServicePage("en", slug)?.h1 ?? getMarketingPageEN(slug)?.title;
 }
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
   const { slug } = await params;
+
+  const sp = getServicePage("en", slug);
+  if (sp) {
+    const path = `/en/${sp.slug}`;
+    const th = sp.counterpart?.th ?? EN_TO_TH[sp.slug];
+    const zh = sp.counterpart?.zh ?? zhSlugForEn(sp.slug);
+    return {
+      title: sp.title,
+      description: sp.description,
+      // Case-study page: noindex until ≥ 3 real cases exist (audit Days 31–90).
+      ...(sp.caseStudies && !caseStudiesIndexable() ? { robots: { index: false, follow: true } } : {}),
+      alternates: {
+        canonical: path,
+        languages: { en: path, ...(th ? { th: `/${th}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}), "x-default": path },
+      },
+      openGraph: {
+        type: "website",
+        url: `${CONTACT.siteUrl}${path}`,
+        title: `${sp.title} | ${CONTACT.brand}`,
+        description: sp.description,
+        siteName: CONTACT.brand,
+        images: [{ url: `${CONTACT.siteUrl}/api/og`, width: 1200, height: 630 }],
+      },
+      twitter: { card: "summary_large_image", title: `${sp.title} | ${CONTACT.brand}`, description: sp.description },
+    };
+  }
+
   const page = getMarketingPageEN(slug);
   if (!page) return {};
   const canonicalPath = page.path; // /en/<slug> (no trailing slash)
@@ -36,7 +74,7 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { en: canonicalPath, ...(th ? { th: `/${th}/` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
+      languages: { en: canonicalPath, ...(th ? { th: `/${th}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
     },
     openGraph: {
       type: "article",
@@ -54,14 +92,25 @@ export default async function MarketingArticleEN(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+
+  const sp = getServicePage("en", slug);
+  if (sp) {
+    const related = sp.related
+      .map((s) => ({ href: `/en/${s}`, title: titleFor(s) }))
+      .filter((r): r is { href: string; title: string } => Boolean(r.title));
+    return <ServicePage page={sp} related={related} />;
+  }
+
   const page = getMarketingPageEN(slug);
   if (!page) notFound();
 
   const cover = getArticleCover(page.slug, page.title, "en", page);
-  const related = getMarketingPagesEN()
-    .filter((p) => p.slug !== page.slug)
-    .slice(0, 3)
-    .map((p) => ({ href: p.path, slug: p.slug, title: p.title }));
+  const registrySlugs = new Set(SERVICE_PAGES.en.map((p) => p.slug));
+  const related = getRelatedPages(getMarketingPagesEN(), page, 3).map((p) => ({
+    href: p.href,
+    slug: p.slug,
+    title: registrySlugs.has(p.slug) ? (getServicePage("en", p.slug)?.h1 ?? p.title) : p.title,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
@@ -95,6 +144,9 @@ export default async function MarketingArticleEN(
           </ReactMarkdown>
         </div>
       </article>
+      <div className="mt-12">
+        <LawfulScope lang="en" />
+      </div>
       <div className="mt-12">
         <RelatedArticles heading="Related articles" items={related} lang="en" />
       </div>

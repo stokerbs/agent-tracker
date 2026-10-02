@@ -4,8 +4,8 @@ kind: "post"
 slug: "/hire-a-private-detective/"
 path: "/en/hire-a-private-detective"
 title: "Hire a Private Detective in Thailand"
-seoTitle: "Hire a Private Detective in Thailand | Detective Pulse"
-description: "How to hire a professional private detective in Thailand — services, process, pricing and what to look for. Detective Pulse: experienced, discreet, nationwide."
+seoTitle: "Hire a Private Detective in Thailand"
+description: "How to hire a professional private detective in Thailand — services, process, pricing and what to look for. Experienced, discreet, nationwide."
 ---
 
 Choosing the right private investigator matters. **Detective Pulse** is a professional detective agency working across Thailand, with experienced investigators and a track record of results — and every client's information kept strictly confidential.

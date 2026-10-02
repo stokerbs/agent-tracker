@@ -14,10 +14,14 @@ import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPage } from "@/lib/marketing/content";
 import { FAQ_TH } from "@/lib/marketing/faq";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
+const YOUTUBE_URL = CONTACT.youtubeUrl;
 
 const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "นักสืบชู้สาว", label: "นักสืบชู้สาว", blurb: "ติดตามพฤติกรรมสามี/ภรรยา สืบชู้ สืบกิ๊ก เก็บหลักฐานเพื่อใช้ในชั้นศาล", Icon: HeartCrack },
@@ -32,7 +36,7 @@ const PROCESS = ["คุยรายละเอียดของงาน", "�
 
 const WHY = [
   { Icon: ShieldCheck, title: "เป็นความลับ", desc: "ข้อมูลทุกอย่างของลูกค้าถูกเก็บเป็นความลับอย่างเคร่งครัด" },
-  { Icon: Search, title: "มืออาชีพ", desc: "ทีมนักสืบประสบการณ์สูง พร้อมรางวัลการันตีความสำเร็จ" },
+  { Icon: Search, title: "มืออาชีพ", desc: "ทีมนักสืบประสบการณ์สูง ทำงานเป็นระบบ รายงานข้อเท็จจริงพร้อมหลักฐานชัดเจน" },
   { Icon: MapPin, title: "ทั่วราชอาณาจักร", desc: "รับงานสืบทุกจังหวัดทั่วประเทศไทย เฝ้าไม่พลาดแม้วินาทีเดียว" },
 ];
 
@@ -48,8 +52,8 @@ const ARTICLES = [
 ];
 
 // Verified customer reviews (from the firm's Fastwork profile).
-const REVIEW_RATING = "4.8";
-const REVIEW_COUNT = 63;
+const REVIEW_RATING = FACTS.confirmed.reviews.rating;
+const REVIEW_COUNT = FACTS.confirmed.reviews.count;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
   { name: "pingpong27", date: "07/02/2026", stars: 5, text: "รวดเร็วและข้อมูลแม่นยำแบบ 100% ทำงานเร็วกว่ากำหนดไว้มาก แจ้งว่าได้ข้อมูล 1-2 วัน แต่เวลาจริงไม่ถึงครึ่งวันได้ข้อมูลมาแล้วและครบถ้วนถูกต้อง" },
   { name: "Nattavara", date: "13/01/2026", stars: 5, text: "ตกใจกับข้อมูลที่ได้เพราะรู้ลึกพอสมควรสำหรับคนที่ให้สืบ แนะนำค่ะ" },
@@ -76,10 +80,10 @@ export function MarketingHome() {
         titleLead="นักสืบเอกชน"
         titleAccent="มืออาชีพ"
         titleRest="รับงานสืบทั่วราชอาณาจักร"
-        subtitle="ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
+        subtitle={`นักสืบเอกชนประสบการณ์สูง ตั้งแต่ปี ${FACTS.confirmed.foundingYear} ทำงานภายใต้กรอบกฎหมาย รายงานพร้อมหลักฐานชัดเจน และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ`}
         ctas={[
-          { href: "https://lin.ee/SSqk98x", label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: "tel:+66968461406", label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
+          { href: CONTACT.phoneTel, label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
           { href: "#contact", label: "ช่องทางติดต่อ", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
         ]}
         tagline="// กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก"
@@ -90,10 +94,10 @@ export function MarketingHome() {
       <StatBand
         eyebrow="Track Record · สถิติการทำงาน"
         stats={[
-          { value: new Date().getFullYear() - 2016, suffix: "+", label: "ปีประสบการณ์" },
-          { value: 1953, suffix: "+", label: "เคสที่ปิดไปแล้ว" },
+          { value: new Date().getFullYear() - FACTS.confirmed.foundingYear, suffix: "+", label: "ปีประสบการณ์" },
+          { value: FACTS.confirmed.closedCases, suffix: "+", label: "เคสที่ปิดไปแล้ว" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "คะแนนเฉลี่ย (จาก 5)" },
-          { value: 77, label: "จังหวัดทั่วไทย" },
+          { value: FACTS.confirmed.provinces, label: "จังหวัดทั่วไทย" },
         ]}
       />
 
@@ -115,8 +119,11 @@ export function MarketingHome() {
         <div className="mx-auto max-w-3xl px-4 py-16 text-center">
           <SectionHeading eyebrow="Dossier · เกี่ยวกับเรา" title="เกี่ยวกับเรา" />
           <p className="mt-6 leading-relaxed text-muted-foreground">
-            นักสืบเอกชน Detective Pulse ให้บริการสืบข้อมูลด้านบุคคล เช่น การสืบชู้สาว สืบจับบุคคลตามหมายจับ หมายศาล สืบหาคนหาย หาที่อยู่บุคคล ตามหาคนโกง โดนโกงออนไลน์ สืบพฤติกรรมบุตรหลาน สืบประวัติการก่ออาชญากรรม สืบประวัติบุคคลก่อนเข้าทำงาน สืบประวัติการเดินทางเข้าออกประเทศ ติดตามรถยนต์ เช็คการใช้งานโทรศัพท์ และอื่น ๆ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
+            นักสืบเอกชน Detective Pulse ให้บริการสืบข้อมูลด้านบุคคลและธุรกิจด้วยวิธีที่ถูกกฎหมาย เช่น สืบชู้สาวและติดตามพฤติกรรมในที่สาธารณะ ตามหาคนหายและบุคคลที่ขาดการติดต่อ ตามหาที่อยู่ปัจจุบันของลูกหนี้หรือคนโกงออนไลน์ สืบพฤติกรรมบุตรหลาน เช็คประวัติและความน่าเชื่อถือของบุคคลก่อนร่วมงาน คบหา หรือทำธุรกิจ สืบทรัพย์สินเพื่อประกอบการฟ้องหรือบังคับคดี และสืบข้อมูลบนโลกออนไลน์จากแหล่งข้อมูลเปิด — ทุกเคสทำงานภายใต้กรอบกฎหมาย PDPA และข้อมูลของลูกค้าถูกเก็บเป็นความลับ
           </p>
+          <div className="mt-8 text-left">
+            <LawfulScope lang="th" compact />
+          </div>
         </div>
       </section>
 
@@ -125,7 +132,7 @@ export function MarketingHome() {
         <SectionHeading eyebrow="Active Cases · แฟ้มคดี" title="บริการของเรา" sub="กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก" />
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s, i) => (
-            <Link key={s.slug} href={s.page!.path} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+            <Link key={s.slug} href={s.page!.href} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
               <CornerTicks />
               <div className="flex items-center justify-between">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
@@ -191,7 +198,11 @@ export function MarketingHome() {
                   <Star key={i} className="h-4 w-4 fill-primary text-primary" />
                 ))}
               </span>
-              <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} รีวิว · Fastwork</span>
+              {FACTS.confirmed.reviews.url ? (
+                <a href={FACTS.confirmed.reviews.url} target="_blank" rel="noopener noreferrer" className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground underline-offset-2 hover:underline">{REVIEW_COUNT} รีวิว · {FACTS.confirmed.reviews.source} ↗</a>
+              ) : (
+                <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} รีวิว · {FACTS.confirmed.reviews.source}</span>
+              )}
             </div>
           </div>
 
@@ -224,7 +235,7 @@ export function MarketingHome() {
           <SectionHeading eyebrow="Field Notes · บันทึก" title="บทความที่น่าสนใจ" sub="เลื่อนดู →" />
           <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {articles.map((a, i) => (
-              <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+              <Link key={a.slug} href={a.page!.href} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
                 <ArticleCover slug={a.slug} title={a.page!.title} index={i} />
                 <div className="p-3.5">
                   <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{a.page!.title}</h3>
@@ -258,21 +269,21 @@ export function MarketingHome() {
             <span className="h-px w-8 bg-border" /> หรือทักแชทโดยตรง <span className="h-px w-8 bg-border" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            <TrackedLink href={CONTACT.lineUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <LineIcon className="h-5 w-5" /> LINE
-            </a>
-            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            </TrackedLink>
+            <TrackedLink href={CONTACT.whatsappUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <WhatsAppIcon className="h-5 w-5" /> WhatsApp
-            </a>
-            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            </TrackedLink>
+            <TrackedLink href={CONTACT.facebookUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <FacebookIcon className="h-5 w-5" /> Facebook
-            </a>
+            </TrackedLink>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</a>
-            <a href="mailto:detectivepluse@gmail.com" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</a>
+            <TrackedLink href={CONTACT.phoneTel} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> {CONTACT.phoneDisplay}</TrackedLink>
+            <TrackedLink href={CONTACT.mailto} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</TrackedLink>
             {contact && (
-              <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
+              <Link href={contact.href} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}
           </div>
           <div className="mt-8 inline-flex flex-col items-center gap-2 rounded-xl border border-border bg-card/50 p-4">

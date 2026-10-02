@@ -2567,6 +2567,59 @@ export type Database = {
           },
         ]
       }
+      marketing_ad_spend: {
+        Row: {
+          campaign: string
+          clicks: number
+          conversions: number
+          cost: number
+          currency: string
+          id: string
+          imported_at: string
+          imported_by: string | null
+          impressions: number
+          locale: string
+          platform: string
+          spend_date: string
+        }
+        Insert: {
+          campaign?: string
+          clicks?: number
+          conversions?: number
+          cost: number
+          currency?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          impressions?: number
+          locale?: string
+          platform: string
+          spend_date: string
+        }
+        Update: {
+          campaign?: string
+          clicks?: number
+          conversions?: number
+          cost?: number
+          currency?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          impressions?: number
+          locale?: string
+          platform?: string
+          spend_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_ad_spend_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_leads: {
         Row: {
           admin_notes: string | null
@@ -2592,6 +2645,9 @@ export type Database = {
           utm_medium: string | null
           utm_source: string | null
           utm_term: string | null
+          utm_content: string | null
+          gclid: string | null
+          fbclid: string | null
           wechat_id: string | null
           case_type: string | null
           consent_at: string | null
@@ -2604,6 +2660,9 @@ export type Database = {
           phone: string | null
           source: string
           status: string
+          lead_quality: string
+          lost_reason: string | null
+          channel: string
           user_agent: string | null
         }
         Insert: {
@@ -2630,6 +2689,9 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          utm_content?: string | null
+          gclid?: string | null
+          fbclid?: string | null
           wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null
@@ -2642,6 +2704,9 @@ export type Database = {
           phone?: string | null
           source?: string
           status?: string
+          lead_quality?: string
+          lost_reason?: string | null
+          channel?: string
           user_agent?: string | null
         }
         Update: {
@@ -2668,6 +2733,9 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          utm_content?: string | null
+          gclid?: string | null
+          fbclid?: string | null
           wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null
@@ -2680,6 +2748,9 @@ export type Database = {
           phone?: string | null
           source?: string
           status?: string
+          lead_quality?: string
+          lost_reason?: string | null
+          channel?: string
           user_agent?: string | null
         }
         Relationships: []

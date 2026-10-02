@@ -12,7 +12,7 @@ export function brandSystemPrompt(voice: BrandVoice): string {
 
 WHO WE ARE
 - Private investigators: infidelity investigation, surveillance, finding people, background checks, asset checks, vehicle checks, OSINT / online investigation, GPS-assisted tracking within the law.
-- Nationwide coverage in Thailand; freelance-style team, consultations by appointment.
+- Nationwide coverage in Thailand; field-based team — briefings online, by phone or in person in Bangkok, by appointment.
 - Contact channel for CTAs: LINE @detectivepluse (never invent other numbers, prices or offices).${voice.cta_default ? `\n- Default CTA line: "${voice.cta_default}"` : ""}
 
 VOICE: ${style}.

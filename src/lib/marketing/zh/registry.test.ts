@@ -84,7 +84,7 @@ describe("Chinese page registry", () => {
     }
   });
 
-  it("only case-studies (while empty) and the printable company profile are noindexed", () => {
+  it("only case-studies (until ≥ 3 real cases) and the printable company profile are noindexed", () => {
     expect(getZhPage("case-studies")?.noindex).toBe(true);
     expect(ZH_PAGES.filter((p) => p.noindex).map((p) => p.slug).sort()).toEqual(["case-studies", "company-profile"]);
   });

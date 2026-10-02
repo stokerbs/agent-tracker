@@ -7,36 +7,34 @@ import { LangSwitch } from "@/components/marketing/lang-switch";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { useMarketingLang } from "@/components/marketing/use-marketing-lang";
 import { ZH_NAV } from "@/lib/marketing/zh/nav";
+import { TH_NAV, EN_NAV, type NavLink } from "@/lib/marketing/nav";
 
 /**
- * Header navigation, switched by the marketing language in the URL. Thai and
- * English keep the original three links; Chinese gets the full service menu
- * plus the WeChat CTA (the primary Chinese conversion path) in the header.
+ * Header navigation, switched by the marketing language in the URL. Every
+ * language gets a Services dropdown (the six core service pages), the primary
+ * links and the language switcher; Chinese additionally gets the WeChat CTA
+ * (its primary conversion path). All hrefs are decoded, non-trailing-slash
+ * paths so no click lands on a 308.
  */
 export function SiteNav() {
   const lang = useMarketingLang();
   if (lang === "zh") return <ZhNav />;
-  if (lang === "en") {
-    return (
-      <nav className="flex items-center gap-3 font-mono text-xs uppercase tracking-wider text-muted-foreground sm:gap-5">
-        <Link href="/en" className="hover:text-foreground">Home</Link>
-        <Link href="/en/careers" className="hover:text-foreground">Careers</Link>
-        <Link href="/en/contact" className="hover:text-foreground">Contact</Link>
-        <LangSwitch />
-      </nav>
-    );
-  }
+  const nav = lang === "en" ? EN_NAV : TH_NAV;
   return (
     <nav className="flex items-center gap-3 font-mono text-xs uppercase tracking-wider text-muted-foreground sm:gap-5">
-      <Link href="/" className="hover:text-foreground">หน้าแรก</Link>
-      <Link href="/careers" className="hover:text-foreground">ร่วมงาน</Link>
-      <Link href="/ติดต่อนักสืบ/" className="hover:text-foreground">ติดต่อ</Link>
+      <ServicesDropdown label={lang === "en" ? "Services" : "บริการ"} items={nav.services} />
+      {nav.primary.map((l, i) => (
+        <Link key={l.href} href={l.href} className={`hover:text-foreground ${i < nav.primary.length - 1 ? "hidden md:inline" : ""}`}>
+          {l.label}
+        </Link>
+      ))}
       <LangSwitch />
     </nav>
   );
 }
 
-function ZhNav() {
+/** Click-to-open dropdown (closes on outside click). Shared by all languages. */
+function ServicesDropdown({ label, items }: { label: string; items: readonly NavLink[] | readonly { slug: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -47,23 +45,31 @@ function ZhNav() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
-
   return (
-    <nav className="flex items-center gap-2.5 text-sm text-muted-foreground sm:gap-4">
-      <div ref={ref} className="relative">
-        <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 hover:text-foreground">
-          服务 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-        {open && (
-          <div className="absolute left-0 top-full z-50 mt-1.5 w-44 overflow-hidden rounded-lg border border-border/70 bg-card shadow-xl">
-            {ZH_NAV.services.map((s) => (
-              <Link key={s.slug} href={`/zh/${s.slug}`} onClick={() => setOpen(false)} className="block px-3 py-2 hover:bg-muted hover:text-foreground">
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu" className="inline-flex items-center gap-1 hover:text-foreground">
+        {label} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div role="menu" className="absolute left-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-lg border border-border/70 bg-card shadow-xl normal-case tracking-normal">
+          {items.map((s) => {
+            const href = "href" in s ? s.href : `/zh/${s.slug}`;
+            return (
+              <Link key={href} href={href} role="menuitem" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm hover:bg-muted hover:text-foreground">
                 {s.label}
               </Link>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ZhNav() {
+  return (
+    <nav className="flex items-center gap-2.5 text-sm text-muted-foreground sm:gap-4">
+      <ServicesDropdown label="服务" items={ZH_NAV.services} />
       <Link href="/zh/how-it-works" className="hidden hover:text-foreground md:inline">流程</Link>
       <Link href="/zh/pricing" className="hidden hover:text-foreground md:inline">收费</Link>
       <Link href="/zh/about" className="hidden hover:text-foreground lg:inline">关于</Link>
@@ -76,35 +82,43 @@ function ZhNav() {
   );
 }
 
-/** Footer links by language (Chinese gets services + locations for crawl depth). */
+/** Footer links by language: services + primary for crawl depth (all languages). */
 export function SiteFooterLinks() {
   const lang = useMarketingLang();
-  if (lang !== "zh") {
+  if (lang === "zh") {
     return (
-      <nav className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        <Link href="/careers" className="hover:text-primary">ร่วมงานกับเรา · Careers</Link>
-        <span aria-hidden className="text-border">·</span>
-        <Link href="/privacy" className="hover:text-primary">นโยบายความเป็นส่วนตัว</Link>
-      </nav>
+      <div className="mt-2 space-y-2 text-[12px] text-muted-foreground">
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          {ZH_NAV.services.map((s) => (
+            <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
+          ))}
+        </nav>
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          {ZH_NAV.locations.map((s) => (
+            <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
+          ))}
+        </nav>
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-wider">
+          {ZH_NAV.primary.map((s) => (
+            <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
+          ))}
+          <Link href="/zh/privacy" className="hover:text-primary">隐私声明</Link>
+        </nav>
+      </div>
     );
   }
+  const nav = lang === "en" ? EN_NAV : TH_NAV;
   return (
     <div className="mt-2 space-y-2 text-[12px] text-muted-foreground">
-      <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-        {ZH_NAV.services.map((s) => (
-          <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
-        ))}
-      </nav>
-      <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-        {ZH_NAV.locations.map((s) => (
-          <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
+      <nav aria-label={lang === "en" ? "Services" : "บริการ"} className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        {nav.services.map((s) => (
+          <Link key={s.href} href={s.href} className="hover:text-primary">{s.label}</Link>
         ))}
       </nav>
       <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-wider">
-        {ZH_NAV.primary.map((s) => (
-          <Link key={s.slug} href={`/zh/${s.slug}`} className="hover:text-primary">{s.label}</Link>
+        {[...nav.primary.filter((l) => !nav.footer.some((f) => f.href === l.href)), ...nav.footer].map((l) => (
+          <Link key={l.href} href={l.href} className="hover:text-primary">{l.label}</Link>
         ))}
-        <Link href="/privacy" className="hover:text-primary">隐私政策</Link>
       </nav>
     </div>
   );

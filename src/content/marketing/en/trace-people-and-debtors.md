@@ -4,8 +4,8 @@ kind: "post"
 slug: "/trace-people-and-debtors/"
 path: "/en/trace-people-and-debtors"
 title: "Hire a Detective to Find People, Relatives and Debtors"
-seoTitle: "Find Missing People, Relatives and Debtors | Detective Pulse"
-description: "Hire a detective to find a person — relatives, friends, debtors, missing persons, or someone you once shared your life with. We're ready to find the person you want to see."
+seoTitle: "Find Missing People, Relatives and Debtors"
+description: "Hire a detective to find a person in Thailand — relatives, old friends, debtors or missing persons — with a free, honest feasibility assessment first."
 coverImage: "/marketing/articles/find-person.jpg"
 coverAlt: "Finding missing people and debtors — Detective Pulse"
 ---
@@ -26,4 +26,4 @@ That's because a detective's process for finding a missing person is better than
 
 The time needed to find a missing person — where they've gone, or simply someone you've lost contact with — depends on the information you have before we start. The more information, the faster and easier the work. So before hiring a detective to find someone, give the investigator everything you have, for the fastest, most useful result for everyone.
 
-We at Detective Pulse offer every kind of missing-person search — with or without a warrant — handled professionally, reducing risk to the client, and keeping everything strictly confidential. Any questions, reach us any time on **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+We at Detective Pulse offer every kind of missing-person search — with or without a warrant — handled professionally, reducing risk to the client, and keeping everything strictly confidential. Any questions, reach us any time on **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

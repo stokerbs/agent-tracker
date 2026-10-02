@@ -4,8 +4,8 @@ kind: "post"
 slug: "/hire-a-detective-online/"
 path: "/en/hire-a-detective-online"
 title: "Hire a Detective Online — Convenient, Fast and Reliable"
-seoTitle: "Hire a Private Detective Online in Thailand | Detective Pulse"
-description: "Hire a private detective online with Detective Pulse — investigations, infidelity cases and asset searches, handled professionally. What to prepare and what to watch out for."
+seoTitle: "Hire a Private Detective Online in Thailand"
+description: "Hire a private detective online in Thailand — infidelity, asset searches and background checks handled professionally. What to prepare and what to avoid."
 ---
 
 In an age where technology shapes daily life, information and solutions to all kinds of problems are available at your fingertips — including **hiring a detective online**, which has become a popular choice for anyone who needs the truth quickly and conveniently. Whether it's tracing personal information, an infidelity case, or an asset search, an online private investigator answers the needs of the modern client.
@@ -35,7 +35,7 @@ Convenient as it is, hiring a detective online carries risk if you don't careful
 
 If you're looking for a trustworthy online detective, **[Detective Pulse](/en)** is an answer you can rely on. With an experienced, professional team and modern tools, we're ready to help you solve the mystery and find the truth in any situation.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on WhatsApp: [+66 96 846 1406](https://api.whatsapp.com/send?phone=+66968461406) or LINE: [@detectivepluse](https://lin.ee/SSqk98x)**
 
 ## In summary — hire online safely by choosing well
 

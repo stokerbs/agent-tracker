@@ -4,6 +4,9 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { reportError } from "@/lib/errors";
+import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
+import { attributionSchema, attributionColumns } from "@/lib/marketing/lead-attribution";
+import { insertLeadResilient } from "@/lib/marketing/lead-insert";
 
 // Public, unauthenticated endpoint — the marketing site's contact form posts here.
 const schema = z.object({
@@ -17,6 +20,7 @@ const schema = z.object({
   // PDPA: explicit consent is required — must be exactly true, or the request
   // is rejected (400) before anything is stored.
   consent: z.literal(true),
+  attribution: attributionSchema,
   // Honeypot: real users never fill this hidden field; bots do. Accept any value
   // (bounded) so a filled one passes validation and hits the silent-success path
   // below (we don't want to signal to bots that they were detected).
@@ -51,12 +55,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "invalid_input" }, { status: 400 });
   }
 
-  const { website, ...data } = parsed.data;
-  // Honeypot tripped → pretend success, store nothing (don't tip off bots).
-  if (website) return NextResponse.json({ ok: true });
+  const { website, attribution, ...data } = parsed.data;
+  const prefix = data.locale === "en" ? "EN" : data.locale === "zh" ? "CN" : "TH";
+  // Honeypot tripped → pretend success with the same response shape as a real
+  // submission (a throw-away ref), store nothing — don't tip off bots.
+  if (website) return NextResponse.json({ ok: true, leadRef: generateLeadRef(new Date(), Math.random, prefix) });
 
-  const svc = createServiceClient();
-  const { error } = await svc.from("marketing_leads").insert({
+  const nowIso = new Date().toISOString();
+  const row = {
     name: data.name,
     phone: data.phone,
     email: data.email ? data.email : null,
@@ -64,12 +70,30 @@ export async function POST(request: NextRequest) {
     message: data.message ?? null,
     locale: data.locale,
     source: "website",
+    stage: "new",
+    stage_changed_at: nowIso,
     user_agent: request.headers.get("user-agent")?.slice(0, 300) ?? null,
-    consent_at: new Date().toISOString(),
-  });
+    consent_at: nowIso,
+    ...attributionColumns(attribution),
+  };
 
-  if (error) {
-    reportError(error, "marketing:lead:insert");
+  const svc = createServiceClient();
+  // Insert with a fresh lead_ref; on the (astronomically rare) unique
+  // collision (23505) try again with a new one.
+  let leadRef = "";
+  let inserted = false;
+  for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+    leadRef = generateLeadRef(new Date(), Math.random, prefix);
+    const { error } = await insertLeadResilient({ ...row, lead_ref: leadRef }, (r) => svc.from("marketing_leads").insert(r), "marketing:lead");
+    if (!error) {
+      inserted = true;
+    } else if (error.code !== "23505") {
+      reportError(error, "marketing:lead:insert");
+      return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
+    }
+  }
+  if (!inserted) {
+    reportError(new Error("lead_ref collision after 3 attempts"), "marketing:lead:insert");
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 
@@ -78,12 +102,12 @@ export async function POST(request: NextRequest) {
     await notifyRole(["admin"], {
       type: "system",
       title: "ลูกค้าใหม่ติดต่อเข้ามา",
-      body: `${data.name} · ${data.phone}${data.caseType ? ` · ${data.caseType}` : ""}`,
+      body: `${data.name} · ${data.phone}${data.caseType ? ` · ${data.caseType}` : ""} · ${leadRef}`,
       url: notificationLinks.leads(),
       priority: "high",
       line: true,
     });
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, leadRef });
 }

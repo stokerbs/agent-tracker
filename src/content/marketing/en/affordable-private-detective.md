@@ -4,8 +4,8 @@ kind: "post"
 slug: "/affordable-private-detective/"
 path: "/en/affordable-private-detective"
 title: "Affordable Private Detective — Good Work, Discuss Before You Hire"
-seoTitle: "Affordable Private Detective, Fast & Professional | Detective Pulse"
-description: "An affordable private detective doing good, fast, professional work — discuss the details before hiring. Missing persons, background checks from databases, infidelity and more."
+seoTitle: "Affordable Private Detective, Fast & Professional"
+description: "Affordable private detective in Thailand: discuss scope and price before you hire. Missing persons, lawful background checks, infidelity and more."
 ---
 
 These days many kinds of business have sprung up, and one service the market keeps demanding is the private detective agency. For anyone who needs to investigate something but can't do it themselves — because they can't reach confidential information, or the target already knows their face — the best option, saving time and delivering quality information you can actually use with complete evidence, is to hire a detective. There are many private investigators out there, but if you want an affordable detective who works well, quickly and effectively, we recommend [Detective Pulse](/en): many kinds of investigation, friendly prices, and free consultation before you hire. Whatever the job — asset searches, missing persons, infidelity, or surveillance — we'll put the real facts in your hands.
@@ -20,7 +20,7 @@ Detective Pulse's investigations come at several price points. Here are three st
 
 - **From 5,000 THB** — asset searches: for example the source of assets, asset transfers, or finding a missing vehicle (pawned, or lent to a friend or relative and never returned). (We're investigators — we trace assets, but we do not collect debts.)
 
-These are the basics of hiring an affordable-but-good detective. For the deeper details, we'd encourage you to message us before you decide — we can recommend an approach and investigate exactly what you need. **LINE: [@detectivepluse](https://lin.ee/49Hessi)**
+These are the basics of hiring an affordable-but-good detective. For the deeper details, we'd encourage you to message us before you decide — we can recommend an approach and investigate exactly what you need. **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**
 
 ## Detective Pulse — serving all of Thailand
 

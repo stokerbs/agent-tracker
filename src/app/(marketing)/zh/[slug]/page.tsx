@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ZhMarketingPage } from "@/components/marketing/zh/zh-page";
 import { ZH_PAGES, getZhPage } from "@/lib/marketing/zh/registry";
 import { zhAlternates, enPathFor, thPathFor } from "@/lib/marketing/zh/alternates";
-import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
+import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
 import { getPublishedArticlesZhByService } from "@/lib/marketing/articles-db";
 
 // Every Chinese service / info / location page is pre-rendered from the
@@ -22,9 +22,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const page = getZhPage(slug);
   if (!page) return {};
   const path = `/zh/${page.slug}`;
-  const title = `${page.title} | Detective Pulse`;
+  const title = `${page.title}`;
   // case-studies stays out of the index until the first real case is published.
-  const noindex = page.noindex && (page.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0);
+  // case-studies indexes only once ≥ 3 real cases exist (audit Days 31–90).
+  const noindex = page.noindex && (page.slug !== "case-studies" || !caseStudiesIndexable());
   return {
     title,
     description: page.description,

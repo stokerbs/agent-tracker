@@ -4,14 +4,14 @@ import { SectionHeading, CornerTicks } from "@/components/marketing/ui";
 import { CareersForm } from "@/components/marketing/careers-form";
 
 export const metadata: Metadata = {
-  title: "ร่วมงานกับเรา — สมัครเป็นนักสืบ | Detective Pulse",
+  title: "ร่วมงานกับเรา — สมัครเป็นนักสืบ",
   description:
     "เปิดรับสมัครทีมนักสืบเอกชน — นักสืบภาคสนาม นักสืบไอที และทีมวิเคราะห์ข้อมูล ทำงานเป็นความลับ มืออาชีพ ทั่วราชอาณาจักร สมัครออนไลน์ได้ที่นี่",
   alternates: { canonical: "/careers", languages: { th: "/careers", en: "/en/careers" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/careers",
-    title: "ร่วมงานกับเรา — สมัครเป็นนักสืบ | Detective Pulse",
+    title: "ร่วมงานกับเรา — สมัครเป็นนักสืบ",
     description: "เปิดรับสมัครทีมนักสืบเอกชนมืออาชีพ สมัครออนไลน์ได้ที่นี่",
     siteName: "Detective Pulse",
   },

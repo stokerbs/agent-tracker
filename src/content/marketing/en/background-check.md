@@ -4,7 +4,7 @@ kind: "post"
 slug: "/background-check/"
 path: "/en/background-check"
 title: "Background Check Services in Thailand"
-seoTitle: "Background Check Services in Thailand | Detective Pulse"
+seoTitle: "Background Check Services in Thailand"
 description: "Verify a person's background, history and credibility before you trust, hire or do business. Detective Pulse runs discreet, thorough background checks."
 ---
 

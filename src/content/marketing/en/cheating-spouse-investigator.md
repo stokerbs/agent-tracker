@@ -4,8 +4,8 @@ kind: "post"
 slug: "/cheating-spouse-investigator/"
 path: "/en/cheating-spouse-investigator"
 title: "Cheating Spouse Investigator in Thailand"
-seoTitle: "Cheating Spouse Investigator in Thailand | Detective Pulse"
-description: "Discreet infidelity investigations in Thailand. Detective Pulse follows a partner's movements and gathers clear, court-admissible evidence — fully confidential."
+seoTitle: "Cheating Spouse Investigator in Thailand"
+description: "Discreet infidelity investigations in Thailand: lawful observation, photo and video evidence with timestamps, written report — fully confidential."
 ---
 
 Infidelity is one of the most common reasons clients hire a private investigator. Modern technology — messaging apps, dating apps, even in-game chats — has made it far easier for affairs to start. **Detective Pulse** provides discreet infidelity investigations: following a spouse or partner, documenting their behaviour, and confirming whether a second relationship exists.

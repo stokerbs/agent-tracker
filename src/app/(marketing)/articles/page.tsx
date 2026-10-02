@@ -2,30 +2,36 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getMarketingPages } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
+import { SERVICE_PAGES } from "@/lib/marketing/pages";
+import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
 export const metadata: Metadata = {
-  title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน | Detective Pulse",
+  title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน",
   description:
     "รวมบทความและความรู้เรื่องงานสืบ — สืบชู้สาว สืบทรัพย์สิน เช็คประวัติบุคคล ตามหาคน นักสืบไอที การจ้างนักสืบ และอื่น ๆ จากนักสืบเอกชนมืออาชีพ",
   alternates: { canonical: "/articles", languages: { th: "/articles", en: "/en/articles", "zh-CN": "/zh/articles" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/articles",
-    title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน | Detective Pulse",
+    title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน",
     description: "รวมบทความและความรู้เรื่องงานสืบจากนักสืบเอกชนมืออาชีพ",
     siteName: "Detective Pulse",
   },
 };
 
 export default async function ArticlesIndex() {
-  const pages = getMarketingPages();
+  // Pages promoted to the service registry are services now, not articles.
+  const registry = new Set(SERVICE_PAGES.th.map((p) => p.slug));
+  // Once the consolidation 301s are live, their sources leave the index too.
+  const redirected = consolidationRedirectsEnabled();
+  const pages = getMarketingPages().filter((p) => !registry.has(p.slug) && !(redirected && isConsolidatedSource(p.href)));
   const aiArticles = await getPublishedArticles();
   // Newest AI-published articles first, then the migrated library.
   const cards = [
     ...aiArticles.map((a) => ({ key: a.id, href: `/articles/${a.th_slug}`, slug: a.th_slug, title: a.th_title, description: a.th_description })),
-    ...pages.map((p) => ({ key: p.slug, href: p.path, slug: p.slug, title: p.title, description: p.description })),
+    ...pages.map((p) => ({ key: p.slug, href: p.href, slug: p.slug, title: p.title, description: p.description })),
   ];
 
   return (

@@ -5,6 +5,7 @@ import { Loader2, Paperclip, Save } from "lucide-react";
 import { toast } from "sonner";
 import { updateLeadPipeline, getLeadFileUrl } from "./actions";
 import { LEAD_STAGES, LEAD_STAGE_LABELS, type LeadStage } from "@/lib/marketing/zh/pipeline";
+import { LEAD_QUALITIES, LEAD_QUALITY_LABELS, LOST_REASONS, LOST_REASON_LABELS, type LeadQuality, type LostReason } from "@/lib/marketing/crm";
 
 export interface LeadFileSummary { id: string; file_name: string; size_bytes: number }
 
@@ -16,10 +17,12 @@ const ERROR_TH: Record<string, string> = {
 
 /** Inline pipeline editor for one lead row (stage, values, notes, files). */
 export function LeadPipelineControls({
-  id, stage, estimatedValue, quotedValue, finalRevenue, adminNotes, files,
+  id, stage, estimatedValue, quotedValue, finalRevenue, adminNotes, files, leadQuality = "unrated", lostReason = null,
 }: {
   id: string;
   stage: LeadStage;
+  leadQuality?: LeadQuality;
+  lostReason?: LostReason | null;
   estimatedValue: number | null;
   quotedValue: number | null;
   finalRevenue: number | null;
@@ -79,6 +82,22 @@ export function LeadPipelineControls({
         <label className="space-y-1"><span className="text-muted-foreground">ประเมิน (฿)</span><input name="estimatedValue" type="number" min={0} step="1" defaultValue={estimatedValue ?? ""} className={input} /></label>
         <label className="space-y-1"><span className="text-muted-foreground">เสนอราคา (฿)</span><input name="quotedValue" type="number" min={0} step="1" defaultValue={quotedValue ?? ""} className={input} /></label>
         <label className="space-y-1"><span className="text-muted-foreground">รายได้จริง (฿)</span><input name="finalRevenue" type="number" min={0} step="1" defaultValue={finalRevenue ?? ""} className={input} /></label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="space-y-1">
+          <span className="text-muted-foreground">คุณภาพลีด</span>
+          <select name="leadQuality" defaultValue={leadQuality} className={input}>
+            {LEAD_QUALITIES.map((q) => <option key={q} value={q}>{LEAD_QUALITY_LABELS[q].th}</option>)}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-muted-foreground">เหตุผลที่ไม่ปิดการขาย</span>
+          <select name="lostReason" defaultValue={lostReason ?? ""} className={input}>
+            <option value="">— ไม่ระบุ —</option>
+            {LOST_REASONS.map((r) => <option key={r} value={r}>{LOST_REASON_LABELS[r].th}</option>)}
+          </select>
+          {lostReason && <input type="hidden" name="clearLostReason" value="1" />}
+        </label>
       </div>
       <label className="block space-y-1"><span className="text-muted-foreground">โน้ต</span><textarea name="adminNotes" defaultValue={adminNotes ?? ""} rows={2} maxLength={2000} className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs" /></label>
       {files.length > 0 && (

@@ -1,7 +1,8 @@
 import type { ZhPage } from "@/lib/marketing/zh/registry";
 import { ZH_COMPANY } from "@/lib/marketing/zh/company";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const BASE = "https://detectivepulse.com";
+const BASE = CONTACT.siteUrl;
 
 function LdScript({ data }: { data: unknown }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
@@ -24,7 +25,8 @@ export function ZhBusinessJsonLd() {
     foundingDate: String(ZH_COMPANY.since),
     areaServed: { "@type": "Country", name: "Thailand" },
     availableLanguage: ["zh-CN", "en", "th"],
-    sameAs: ["https://www.facebook.com/Detectivepluse.th"],
+    sameAs: ZH_COMPANY.sameAs,
+    address: { "@type": "PostalAddress", addressLocality: "Bangkok", addressCountry: "TH" },
     aggregateRating: {
       "@type": "AggregateRating",
       ratingValue: ZH_COMPANY.reviews.rating,

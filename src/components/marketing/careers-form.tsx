@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
 import { sendGTMEvent } from "@next/third-parties/google";
+import { CONTACT } from "@/lib/marketing/contact";
 
 type Lang = "th" | "en";
 
@@ -53,7 +54,7 @@ const COPY = {
   },
 } as const;
 
-const LINE_URL = "https://lin.ee/SSqk98x";
+const LINE_URL = CONTACT.lineUrl;
 
 export function CareersForm({ lang = "th" }: { lang?: Lang }) {
   const t = COPY[lang];

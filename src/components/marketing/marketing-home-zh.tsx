@@ -75,7 +75,7 @@ export async function MarketingHomeZH() {
       <StatBand
         eyebrow="Track Record · 数据实绩"
         stats={[
-          { value: new Date().getFullYear() - ZH_COMPANY.since, suffix: "+", label: "年经验（自 2016）" },
+          { value: new Date().getFullYear() - ZH_COMPANY.since, suffix: "+", label: `年经验（自 ${ZH_COMPANY.since}）` },
           { value: ZH_COMPANY.closedCases, suffix: "+", label: "已结案件" },
           { value: Number(ZH_COMPANY.reviews.rating), decimals: 1, label: `平均评分 · ${ZH_COMPANY.reviews.source}` },
           { value: ZH_COMPANY.provinces, label: "覆盖府数" },

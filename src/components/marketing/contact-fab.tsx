@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { CONTACT } from "@/lib/marketing/contact";
+import { FAB_AUTO_OPEN_DELAY_MS, shouldAutoOpenFab } from "@/lib/marketing/overlay-policy";
 
 type Lang = "th" | "en" | "zh";
 
 const COPY: Record<Lang, { title: string; call: string; email: string; close: string; open: string }> = {
-  th: { title: "ติดต่อนักสืบ — ปรึกษาฟรี", call: "โทร 096 846 1406", email: "อีเมล", close: "ปิด", open: "ช่องทางติดต่อ" },
-  en: { title: "Contact us — free consult", call: "Call 096 846 1406", email: "Email", close: "Close", open: "Contact options" },
-  zh: { title: "联系我们 — 免费咨询", call: "致电 096 846 1406", email: "邮箱", close: "关闭", open: "联系方式" },
+  th: { title: "ติดต่อนักสืบ — ปรึกษาฟรี", call: `โทร ${CONTACT.phoneDisplay}`, email: "อีเมล", close: "ปิด", open: "ช่องทางติดต่อ" },
+  en: { title: "Contact us — free consult", call: `Call ${CONTACT.phoneDisplay}`, email: "Email", close: "Close", open: "Contact options" },
+  zh: { title: "联系我们 — 免费咨询", call: `致电 ${CONTACT.phoneDisplay}`, email: "邮箱", close: "关闭", open: "联系方式" },
 };
 
 function detectLang(pathname: string): Lang {
@@ -21,29 +24,35 @@ function detectLang(pathname: string): Lang {
 
 /**
  * Floating contact widget for the marketing site — always visible on every page,
- * expands to the firm's contact channels. Auto-opens once shortly after load
- * (like the old WP popup) so customers immediately see how to reach us.
+ * expands to the firm's contact channels. On desktop it auto-opens once per
+ * session shortly after load; on mobile it stays closed (the sticky contact bar
+ * already shows the channels) — see lib/marketing/overlay-policy.ts.
  */
 export function ContactFab() {
-  const t = COPY[detectLang(usePathname() || "/")];
-  const channels = [
-    { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
-    { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66968461406", bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
-    { label: t.call, href: "tel:+66968461406", bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
-    { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
-    { label: t.email, href: "mailto:detectivepluse@gmail.com", bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
-  ];
+  const lang = detectLang(usePathname() || "/");
+  const t = COPY[lang];
+  const line = { label: "LINE", href: CONTACT.lineUrl, bg: "#048739", icon: <LineIcon className="h-5 w-5" /> };
+  const whatsapp = { label: "WhatsApp", href: CONTACT.whatsappUrl, bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> };
+  const call = { label: t.call, href: CONTACT.phoneTel, bg: "#2563eb", icon: <Phone className="h-5 w-5" /> };
+  const facebook = { label: "Facebook", href: CONTACT.facebookUrl, bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> };
+  const email = { label: t.email, href: CONTACT.mailto, bg: "#6b7280", icon: <Mail className="h-5 w-5" /> };
+  // Channel order follows what each audience actually uses: Thai → LINE first;
+  // English → WhatsApp, then email (corporate), phone; LINE last.
+  const channels = lang === "en" ? [whatsapp, email, call, line, facebook] : [line, whatsapp, call, facebook, email];
   const [open, setOpen] = useState(false);
   const [nudged, setNudged] = useState(false);
 
   useEffect(() => {
-    // Pop the panel open once on first visit, then leave it to the user.
-    if (sessionStorage.getItem("dp_contact_nudged")) { setNudged(true); return; }
+    // Pop the panel open once per session on desktop only, then leave it to the user.
+    let alreadyShown = false;
+    try { alreadyShown = !!sessionStorage.getItem("dp_contact_nudged"); } catch { /* storage blocked */ }
+    if (alreadyShown) { setNudged(true); return; }
+    if (!shouldAutoOpenFab({ viewportWidth: window.innerWidth, alreadyShown })) return;
     const t = setTimeout(() => {
       setOpen(true);
       setNudged(true);
-      sessionStorage.setItem("dp_contact_nudged", "1");
-    }, 1800);
+      try { sessionStorage.setItem("dp_contact_nudged", "1"); } catch { /* storage blocked */ }
+    }, FAB_AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(t);
   }, []);
 
@@ -60,16 +69,15 @@ export function ContactFab() {
           </div>
           <div className="flex flex-col gap-2 p-3">
             {channels.map((c) => (
-              <a
+              <TrackedLink
                 key={c.label}
                 href={c.href}
-                target={c.href.startsWith("http") ? "_blank" : undefined}
-                rel="noopener noreferrer"
+                placement="fab"
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.02]"
                 style={{ backgroundColor: c.bg }}
               >
                 {c.icon} {c.label}
-              </a>
+              </TrackedLink>
             ))}
           </div>
         </div>

@@ -176,6 +176,21 @@ export async function getArticleByToken(token: string): Promise<DbArticle | null
   return (data as DbArticle | null) ?? null;
 }
 
+/** Replace the TH/EN bodies of a pending draft (human paragraph spliced in on
+ *  the review page). Service role; only while the row is still a draft. */
+export async function setDraftBodies(token: string, bodies: { th_body: string; en_body: string }): Promise<boolean> {
+  const svc = createServiceClient();
+  const { data, error } = await svc
+    .from("marketing_articles")
+    .update(bodies)
+    .eq("approve_token", token)
+    .eq("status", "draft")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
 /** Publish or reject a draft. Publishing stamps published_at. Idempotent-ish:
  *  only acts on a row that is still a draft. Returns the new status or null. */
 export async function decideArticle(token: string, decision: "published" | "rejected"): Promise<string | null> {

@@ -3,13 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bot, X, Send, Loader2, Phone } from "lucide-react";
-import { LineIcon } from "@/components/marketing/brand-icons";
+import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { track, currentPage } from "@/lib/marketing/analytics";
+import { getAttribution } from "@/lib/marketing/attribution";
+import { CONTACT } from "@/lib/marketing/contact";
+import { ASSISTANT_LAUNCHER_DELAY_MS } from "@/lib/marketing/overlay-policy";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Lang = "th" | "en" | "zh";
 
-const LINE_URL = "https://lin.ee/SSqk98x";
-const TEL_URL = "tel:+66968461406";
+const LINE_URL = CONTACT.lineUrl;
+const TEL_URL = CONTACT.phoneTel;
 
 const COPY: Record<Lang, {
   header: string; greeting: string; suggestions: string[]; placeholder: string;
@@ -34,9 +39,9 @@ const COPY: Record<Lang, {
     placeholder: "Type your question...",
     inputAria: "Type a question to the AI assistant", sendAria: "Send", closeAria: "Close", launcherAria: "AI intake assistant",
     human: "Talk to a human", call: "Call", note: "AI · Confidential",
-    rate: "That's a lot of questions 🙏 Please wait a moment, or message us on LINE @detectivepluse to talk to the team.",
-    err: "Sorry, please try again, or message us on LINE.",
-    conn: "Connection problem — please try again, or message us on LINE @detectivepluse.",
+    rate: "That's a lot of questions 🙏 Please wait a moment, or message us on WhatsApp to talk to the team.",
+    err: "Sorry, please try again, or message us on WhatsApp.",
+    conn: "Connection problem — please try again, or message us on WhatsApp.",
   },
   zh: {
     header: "接案助理 (AI)",
@@ -61,6 +66,8 @@ function detectLang(pathname: string): Lang {
  * Floating AI assistant for the marketing site. UI + prompt locale follow the
  * page language (TH / EN / ZH). Answers via /api/marketing/assistant (Claude);
  * the raw chat isn't stored. Sits bottom-left (contact FAB is bottom-right).
+ * The launcher is hidden on first paint and appears after the visitor's first
+ * interaction (scroll / tap / key) or a short grace period — see overlay-policy.
  */
 export function AssistantWidget() {
   const lang = detectLang(usePathname() || "/");
@@ -70,7 +77,20 @@ export function AssistantWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
+  const [launcherVisible, setLauncherVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const show = () => setLauncherVisible(true);
+    const opts: AddEventListenerOptions = { once: true, passive: true };
+    const events: (keyof WindowEventMap)[] = ["scroll", "pointerdown", "keydown"];
+    events.forEach((ev) => window.addEventListener(ev, show, opts));
+    const timer = window.setTimeout(show, ASSISTANT_LAUNCHER_DELAY_MS);
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, show));
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -89,14 +109,16 @@ export function AssistantWidget() {
       const res = await fetch("/api/marketing/assistant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages, locale: lang }),
+        body: JSON.stringify({ messages: apiMessages, locale: lang, attribution: getAttribution() ?? undefined }),
       });
       if (res.status === 429) {
         setRateLimited(true);
         setMessages((m) => [...m, { role: "assistant", content: t.rate }]);
         return;
       }
-      const data = (await res.json()) as { reply?: string };
+      const data = (await res.json()) as { reply?: string; submitted?: boolean };
+      // The intake officer stored a lead → GA4 / Ads conversion.
+      if (data.submitted) track({ event: "assistant_lead_created", page: currentPage(), lang });
       setMessages((m) => [...m, { role: "assistant", content: data.reply ?? t.err }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: t.conn }]);
@@ -104,6 +126,8 @@ export function AssistantWidget() {
       setLoading(false);
     }
   }
+
+  if (!launcherVisible && !open) return null;
 
   return (
     <div className="fixed bottom-[4.75rem] left-5 z-50 lg:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -175,19 +199,19 @@ export function AssistantWidget() {
           </form>
 
           <div className="flex items-center gap-2 border-t border-border/60 bg-background/40 px-2.5 py-2">
-            <a href={LINE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-[#048739] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90">
-              <LineIcon className="h-3.5 w-3.5" /> {t.human}
-            </a>
-            <a href={TEL_URL} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted">
+            <TrackedLink href={lang === "en" ? CONTACT.whatsappUrl : LINE_URL} placement="assistant" className={`inline-flex items-center gap-1.5 rounded-md ${lang === "en" ? "bg-[#178741]" : "bg-[#048739]"} px-2.5 py-1 text-xs font-medium text-white hover:opacity-90`}>
+              {lang === "en" ? <WhatsAppIcon className="h-3.5 w-3.5" /> : <LineIcon className="h-3.5 w-3.5" />} {t.human}
+            </TrackedLink>
+            <TrackedLink href={TEL_URL} placement="assistant" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted">
               <Phone className="h-3.5 w-3.5 text-primary" /> {t.call}
-            </a>
+            </TrackedLink>
             <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t.note}</span>
           </div>
         </div>
       )}
 
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => { if (!v) track({ event: "assistant_opened", page: currentPage(), lang }); return !v; })}
         aria-label={t.launcherAria}
         className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-card text-primary shadow-xl transition-transform hover:scale-105"
       >
