@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import createNextIntlPlugin from "next-intl/plugin";
 import { MARKETING_HOST, CSP_MARKETING_EXTRA, buildCsp } from "./src/lib/csp";
+import { consolidationRedirects } from "./src/lib/marketing/redirects";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -88,6 +89,10 @@ const nextConfig: NextConfig = {
       { source: "/en/blog/:path*", destination: "/en/articles", permanent: true },
       { source: "/feed", destination: "/articles", permanent: true },
       { source: "/feed/:path*", destination: "/articles", permanent: true },
+      // SEO-audit consolidation 301s (Appendix C.3). Emitted only when
+      // MARKETING_CONSOLIDATION_REDIRECTS=1 — see src/lib/marketing/redirects.ts
+      // and docs/seo-growth-audit/consolidation-redirects.md.
+      ...consolidationRedirects(),
     ];
   },
   images: {

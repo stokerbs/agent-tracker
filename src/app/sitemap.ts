@@ -4,6 +4,7 @@ import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { ZH_PAGES } from "@/lib/marketing/zh/registry";
 import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
 import { registryOnlySlugs } from "@/lib/marketing/pages";
+import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 
 const BASE = "https://detectivepulse.com";
 
@@ -22,7 +23,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/careers`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
-  const thMd = getMarketingPages();
+  // Once the consolidation 301s are live, their sources leave the sitemap.
+  const redirected = consolidationRedirectsEnabled();
+  const keep = (decodedPath: string) => !redirected || !isConsolidatedSource(decodedPath);
+  const thMd = getMarketingPages().filter((p) => keep(p.href));
   const marketing: MetadataRoute.Sitemap = [
     ...thMd.map((p) => ({
       // Non-trailing-slash to match the served URL (Next 308s the trailing form).
@@ -54,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/en/articles`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/en/careers`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/en/privacy`, changeFrequency: "yearly", priority: 0.3 },
-    ...getMarketingPagesEN().map((p) => ({
+    ...getMarketingPagesEN().filter((p) => keep(p.href)).map((p) => ({
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
       changeFrequency: "monthly" as const,
       priority: 0.7,
