@@ -31,6 +31,7 @@ export const TH_NAV = {
   footer: [
     { href: "/ขั้นตอนการทำงาน", label: "ขั้นตอนการทำงาน" },
     { href: "/สำหรับทนายความ", label: "สำหรับทนายความ" },
+    { href: "/กรณีศึกษา", label: "กรณีศึกษา" },
     { href: "/articles", label: "บทความทั้งหมด" },
     { href: "/careers", label: "ร่วมงานกับเรา" },
     { href: "/privacy", label: "นโยบายความเป็นส่วนตัว" },
@@ -61,6 +62,7 @@ export const EN_NAV = {
   footer: [
     { href: "/en/how-it-works", label: "How it works" },
     { href: "/en/for-law-firms", label: "For law firms" },
+    { href: "/en/case-studies", label: "Case studies" },
     { href: "/en/articles", label: "All articles" },
     { href: "/en/careers", label: "Careers" },
     { href: "/en/privacy", label: "Privacy notice" },

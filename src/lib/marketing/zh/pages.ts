@@ -482,6 +482,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     faq: [],
     related: ["how-it-works", "contact"],
     primaryCta: "wechat",
+    en: "case-studies",
+    th: "กรณีศึกษา",
     noindex: true,
   },
   {

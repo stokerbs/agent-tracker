@@ -913,4 +913,35 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     priceNote: "Per case or ongoing terms · Written quote before we start",
     counterpart: { th: "สำหรับทนายความ" },
   },
+  {
+    lang: "en",
+    slug: "case-studies",
+    kind: "info",
+    service: "case_studies",
+    title: "Private Investigator Case Studies Thailand — Anonymised",
+    description: "Anonymised case studies from real investigations in Thailand: situation, objective, high-level approach, deliverables and outcome, so you see how we work.",
+    h1: "Case Studies — Real Cases, Fully Anonymised",
+    eyebrow: "Exhibits · Case studies",
+    intro: "Every case here comes from real work, is published with the client's consent, and has every name, place, vehicle, phone number and identifying detail removed. The point is to show how we work, not to show tactics.",
+    sections: [
+      {
+        heading: "How to read a case study",
+        body: ["Each case follows the same structure: the client's situation, objective, challenges, high-level approach, deliverables, outcome and lessons. One case's outcome is never a promise for the next; every assignment depends on different facts and starting information."],
+      },
+      {
+        heading: "Why some cases end with \"nothing unusual found\"",
+        body: ["We report honestly. Many clients learn that what they suspected is not true, and that peace of mind is exactly what they paid for, so the case studies include both kinds of result."],
+      },
+    ],
+    faq: [
+      { q: "Can I see a case similar to mine?", a: "Yes. Tell us the type of matter during the consultation and we will explain the approach from similar cases without disclosing any other client's details." },
+      { q: "Will my case be published?", a: "No, unless you give written consent, and even then with every identifying detail removed." },
+      { q: "Can I get a sample report?", a: "Yes. Ask for a redacted sample during the consultation." },
+    ],
+    related: ["how-it-works", "cheating-spouse-investigator", "asset-investigation", "contact"],
+    caseType: "Other",
+    priceNote: "Free consultation · Confidential",
+    counterpart: { th: "กรณีศึกษา", zh: "case-studies" },
+    caseStudies: true,
+  },
 ];

@@ -11,6 +11,7 @@ import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
 import { FACTS } from "@/lib/marketing/facts";
 import { SampleReport } from "@/components/marketing/sample-report";
+import { CaseStudies } from "@/components/marketing/case-studies";
 import type { MarketingServicePage } from "@/lib/marketing/pages";
 
 export interface RelatedLink { href: string; title: string }
@@ -134,6 +135,7 @@ export function ServicePage({ page, related }: { page: MarketingServicePage; rel
 
       {/* Deliverables + boundaries */}
       {page.sampleReport && <SampleReport lang={page.lang} />}
+      {page.caseStudies && <CaseStudies lang={page.lang} />}
 
       {(page.deliverables || page.notOffered) && (
         <section className="border-y border-border/60 bg-card/30">

@@ -63,4 +63,6 @@ export interface MarketingServicePage {
   counterpart?: { th?: string; en?: string; zh?: string };
   /** Show the redacted sample-report block (renders only once FACTS.pending.sampleReportUrl is set). */
   sampleReport?: boolean;
+  /** Render the anonymised case-study list; page is noindex until ≥ CASE_STUDY_INDEX_MIN cases exist. */
+  caseStudies?: boolean;
 }

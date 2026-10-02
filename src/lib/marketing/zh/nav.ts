@@ -43,6 +43,7 @@ export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
   { slug: "bangkok", en: "private-investigator-bangkok", th: "นักสืบกรุงเทพ" },
   { slug: "about", en: "about", th: "เกี่ยวกับเรา" },
   { slug: "how-it-works", en: "how-it-works", th: "ขั้นตอนการทำงาน" },
+  { slug: "case-studies", en: "case-studies", th: "กรณีศึกษา" },
   { slug: "business-due-diligence", en: "due-diligence-thailand", th: "ตรวจสอบธุรกิจและคู่ค้า" },
 ];
 

@@ -17,6 +17,7 @@ import { EN_TO_TH } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 import { getServicePage, registryOnlySlugs, SERVICE_PAGES } from "@/lib/marketing/pages";
 import { CONTACT } from "@/lib/marketing/contact";
+import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
 
 export const dynamicParams = false; // translated pages + registry pages only; everything else 404s
 
@@ -42,6 +43,8 @@ export async function generateMetadata(
     return {
       title: sp.title,
       description: sp.description,
+      // Case-study page: noindex until ≥ 3 real cases exist (audit Days 31–90).
+      ...(sp.caseStudies && !caseStudiesIndexable() ? { robots: { index: false, follow: true } } : {}),
       alternates: {
         canonical: path,
         languages: { en: path, ...(th ? { th: `/${th}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}), "x-default": path },

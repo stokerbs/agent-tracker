@@ -2,7 +2,8 @@ import type { MetadataRoute } from "next";
 import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { ZH_PAGES } from "@/lib/marketing/zh/registry";
-import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
+import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
+import { SERVICE_PAGES } from "@/lib/marketing/pages";
 import { registryOnlySlugs } from "@/lib/marketing/pages";
 import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 
@@ -26,6 +27,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Once the consolidation 301s are live, their sources leave the sitemap.
   const redirected = consolidationRedirectsEnabled();
   const keep = (decodedPath: string) => !redirected || !isConsolidatedSource(decodedPath);
+  // TH/EN case-study pages stay out of the sitemap until ≥ 3 real cases exist.
+  const casesHidden = new Set(
+    [...SERVICE_PAGES.th, ...SERVICE_PAGES.en].filter((p) => p.caseStudies && !caseStudiesIndexable()).map((p) => p.slug),
+  );
   const thMd = getMarketingPages().filter((p) => keep(p.href));
   const marketing: MetadataRoute.Sitemap = [
     ...thMd.map((p) => ({
@@ -35,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     // Registry-only Thai pages (pricing, Bangkok, about …) — service pages rank highest.
-    ...registryOnlySlugs("th", new Set(thMd.map((p) => p.slug))).map((slug) => ({
+    ...registryOnlySlugs("th", new Set(thMd.map((p) => p.slug))).filter((s) => !casesHidden.has(s)).map((slug) => ({
       // Percent-encoded like the markdown `path`s — one spelling per URL.
       url: `${BASE}/${encodeURI(slug)}`,
       changeFrequency: "monthly" as const,
@@ -46,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 0.7) + the article hub. Noindexed pages (case-studies while empty) stay out.
   const chinese: MetadataRoute.Sitemap = [
     { url: `${BASE}/zh`, changeFrequency: "weekly", priority: 0.9 },
-    ...ZH_PAGES.filter((p) => !(p.noindex && (p.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0))).map((p) => ({
+    ...ZH_PAGES.filter((p) => !(p.noindex && (p.slug !== "case-studies" || !caseStudiesIndexable()))).map((p) => ({
       url: `${BASE}/zh/${p.slug}`,
       changeFrequency: "monthly" as const,
       priority: p.kind === "service" ? 0.8 : 0.7,
@@ -64,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
-    ...registryOnlySlugs("en", new Set(getMarketingPagesEN().map((p) => p.slug))).map((slug) => ({
+    ...registryOnlySlugs("en", new Set(getMarketingPagesEN().map((p) => p.slug))).filter((s) => !casesHidden.has(s)).map((slug) => ({
       url: `${BASE}/en/${slug}`,
       changeFrequency: "monthly" as const,
       priority: 0.8,
