@@ -297,6 +297,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["partners", "on-site-verification", "background-check", "asset-investigation"],
     primaryCta: "intake",
+    en: "due-diligence-thailand",
+    th: "ตรวจสอบธุรกิจและคู่ค้า",
   },
 
   // ── Segment E ────────────────────────────────────────────────────────────
@@ -425,6 +427,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["pricing", "about", "contact"],
     primaryCta: "wechat",
+    en: "how-it-works",
+    th: "ขั้นตอนการทำงาน",
   },
   {
     slug: "pricing",

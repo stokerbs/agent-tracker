@@ -43,6 +43,8 @@ export const FACTS = {
     awards: [] as { name: string; issuer: string; year: number }[],
     /** Public first name + role of the lead investigator for About / author schema. */
     leadInvestigator: null as { name: string; role: string } | null,
+    /** Public URL (PDF or image) of a redacted sample report — shown on the how-it-works pages when set. */
+    sampleReportUrl: null as string | null,
   },
 } as const;
 

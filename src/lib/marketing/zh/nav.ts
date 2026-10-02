@@ -42,6 +42,8 @@ export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
   { slug: "contact", en: "contact", th: "ติดต่อนักสืบ" },
   { slug: "bangkok", en: "private-investigator-bangkok", th: "นักสืบกรุงเทพ" },
   { slug: "about", en: "about", th: "เกี่ยวกับเรา" },
+  { slug: "how-it-works", en: "how-it-works", th: "ขั้นตอนการทำงาน" },
+  { slug: "business-due-diligence", en: "due-diligence-thailand", th: "ตรวจสอบธุรกิจและคู่ค้า" },
 ];
 
 /** Service key (ZhPage.service / article service) → /zh page path. */

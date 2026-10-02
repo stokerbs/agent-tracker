@@ -15,6 +15,9 @@ export const TH_NAV = {
     { href: "/สืบตามหาคน", label: "สืบตามหาคน" },
     { href: "/สืบทรัพย์สิน", label: "สืบทรัพย์สิน" },
     { href: "/นักสืบไอที", label: "นักสืบไอที" },
+    { href: "/ติดตามพฤติกรรม", label: "ติดตามพฤติกรรม" },
+    { href: "/ตรวจสอบธุรกิจและคู่ค้า", label: "ตรวจสอบธุรกิจ" },
+    { href: "/ตรวจสอบประวัติพนักงาน", label: "ตรวจสอบพนักงาน" },
   ] as NavLink[],
   primary: [
     { href: "/ราคานักสืบ", label: "ราคา" },
@@ -26,6 +29,8 @@ export const TH_NAV = {
     { href: "/ติดต่อนักสืบ", label: "ติดต่อ" },
   ] as NavLink[],
   footer: [
+    { href: "/ขั้นตอนการทำงาน", label: "ขั้นตอนการทำงาน" },
+    { href: "/สำหรับทนายความ", label: "สำหรับทนายความ" },
     { href: "/articles", label: "บทความทั้งหมด" },
     { href: "/careers", label: "ร่วมงานกับเรา" },
     { href: "/privacy", label: "นโยบายความเป็นส่วนตัว" },
@@ -40,6 +45,9 @@ export const EN_NAV = {
     { href: "/en/asset-investigation", label: "Asset search" },
     { href: "/en/cyber-investigation", label: "Cyber / online" },
     { href: "/en/investigate-partner-before-marriage", label: "Partner verification" },
+    { href: "/en/surveillance-thailand", label: "Surveillance" },
+    { href: "/en/due-diligence-thailand", label: "Due diligence" },
+    { href: "/en/romance-scam-investigation", label: "Romance scam" },
   ] as NavLink[],
   primary: [
     { href: "/en/pricing", label: "Pricing" },
@@ -51,6 +59,8 @@ export const EN_NAV = {
     { href: "/en/contact", label: "Contact" },
   ] as NavLink[],
   footer: [
+    { href: "/en/how-it-works", label: "How it works" },
+    { href: "/en/for-law-firms", label: "For law firms" },
     { href: "/en/articles", label: "All articles" },
     { href: "/en/careers", label: "Careers" },
     { href: "/en/privacy", label: "Privacy notice" },

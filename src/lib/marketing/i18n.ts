@@ -39,6 +39,10 @@ export const EN_TO_TH: Record<string, string> = {
   "pricing": "ราคานักสืบ",
   "about": "เกี่ยวกับเรา",
   "private-investigator-bangkok": "นักสืบกรุงเทพ",
+  "how-it-works": "ขั้นตอนการทำงาน",
+  "due-diligence-thailand": "ตรวจสอบธุรกิจและคู่ค้า",
+  "surveillance-thailand": "ติดตามพฤติกรรม",
+  "for-law-firms": "สำหรับทนายความ",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(

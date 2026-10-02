@@ -61,4 +61,6 @@ export interface MarketingServicePage {
   priceNote?: string;
   /** Counterpart slugs for hreflang + language switcher. */
   counterpart?: { th?: string; en?: string; zh?: string };
+  /** Show the redacted sample-report block (renders only once FACTS.pending.sampleReportUrl is set). */
+  sampleReport?: boolean;
 }
