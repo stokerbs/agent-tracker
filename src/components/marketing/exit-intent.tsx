@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { X, Phone } from "lucide-react";
-import { LineIcon } from "@/components/marketing/brand-icons";
+import { LineIcon, WhatsAppIcon as WaIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
-import { WhatsAppIcon as WaIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
 
 const COPY: Record<MarketingLang, {

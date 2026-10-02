@@ -160,7 +160,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         <TrackedLink
           href={lang === "en" ? CONTACT.whatsappUrl : LINE_URL}
           placement="form_success"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"
+          className={`mt-4 inline-flex items-center gap-2 rounded-lg ${lang === "en" ? "bg-[#178741]" : "bg-[#048739]"} px-5 py-2.5 font-medium text-white hover:opacity-90`}
         >
           <MessageCircle className="h-4 w-4" /> {t.chat}
         </TrackedLink>
