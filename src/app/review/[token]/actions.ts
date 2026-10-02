@@ -52,18 +52,16 @@ export async function approveArticle(token: string, formData?: FormData): Promis
   }
   console.info("[review] published", { topic: draft.topic, service: draft.service ?? null });
   revalidatePath(`/review/${token}`); // re-render the review page into its "published" state
-  {
-    revalidatePath("/articles");
-    revalidatePath("/en/articles");
-    revalidatePath("/zh/articles");
-    const thPath = servicePathForKey("th", draft.service);
-    const enPath = servicePathForKey("en", draft.service);
-    if (thPath) revalidatePath(thPath);
-    if (enPath) revalidatePath(enPath);
-    if (draft.zh_slug) {
-      revalidatePath(ZH_SERVICE_PAGE[articleServiceKey(draft.service, draft.cover_category)] ?? "/zh/private-investigator-thailand");
-      revalidatePath("/zh");
-    }
+  revalidatePath("/articles");
+  revalidatePath("/en/articles");
+  revalidatePath("/zh/articles");
+  const thPath = servicePathForKey("th", draft.service);
+  const enPath = servicePathForKey("en", draft.service);
+  if (thPath) revalidatePath(thPath);
+  if (enPath) revalidatePath(enPath);
+  if (draft.zh_slug) {
+    revalidatePath(ZH_SERVICE_PAGE[articleServiceKey(draft.service, draft.cover_category)] ?? "/zh/private-investigator-thailand");
+    revalidatePath("/zh");
   }
   return { ok: true };
 }
@@ -71,6 +69,6 @@ export async function approveArticle(token: string, formData?: FormData): Promis
 /** Reject a draft (token-gated). */
 export async function rejectArticle(token: string): Promise<void> {
   const status = await decideArticle(token, "rejected");
-  console.info("[review] rejected", { token_suffix: token.slice(-4), status });
+  console.info("[review] rejected", { status });
   revalidatePath(`/review/${token}`);
 }
