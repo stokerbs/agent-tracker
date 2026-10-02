@@ -888,7 +888,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
           "Strictly lawful scope, which minimises admissibility risk and exposure for counsel",
           "Fast assessment and quotes; urgent matters accepted",
           "Confidentiality and a conflict check before every engagement",
-          "English-language reporting and direct contact for the firm; invoicing on agreed terms",
+          "English-language reporting and direct contact for the firm; payment terms agreed per matter (the written quote is the billing document)",
         ],
       },
       {
@@ -910,7 +910,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       { q: "Can your investigator testify?", a: "Where necessary, yes. The investigator who obtained the evidence can speak to how it was obtained and the accuracy of the record, on terms agreed in advance." },
       { q: "Do you run conflict checks?", a: "Yes. Before accepting a matter we confirm we are not acting for the other side in the same dispute." },
       { q: "Can you take urgent matters?", a: "Yes, especially in Bangkok and its suburbs. Tell us the deadline and we assess at once." },
-      { q: "Can you invoice the firm and work on account?", a: `Payment terms can be agreed for ongoing work. ${receiptNote("en") ?? ""}`.trim() },
+      { q: "Can you invoice the firm and work on account?", a: `We do not issue formal invoices, but payment terms can be agreed for ongoing work with the written quote as the billing document. ${receiptNote("en") ?? ""}`.trim() },
     ],
     related: ["asset-investigation", "find-missing-person", "surveillance-thailand", "due-diligence-thailand"],
     caseType: "Other",

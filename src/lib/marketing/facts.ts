@@ -54,7 +54,7 @@ export const FACTS = {
       en: "We reply within 1 hour, 08:00–22:00 Bangkok time",
       zh: "曼谷时间 08:00–22:00 内 1 小时内回复",
     } as Localized,
-    /** Accepted payment methods (B5, confirmed 2026-10-02): bank transfer (long-standing) + PayPal for clients abroad. Receipts/tax invoices: not yet confirmed. */
+    /** Accepted payment methods (B5, confirmed 2026-10-02): bank transfer (long-standing) + PayPal for clients abroad. Receipts/tax invoices: see issuesTaxInvoice. */
     paymentMethods: ["bank_transfer", "paypal"] as ("bank_transfer" | "paypal")[],
     /** B5 (2026-10-02): the firm does NOT issue receipts or tax invoices; proof of payment is the transfer slip / PayPal confirmation. null = unknown. */
     issuesTaxInvoice: false as boolean | null,

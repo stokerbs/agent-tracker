@@ -18,7 +18,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <div className="theme-detective relative min-h-screen overflow-hidden bg-background font-sans text-foreground">
       {/* Surveillance backdrop */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 print:hidden">
         <div className="dp-grid absolute inset-0" />
         <div className="dp-grain absolute inset-0" />
         <div className="dp-vignette absolute inset-0" />
@@ -41,7 +41,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md print:hidden">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
             <Link href="/" className="group flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary transition-colors group-hover:border-primary/70">
@@ -60,7 +60,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <main>{children}</main>
 
         {/* Footer */}
-        <footer className="border-t border-border/60 bg-background/60">
+        <footer className="border-t border-border/60 bg-background/60 print:hidden">
           <div className="mx-auto max-w-5xl px-4 py-8">
             <div className="dp-hairline mb-6" />
             <div className="flex flex-col items-center gap-2 text-center">
@@ -81,10 +81,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       <AttributionCapture />
-      <ContactFab />
-      <AssistantWidget />
-      <StickyContactBar />
-      <ExitIntent />
+      {/* Floating chrome never prints (e.g. the sample report saved as PDF). */}
+      <div className="print:hidden">
+        <ContactFab />
+        <AssistantWidget />
+        <StickyContactBar />
+        <ExitIntent />
+      </div>
     </div>
   );
 }

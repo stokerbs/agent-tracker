@@ -23,7 +23,7 @@ export function SampleReportView({ lang }: { lang: SampleLang }) {
         <CornerTicks />
         {/* Watermark — visible on screen and print so the sample can never pass as a real report */}
         <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="-rotate-[20deg] select-none font-mono text-5xl font-bold uppercase tracking-[0.3em] text-primary/10 sm:text-7xl">{r.watermark}</span>
+          <span className="-rotate-[20deg] select-none font-mono text-5xl font-bold uppercase tracking-[0.3em] text-primary/10 print:text-black/20 sm:text-7xl">{r.watermark}</span>
         </div>
 
         <div className="relative">
