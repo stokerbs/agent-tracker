@@ -20,6 +20,7 @@ import { POST } from "./route";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyRole } from "@/lib/notifications";
+import { reportError } from "@/lib/errors";
 
 function svc(insertResult: { error: unknown } = { error: null }, ...more: { error: unknown }[]) {
   const results = [insertResult, ...more];
@@ -179,6 +180,17 @@ describe("POST /api/marketing/lead", () => {
     expect(s.insert).toHaveBeenCalledTimes(2);
     const refs = s.insert.mock.calls.map((c) => (c[0] as { lead_ref: string }).lead_ref);
     expect(refs[0]).not.toBe(refs[1]);
+  });
+
+  it("500 after three lead_ref collisions, reported once", async () => {
+    const dup = { error: { code: "23505", message: "dup" } };
+    const s = svc(dup, dup, dup);
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req(valid));
+    expect(res.status).toBe(500);
+    expect(s.insert).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(reportError)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(notifyRole)).not.toHaveBeenCalled();
   });
 
   it("500 when the insert fails", async () => {

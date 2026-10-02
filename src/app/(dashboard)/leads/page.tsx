@@ -160,7 +160,7 @@ export default async function LeadsPage() {
                         {l.source === "assistant" && (
                           <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">แชท AI</span>
                         )}
-                        {l.source === "zh_intake" && (
+                        {(l.lead_ref || l.source === "zh_intake") && (
                           <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{l.lead_ref ?? "中文"}</span>
                         )}
                         {stageBadge(l)}
@@ -225,7 +225,7 @@ export default async function LeadsPage() {
                         {l.source === "assistant" && (
                           <span className="ml-2 rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-[10px] font-normal text-primary">แชท AI</span>
                         )}
-                        {l.source === "zh_intake" && (
+                        {(l.lead_ref || l.source === "zh_intake") && (
                           <span className="ml-2 rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle font-mono text-[10px] font-normal text-primary">{l.lead_ref ?? "中文"}</span>
                         )}
                         <div className="mt-1">{stageBadge(l)}</div>

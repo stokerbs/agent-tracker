@@ -122,7 +122,7 @@ describe("POST /api/marketing/assistant", () => {
         },
       ]),
     );
-    const res = await POST(req(valid));
+    const res = await POST(req({ ...valid, attribution: { landing_page: "/en", utm_source: "google", gclid: "g-1", fbclid: "" } }));
     const json = (await res.json()) as { reply: string; submitted?: boolean };
     expect(json.submitted).toBe(true);
     expect(s.insert).toHaveBeenCalledWith(
@@ -131,10 +131,43 @@ describe("POST /api/marketing/assistant", () => {
         phone: "0812345678",
         case_type: "สืบชู้สาว",
         source: "assistant",
+        stage: "new",
         consent_at: expect.any(String),
+        // First-touch attribution travels with the assistant lead too.
+        landing_page: "/en",
+        utm_source: "google",
+        gclid: "g-1",
+        fbclid: null,
       }),
     );
     expect(vi.mocked(notifyRole)).toHaveBeenCalled();
+  });
+
+  it("400 when attribution values exceed their bounds (nothing forwarded or stored)", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const res = await POST(req({ ...valid, attribution: { gclid: "x".repeat(500) } }));
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(s.insert).not.toHaveBeenCalled();
+  });
+
+  it("submit_case with a failed insert → submitted:false, no notification, fallback reply", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    const s = svc({ error: { message: "boom" } });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      anthropic([
+        { type: "tool_use", name: "submit_case", input: { service_type: "สืบชู้สาว", customer_contact: "0812345678", summary: "x", consent: true } },
+      ]),
+    );
+    const res = await POST(req(valid));
+    const json = (await res.json()) as { reply: string; submitted?: boolean };
+    expect(json.submitted).toBe(false);
+    expect(json.reply).toContain("@detectivepluse");
+    expect(vi.mocked(notifyRole)).not.toHaveBeenCalled();
   });
 
   it("submit_case WITHOUT consent → does not store and asks for consent", async () => {

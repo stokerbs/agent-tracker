@@ -172,7 +172,9 @@ writes only; admin-only RLS reads/updates.
 
 Migration `0127` extends lead attribution to the Thai / English site: every
 lead written by `/api/marketing/lead` and `/api/marketing/assistant` now carries
-first-touch `landing_page`, `referrer`, `utm_*` (incl. new `utm_content`) and the
-paid click ids `gclid` / `fbclid` (indexed), plus a `lead_ref` with a `TH-` or
-`EN-` prefix (same format as the Chinese `CN-` refs; same partial unique index).
-Values are client-supplied, bounded by the API, informational only.
+first-touch `landing_page`, `referrer`, `utm_*` (incl. new `utm_content`), the
+paid click ids `gclid` / `fbclid` (indexed) and `stage = 'new'`. Form leads from
+`/api/marketing/lead` additionally get a `lead_ref` with a `TH-` or `EN-` prefix
+(same format as the Chinese `CN-` refs; same partial unique index); assistant
+leads have no ref yet. Values are client-supplied, bounded by the API,
+informational only.

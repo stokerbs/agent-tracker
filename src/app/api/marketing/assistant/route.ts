@@ -240,13 +240,21 @@ export async function POST(request: NextRequest) {
             });
           });
         }
-        const confirm =
-          loc === "en"
+        // Only confirm (and only let the widget count a conversion) when the
+        // lead was actually stored; on a failed insert fall back to the direct
+        // channels so the customer is never left thinking we have their case.
+        const confirm = error
+          ? loc === "en"
+            ? "Sorry — I couldn't save your case just now. Please message us directly on LINE @detectivepluse or call 096-846-1406 and we'll take it from there."
+            : loc === "zh"
+              ? "抱歉，刚才未能保存您的案件。请直接在 LINE @detectivepluse 联系我们，或致电 096-846-1406，我们会立即跟进。"
+              : "ขออภัยครับ ระบบบันทึกเคสไม่สำเร็จในขณะนี้ รบกวนทักไลน์ @detectivepluse หรือโทร 096-846-1406 ได้เลยครับ ทีมงานจะรับเรื่องต่อให้ทันที"
+          : loc === "en"
             ? "Got it — I've sent your case summary to our team. An officer will contact you shortly. For a faster reply, message us on LINE @detectivepluse."
             : loc === "zh"
               ? "收到 ✅ 我已将您的案件摘要发送给团队，稍后会有专员与您联系。如需更快回复，请在 LINE @detectivepluse 上联系我们。"
               : "รับเรื่องเรียบร้อยครับ ✅ ผมส่งสรุปเคสให้เจ้าหน้าที่แล้ว เดี๋ยวมีคนติดต่อกลับโดยเร็วครับ หากต้องการเร็วขึ้น ทักไลน์ @detectivepluse ได้เลยครับ";
-        return NextResponse.json({ ok: true, reply: modelText ? `${modelText}\n\n${confirm}` : confirm, submitted: true });
+        return NextResponse.json({ ok: true, reply: modelText ? `${modelText}\n\n${confirm}` : confirm, submitted: !error });
       }
       // Tool called without valid consent/contact → don't store; nudge for them.
       const needInfo =
