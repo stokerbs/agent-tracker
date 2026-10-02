@@ -14,6 +14,8 @@ import { Faq } from "@/components/marketing/faq";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { getMarketingPage } from "@/lib/marketing/content";
 import { FAQ_TH } from "@/lib/marketing/faq";
 
@@ -115,8 +117,11 @@ export function MarketingHome() {
         <div className="mx-auto max-w-3xl px-4 py-16 text-center">
           <SectionHeading eyebrow="Dossier · เกี่ยวกับเรา" title="เกี่ยวกับเรา" />
           <p className="mt-6 leading-relaxed text-muted-foreground">
-            นักสืบเอกชน Detective Pulse ให้บริการสืบข้อมูลด้านบุคคล เช่น การสืบชู้สาว สืบจับบุคคลตามหมายจับ หมายศาล สืบหาคนหาย หาที่อยู่บุคคล ตามหาคนโกง โดนโกงออนไลน์ สืบพฤติกรรมบุตรหลาน สืบประวัติการก่ออาชญากรรม สืบประวัติบุคคลก่อนเข้าทำงาน สืบประวัติการเดินทางเข้าออกประเทศ ติดตามรถยนต์ เช็คการใช้งานโทรศัพท์ และอื่น ๆ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ
+            นักสืบเอกชน Detective Pulse ให้บริการสืบข้อมูลด้านบุคคลและธุรกิจด้วยวิธีที่ถูกกฎหมาย เช่น สืบชู้สาวและติดตามพฤติกรรมในที่สาธารณะ ตามหาคนหายและบุคคลที่ขาดการติดต่อ ตามหาที่อยู่ปัจจุบันของลูกหนี้หรือคนโกงออนไลน์ สืบพฤติกรรมบุตรหลาน เช็คประวัติและความน่าเชื่อถือของบุคคลก่อนร่วมงาน คบหา หรือทำธุรกิจ สืบทรัพย์สินเพื่อประกอบการฟ้องหรือบังคับคดี และสืบข้อมูลบนโลกออนไลน์จากแหล่งข้อมูลเปิด — ทุกเคสทำงานภายใต้กรอบกฎหมาย PDPA และข้อมูลของลูกค้าถูกเก็บเป็นความลับ
           </p>
+          <div className="mt-8 text-left">
+            <LawfulScope lang="th" compact />
+          </div>
         </div>
       </section>
 
@@ -258,19 +263,19 @@ export function MarketingHome() {
             <span className="h-px w-8 bg-border" /> หรือทักแชทโดยตรง <span className="h-px w-8 bg-border" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            <TrackedLink href="https://lin.ee/SSqk98x" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <LineIcon className="h-5 w-5" /> LINE
-            </a>
-            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            </TrackedLink>
+            <TrackedLink href="https://api.whatsapp.com/send?phone=+66968461406" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <WhatsAppIcon className="h-5 w-5" /> WhatsApp
-            </a>
-            <a href="https://www.facebook.com/Detectivepluse.th" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            </TrackedLink>
+            <TrackedLink href="https://www.facebook.com/Detectivepluse.th" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <FacebookIcon className="h-5 w-5" /> Facebook
-            </a>
+            </TrackedLink>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <a href="tel:+66968461406" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</a>
-            <a href="mailto:detectivepluse@gmail.com" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</a>
+            <TrackedLink href="tel:+66968461406" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</TrackedLink>
+            <TrackedLink href="mailto:detectivepluse@gmail.com" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</TrackedLink>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}

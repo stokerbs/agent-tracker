@@ -5,6 +5,7 @@ import { AssistantWidget } from "@/components/marketing/assistant-widget";
 import { StickyContactBar } from "@/components/marketing/sticky-contact-bar";
 import { ExitIntent } from "@/components/marketing/exit-intent";
 import { SiteNav, SiteFooterLinks } from "@/components/marketing/site-nav";
+import { AttributionCapture } from "@/components/marketing/attribution-capture";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com.
@@ -78,6 +79,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </footer>
       </div>
 
+      <AttributionCapture />
       <ContactFab />
       <AssistantWidget />
       <StickyContactBar />

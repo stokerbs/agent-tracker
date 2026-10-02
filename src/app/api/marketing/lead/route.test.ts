@@ -21,8 +21,9 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyRole } from "@/lib/notifications";
 
-function svc(insertResult: { error: unknown } = { error: null }) {
-  const insert = vi.fn().mockResolvedValue(insertResult);
+function svc(insertResult: { error: unknown } = { error: null }, ...more: { error: unknown }[]) {
+  const results = [insertResult, ...more];
+  const insert = vi.fn().mockImplementation(async () => results.length > 1 ? results.shift()! : results[0]!);
   return { client: { from: () => ({ insert }) }, insert };
 }
 
@@ -57,10 +58,12 @@ describe("POST /api/marketing/lead", () => {
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     const res = await POST(req(valid));
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true });
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.leadRef).toMatch(/^TH-\d{6}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/);
     expect(s.insert).toHaveBeenCalledTimes(1);
     expect(s.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "สมชาย", phone: "0812345678", case_type: "สืบชู้สาว", locale: "th", source: "website" }),
+      expect.objectContaining({ name: "สมชาย", phone: "0812345678", case_type: "สืบชู้สาว", locale: "th", source: "website", stage: "new", lead_ref: body.leadRef }),
     );
     expect(vi.mocked(notifyRole)).toHaveBeenCalled();
   });
@@ -135,6 +138,44 @@ describe("POST /api/marketing/lead", () => {
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(s.insert).not.toHaveBeenCalled();
     expect(vi.mocked(notifyRole)).not.toHaveBeenCalled();
+  });
+
+
+  it("stores first-touch attribution columns when provided", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const attribution = { landing_page: "/นักสืบชู้สาว", referrer: "https://www.google.com/", utm_source: "google", utm_medium: "cpc", utm_campaign: "th-infidelity", utm_term: "สืบชู้", utm_content: "", gclid: "g-123", fbclid: "" };
+    const res = await POST(req({ ...valid, attribution }));
+    expect(res.status).toBe(200);
+    expect(s.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ landing_page: "/นักสืบชู้สาว", referrer: "https://www.google.com/", utm_source: "google", utm_medium: "cpc", utm_campaign: "th-infidelity", utm_term: "สืบชู้", utm_content: null, gclid: "g-123", fbclid: null }),
+    );
+  });
+
+  it("400 when attribution values exceed their bounds", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req({ ...valid, attribution: { gclid: "x".repeat(500) } }));
+    expect(res.status).toBe(400);
+    expect(s.insert).not.toHaveBeenCalled();
+  });
+
+  it("uses an EN- lead ref for English leads", async () => {
+    const s = svc();
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req({ ...valid, locale: "en" }));
+    const body = await res.json();
+    expect(body.leadRef).toMatch(/^EN-/);
+  });
+
+  it("retries with a new lead_ref on a unique-violation (23505) and then succeeds", async () => {
+    const s = svc({ error: { code: "23505", message: "dup" } }, { error: null });
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never);
+    const res = await POST(req(valid));
+    expect(res.status).toBe(200);
+    expect(s.insert).toHaveBeenCalledTimes(2);
+    const refs = s.insert.mock.calls.map((c) => (c[0] as { lead_ref: string }).lead_ref);
+    expect(refs[0]).not.toBe(refs[1]);
   });
 
   it("500 when the insert fails", async () => {

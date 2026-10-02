@@ -10,6 +10,7 @@ import { ArticleCover } from "@/components/marketing/article-cover";
 import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
+import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 
@@ -100,6 +101,9 @@ export default async function MarketingArticle(
           </ReactMarkdown>
         </div>
       </article>
+      <div className="mt-12">
+        <LawfulScope lang="th" />
+      </div>
       <div className="mt-12">
         <RelatedArticles heading="บทความที่เกี่ยวข้อง" items={related} lang="th" />
       </div>

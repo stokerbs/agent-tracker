@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 
 type Lang = "th" | "en" | "zh";
 
@@ -60,16 +61,15 @@ export function ContactFab() {
           </div>
           <div className="flex flex-col gap-2 p-3">
             {channels.map((c) => (
-              <a
+              <TrackedLink
                 key={c.label}
                 href={c.href}
-                target={c.href.startsWith("http") ? "_blank" : undefined}
-                rel="noopener noreferrer"
+                placement="fab"
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.02]"
                 style={{ backgroundColor: c.bg }}
               >
                 {c.icon} {c.label}
-              </a>
+              </TrackedLink>
             ))}
           </div>
         </div>

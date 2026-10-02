@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { reportError } from "@/lib/errors";
+import { attributionSchema, attributionColumns } from "@/lib/marketing/lead-attribution";
 
 // Public, unauthenticated endpoint — the marketing site's AI assistant posts the
 // running conversation here and gets a reply. The raw chat transcript is NOT
@@ -29,6 +30,8 @@ const schema = z.object({
     .min(1)
     .max(20),
   locale: z.enum(["th", "en", "zh"]).default("th"),
+  // First-touch attribution captured client-side; informational only.
+  attribution: attributionSchema,
 });
 
 // The intake officer calls this tool once it has gathered a case AND the
@@ -217,8 +220,11 @@ export async function POST(request: NextRequest) {
           message: c.summary,
           locale: parsed.data.locale,
           source: "assistant",
+          stage: "new",
+          stage_changed_at: new Date().toISOString(),
           user_agent: request.headers.get("user-agent")?.slice(0, 300) ?? null,
           consent_at: new Date().toISOString(),
+          ...attributionColumns(parsed.data.attribution),
         });
         if (error) {
           reportError(error, "marketing:assistant:insert");

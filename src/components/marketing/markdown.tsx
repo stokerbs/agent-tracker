@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { MdLink } from "@/components/marketing/md-link";
 
 /** Tailwind-styled element renderers for react-markdown (dossier article look). */
 export const mdComponents = {
@@ -9,7 +10,7 @@ export const mdComponents = {
   p:  (p: ComponentProps<"p">) => <p className="mt-4 leading-relaxed text-foreground/90" {...p} />,
   ul: (p: ComponentProps<"ul">) => <ul className="mt-4 list-none space-y-2 pl-0 text-foreground/90 [&>li]:relative [&>li]:pl-6 [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:text-primary [&>li]:before:content-['▸']" {...p} />,
   ol: (p: ComponentProps<"ol">) => <ol className="mt-4 list-decimal space-y-2 pl-6 text-foreground/90 marker:font-mono marker:text-primary/80" {...p} />,
-  a:  (p: ComponentProps<"a">) => <a className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary" {...p} />,
+  a:  (p: ComponentProps<"a">) => <MdLink className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary" {...p} />,
   strong: (p: ComponentProps<"strong">) => <strong className="font-semibold text-foreground" {...p} />,
   blockquote: (p: ComponentProps<"blockquote">) => <blockquote className="mt-5 border-l-2 border-primary/50 bg-card/50 py-2 pl-4 italic text-muted-foreground" {...p} />,
 };

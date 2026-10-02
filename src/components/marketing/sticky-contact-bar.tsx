@@ -5,6 +5,7 @@ import { Phone } from "lucide-react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { LineIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
 
@@ -50,17 +51,16 @@ export function StickyContactBar() {
         </>
       ) : (
       <>
-      <a href="tel:+66968461406" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
+      <TrackedLink href="tel:+66968461406" placement="sticky" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
         <Phone className="h-5 w-5" /> {t.call}
-      </a>
-      <a
+      </TrackedLink>
+      <TrackedLink
         href="https://lin.ee/SSqk98x"
-        target="_blank"
-        rel="noopener noreferrer"
+        placement="sticky"
         className="flex flex-1 items-center justify-center gap-2 bg-[#048739] py-3 font-semibold text-white"
       >
         <LineIcon className="h-5 w-5" /> {t.line}
-      </a>
+      </TrackedLink>
       </>
       )}
     </div>

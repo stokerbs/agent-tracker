@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bot, X, Send, Loader2, Phone } from "lucide-react";
 import { LineIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
+import { track, currentPage } from "@/lib/marketing/analytics";
+import { getAttribution } from "@/lib/marketing/attribution";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Lang = "th" | "en" | "zh";
@@ -89,14 +92,16 @@ export function AssistantWidget() {
       const res = await fetch("/api/marketing/assistant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages, locale: lang }),
+        body: JSON.stringify({ messages: apiMessages, locale: lang, attribution: getAttribution() ?? undefined }),
       });
       if (res.status === 429) {
         setRateLimited(true);
         setMessages((m) => [...m, { role: "assistant", content: t.rate }]);
         return;
       }
-      const data = (await res.json()) as { reply?: string };
+      const data = (await res.json()) as { reply?: string; submitted?: boolean };
+      // The intake officer stored a lead → GA4 / Ads conversion.
+      if (data.submitted) track({ event: "assistant_lead_created", page: currentPage(), lang });
       setMessages((m) => [...m, { role: "assistant", content: data.reply ?? t.err }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: t.conn }]);
@@ -175,19 +180,19 @@ export function AssistantWidget() {
           </form>
 
           <div className="flex items-center gap-2 border-t border-border/60 bg-background/40 px-2.5 py-2">
-            <a href={LINE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-[#048739] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90">
+            <TrackedLink href={LINE_URL} placement="assistant" className="inline-flex items-center gap-1.5 rounded-md bg-[#048739] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90">
               <LineIcon className="h-3.5 w-3.5" /> {t.human}
-            </a>
-            <a href={TEL_URL} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted">
+            </TrackedLink>
+            <TrackedLink href={TEL_URL} placement="assistant" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted">
               <Phone className="h-3.5 w-3.5 text-primary" /> {t.call}
-            </a>
+            </TrackedLink>
             <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{t.note}</span>
           </div>
         </div>
       )}
 
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => { if (!v) track({ event: "assistant_opened", page: currentPage(), lang }); return !v; })}
         aria-label={t.launcherAria}
         className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-card text-primary shadow-xl transition-transform hover:scale-105"
       >

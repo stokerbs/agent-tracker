@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Phone } from "lucide-react";
 import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
 
 const COPY: Record<MarketingLang, {
@@ -76,16 +77,16 @@ export function ExitIntent() {
         <h2 className="mt-3 font-serif text-2xl font-bold">{t.title}</h2>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{t.body}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <a href="https://lin.ee/SSqk98x" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90">
+          <TrackedLink href="https://lin.ee/SSqk98x" placement="exit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90">
             <LineIcon className="h-5 w-5" /> {t.line}
-          </a>
+          </TrackedLink>
           <div className="flex gap-2">
-            <a href="https://api.whatsapp.com/send?phone=+66968461406" target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
+            <TrackedLink href="https://api.whatsapp.com/send?phone=+66968461406" placement="exit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
               <WhatsAppIcon className="h-5 w-5" /> {t.whatsapp}
-            </a>
-            <a href="tel:+66968461406" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">
+            </TrackedLink>
+            <TrackedLink href="tel:+66968461406" placement="exit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">
               <Phone className="h-4 w-4 text-primary" /> {t.call}
-            </a>
+            </TrackedLink>
           </div>
         </div>
         <button onClick={() => setOpen(false)} className="mt-4 text-xs text-muted-foreground/70 hover:text-muted-foreground">

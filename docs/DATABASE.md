@@ -169,3 +169,10 @@ back to a cover-category guess (`articleServiceKey()`).
 unique `referral_slug`; leads carry it in `marketing_leads.utm_source`, which
 is indexed for the per-partner attribution shown in `/partners`. Service-role
 writes only; admin-only RLS reads/updates.
+
+Migration `0127` extends lead attribution to the Thai / English site: every
+lead written by `/api/marketing/lead` and `/api/marketing/assistant` now carries
+first-touch `landing_page`, `referrer`, `utm_*` (incl. new `utm_content`) and the
+paid click ids `gclid` / `fbclid` (indexed), plus a `lead_ref` with a `TH-` or
+`EN-` prefix (same format as the Chinese `CN-` refs; same partial unique index).
+Values are client-supplied, bounded by the API, informational only.

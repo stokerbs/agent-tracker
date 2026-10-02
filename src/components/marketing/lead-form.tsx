@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
-import { sendGTMEvent } from "@next/third-parties/google";
+import { track, currentPage } from "@/lib/marketing/analytics";
+import { getAttribution } from "@/lib/marketing/attribution";
+import { TrackedLink } from "@/components/marketing/tracked-link";
 
 type Lang = "th" | "en" | "zh";
 
@@ -24,6 +26,7 @@ const COPY = {
     successTitle: "ได้รับข้อมูลแล้ว",
     successBody: "ทีมนักสืบจะติดต่อกลับโดยเร็ว — หรือทักแชทเลยเพื่อความรวดเร็ว",
     chat: "ทักแชท LINE ทันที",
+    refLabel: "หมายเลขอ้างอิง",
     errRate: "ส่งบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ หรือทักไลน์เราได้เลย",
     errGeneric: "ส่งไม่สำเร็จ ลองใหม่อีกครั้ง หรือทักไลน์เราได้เลย",
     required: "กรุณากรอกชื่อและเบอร์ติดต่อ",
@@ -45,6 +48,7 @@ const COPY = {
     successTitle: "Message received",
     successBody: "Our investigators will get back to you shortly — or chat now for a faster reply.",
     chat: "Chat on LINE now",
+    refLabel: "Reference",
     errRate: "Too many submissions. Please wait a moment and try again, or message us on LINE.",
     errGeneric: "Couldn't send. Please try again, or message us on LINE.",
     required: "Please enter your name and a contact.",
@@ -66,6 +70,7 @@ const COPY = {
     successTitle: "已收到您的信息",
     successBody: "我们的调查团队会尽快与您联系 — 或直接在 LINE 上聊天以获得更快回复。",
     chat: "立即在 LINE 咨询",
+    refLabel: "案件编号",
     errRate: "提交过于频繁，请稍候再试，或在 LINE 上联系我们。",
     errGeneric: "提交失败，请重试，或在 LINE 上联系我们。",
     required: "请填写姓名和联系方式。",
@@ -78,6 +83,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
   const t = COPY[lang];
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState<string>("");
+  const [leadRef, setLeadRef] = useState<string>("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -115,13 +121,18 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
           message: String(fd.get("message") ?? "") || undefined,
           locale: lang,
           consent: true,
+          // First-touch attribution (landing page, referrer, utm_*, gclid) so the
+          // lead row can be tied back to the page / campaign that produced it.
+          attribution: getAttribution() ?? undefined,
           website: String(fd.get("website") ?? ""),
         }),
       });
       if (res.ok) {
-        // Fires the GTM dataLayer event so a GA4 / Google Ads conversion tag
-        // can be wired to it in GTM's UI, with no further code changes.
-        sendGTMEvent({ event: "lead_submitted", case_type: fd.get("caseType") ?? undefined, locale: lang });
+        const data = (await res.json().catch(() => ({}))) as { leadRef?: string };
+        setLeadRef(data.leadRef ?? "");
+        // GTM dataLayer event — wired to a GA4 / Google Ads conversion in GTM.
+        const caseType = String(fd.get("caseType") ?? "") || undefined;
+        track({ event: "lead_submitted", case_type: caseType, locale: lang, lead_ref: data.leadRef, page: currentPage() });
         setState("done");
         form.reset();
         return;
@@ -140,14 +151,18 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
         <h3 className="mt-3 font-serif text-lg font-bold">{t.successTitle}</h3>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">{t.successBody}</p>
-        <a
+        {leadRef && (
+          <p className="mt-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            {t.refLabel}: <span className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-primary">{leadRef}</span>
+          </p>
+        )}
+        <TrackedLink
           href={LINE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          placement="form_success"
           className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"
         >
           <MessageCircle className="h-4 w-4" /> {t.chat}
-        </a>
+        </TrackedLink>
       </div>
     );
   }

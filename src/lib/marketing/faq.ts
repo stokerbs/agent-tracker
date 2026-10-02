@@ -13,7 +13,7 @@ export const FAQ_TH: QA[] = [
   },
   {
     q: "Detective Pulse มีบริการอะไรบ้าง?",
-    a: "เราให้บริการหลายด้าน — สืบคดีชู้สาว (ติดตามพฤติกรรมของคู่สมรสหรือผู้ที่สงสัยว่านอกใจ), สืบหาบุคคลและสืบประวัติ (หาที่อยู่บุคคล สืบพฤติกรรม หรือเช็คประวัติก่อนเข้าทำงาน), สืบทรัพย์สิน (บ้าน คอนโด รถ ที่ดิน หรือเงินในบัญชีธนาคาร), สืบยานพาหนะ (เช็คทะเบียนรถ ตรวจสอบการโจรกรรม หรือติดตามรถหาย) และสืบข้อมูลไอที (เฟซบุ๊ก ไลน์ หรือสื่อออนไลน์อื่น ๆ)",
+    a: "เราให้บริการหลายด้าน — สืบคดีชู้สาว (ติดตามพฤติกรรมของคู่สมรสหรือผู้ที่สงสัยว่านอกใจ), สืบหาบุคคลและสืบประวัติ (หาที่อยู่บุคคล สืบพฤติกรรม หรือเช็คประวัติก่อนเข้าทำงาน), สืบทรัพย์สินเพื่อประกอบการฟ้องหรือบังคับคดี (บ้าน คอนโด รถ ที่ดิน จากแหล่งข้อมูลที่เข้าถึงได้ตามกฎหมาย — ข้อมูลบัญชีธนาคารต้องผ่านกระบวนการศาลเท่านั้น), สืบยานพาหนะ (ตรวจสอบและติดตามรถที่ถูกโจรกรรม) และสืบข้อมูลไอทีจากแหล่งข้อมูลเปิด (เฟซบุ๊ก ไลน์ หรือสื่อออนไลน์อื่น ๆ) — ทุกบริการทำงานภายใต้กฎหมาย PDPA ไม่เข้าถึงฐานข้อมูลราชการ ธนาคาร หรือข้อมูลโทรศัพท์ของผู้อื่น",
   },
   {
     q: "ติดต่อ Detective Pulse ได้อย่างไร?",
@@ -60,7 +60,7 @@ export const FAQ_EN: QA[] = [
   },
   {
     q: "What services does Detective Pulse offer?",
-    a: "We offer a range of services — infidelity investigation (tracking a spouse or a partner suspected of cheating), finding people and background checks (locating a person, checking behaviour, or pre-employment checks), asset investigation (house, condo, car, land, or funds in bank accounts), vehicle investigation (checking a registration, investigating theft, or tracing a missing vehicle), and cyber/IT investigation (Facebook, LINE, and other online media).",
+    a: "We offer a range of services — infidelity investigation (tracking a spouse or a partner suspected of cheating), finding people and background checks (locating a person, checking behaviour, or pre-employment checks), asset investigation to support a lawsuit or enforcement (house, condo, car, land — from lawfully accessible sources; bank information is only obtainable through court process), vehicle investigation (verifying and tracing a stolen vehicle), and cyber/IT investigation from open sources (Facebook, LINE, and other online media). Every service works within Thailand's PDPA: we never access government, bank or telecom data about another person.",
   },
   {
     q: "How do I contact Detective Pulse?",
@@ -107,7 +107,7 @@ export const FAQ_ZH: QA[] = [
   },
   {
     q: "Detective Pulse 提供哪些服务？",
-    a: "我们提供多项服务 —— 婚外情调查（追踪配偶或疑似出轨伴侣的行为）、寻人与背景调查（查找某人地址、行为调查或入职前背景核查）、财产调查（房产、公寓、车辆、土地或银行账户资金）、车辆调查（查车牌、盗窃调查或追查失踪车辆），以及网络调查（Facebook、LINE 及其他线上媒体）。",
+    a: "我们提供多项服务 —— 婚外情调查（追踪配偶或疑似出轨伴侣的行为）、寻人与背景调查（查找某人地址、行为调查或入职前背景核查）、财产调查（房产、公寓、车辆、土地 —— 仅限可合法获取的信息；银行信息只能通过法院程序获取）、车辆调查（核实并追查被盗车辆），以及基于公开信息的网络调查（Facebook、LINE 及其他线上媒体）。所有服务均在泰国 PDPA 法律框架内进行，我们不会获取他人的政府、银行或电信数据。",
   },
   {
     q: "如何联系 Detective Pulse？",

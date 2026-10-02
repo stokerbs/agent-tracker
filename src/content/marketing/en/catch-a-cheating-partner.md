@@ -24,7 +24,7 @@ Hiring a professional matters a great deal in a case like this. Here's why:
 
 - **Credibility.** A professional strengthens your case. Investigators are recognised experts who report their findings as credible evidence.
 
-- **Access to information.** Investigators can reach information you can't — online communications, phone records, or carefully concealed details.
+- **Access to lawful methods.** Investigators know how to observe discreetly in public places, research open sources and verify details in person — without the illegal shortcuts (phone records, hacking, trackers) that no legitimate firm uses and that would make evidence unusable.
 
 Hiring an investigator is an effective way to handle an infidelity case and find the truth — by entrusting the task to someone with the right expertise and tools. With a professional on your side, you can be confident the problem is being handled properly.
 
