@@ -1,7 +1,8 @@
 import type { ZhPage } from "@/lib/marketing/zh/registry";
 import { ZH_COMPANY } from "@/lib/marketing/zh/company";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const BASE = "https://detectivepulse.com";
+const BASE = CONTACT.siteUrl;
 
 function LdScript({ data }: { data: unknown }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;

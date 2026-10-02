@@ -1,3 +1,5 @@
+import { CONTACT } from "@/lib/marketing/contact";
+
 /** Frequently-asked questions for the public marketing site (TH + EN). Used for
  *  both the visible FAQ section and the FAQPage structured data (rich results).
  *  The visible list and the JSON-LD must stay in sync — both read these arrays. */
@@ -17,7 +19,7 @@ export const FAQ_TH: QA[] = [
   },
   {
     q: "ติดต่อ Detective Pulse ได้อย่างไร?",
-    a: "ติดต่อได้ที่ โทรศัพท์ 096-846-1406, อีเมล detectivepluse@gmail.com หรือ LINE: @detectivepluse",
+    a: `ติดต่อได้ที่ โทรศัพท์ ${CONTACT.phoneDisplay}, อีเมล ${CONTACT.email} หรือ LINE: ${CONTACT.lineId}`,
   },
   {
     q: "ความเป็นส่วนตัวของข้อมูลลูกค้าได้รับการป้องกันอย่างไร?",
@@ -64,7 +66,7 @@ export const FAQ_EN: QA[] = [
   },
   {
     q: "How do I contact Detective Pulse?",
-    a: "You can reach us by phone at +66 96-846-1406, by email at detectivepluse@gmail.com, or on LINE: @detectivepluse",
+    a: `You can reach us by phone or WhatsApp at ${CONTACT.phoneE164}, by email at ${CONTACT.email}, or on LINE: ${CONTACT.lineId}`,
   },
   {
     q: "How is my personal data protected?",
@@ -111,7 +113,7 @@ export const FAQ_ZH: QA[] = [
   },
   {
     q: "如何联系 Detective Pulse？",
-    a: "电话 096-846-1406、邮箱 detectivepluse@gmail.com，或 LINE：@detectivepluse",
+    a: `电话 ${CONTACT.phoneDisplay}、邮箱 ${CONTACT.email}，或 LINE：${CONTACT.lineId}`,
   },
   {
     q: "客户资料的隐私如何保障？",

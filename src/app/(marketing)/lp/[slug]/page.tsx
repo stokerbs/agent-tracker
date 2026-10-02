@@ -52,7 +52,7 @@ export default async function CampaignLanding(
         subtitle={lp.sub}
         ctas={[
           { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: CONTACT.phoneTel, label: "โทรเลย 096-846-1406", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: CONTACT.phoneTel, label: `โทรเลย ${CONTACT.phoneDisplay}`, icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
         ]}
         tagline="// ปิดกว่า 1,900 เคส · คะแนน 4.8/5 · ทั่วราชอาณาจักร"
         scrollLabel="เลื่อนลงดูรายละเอียด"
@@ -114,7 +114,7 @@ export default async function CampaignLanding(
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
             <TrackedLink href={CONTACT.lineUrl} placement="lp" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</TrackedLink>
             <TrackedLink href={CONTACT.whatsappUrl} placement="lp" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</TrackedLink>
-            <TrackedLink href={CONTACT.phoneTel} placement="lp" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096-846-1406</TrackedLink>
+            <TrackedLink href={CONTACT.phoneTel} placement="lp" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> {CONTACT.phoneDisplay}</TrackedLink>
           </div>
         </div>
       </section>

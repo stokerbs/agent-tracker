@@ -10,9 +10,9 @@ import { CONTACT } from "@/lib/marketing/contact";
 type Lang = "th" | "en" | "zh";
 
 const COPY: Record<Lang, { title: string; call: string; email: string; close: string; open: string }> = {
-  th: { title: "ติดต่อนักสืบ — ปรึกษาฟรี", call: "โทร 096 846 1406", email: "อีเมล", close: "ปิด", open: "ช่องทางติดต่อ" },
-  en: { title: "Contact us — free consult", call: "Call 096 846 1406", email: "Email", close: "Close", open: "Contact options" },
-  zh: { title: "联系我们 — 免费咨询", call: "致电 096 846 1406", email: "邮箱", close: "关闭", open: "联系方式" },
+  th: { title: "ติดต่อนักสืบ — ปรึกษาฟรี", call: `โทร ${CONTACT.phoneDisplay}`, email: "อีเมล", close: "ปิด", open: "ช่องทางติดต่อ" },
+  en: { title: "Contact us — free consult", call: `Call ${CONTACT.phoneDisplay}`, email: "Email", close: "Close", open: "Contact options" },
+  zh: { title: "联系我们 — 免费咨询", call: `致电 ${CONTACT.phoneDisplay}`, email: "邮箱", close: "关闭", open: "联系方式" },
 };
 
 function detectLang(pathname: string): Lang {

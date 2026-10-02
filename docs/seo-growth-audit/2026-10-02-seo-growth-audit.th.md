@@ -870,3 +870,274 @@ Final CTA (form + channels, language-aware)
 20. เผยแพร่บทความอธิบายสามภาษา "นักสืบเอกชนในประเทศไทยทำอะไรได้และทำอะไรไม่ได้ตามกฎหมาย" และสร้าง schema แบบ FAQ/ผู้เขียน/เอนทิตีรอบบทความนี้เพื่อการมองเห็นใน AI search
 
 ---
+
+# ADDITIONAL — โอกาสการเติบโตที่ยังไม่ได้ใช้ (นอกเหนือจาก SEO แบบดั้งเดิม)
+
+1. **การวางตำแหน่งเป็นผู้ปฏิบัติงานให้ทนายความ** สำนักงานกฎหมายครอบครัวและติดตามหนี้ของไทยติดอันดับ "private investigator Thailand" แต่ outsource การปฏิบัติงาน หน้าพันธมิตร, โมเดลค่าส่งต่อ/retainer, รูปแบบรายงานที่ทนายใช้งานสะดวก และการบรรยายสไตล์ CLE สามารถทำให้ Detective Pulse เป็นผู้ปฏิบัติงานหลักของสำนักงาน 20–50 แห่ง — ช่องทาง B2B ที่ป้องกันคู่แข่งได้ดีที่สุดในตลาดนี้
+2. **การตรวจสอบคู่รักชาวไทยสำหรับชาวต่างชาติในฐานะบริการสำเร็จรูปราคาคงที่** (ความสอดคล้องของตัวตน, สถานภาพสมรสผ่านวิธีที่ถูกกฎหมาย, ตรวจสอบที่พัก/ที่ทำงาน, สรุปไลฟ์สไตล์ ส่งมอบใน 5–7 วัน) คู่แข่งขายในชื่อ "การสืบสวน"; ผลิตภัณฑ์ราคาคงที่พร้อมตัวอย่างรายงานแปลงเป็นลูกค้าได้ดีกว่าและโฆษณาง่าย
+3. **การตรวจสอบก่อนรับเข้าทำงานสำหรับ SME ไทยภายใต้ PDPA** (อิงความยินยอม, แหล่งข้อมูลที่ถูกกฎหมาย, รายงานพร้อมใช้สำหรับ HR) ผู้ให้บริการ HR มีราคาแพงและเน้นองค์กรใหญ่; บริษัทนักสืบที่มีกระบวนการสอดคล้องกับ PDPA สามารถครองกลุ่ม SME และสร้างปริมาณงานที่เกิดซ้ำ
+4. **การตรวจสอบซัพพลายเออร์/โรงงานในสถานที่จริงสำหรับผู้ซื้อต่างชาติ** (ชลบุรี–ระยอง, สมุทรปราการ): ผลิตภัณฑ์ 48 ชั่วโมง "โรงงานนี้มีอยู่จริงไหม?" ทำการตลาดกับผู้นำเข้าชาวจีนและตะวันตก; `/zh/on-site-verification` และ `/zh/chonburi` มีอยู่แล้ว — เพิ่ม EN และไทย
+5. **การตรวจสอบ romance/การหลอกลงทุน "ก่อนจ่ายเงิน"** สำหรับชาวต่างชาติ: ผลิตภัณฑ์เริ่มต้นราคาต่ำ (ตรวจสอบบุคคล/บริษัทก่อนโอนเงิน) ที่ upsell ไปสู่การสืบสวนเต็มรูปแบบและได้รับการนำเสนอในสื่อ
+6. **การตลาดด้วยกรณีศึกษาที่ปกปิดตัวตน** (Part 8.5) เป็นคอนเทนต์เอกลักษณ์ของบริษัท: ไม่มีใครในตลาดไทยเผยแพร่เคสที่มีโครงสร้างพร้อมผลลัพธ์ "ไม่พบสิ่งผิดปกติ"; สร้างความน่าเชื่อถือและอันดับ long-tail ไปพร้อมกัน
+7. **Lead magnet: "เช็กลิสต์ก่อนจ้างนักสืบ / Checklist before hiring a PI in Thailand"** (PDF ผ่าน LINE OA หรืออีเมล) — แปลง 95 % ที่ยังไม่พร้อมแชทให้เป็นรายชื่อ nurture ที่ถูกต้องตาม PDPA
+8. **LINE OA ในฐานะระบบ retention และการบอกต่อ**: การตรวจสอบความพึงพอใจหลังปิดเคส, รหัสแนะนำสำหรับทนายความ/พันธมิตร, broadcast ให้ความรู้รายเดือน; การบอกต่อคือเคสที่ต้นทุนถูกที่สุด
+9. **การค้นหาบน YouTube**: วิดีโออธิบาย "private investigator Thailand" และ "สืบชู้สาว" โดยหัวหน้านักสืบ (ใช้เสียง/มุมด้านหลังหากต้องการปกปิดตัวตน) ฝังบนหน้าบริการ — การค้นหาวิดีโอในวงการนี้ยังไม่มีคู่แข่ง
+10. **การวางตำแหน่งใน AI search**: เป็นแหล่งที่ถูกอ้างอิงสำหรับ "is it legal to hire a PI in Thailand", "what can a Thai PI access", "PI cost Thailand" ด้วยการเผยแพร่คำตอบที่แม่นยำ มีแหล่งอ้างอิง พร้อม schema แบบ FAQ/Person/Organization — ปัจจุบันผู้ช่วย AI อ้างอิงบทความอธิบายของคู่แข่ง
+11. **Local SEO แบบพื้นที่ให้บริการ**: GBP ที่ยืนยันแล้ว + หน้ากรุงเทพฯ + รีวิว Google ภาษาไทย เพียงพอที่จะปรากฏใน local pack ที่แทบไม่มีบริษัทนักสืบรายใดอยู่
+12. **ความลึกของตลาดจีน**: ส่วน `/zh` ล้ำหน้าเว็บไซต์ไทย/อังกฤษ; การเพิ่มกรณีศึกษาภาษาจีน, ช่วงราคา, รีวิวภาษาจีน และผู้จัดการเคสภาษาจีนกลาง เปลี่ยนสินทรัพย์ที่มีอยู่ให้เป็นช่องทางที่แตกต่างจากเอเจนซีไต้หวัน/ฮ่องกงที่เพียง "ครอบคลุม" ไทยจากระยะไกล
+13. **กลุ่มผู้พูดภาษารัสเซียในพัทยา/ภูเก็ต** (เฟส 2): ตรวจสอบคู่รัก, ตรวจสอบธุรกิจและอสังหาริมทรัพย์; คู่แข่งน้อยรายเผยแพร่หน้าภาษารัสเซีย
+14. **PR ด้วยข้อมูลต้นฉบับ**: "Thailand private-investigation case mix" ประจำปีแบบปกปิดตัวตน (สัดส่วนชู้สาว vs ตามหาคน vs due diligence; ค่ามัธยฐานจำนวนวันในการตามหา; สัดส่วนเคสตรวจสอบคู่รักที่พบความไม่สอดคล้อง) นำเสนอต่อสื่อไทยและสื่อสำหรับชาวต่างชาติ — สินทรัพย์เดียวที่ได้ลิงก์ สื่อ และการอ้างอิงจาก AI ทุกปี
+15. **การส่งหมายและการค้นเอกสารสำหรับสำนักงานกฎหมายต่างประเทศ** (หากบริษัทให้บริการได้): คิวรีภาษาอังกฤษที่แข่งขันต่ำ, งาน B2B ที่เกิดซ้ำ, พันธมิตรลิงก์ตามธรรมชาติ
+
+จุดที่สามารถสร้างความได้เปรียบทางการแข่งขันอย่างเป็นจริงได้ภายใน 6 เดือน: รายการ 1, 2, 6, 7, 10, 11 และ 12 — เพราะอาศัยสินทรัพย์ที่ธุรกิจมีอยู่แล้ว (เคสจริง, funnel แบบ LINE/WeChat, ส่วนภาษาจีน, รีวิว Fastwork, codebase ที่มีความสามารถ) มากกว่าอาศัยงบประมาณ
+
+---
+
+# APPENDIX A — รายการ URL (โฮสต์การตลาด)
+
+ความสามารถในการจัดทำดัชนีและ canonical เป็นไปตามที่โค้ดไว้; "ปัญหา" คือสิ่งที่สังเกตพบ จำนวนคำ: หน้าภาษาไทยระบุเป็นจำนวนอักขระไม่นับช่องว่าง (ภาษาไทยไม่มีการแบ่งคำ); ภาษาอังกฤษเป็นจำนวนคำ ลิงก์ภายในนับเฉพาะลิงก์ในเนื้อหา (ไม่รวมลิงก์จากเทมเพลต) schema บนทุกหน้า `[slug]`: BlogPosting + BreadcrumbList; หน้าแรก: ProfessionalService + AggregateRating + FAQPage; หน้า ZH: ProfessionalService + Service + FAQPage + BreadcrumbList
+
+## A.1 หน้าภาษาไทย (root)
+
+| URL (ถอดรหัสแล้ว) | Title / H1 (เหมือนกัน) | SEO title | ความยาว desc | อักขระเนื้อหา | H2/H3 | ลิงก์ภายใน | Intent | คีย์เวิร์ดเป้าหมาย | ปัญหา |
+|---|---|---|---|---|---|---|---|---|---|
+| `/` | นักสืบเอกชน มืออาชีพ รับงานสืบทั่วราชอาณาจักร | นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร \| Detective Pulse | 108 | — | หลายรายการ | 12+ | T | นักสืบเอกชน | ข้อความ About ที่ผิดกฎหมาย; ข้ออ้างรางวัล; QR WeChat; nav 3 ลิงก์ |
+| `/นักสืบชู้สาว/` | นักสืบชู้สาว งานสืบที่นักสืบถูกเรียกใช้มากที่สุดเป็น อันดับ 1 | เหมือนกัน ไม่มีแบรนด์ | 136 | 2,729 | 2/0 | 3 | T | นักสืบชู้สาว | เทมเพลตบทความ; ข้ออ้าง "อันดับ 1"; cannibalised ×3 |
+| `/นักสืบคดีชู้สาว-รับสืบค/` | นักสืบคดีชู้สาว รับสืบคดีชู้สาว ติดตามพฤติกรรมสามี-ภรรยา สืบชู้ สืบกิ๊ | เหมือนกัน | 230 (ยาวเกิน) | 2,429 | 0/0 | 0 | T | สืบชู้ | ซ้ำกับหน้าข้างต้น; ไม่มี H2; bullet ว่าง; ไม่มีลิงก์ → **301 ไป /นักสืบชู้สาว/** |
+| `/สิ่งที่ควรรู้ก่อนการจ้/` | สิ่งที่ควรรู้ก่อนการจ้างนักสืบเพื่อเก็บหลักฐานเพื่อฟ้องชู้ | เหมือนกัน | 251 (ยาวเกิน) | 1,399 | 0/0 | 0 | I→T | หลักฐานฟ้องชู้ | หน้าที่บางที่สุด; เขียนใหม่เป็นบทความเรื่องหลักฐาน |
+| `/จ้างนักสืบตามแฟน/` | จ้างนักสืบตามแฟน ก่อนการตัดสินใจเริ่มต้นชีวิตคู่ | จ้างนักสืบตามแฟน ก่อนการตัดสินใจแต่งงาน | 126 | 2,661 | 2/0 | 3 | T | สืบแฟน | หัวข้อใช้ได้; ต้องใช้เทมเพลต |
+| `/เช็คประวัติบุคคล/` | เช็คประวัติบุคคลจากชื่อ นามสกุล ให้พวกเรานักสืบเอกชนมืออาชีพช่วยคุณ | …นักสืบ Sherlock ช่วยคุณได้ | 138 | 3,419 | 3/0 | 5 | T | เช็คประวัติบุคคล | แบรนด์ผิด; bullet ที่ผิดกฎหมาย (รายการเดินบัญชี, เครดิตบูโร, ตรวจคนเข้าเมือง, ทะเบียนราษฎร) |
+| `/บริการตรวจสอบประวัติบุ/` | บริการตรวจสอบประวัติบุคคลอย่างละเอียด - เผยความจริงและความมั่นใจ | เหมือนกัน | 168 | 2,021 | 0/0 | 0 | T | ตรวจสอบประวัติ | ซ้ำ → **301 ไป /เช็คประวัติบุคคล/** |
+| `/บริการสืบประวัติบุคคลด/` | บริการสืบประวัติบุคคลด้านทรัพย์สิน ตรวจสอบทรัพย์สินต่างๆ | เหมือนกัน | 247 (ยาวเกิน) | 1,668 | 0/0 | 0 | T | สืบทรัพย์ | ซ้ำ → **301 ไป /สืบทรัพย์สิน/** |
+| `/สืบตามหาคน/` | สืบตามหาคน หายตัวไป ไม่ใช่เรื่องยากเมื่อคุณมีนักสืบเอกชน | เหมือนกัน | 138 | 3,934 | 4/0 | 2 | T | ตามหาคน | เทมเพลต |
+| `/จ้างนักสืบตามหาคน/` | จ้างนักสืบตามหาคน หาญาติ หาลูกหนี้ พวกเรารับจบ | จ้างนักสืบตามหาคน หาญาติ หาลูกหนี้ หาบุคคลสูญหาย | 129 | 2,253 | 2/0 | 3 | T | จ้างนักสืบตามหาคน | เกือบซ้ำ → รวมเข้า /สืบตามหาคน/ (คงไว้เป็นส่วนย่อย) |
+| `/สืบทรัพย์สิน/` | สืบทรัพย์สิน ของลูกหนี้ เรียกใช้งานนักสืบเอกชนได้ | เหมือนกัน | 140 | 4,239 | 4/0 | 2 | T | สืบทรัพย์ | เทมเพลต |
+| `/วิธีสืบทรัพย์ก่อนฟ้อง-เ/` | วิธีสืบทรัพย์ก่อนฟ้อง เริ่มต้นค้นหาความถูกต้องและประเมินมูลค่า | เหมือนกัน | 167 | 1,997 | 0/0 | 0 | I | สืบทรัพย์ก่อนฟ้อง | bullet ว่าง 3 จุด; ทั่วไป → 301 หรือเขียนใหม่เป็นบทความสำหรับทนายความ |
+| `/นักสืบไอที/` | นักสืบไอที – รับสืบงานบนโลกออนไลน์ลักษณะไหนบ้าง | เหมือนกัน + "?" | 140 | 4,115 | 4/5 | 2 | T | นักสืบไอที | เทมเพลต |
+| `/บริการสืบค้นข้อมูลไอที/` | บริการสืบค้นข้อมูลไอทีจาก Facebook, LINE, Instagram และสื่อออนไลน์ด้วย | **ว่าง** | 209 (ยาวเกิน) | 1,434 | 0/0 | 0 | T | สืบโซเชียล | ซ้ำ → **301 ไป /นักสืบไอที/** |
+| `/บริการตรวจสอบการใช้โทร/` | บริการตรวจสอบการใช้โทรศัพท์ ค้นประวัติการใช้งานอย่างละเอียด | **ว่าง** | 170 | 1,578 | 0/0 | 0 | T | ตรวจสอบการใช้โทรศัพท์ | **บริการที่ผิดกฎหมาย (ประวัติการโทร/ซิม)** → ลบ/301 |
+| `/จ้างนักสืบ/` | จ้างนักสืบ มืออาชีพ มีวิธีและขั้นตอนแบบไหน ไปดูกันเลย | เหมือนกัน | 125 | 2,941 | 2/0 | 6 | T/C | จ้างนักสืบ | ตัวเลือกเป็นหน้าศูนย์รวม |
+| `/จ้างนักสืบ-ราคาถูก/` | จ้างนักสืบ ราคาถูก งานดี นักสืบมืออาชีพ พูดคุยรายละเอียดก่อนรับงาน | จ้างนักสืบ ราคาถูก งานดี รวดเร็ว มืออาชีพ ปรึกษาได้ก่อนรับงาน | 131 | 2,899 | 2/0 | 4 | C | นักสืบ ราคาถูก | การวางตำแหน่ง "ราคาถูก" ขัดกับความน่าเชื่อถือ → 301 ไปหน้าราคา |
+| `/วิธีการคิดราคาจ้างนักส/` | วิธีการคิดราคาจ้างนักสืบเอกชน ทำไมราคาแตกต่างกัน? | เหมือนกัน | 130 | 1,706 | 0/0 | 0 | C | ค่าจ้างนักสืบ | → 301 ไปหน้าราคา |
+| `/จ้างนักสืบออนไลน์/` | จ้างนักสืบออนไลน์ Detectivepulse \| สะดวก รวดเร็ว และน่าเชื่อถือ | เหมือนกัน | 129 | 3,652 | 5/0 | 3 | T | จ้างนักสืบออนไลน์ | ผู้ชนะใน GSC ตามคอมเมนต์ในโค้ด; คงไว้ เขียนใหม่ |
+| `/การหานักสืบเชี่ยวชาญ-คำ/` | การหานักสืบเชี่ยวชาญ คำแนะนำและวิธีการหานักสืบที่ไว้ใจได้ | เหมือนกัน | 126 | 1,824 | 0/0 | 0 | I | หานักสืบ | → 301 ไป /จ้างนักสืบ/ |
+| `/บริษัทนักสืบ/` | บริษัทนักสืบ คืออะไร รับงานแบบไหนบ้าง | บริษัทนักสืบ คืออะไร งานสืบแบบไหนที่รับจ้างทำบ้าง | 123 | 2,724 | 2/0 | 5 | I/C | บริษัทนักสืบ | คงไว้เป็นบทความ |
+| `/บริษัทนักสืบมืออาชีพที/` | บริษัทนักสืบมืออาชีพที่ไว้ใจได้ บริการสืบทุกประเภทของคดี | เหมือนกัน | 225 (ยาวเกิน) | 2,295 | 0/0 | 0 | C | บริษัทนักสืบ | → 301 ไป /เกี่ยวกับเรา/ |
+| `/บริการนักสืบ/` | บริการนักสืบ มีอะไรบ้าง และ เราควรเลือกบริษัทนักสืบจากอะไร ? | เหมือนกัน | 133 | 4,184 | 4/0 | 3 | C | บริการนักสืบ | ทับซ้อนกับหน้าแรก; คงไว้เป็นบทความ |
+| `/บริการนักสืบชั้นนำเพื่/` | บริการนักสืบชั้นนำ เพื่อค้นหาข้อมูลและหลักฐานในคดีที่คุณต้องการ | เหมือนกัน | 150 | 2,187 | 0/0 | 0 | C | บริการนักสืบ | → 301 ไป /เกี่ยวกับเรา/ |
+| `/นักสืบ/` | นักสืบ ที่ดีควรมีคุณสมบัติ และ วิสัยทัศน์อย่างไร ? | เหมือนกัน | 135 | 5,544 | 5/0 | 3 | I | นักสืบ | เชิงข้อมูล; ลดระดับไปอยู่ในบทความ |
+| `/private-investigator/` | Private Investigator (นักสืบเอกชน) รับสืบงานสำหรับบุคคลทั่วไป | เหมือนกัน | 138 | 4,454 | 3/7 | 3 | C | private investigator | slug ภาษาอังกฤษบนเว็บไซต์ภาษาไทย; ซ้ำ intent กับ /en |
+| `/การฉ้อโกงออนไลน์และบทบ/` | การฉ้อโกงออนไลน์และบทบาทของนักสืบเอกชน | …นักสืบเอกชนนักสืบเอกชน (คำซ้ำ) | 122 | 2,208 | 0/4 | 2 | I | โกงออนไลน์ | แก้ title; บทความ |
+| `/ติดต่อนักสืบ/` | ติดต่อนักสืบ เมื่อความจริง มีค่ากว่าความสบายใจ | ติดต่อนักสืบ Detectivepulse มืออาชีพในการไขความจริงทุกปัญหา | 139 | 2,900 | 6/0 | 2 | T | ติดต่อนักสืบ | ลิงก์ว่าง `[]()`; หน้าติดต่อเป็นบทความ |
+| `/articles` | บทความทั้งหมด | บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน \| Detective Pulse | 141 | — | — | ทั้งหมด | I | — | ปะปนหน้าบริการกับโพสต์ |
+| `/careers`, `/privacy`, `/support` | — | — | — | — | — | — | — | — | privacy/support เป็นหน้าของแอป (noindex หรือเขียนใหม่) |
+| `/lp/*` (6) | หน้าแคมเปญ | `${keyword} \| Detective Pulse` | — | — | — | — | T | Ads | noindex (ถูกต้อง) |
+
+## A.2 หน้าภาษาอังกฤษ
+
+| URL | SEO title | ความยาว desc | จำนวนคำ | H2 | ลิงก์ภายใน | ปัญหา / การดำเนินการ |
+|---|---|---|---|---|---|---|
+| `/en` | Private Investigator in Thailand \| Detective Pulse | 172 (ยาว) | — | — | 12+ | Google แสดง title ภาษาไทยสำหรับ `/en/` (ตรวจสอบใน GSC); LINE เป็นอันดับแรก; FAQ "no office" |
+| `/en/private-investigator` | Private Investigator in Thailand for Individuals \| Detective Pulse | 162 | 658 | 3/7 | 4 | ซ้ำ intent กับ `/en` → 301 ไป `/en` |
+| `/en/cheating-spouse-investigator` | Cheating Spouse Investigator in Thailand \| Detective Pulse | 160 | 205 | 2 | 1 | บางเกินไปสำหรับหน้าทำเงิน; ยกระดับ |
+| `/en/catch-a-cheating-partner` | Infidelity Investigators — Catch a Cheating Partner \| Detective Pulse | 166 | 378 | 0 | 1 | → 301 ไป cheating-spouse |
+| `/en/evidence-for-adultery-lawsuit` | Evidence for an Adultery Lawsuit — What to Know \| Detective Pulse | 217 (ยาว) | 287 | 0 | 1 | คงไว้เป็นบทความ ตรวจทานโดยทนายความ |
+| `/en/investigate-partner-before-marriage` | Investigate a Partner Before Marriage \| Detective Pulse | 142 | 414 | 2 | 2 | รวมเข้ากับ thai-partner-verification |
+| `/en/background-check` | Background Check Services in Thailand \| Detective Pulse | 151 | 119 | 2 | 1 | 119 คำสำหรับบริการหลัก — ยกระดับ |
+| `/en/personal-background-check-service` | Detailed Personal Background Check Service \| Detective Pulse | 172 | 348 | 0 | 1 | → 301 ไป background-check |
+| `/en/asset-background-check` | Asset Background Check Service in Thailand \| Detective Pulse | 167 | 268 | 0 | 1 | → 301 ไป asset-investigation |
+| `/en/asset-investigation` | Asset Investigation & Debtor Asset Search in Thailand \| Detective Pulse | 159 | 125 | 2 | 1 | ยกระดับ |
+| `/en/trace-assets-before-lawsuit` | How to Trace Assets Before Filing a Lawsuit \| Detective Pulse | 136 | 362 | 0 | 1 | บทความ |
+| `/en/find-missing-person` | Find a Missing Person in Thailand \| Detective Pulse | 142 | 116 | 2 | 1 | ยกระดับ |
+| `/en/trace-people-and-debtors` | Find Missing People, Relatives and Debtors \| Detective Pulse | 172 | 397 | 2 | 2 | → รวม |
+| `/en/cyber-investigation` | Cyber & Online Investigation in Thailand \| Detective Pulse | 155 | 114 | 2 | 1 | ยกระดับ |
+| `/en/social-media-investigation` | Social-Media & Online Investigation Service \| Detective Pulse | 188 (ยาว) | 199 | 0 | 1 | → 301 ไป cyber |
+| `/en/phone-usage-investigation` | Phone Usage Investigation Service \| Detective Pulse | 176 | 242 | 0 | 0 | **บริการที่ผิดกฎหมาย** → ลบ/301 |
+| `/en/online-fraud-investigation` | Online Fraud & the Role of the Private Investigator \| Detective Pulse | 149 | 302 | 0/4 | 2 | บทความ |
+| `/en/hire-a-private-detective` | Hire a Private Detective in Thailand \| Detective Pulse | 159 | 130 | 3 | 1 | หน้าศูนย์รวม; ยกระดับ |
+| `/en/hire-a-detective-online` | Hire a Private Detective Online in Thailand \| Detective Pulse | 174 | 563 | 5 | 3 | → รวมเข้าหน้าศูนย์รวม |
+| `/en/how-to-find-a-good-detective` | How to Find a Skilled, Trustworthy Detective \| Detective Pulse | 138 | 324 | 0 | 1 | → รวมเข้าหน้าศูนย์รวม |
+| `/en/private-detective-pricing` | Private Detective Pricing — Why Costs Differ \| Detective Pulse | 149 | 311 | 0 | 1 | → 301 ไป /en/pricing |
+| `/en/affordable-private-detective` | Affordable Private Detective, Fast & Professional \| Detective Pulse | 176 | 382 | 2 | 4 | → 301 ไป /en/pricing |
+| `/en/trusted-detective-agency` | Trusted Professional Detective Agency in Thailand \| Detective Pulse | 163 | 321 | 0 | 1 | → 301 ไป /en/about |
+| `/en/leading-detective-services` | Leading Detective Services in Thailand \| Detective Pulse | 147 | 317 | 0 | 0 | → 301 ไป /en/about |
+| `/en/detective-services-overview` | Detective Services & How to Choose an Agency \| Detective Pulse | 145 | 485 | 4 | 3 | → 301 ไป /en/about หรือหน้าศูนย์รวม |
+| `/en/what-is-a-detective-agency` | What Is a Detective Agency & What Cases It Handles \| Detective Pulse | 165 | 375 | 2 | 4 | บทความ |
+| `/en/qualities-of-a-good-detective` | What Makes a Good Detective — Qualities & Vision \| Detective Pulse | 165 | 616 | 4 | 2 | บทความ (มูลค่าต่ำ) |
+| `/en/contact` | Contact a Private Investigator in Thailand \| Detective Pulse | 145 | 72 | 1 | 0 | ใช้ได้แต่บาง; เพิ่มกระบวนการ + เวลาตอบกลับ |
+
+## A.3 หน้าภาษาจีน (สร้างในรอบที่แล้ว ระบุเพื่อความครบถ้วน)
+
+`/zh` + `/zh/private-investigator-thailand`, `bangkok-investigation`, `relationship-investigation`, `background-check`, `find-person-thailand`, `business-due-diligence`, `on-site-verification`, `asset-investigation`, `how-it-works`, `pricing`, `case-studies` (noindex ขณะที่ยังว่าง), `about`, `partners`, `company-profile`, `contact`, + `/zh/bangkok`, `pattaya`, `phuket`, `chiang-mai`, `chonburi`, `samui`, + `/zh/articles/*` ปัญหาที่สังเกตพบ: ไม่มีปัญหาเชิงโครงสร้าง; ข้อเท็จจริงยังรอการยืนยัน (`16-facts`)
+
+## A.4 สรุปการตรวจสอบทางเทคนิค
+
+| รายการตรวจสอบ | ผลลัพธ์ |
+|---|---|
+| robots.txt | สร้างอัตโนมัติ (`robots.ts`): allow `/`, disallow เส้นทางของแอป, ประกาศ sitemap + host เรียบร้อย พิจารณาเพิ่ม `/review/`, `/lp/` (ถูก noindex ผ่าน meta อยู่แล้ว; การ disallow เป็นทางเลือก) |
+| XML sitemap | สร้างอัตโนมัติ: static + 27 TH + 27 EN + ZH + บทความ AI **ปัญหา:** `lastModified = now` สำหรับทุกรายการ static; รวม `/privacy`, `/support` |
+| Canonical | ทุก route ตั้ง canonical เป็นเส้นทางที่เสิร์ฟจริงแบบไม่มี trailing slash เรียบร้อย |
+| hreflang | หน้าแรก: th/en/zh-CN/x-default หน้าด้านใน TH/EN: th/en(/zh-CN) โดยไม่มี x-default ZH: zh-CN/th/en/x-default บทความ: th/en(/zh-CN) **ความไม่สอดคล้องเล็กน้อย** |
+| noindex | `/lp/*`, `/review/*`, `/zh/case-studies` (ขณะที่ยังว่าง); โฮสต์ที่ไม่ใช่การตลาดทั้งหมดผ่าน `X-Robots-Tag` เรียบร้อย |
+| Redirects | `/cn/*→/zh/*`, เศษซาก WP (`/sample-page`, `/home`, `/author/*`, `/category/*`, `/blog*`, `/feed*`) → 301 URL ที่มี trailing slash → 308 (ค่าเริ่มต้นของ Next) URL เก่าของ WP ถูกรักษาไว้ เรียบร้อย |
+| 404 | `dynamicParams=false` บน route TH/EN/LP/ZH → 404 ที่สะอาดสำหรับ slug ที่ไม่รู้จัก เรียบร้อย |
+| โครงสร้าง URL | slug ภาษาไทยแบบ percent-encoded ถูกรักษาไว้ (ยอมรับได้; อย่าเปลี่ยน) |
+| HTTP→HTTPS, www | ตั้ง header HSTS preload แล้ว; การตัด www จัดการโดยการตรวจสอบ host (สันนิษฐานว่ามี redirect ของ Vercel — **ไม่ได้ตรวจสอบ**) |
+| การเรนเดอร์ | เรนเดอร์ฝั่งเซิร์ฟเวอร์ทั้งหมด; metadata ถูกบังคับไว้ใน `<head>`; ไม่มีเนื้อหาที่เรนเดอร์เฉพาะฝั่ง client **ปัญหา:** ทุก route เป็น dynamic เพราะ root layout อ่าน `headers()` |
+| Core Web Vitals | **ไม่มีข้อมูลภาคสนาม** ระดับโค้ด: hero หลีกเลี่ยงแอนิเมชัน opacity บนองค์ประกอบ LCP; แผง FAB ใช้ตำแหน่ง absolute เพื่อหลีกเลี่ยง CLS; GTM แบบ deferred; ฟอนต์ผ่าน `next/font` โดย Playfair ตั้ง `preload:false`; รูปปก 70–207 KB ผ่าน `next/image` บันทึก Lighthouse ภายใน: Perf ~87 บนมือถือ, CLS 0 **สมมติฐาน:** ความเสี่ยง INP จาก overlay ฝั่ง client สี่ชั้นและชั้น backdrop-blur บน Android ระดับล่าง; ความเสี่ยง TTFB สำหรับผู้เข้าชมนอกเอเชียเนื่องจากการเรนเดอร์แบบ dynamic ใน `sin1` วิธีแก้: static/ISR สำหรับหน้า TH/EN (ย้ายการสลับ host ไปเป็น middleware rewrite แทน `headers()` ใน root layout), overlay เดียว, ทดสอบการลบ `backdrop-blur` บนมือถือ |
+
+---
+
+# APPENDIX B — ข้อเสนอแนะด้าน Schema (JSON-LD)
+
+ปัจจุบัน: `ProfessionalService` (+`AggregateRating`), `FAQPage` บนหน้าแรก; `BlogPosting` บนทุกหน้า `[slug]`; `BreadcrumbList`; ZH เพิ่ม `Service` หมายเหตุด้านนโยบาย: Google แสดง FAQ rich result เฉพาะเว็บไซต์หน่วยงานรัฐ/สุขภาพที่มีชื่อเสียงและน่าเชื่อถือตั้งแต่ปี 2023 แต่ `FAQPage` ยังคงเป็น structured data ที่ถูกต้องและมีประโยชน์สำหรับการสกัดข้อมูลโดย AI; `AggregateRating` บน `ProfessionalService` ยอมรับได้เฉพาะเมื่อรีวิวเกี่ยวกับธุรกิจจริงและมองเห็นได้บนหน้า (เป็นเช่นนั้น — รักษาจำนวนให้ตรงกับ Fastwork และลิงก์ไปยังแหล่งที่มา); อย่า markup snippet รีวิวจากบุคคลที่สามเป็น `Review` เว้นแต่จะแสดงพร้อมผู้เขียนและวันที่ (เป็นเช่นนั้น)
+
+**B.1 Organization / ProfessionalService (ทั้งเว็บไซต์ แสดงเวอร์ชัน TH; แปล `description` แต่คง `@id` ให้เหมือนกัน)**
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": ["ProfessionalService", "LocalBusiness"],
+  "@id": "https://detectivepulse.com/#business",
+  "name": "Detective Pulse",
+  "alternateName": ["นักสืบเอกชน Detective Pulse", "Detective Pulse Thailand"],
+  "legalName": "<registered entity name — Owner to confirm>",
+  "url": "https://detectivepulse.com/",
+  "logo": "https://detectivepulse.com/marketing/logo.png",
+  "image": "https://detectivepulse.com/marketing/logo.png",
+  "description": "นักสืบเอกชนมืออาชีพ ตั้งแต่ปี 2016 รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ และตรวจสอบธุรกิจ ด้วยวิธีที่ถูกกฎหมาย ทั่วประเทศไทย",
+  "foundingDate": "2016",
+  "telephone": "+66968461406",
+  "email": "detectivepluse@gmail.com",
+  "address": { "@type": "PostalAddress", "addressLocality": "Bangkok", "addressCountry": "TH" },
+  "areaServed": [
+    { "@type": "Country", "name": "Thailand" },
+    { "@type": "City", "name": "Bangkok" }, { "@type": "City", "name": "Pattaya" },
+    { "@type": "City", "name": "Phuket" }, { "@type": "City", "name": "Chiang Mai" }
+  ],
+  "knowsLanguage": ["th", "en", "zh-CN"],
+  "priceRange": "฿฿",
+  "openingHoursSpecification": [{ "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "opens": "08:00", "closes": "22:00" }],
+  "contactPoint": [
+    { "@type": "ContactPoint", "contactType": "customer service", "telephone": "+66968461406", "availableLanguage": ["th","en"] },
+    { "@type": "ContactPoint", "contactType": "customer service", "url": "https://lin.ee/SSqk98x", "availableLanguage": ["th"] },
+    { "@type": "ContactPoint", "contactType": "customer service", "url": "https://api.whatsapp.com/send?phone=+66968461406", "availableLanguage": ["en"] }
+  ],
+  "sameAs": [
+    "https://www.facebook.com/Detectivepluse.th",
+    "https://fastwork.co/user/<profile>",
+    "https://www.youtube.com/watch?v=-sYx6i8OBF0",
+    "https://lin.ee/SSqk98x",
+    "<Google Business Profile URL once live>"
+  ],
+  "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "63", "bestRating": "5", "worstRating": "1" },
+  "hasOfferCatalog": {
+    "@type": "OfferCatalog", "name": "บริการนักสืบ",
+    "itemListElement": [
+      { "@type": "Offer", "itemOffered": { "@type": "Service", "@id": "https://detectivepulse.com/นักสืบชู้สาว#service" } },
+      { "@type": "Offer", "itemOffered": { "@type": "Service", "@id": "https://detectivepulse.com/เช็คประวัติบุคคล#service" } }
+    ]
+  }
+}
+```
+
+**B.2 Service (แต่ละหน้าบริการ)**
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "@id": "https://detectivepulse.com/นักสืบชู้สาว#service",
+  "name": "นักสืบชู้สาว — สืบชู้ ติดตามพฤติกรรม เก็บหลักฐาน",
+  "serviceType": "Infidelity investigation",
+  "description": "ติดตามพฤติกรรมในที่สาธารณะอย่างถูกกฎหมาย หลักฐานภาพ/วิดีโอพร้อมไทม์ไลน์ รายงานเป็นลายลักษณ์อักษร",
+  "provider": { "@id": "https://detectivepulse.com/#business" },
+  "areaServed": { "@type": "Country", "name": "Thailand" },
+  "availableChannel": { "@type": "ServiceChannel", "serviceUrl": "https://detectivepulse.com/ติดต่อนักสืบ", "availableLanguage": ["th","en"] },
+  "offers": { "@type": "Offer", "priceCurrency": "THB", "price": "<starting price if published>", "priceSpecification": { "@type": "UnitPriceSpecification", "unitText": "per day" } },
+  "inLanguage": "th",
+  "url": "https://detectivepulse.com/นักสืบชู้สาว"
+}
+```
+
+**B.3 FAQPage** — คงแพตเทิร์นเดิม (Q&A ที่มองเห็นได้ + JSON-LD จาก array เดียวกัน) เพิ่ม array FAQ ต่อบริการ **B.4 BreadcrumbList** — มีอยู่แล้ว; เปลี่ยนเส้นทางสำหรับหน้าบริการเป็น Home › บริการ › Service **B.5 Article/BlogPosting** — เพิ่ม `author` เป็น `Person` (หัวหน้านักสืบ) พร้อม `jobTitle` และ `worksFor` → `#business`, `dateModified` จริง, `inLanguage` **B.6 Person** — เอนทิตี `Person` หนึ่งรายการสำหรับหัวหน้านักสืบบนหน้า About (`name` อาจเป็นชื่อต้น + อักษรย่อ; `knowsAbout`: private investigation, surveillance, OSINT, Thai family law evidence) **B.7 Review** — เฉพาะที่แสดงรีวิวรายบุคคลพร้อมผู้เขียนและวันที่ (testimonial บนหน้าแรกปัจจุบันเข้าเกณฑ์; เพิ่มออบเจ็กต์ `Review` ที่อ้างอิง `itemReviewed: #business`) **B.8 ห้ามใช้:** `ProfessionalService` บนหน้าบทความ; `HowTo` (เลิกใช้ในผลการค้นหาของ Google แล้ว); `Event`; จำนวน `Review` ปลอม
+
+---
+
+# APPENDIX C — สถาปัตยกรรมการลิงก์ภายในและแผนที่การรวมหน้า
+
+**C.1 แผนที่ลิงก์ (สถานะเป้าหมาย)**
+
+```
+Home ─┬─► 6 TH service pages ─┬─► Pricing ─► Contact
+      │                       ├─► How it works
+      │                       ├─► Bangkok (location) ─► service pages
+      │                       ├─► 2–3 case studies ─► same service
+      │                       └─► 2–3 cluster articles ─► back to service (anchor = service keyword)
+      ├─► About ─► Case studies, Careers
+      ├─► Bangkok, Pattaya… ─► services, cases
+      └─► Articles hub ─► articles ─► services
+Nav: Services (dropdown) · Pricing · Bangkok · Case studies · About · Contact · Lang
+Footer: all services · locations · articles · privacy · careers (TH/EN, as ZH already does)
+```
+
+**C.2 โอกาสลิงก์เชิงบริบทที่ชัดเจน (ตัวอย่าง)**
+
+| จาก | Anchor | ไปยัง |
+|---|---|---|
+| ส่วน "ค่าใช้จ่าย" ของ `/นักสืบชู้สาว/` | ราคานักสืบชู้สาว | `/ราคานักสืบ/` |
+| ส่วนกฎหมายของ `/นักสืบชู้สาว/` | หลักฐานฟ้องชู้ที่ศาลรับฟัง | `/สิ่งที่ควรรู้ก่อนการจ้/` (เขียนใหม่แล้ว) |
+| บทนำของ `/จ้างนักสืบตามแฟน/` | นักสืบชู้สาว | `/นักสืบชู้สาว/` |
+| ย่อหน้า B2B ของ `/เช็คประวัติบุคคล/` | ตรวจสอบประวัติพนักงาน | `/ตรวจสอบประวัติพนักงาน/` |
+| ย่อหน้าลูกหนี้ของ `/สืบตามหาคน/` | สืบทรัพย์สินลูกหนี้ | `/สืบทรัพย์สิน/` |
+| บทนำของ `/สืบทรัพย์สิน/` | ตามหาลูกหนี้ที่หลบหนี | `/สืบตามหาคน/` |
+| ทุกหน้าบริการ TH | นักสืบเอกชน กรุงเทพ | `/นักสืบกรุงเทพ/` |
+| `/en/cheating-spouse-investigator` | Thai partner verification before you commit | `/en/thai-partner-verification` |
+| `/en/thai-partner-verification` | romance scam investigation | `/en/romance-scam-investigation` |
+| ย่อหน้าองค์กรของ `/en/background-check` | due diligence on a Thai company | `/en/due-diligence-thailand` |
+| ทุกหน้าบริการ `/en` | how a remote case works | `/en/how-it-works` |
+| ทุกหน้าบริการ `/en` | private investigator in Bangkok | `/en/private-investigator-bangkok` |
+| หน้าบริการ ZH (มีอยู่แล้ว) | หน้าเทียบเท่าภาษาอังกฤษ/ไทย | hreflang แบบสองทาง + ตัวสลับภาษา (มีอยู่แล้ว) |
+
+**C.3 แผนที่การรวมหน้าด้วย 301 (ทำใน redirects ของ `next.config.ts`; อัปเดต `EN_TO_TH`, sitemap และ nav)**
+
+| จาก | ไปยัง |
+|---|---|
+| `/นักสืบคดีชู้สาว-รับสืบค/` | `/นักสืบชู้สาว/` |
+| `/บริการตรวจสอบประวัติบุ/` | `/เช็คประวัติบุคคล/` |
+| `/บริการสืบประวัติบุคคลด/` | `/สืบทรัพย์สิน/` |
+| `/วิธีสืบทรัพย์ก่อนฟ้อง-เ/` | `/สืบทรัพย์สิน/` (หรือคงไว้เป็นบทความที่เขียนใหม่) |
+| `/จ้างนักสืบตามหาคน/` | `/สืบตามหาคน/` |
+| `/บริการสืบค้นข้อมูลไอที/`, `/บริการตรวจสอบการใช้โทร/` | `/นักสืบไอที/` |
+| `/จ้างนักสืบ-ราคาถูก/`, `/วิธีการคิดราคาจ้างนักส/` | `/ราคานักสืบ/` |
+| `/การหานักสืบเชี่ยวชาญ-คำ/` | `/จ้างนักสืบ/` |
+| `/บริษัทนักสืบมืออาชีพที/`, `/บริการนักสืบชั้นนำเพื่/` | `/เกี่ยวกับเรา/` |
+| `/en/private-investigator` | `/en` |
+| `/en/catch-a-cheating-partner` | `/en/cheating-spouse-investigator` |
+| `/en/personal-background-check-service` | `/en/background-check` |
+| `/en/asset-background-check`, `/en/trace-assets-before-lawsuit` | `/en/asset-investigation` |
+| `/en/trace-people-and-debtors` | `/en/find-missing-person` |
+| `/en/social-media-investigation`, `/en/phone-usage-investigation` | `/en/cyber-investigation` |
+| `/en/hire-a-detective-online`, `/en/how-to-find-a-good-detective` | `/en/hire-a-private-detective` |
+| `/en/private-detective-pricing`, `/en/affordable-private-detective` | `/en/pricing` |
+| `/en/trusted-detective-agency`, `/en/leading-detective-services`, `/en/detective-services-overview` | `/en/about` |
+| `/en/investigate-partner-before-marriage` | `/en/thai-partner-verification` |
+
+ก่อน redirect ให้ตรวจสอบใน GSC ว่า URL เหล่านี้รายการใดมี impression ที่มีนัยสำคัญ และย้ายประโยคที่เป็นเอกลักษณ์ของหน้านั้นไปไว้ในหน้าปลายทาง
+
+---
+
+# APPENDIX D — ข้อเท็จจริงที่เจ้าของต้องยืนยันก่อนเผยแพร่
+
+สืบทอดมาจาก `docs/china-market/16-facts-requiring-confirmation.md` บวกรายการใหม่ที่พบจากการตรวจสอบครั้งนี้:
+
+- ชื่อนิติบุคคลและเลขทะเบียน; ที่อยู่ที่ใช้สำหรับการยืนยันกับ Google ได้ (ซ่อนไว้ได้)
+- บริการใดที่ให้บริการจริงและด้วยวิธีที่ถูกกฎหมายแบบใด (ยืนยันการลบข้อความอ้างเรื่องธนาคาร/เครดิต/ตรวจคนเข้าเมือง/ประวัติโทรศัพท์)
+- รางวัลใด ๆ ที่สามารถระบุชื่อและวันที่ได้; มิฉะนั้นให้ลบข้ออ้างออก
+- คำมั่นเรื่องเวลาตอบกลับ (เช่น ภายใน 1 ชั่วโมง, 08:00–22:00)
+- วิธีชำระเงินสำหรับลูกค้าต่างประเทศ; ความสามารถในการออกใบเสร็จ/ใบแจ้งหนี้
+- ช่วงราคาที่บริษัทยินดีเผยแพร่ (ต่อบริการหรือต่อวัน)
+- ชื่อต้น/บทบาทของหัวหน้านักสืบที่เปิดเผยต่อสาธารณะได้; ขนาดทีม; ภาษาที่ให้บริการ
+- URL โปรไฟล์ Fastwork; การอนุญาตให้อ้างอิง testimonial ทั้งหก
+- เคสที่ปกปิดตัวตนหกเคสสำหรับชุดกรณีศึกษาชุดแรก
+- LINE OA URL เดียวที่จะใช้ทุกที่

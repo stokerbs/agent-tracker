@@ -275,8 +275,8 @@ export function MarketingHome() {
             </TrackedLink>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <TrackedLink href={CONTACT.phoneTel} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</TrackedLink>
-            <TrackedLink href={CONTACT.mailto} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</TrackedLink>
+            <TrackedLink href={CONTACT.phoneTel} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> {CONTACT.phoneDisplay}</TrackedLink>
+            <TrackedLink href={CONTACT.mailto} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</TrackedLink>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}

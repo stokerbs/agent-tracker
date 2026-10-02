@@ -14,19 +14,19 @@ const COPY: Record<MarketingLang, {
     eyebrow: "ปรึกษาฟรี · เป็นความลับ",
     title: "เดี๋ยวก่อน — ให้เราช่วยไหม?",
     body: "ปรึกษานักสืบฟรี ไม่มีค่าใช้จ่าย ข้อมูลทุกอย่างเก็บเป็นความลับ ทักมาคุยได้เลย",
-    line: "ปรึกษาฟรีทาง LINE", whatsapp: "WhatsApp", call: "โทร 096 846 1406", dismiss: "ไว้ก่อน", close: "ปิด",
+    line: "ปรึกษาฟรีทาง LINE", whatsapp: "WhatsApp", call: `โทร ${CONTACT.phoneDisplay}`, dismiss: "ไว้ก่อน", close: "ปิด",
   },
   en: {
     eyebrow: "Free consult · Confidential",
     title: "Wait — can we help?",
     body: "Free consultation with an investigator, no obligation, always confidential. Reach out and let's talk.",
-    line: "Free consult on LINE", whatsapp: "WhatsApp", call: "Call 096 846 1406", dismiss: "Maybe later", close: "Close",
+    line: "Free consult on LINE", whatsapp: "WhatsApp", call: `Call ${CONTACT.phoneDisplay}`, dismiss: "Maybe later", close: "Close",
   },
   zh: {
     eyebrow: "免费咨询 · 严格保密",
     title: "先别走 —— 需要帮忙吗？",
     body: "免费咨询侦探，无任何义务，所有信息严格保密。随时联系我们聊聊。",
-    line: "LINE 免费咨询", whatsapp: "WhatsApp", call: "致电 096 846 1406", dismiss: "稍后再说", close: "关闭",
+    line: "LINE 免费咨询", whatsapp: "WhatsApp", call: `致电 ${CONTACT.phoneDisplay}`, dismiss: "稍后再说", close: "关闭",
   },
 };
 
