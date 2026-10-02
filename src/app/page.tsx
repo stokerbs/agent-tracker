@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { isMarketingHost } from "@/lib/marketing/host";
 import { MarketingHome } from "@/components/marketing/marketing-home";
+import { FACTS } from "@/lib/marketing/facts";
 
 // On detectivepulse.com "/" is the public PI marketing home; on the app host
 // (.app, previews, localhost) it's the app's product landing.
@@ -23,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!isMarketingHost(host)) return {};
   const title = "นักสืบเอกชน Detective Pulse | สืบชู้สาว เช็คประวัติ ตามหาคน ทั่วไทย";
   const description =
-    "นักสืบเอกชนมืออาชีพ ตั้งแต่ปี 2016 รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ กรุงเทพฯ และทั่วประเทศ ทำงานถูกกฎหมาย เป็นความลับ ปรึกษาฟรีทาง LINE";
+    `นักสืบเอกชนมืออาชีพ ตั้งแต่ปี ${FACTS.confirmed.foundingYear} รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ กรุงเทพฯ และทั่วประเทศ ทำงานถูกกฎหมาย เป็นความลับ ปรึกษาฟรีทาง LINE`;
   const ogImage = { url: "https://detectivepulse.com/api/og", width: 1200, height: 630 };
   return {
     // Absolute: the root layout template ("%s · Detective Pulse") must not append a second brand.

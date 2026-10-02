@@ -4,6 +4,7 @@ import { FAQ_TH, FAQ_EN } from "./faq";
 import { ZH_COMPANY } from "./zh/company";
 import { ZH_PAGES } from "./zh/registry";
 import { FAQ_ZH_HOME } from "./zh/home";
+import { SERVICE_PAGES } from "@/lib/marketing/pages";
 
 describe("business facts registry", () => {
   it("carries the pre-audit figures and keeps unconfirmed facts empty", () => {
@@ -32,6 +33,9 @@ describe("business facts registry", () => {
     }
     expect(FAQ_TH.find((f) => f.q.includes("สำนักงาน"))?.a).toBe(officeAnswer("th"));
     expect(FAQ_EN.find((f) => f.q.includes("office"))?.a).toBe(officeAnswer("en"));
+    // Registry about pages (TH/EN) must reuse the single office statement too.
+    expect(SERVICE_PAGES.th.find((p) => p.slug === "เกี่ยวกับเรา")!.faq.find((f) => f.q.includes("สำนักงาน"))?.a).toBe(officeAnswer("th"));
+    expect(SERVICE_PAGES.en.find((p) => p.slug === "about")!.faq.find((f) => /office/i.test(f.q))?.a).toBe(officeAnswer("en"));
     const about = ZH_PAGES.find((p) => p.slug === "about")!;
     expect(about.faq.find((f) => f.q.includes("办公室"))?.a).toBe(officeAnswer("zh"));
     for (const f of FAQ_ZH_HOME) expect(f.a).not.toMatch(/到访泰国办公室|实体办公室/);

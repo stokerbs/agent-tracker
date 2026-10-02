@@ -1,4 +1,7 @@
 import type { MarketingServicePage } from "./types";
+import { FACTS, officeAnswer } from "@/lib/marketing/facts";
+
+const YEAR = FACTS.confirmed.foundingYear;
 
 /**
  * English service / info / location pages. Written for the foreign client's
@@ -556,11 +559,11 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     slug: "about",
     kind: "info",
     service: "about",
-    title: "About Us — Private Investigators in Thailand Since 2016",
-    description: "A Thai private investigation agency working within the law since 2016 for individuals, lawyers and businesses, in Thai, English and Chinese, nationwide.",
+    title: `About Us — Private Investigators in Thailand Since ${YEAR}`,
+    description: `A Thai private investigation agency working within the law since ${YEAR} for individuals, lawyers and businesses, in Thai, English and Chinese, nationwide.`,
     h1: "Who We Are and How We Work",
     eyebrow: "Dossier · About",
-    intro: "Detective Pulse has provided private investigation services in Thailand since 2016 for individuals, lawyers and businesses, many of them abroad. We believe good investigative work must be lawful, verifiable and reported honestly — including when the finding is \"nothing unusual\".",
+    intro: `Detective Pulse has provided private investigation services in Thailand since ${YEAR} for individuals, lawyers and businesses, many of them abroad. We believe good investigative work must be lawful, verifiable and reported honestly — including when the finding is "nothing unusual"`,
     sections: [
       {
         heading: "What we do",
@@ -587,7 +590,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       },
     ],
     faq: [
-      { q: "Do you have an office I can visit?", a: "Our investigators work primarily in the field. Case discussions are arranged at the client's convenience — online, by phone or in person in Bangkok." },
+      { q: "Do you have an office I can visit?", a: officeAnswer("en") },
       { q: "Do you work outside Bangkok?", a: "Yes, nationwide, with travel and accommodation itemised in the quote." },
       { q: "Do you work with lawyers and companies?", a: "Yes, they are a key client group, especially for asset tracing, locating people and background checks." },
       { q: "How long do you keep client data?", a: "Only as long as the assignment and our agreement require; it is deleted on schedule or on request within the law." },

@@ -1,5 +1,5 @@
 import type { ZhPage } from "./types";
-import { officeAnswer } from "@/lib/marketing/facts";
+import { FACTS, officeAnswer } from "@/lib/marketing/facts";
 
 /**
  * Service + info pages for the Chinese market site (/zh/<slug>). Copy is
@@ -491,10 +491,10 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     kind: "info",
     service: "general",
     title: "关于 Detective Pulse — 泰国本地调查团队",
-    description: "2016 年起在泰国运营的专业调查团队。了解我们的团队、覆盖范围、保密政策与沟通方式。",
+    description: `${FACTS.confirmed.foundingYear} 年起在泰国运营的专业调查团队。了解我们的团队、覆盖范围、保密政策与沟通方式。`,
     h1: "关于 Detective Pulse",
     eyebrow: "Dossier · 关于我们",
-    intro: "Detective Pulse 是一家在泰国运营的专业调查公司，自 2016 年起为泰国本地与海外客户提供调查与核实服务。中文客户服务团队负责您的沟通、进度与报告。",
+    intro: `Detective Pulse 是一家在泰国运营的专业调查公司，自 ${FACTS.confirmed.foundingYear} 年起为泰国本地与海外客户提供调查与核实服务。中文客户服务团队负责您的沟通、进度与报告。`,
     sections: [
       {
         heading: "我们是谁",

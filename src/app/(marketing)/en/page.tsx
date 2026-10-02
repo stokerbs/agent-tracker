@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { MarketingHomeEN } from "@/components/marketing/marketing-home-en";
+import { FACTS } from "@/lib/marketing/facts";
 
 export const metadata: Metadata = {
   title: "Private Investigator Thailand — Discreet, Lawful, Nationwide",
   description:
-    "Professional private investigators in Thailand since 2016. Infidelity, partner verification, background checks, missing persons, asset tracing and due diligence by lawful methods. Free, confidential consultation.",
+    `Professional private investigators in Thailand since ${FACTS.confirmed.foundingYear}. Infidelity, partner verification, background checks, missing persons, asset tracing and due diligence by lawful methods. Free, confidential consultation.`,
   alternates: { canonical: "/en", languages: { en: "/en", th: "/", "zh-CN": "/zh", "x-default": "/en" } },
   openGraph: {
     type: "website",
