@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { decideArticle, getArticleByToken, setDraftBodies } from "@/lib/marketing/articles-db";
 import { ZH_SERVICE_PAGE, articleServiceKey } from "@/lib/marketing/zh/nav";
 import { isCalendarTopic } from "@/lib/marketing/content-calendar";
-import { hasHumanParagraphMarker, insertHumanParagraph, isValidHumanParagraph } from "@/lib/marketing/human-paragraph";
+import { insertHumanParagraph, isValidHumanParagraph, needsHumanParagraph } from "@/lib/marketing/human-paragraph";
+import { logAudit } from "@/lib/audit";
 import { servicePathForKey } from "@/lib/marketing/pages";
 import { reportError } from "@/lib/errors";
 
@@ -12,19 +13,13 @@ export type ApproveResult =
   | { ok: true }
   | { ok: false; error: "not_found" | "human_paragraph_required" | "human_paragraph_invalid" | "update_failed" };
 
-/** Does this draft need the owner's first-hand paragraph before it may publish?
- *  Content-calendar topics always do; so does any draft still carrying the marker. */
-export async function needsHumanParagraph(a: { topic: string; th_body: string; en_body: string }): Promise<boolean> {
-  return isCalendarTopic(a.topic) || hasHumanParagraphMarker(a.th_body) || hasHumanParagraphMarker(a.en_body);
-}
-
 /** Approve a draft (token-gated). Calendar drafts publish only with the owner's
  *  paragraph, spliced into the TH and EN bodies first. Then refreshes the
  *  article lists and the TH/EN/ZH service pages that list related articles. */
 export async function approveArticle(token: string, formData?: FormData): Promise<ApproveResult> {
   const draft = await getArticleByToken(token);
   if (!draft) return { ok: false, error: "not_found" };
-  if (draft.status === "draft" && (await needsHumanParagraph(draft))) {
+  if (draft.status === "draft" && needsHumanParagraph(draft, isCalendarTopic)) {
     const th = formData?.get("humanParagraphTh");
     const en = formData?.get("humanParagraphEn");
     if (typeof th !== "string" || !th.trim() || typeof en !== "string" || !en.trim()) {
@@ -41,6 +36,8 @@ export async function approveArticle(token: string, formData?: FormData): Promis
       reportError(e, "review:human-paragraph");
       return { ok: false, error: "update_failed" };
     }
+    // The one-time token now authorises authoring text into a public page — audit it (no actor: token-gated).
+    await logAudit({ actorId: null, action: "ARTICLE_HUMAN_PARAGRAPH", entity: "marketing_articles", entityId: draft.id, metadata: { topic: draft.topic, thChars: th.trim().length, enChars: en.trim().length } });
     console.info("[review] human paragraph added", { topic: draft.topic, thChars: th.trim().length, enChars: en.trim().length });
   }
   const status = await decideArticle(token, "published");

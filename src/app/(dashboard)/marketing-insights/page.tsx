@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Users, MessageSquare, UserPlus, FileText, CheckCircle2, ExternalLink, Target } from "lucide-react";
 import { requireRole } from "@/lib/auth";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeadsChart, type WeeklyPoint } from "@/components/marketing/insights-chart";
@@ -47,6 +47,7 @@ const LINKS: { label: string; sub: string; href: string }[] = [
 export default async function MarketingInsightsPage() {
   await requireRole(["admin"]);
   const svc = createServiceClient();
+  const rls = await createClient(); // admin RLS read for ad spend (migration 0128)
   const since = new Date(Date.now() - WEEKS * 7 * DAY);
 
   const [leadsRes, careersRes, articlesRes, funnelRes, spendRes] = await Promise.all([
@@ -57,7 +58,7 @@ export default async function MarketingInsightsPage() {
     // conversions lag first contact by weeks.
     svc.from("marketing_leads").select("locale, source, stage, quoted_value, final_revenue, converted_at, service, utm_source, channel, lead_quality, created_at"),
     // Imported ad cost for CPL (migration 0128); last 90 days.
-    svc.from("marketing_ad_spend").select("platform, locale, cost, spend_date").gte("spend_date", new Date(Date.now() - 90 * DAY).toISOString().slice(0, 10)),
+    rls.from("marketing_ad_spend").select("platform, locale, cost, spend_date").gte("spend_date", new Date(Date.now() - 90 * DAY).toISOString().slice(0, 10)),
   ]);
   if (funnelRes.error) reportError(funnelRes.error, "marketing-insights:funnel");
   const funnelRows = (funnelRes.data as FunnelLeadRow[] | null) ?? [];

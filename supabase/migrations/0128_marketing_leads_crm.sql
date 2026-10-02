@@ -81,10 +81,10 @@ create policy "admin read ad spend" on public.marketing_ad_spend
   for select using (public.is_admin());
 drop policy if exists "admin write ad spend" on public.marketing_ad_spend;
 create policy "admin write ad spend" on public.marketing_ad_spend
-  for insert with check (public.is_admin());
+  for insert with check (public.is_admin() and (imported_by is null or imported_by = auth.uid()));
 drop policy if exists "admin update ad spend" on public.marketing_ad_spend;
 create policy "admin update ad spend" on public.marketing_ad_spend
-  for update using (public.is_admin()) with check (public.is_admin());
+  for update using (public.is_admin()) with check (public.is_admin() and (imported_by is null or imported_by = auth.uid()));
 drop policy if exists "admin delete ad spend" on public.marketing_ad_spend;
 create policy "admin delete ad spend" on public.marketing_ad_spend
   for delete using (public.is_admin());

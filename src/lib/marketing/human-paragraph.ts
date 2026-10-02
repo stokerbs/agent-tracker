@@ -10,6 +10,12 @@ export function hasHumanParagraphMarker(body: string): boolean {
   return body.includes(HUMAN_PARAGRAPH_MARKER);
 }
 
+/** Does a draft need the owner's first-hand paragraph before it may publish?
+ *  Content-calendar topics always do; so does any draft still carrying the marker. */
+export function needsHumanParagraph(a: { topic: string; th_body: string; en_body: string }, isCalendar: (topic: string) => boolean): boolean {
+  return isCalendar(a.topic) || hasHumanParagraphMarker(a.th_body) || hasHumanParagraphMarker(a.en_body);
+}
+
 /** Bounds for the owner's paragraph (characters). */
 export const HUMAN_PARAGRAPH_MIN = 120;
 export const HUMAN_PARAGRAPH_MAX = 1500;

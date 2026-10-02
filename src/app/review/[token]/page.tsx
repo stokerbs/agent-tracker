@@ -4,7 +4,9 @@ import remarkGfm from "remark-gfm";
 import { CheckCircle2, XCircle, ExternalLink } from "lucide-react";
 import { getArticleByToken } from "@/lib/marketing/articles-db";
 import { mdComponents } from "@/components/marketing/markdown";
-import { rejectArticle, needsHumanParagraph } from "./actions";
+import { rejectArticle } from "./actions";
+import { needsHumanParagraph } from "@/lib/marketing/human-paragraph";
+import { isCalendarTopic } from "@/lib/marketing/content-calendar";
 import { ApproveForm } from "./approve-form";
 
 // Private approval surface — never index it.
@@ -42,7 +44,7 @@ export default async function ReviewPage(
 
             {/* Approve / reject */}
             <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-start gap-3 border-b border-border/60 bg-background/90 px-4 py-3 backdrop-blur">
-              <ApproveForm token={token} requireHuman={await needsHumanParagraph(a)} />
+              <ApproveForm token={token} requireHuman={needsHumanParagraph(a, isCalendarTopic)} />
               <form action={rejectArticle.bind(null, token)}>
                 <button className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 font-medium hover:bg-muted">
                   <XCircle className="h-4 w-4" /> ไม่อนุมัติ
