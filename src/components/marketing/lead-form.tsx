@@ -81,7 +81,7 @@ const COPY = {
 
 const LINE_URL = CONTACT.lineUrl;
 
-export function LeadForm({ lang = "th" }: { lang?: Lang }) {
+export function LeadForm({ lang = "th", defaultCaseType }: { lang?: Lang; defaultCaseType?: string }) {
   const t = COPY[lang];
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState<string>("");
@@ -188,7 +188,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
         <input name="phone" required maxLength={30} placeholder={t.phone} className={inputCls} />
       </div>
       <input name="email" type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder={t.email} className={inputCls} />
-      <select name="caseType" defaultValue="" className={inputCls} aria-label={t.caseType}>
+      <select name="caseType" defaultValue={defaultCaseType && (t.caseOptions as readonly string[]).includes(defaultCaseType) ? defaultCaseType : ""} className={inputCls} aria-label={t.caseType}>
         <option value="" disabled>{t.choose}</option>
         {t.caseOptions.map((o) => (
           <option key={o} value={o}>{o}</option>

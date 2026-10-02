@@ -80,7 +80,7 @@ export function MarketingHome() {
         titleLead="นักสืบเอกชน"
         titleAccent="มืออาชีพ"
         titleRest="รับงานสืบทั่วราชอาณาจักร"
-        subtitle="นักสืบเอกชนประสบการณ์สูง ตั้งแต่ปี 2016 ทำงานภายใต้กรอบกฎหมาย รายงานพร้อมหลักฐานชัดเจน และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
+        subtitle={`นักสืบเอกชนประสบการณ์สูง ตั้งแต่ปี ${FACTS.confirmed.foundingYear} ทำงานภายใต้กรอบกฎหมาย รายงานพร้อมหลักฐานชัดเจน และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ`}
         ctas={[
           { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
           { href: CONTACT.phoneTel, label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },

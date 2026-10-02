@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { FACTS, officeAnswer } from "./facts";
-import { FAQ_TH, FAQ_EN, FAQ_ZH } from "./faq";
+import { FAQ_TH, FAQ_EN } from "./faq";
 import { ZH_COMPANY } from "./zh/company";
+import { ZH_PAGES } from "./zh/registry";
+import { FAQ_ZH_HOME } from "./zh/home";
 
 describe("business facts registry", () => {
   it("carries the pre-audit figures and keeps unconfirmed facts empty", () => {
@@ -30,6 +32,8 @@ describe("business facts registry", () => {
     }
     expect(FAQ_TH.find((f) => f.q.includes("สำนักงาน"))?.a).toBe(officeAnswer("th"));
     expect(FAQ_EN.find((f) => f.q.includes("office"))?.a).toBe(officeAnswer("en"));
-    expect(FAQ_ZH.find((f) => f.q.includes("办公室"))?.a).toBe(officeAnswer("zh"));
+    const about = ZH_PAGES.find((p) => p.slug === "about")!;
+    expect(about.faq.find((f) => f.q.includes("办公室"))?.a).toBe(officeAnswer("zh"));
+    for (const f of FAQ_ZH_HOME) expect(f.a).not.toMatch(/到访泰国办公室|实体办公室/);
   });
 });

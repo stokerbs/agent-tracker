@@ -52,7 +52,7 @@ export const KEYWORD_TOPICS: KeywordTopic[] = [
   { th: "หานักสืบมืออาชีพ", en: "how to hire a private investigator", zh: "如何聘请私家侦探", angle: "วิธีเลือกนักสืบที่ไว้ใจได้ ไม่โดนหลอก" },
   { th: "ตามหาคนโกงออนไลน์", en: "online scam / fraud investigator", zh: "网络诈骗调查", angle: "โดนโกงออนไลน์ ตามหาคนโกง มีโอกาสตามเงินคืนไหม" },
   { th: "นักสืบเอกชนทั่วไทย", en: "private investigator thailand", zh: "泰国私家侦探", angle: "บริการสืบทั่วราชอาณาจักร ครอบคลุมพื้นที่ใดบ้าง" },
-  { th: "สำนักงานนักสืบ", en: "private investigator office", zh: "私家侦探事务所", angle: "นักสืบเอกชนทำงานอย่างไร (ฟรีแลนซ์ ไม่มีสำนักงานประจำ)" },
+  { th: "สำนักงานนักสืบ", en: "private investigator office", zh: "私家侦探事务所", angle: "นักสืบเอกชนทำงานอย่างไร นัดคุยงานได้ช่องทางไหนบ้าง (ออนไลน์ โทร หรือพบตัวในกรุงเทพฯ)" },
   { th: "เช็คประวัติก่อนแต่งงาน", en: "pre-marriage background check", zh: "婚前背景调查", angle: "ตรวจสอบว่าที่คู่ครองก่อนตัดสินใจแต่งงาน" },
 ];
 

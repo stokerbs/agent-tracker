@@ -10,7 +10,7 @@
 | A2 | Closed cases | 1,953+ | stat band (TH/EN/ZH), Ads landing pages | ☐ correct ☐ change to: ____ ☐ remove tile |
 | A3 | Provinces covered | 77 | stat band | ☐ correct ☐ change |
 | A4 | Review rating / count / source | 4.8 / 63 / Fastwork | stat band, reviews section, schema `aggregateRating` | ☐ correct ☐ update to: ____ |
-| A5 | Fastwork profile URL | *(none — badge is unlinked)* | reviews badge becomes a link | URL: ______________________ |
+| A5 | Fastwork profile URL | *(none — badge is unlinked)* | TH/EN reviews badge becomes a link (ZH follows) | URL: ______________________ |
 | A6 | Six testimonials (names, dates, text) | as on the homepage | reviews carousel | ☐ permission confirmed ☐ remove: ____ |
 | A7 | Deposit rule | 50 % before work, balance before delivery, non-refundable on client cancellation | process section, FAQ, pricing pages | ☐ correct ☐ change |
 | A8 | Phone / WhatsApp | +66 96 846 1406 | everywhere | ☐ correct |
@@ -23,12 +23,12 @@
 
 | # | Fact | Why it matters | What appears once supplied | Your answer |
 |---|---|---|---|---|
-| B1 | Registered legal entity name (Thai) + DBD registration no. | #1 trust gap for foreign and B2B clients; required for Google Business Profile verification | About pages, footer line, schema `legalName`; GBP | ____________________ |
+| B1 | Registered legal entity name (Thai) + DBD registration no. | #1 trust gap for foreign and B2B clients; required for Google Business Profile verification | schema `legalName` now; About page + footer line when those pages ship; GBP | ____________________ |
 | B2 | Address usable for Google verification (can stay hidden from the public) | GBP as a service-area business needs it | GBP only (not shown on site unless you want it) | **Send privately (LINE/phone), not in this file or in facts.ts** |
 | B3 | How clients meet you | FAQ currently says briefings happen online, by phone or in person in Bangkok | replaces the FAQ "office" answer in TH/EN/ZH | TH: ______ EN: ______ ZH: ______ |
 | B4 | Response-time commitment (e.g. "within 1 hour, 08:00–22:00") | strongest conversion lever after price | trust bar, contact pages, exit popup | ☐ 1 h ☐ 3 h ☐ same day ☐ other: ____ hours: ____ |
 | B5 | Accepted payment methods (Thai bank transfer, Wise, PayPal, card, …) and whether a company receipt/invoice is issued | foreign clients ask before they contact | pricing + how-it-works pages | ______________________ |
-| B6 | Named awards or memberships (name, issuer, year) | the old "many awards" line was removed; only named awards return | Why-us section, schema `award` | ☐ none ☐ list: ______ |
+| B6 | Named awards or memberships (name, issuer, year) | the old "many awards" line was removed; only named awards return | schema `award` now; Why-us section when supplied | ☐ none ☐ list: ______ |
 | B7 | Lead investigator public first name + role; team size; languages | author entity for articles, About page, E-E-A-T | About page, article author box, Person schema | ______________________ |
 | B8 | Price bands you are willing to publish (per service or per day) | competitors publish EN prices; the Thai SERP says "depends" | pricing pages TH/EN/ZH | ______________________ |
 | B9 | Six anonymised cases for the first case-study batch | case studies are the strongest trust + SEO asset | /ผลงาน, /en/case-studies, /zh/case-studies (indexed at ≥3) | ☐ will supply by: ____ |

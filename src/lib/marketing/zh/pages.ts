@@ -1,4 +1,5 @@
 import type { ZhPage } from "./types";
+import { officeAnswer } from "@/lib/marketing/facts";
 
 /**
  * Service + info pages for the Chinese market site (/zh/<slug>). Copy is
@@ -508,7 +509,7 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
       },
     ],
     faq: [
-      { q: "你们有实体办公室吗？", a: "有，位于泰国。企业客户可预约到访；个人客户通常无需到场。" },
+      { q: "你们有实体办公室吗？", a: officeAnswer("zh") },
       { q: "可以视频沟通吗？", a: "可以，重要节点可安排微信语音或视频。" },
     ],
     related: ["how-it-works", "contact", "case-studies"],

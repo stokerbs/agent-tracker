@@ -5,6 +5,7 @@ import { AssistantWidget } from "@/components/marketing/assistant-widget";
 import { StickyContactBar } from "@/components/marketing/sticky-contact-bar";
 import { ExitIntent } from "@/components/marketing/exit-intent";
 import { SiteNav, SiteFooterLinks } from "@/components/marketing/site-nav";
+import { FACTS } from "@/lib/marketing/facts";
 import { AttributionCapture } from "@/components/marketing/attribution-capture";
 
 /**
@@ -35,7 +36,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               Field unit online
             </span>
             <span className="hidden sm:inline text-primary/70">Confidential // Detective Pulse</span>
-            <span>Est. 2016</span>
+            <span>Est. {FACTS.confirmed.foundingYear}</span>
           </div>
         </div>
 
@@ -68,7 +69,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 Detective<span className="text-primary">Pulse</span>
               </span>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                © {new Date().getFullYear()} · Since 2016 · นักสืบเอกชนมืออาชีพ
+                © {new Date().getFullYear()} · Since {FACTS.confirmed.foundingYear} · นักสืบเอกชนมืออาชีพ
               </p>
               <SiteFooterLinks />
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary/80">

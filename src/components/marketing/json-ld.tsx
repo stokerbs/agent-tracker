@@ -63,8 +63,8 @@ export function ArticleJsonLd({
 }
 
 const DESCRIPTION: Record<"th" | "en", string> = {
-  th: "นักสืบเอกชนมืออาชีพ ตั้งแต่ปี 2016 รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ และตรวจสอบธุรกิจ ด้วยวิธีที่ถูกกฎหมาย กรุงเทพฯ และทั่วประเทศไทย เป็นความลับ",
-  en: "Professional private investigators in Thailand since 2016 — infidelity, background checks, missing persons, asset tracing and due diligence, by lawful methods. Bangkok-based, nationwide, confidential.",
+  th: `นักสืบเอกชนมืออาชีพ ตั้งแต่ปี ${FACTS.confirmed.foundingYear} รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ และตรวจสอบธุรกิจ ด้วยวิธีที่ถูกกฎหมาย กรุงเทพฯ และทั่วประเทศไทย เป็นความลับ`,
+  en: `Professional private investigators in Thailand since ${FACTS.confirmed.foundingYear} — infidelity, background checks, missing persons, asset tracing and due diligence, by lawful methods. Bangkok-based, nationwide, confidential.`,
 };
 
 const AREA_SERVED = [
@@ -75,20 +75,21 @@ const AREA_SERVED = [
   { "@type": "City", name: "Chiang Mai" },
 ];
 
-export function MarketingJsonLd({ faq, lang = "th" }: { faq: QA[]; lang?: "th" | "en" }) {
-  const business = {
+/** Pure builder (exported for tests): the business entity for a given language and facts. */
+export function businessJsonLd(lang: "th" | "en", facts: typeof FACTS = FACTS) {
+  return {
     "@context": "https://schema.org",
     "@type": ["ProfessionalService", "LocalBusiness"],
     "@id": `${BASE}/#business`,
     name: CONTACT.brand,
-    ...(FACTS.pending.legalName ? { legalName: FACTS.pending.legalName } : {}),
+    ...(facts.pending.legalName ? { legalName: facts.pending.legalName } : {}),
     alternateName: ["นักสืบเอกชน Detective Pulse", "Detective Pulse Thailand"],
     description: DESCRIPTION[lang],
     url: lang === "en" ? `${BASE}/en` : `${BASE}/`,
     image: `${BASE}/marketing/logo.png`,
     logo: `${BASE}/marketing/logo.png`,
-    foundingDate: String(FACTS.confirmed.foundingYear),
-    ...(FACTS.pending.awards.length > 0 ? { award: FACTS.pending.awards.map((a) => `${a.name} (${a.issuer}, ${a.year})`) } : {}),
+    foundingDate: String(facts.confirmed.foundingYear),
+    ...(facts.pending.awards.length > 0 ? { award: facts.pending.awards.map((a) => `${a.name} (${a.issuer}, ${a.year})`) } : {}),
     telephone: CONTACT.phoneE164,
     email: CONTACT.email,
     address: { "@type": "PostalAddress", addressLocality: CONTACT.city, addressCountry: CONTACT.countryCode },
@@ -103,12 +104,16 @@ export function MarketingJsonLd({ faq, lang = "th" }: { faq: QA[]; lang?: "th" |
     sameAs: SAME_AS,
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: FACTS.confirmed.reviews.rating,
-      reviewCount: String(FACTS.confirmed.reviews.count),
+      ratingValue: facts.confirmed.reviews.rating,
+      reviewCount: String(facts.confirmed.reviews.count),
       bestRating: "5",
       worstRating: "1",
     },
   };
+}
+
+export function MarketingJsonLd({ faq, lang = "th" }: { faq: QA[]; lang?: "th" | "en" }) {
+  const business = businessJsonLd(lang);
   const faqPage = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
