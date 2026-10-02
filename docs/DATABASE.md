@@ -190,3 +190,11 @@ the RLS insert/update policies from the `/marketing-insights` CSV importer and
 read for CPL / CPQL / ROAS. `qualified` / `high_value` and `converted_at` drive
 the Google Ads offline-conversion export at
 `/marketing-insights/offline-conversions` (admin, audited).
+
+Lead retention: `/api/cron/purge-marketing-leads` (monthly) deletes
+non-converted, dead leads (closed / referral, rated spam or unqualified, or
+never-touched `new`) whose last change is older than 12 months, removing their
+`lead-files` objects first (rows in `marketing_lead_files` cascade). It is a
+no-op until `MARKETING_LEAD_PURGE` is set to `dry` (report only) or `1`
+(delete); the rule lives in `src/lib/marketing/lead-retention.ts`. Converted
+leads are never purged by this job.
