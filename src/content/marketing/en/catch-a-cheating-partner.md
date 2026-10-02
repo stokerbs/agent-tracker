@@ -4,7 +4,7 @@ kind: "post"
 slug: "/catch-a-cheating-partner/"
 path: "/en/catch-a-cheating-partner"
 title: "Infidelity Investigators — Tracking a Cheating Spouse or Partner"
-seoTitle: "Infidelity Investigators — Catch a Cheating Partner | Detective Pulse"
+seoTitle: "Infidelity Investigators — Catch a Cheating Partner"
 description: "A professional infidelity investigation team you can trust to track a suspected spouse or partner and gather clear evidence. How we track and investigate, discreetly."
 ---
 

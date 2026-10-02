@@ -11,6 +11,7 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { getRelatedPages } from "@/lib/marketing/related";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 
@@ -62,10 +63,7 @@ export default async function MarketingArticle(
   if (!page) notFound();
 
   const cover = getArticleCover(page.slug, page.title, "th", page);
-  const related = getMarketingPages()
-    .filter((p) => p.slug !== page.slug)
-    .slice(0, 3)
-    .map((p) => ({ href: p.path, slug: p.slug, title: p.title }));
+  const related = getRelatedPages(getMarketingPages(), page, 3).map((p) => ({ href: p.href, slug: p.slug, title: p.title }));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">

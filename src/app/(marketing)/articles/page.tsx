@@ -6,14 +6,14 @@ import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
 export const metadata: Metadata = {
-  title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน | Detective Pulse",
+  title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน",
   description:
     "รวมบทความและความรู้เรื่องงานสืบ — สืบชู้สาว สืบทรัพย์สิน เช็คประวัติบุคคล ตามหาคน นักสืบไอที การจ้างนักสืบ และอื่น ๆ จากนักสืบเอกชนมืออาชีพ",
   alternates: { canonical: "/articles", languages: { th: "/articles", en: "/en/articles", "zh-CN": "/zh/articles" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/articles",
-    title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน | Detective Pulse",
+    title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน",
     description: "รวมบทความและความรู้เรื่องงานสืบจากนักสืบเอกชนมืออาชีพ",
     siteName: "Detective Pulse",
   },
@@ -25,7 +25,7 @@ export default async function ArticlesIndex() {
   // Newest AI-published articles first, then the migrated library.
   const cards = [
     ...aiArticles.map((a) => ({ key: a.id, href: `/articles/${a.th_slug}`, slug: a.th_slug, title: a.th_title, description: a.th_description })),
-    ...pages.map((p) => ({ key: p.slug, href: p.path, slug: p.slug, title: p.title, description: p.description })),
+    ...pages.map((p) => ({ key: p.slug, href: p.href, slug: p.slug, title: p.title, description: p.description })),
   ];
 
   return (

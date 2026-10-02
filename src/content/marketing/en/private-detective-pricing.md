@@ -4,7 +4,7 @@ kind: "post"
 slug: "/private-detective-pricing/"
 path: "/en/private-detective-pricing"
 title: "How Private Detective Pricing Works — Why Costs Differ"
-seoTitle: "Private Detective Pricing — Why Costs Differ | Detective Pulse"
+seoTitle: "Private Detective Pricing — Why Costs Differ"
 description: "How private investigators set their prices, why investigation costs differ from case to case, and advice on hiring a detective so you get fair value."
 ---
 

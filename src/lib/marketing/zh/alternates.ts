@@ -15,4 +15,5 @@ export function zhAlternates(opts: { zh: string; en?: string; th?: string }) {
 /** /en/<slug> for a registry page with an English counterpart. */
 export const enPathFor = (en?: string) => (en ? `/en/${en}` : undefined);
 /** /<thai-slug>/ for a registry page with a Thai counterpart. */
-export const thPathFor = (th?: string) => (th ? `/${th}/` : undefined);
+/** /<thai-slug> (no trailing slash — the served URL; the slashed form 308s). */
+export const thPathFor = (th?: string) => (th ? `/${th}` : undefined);

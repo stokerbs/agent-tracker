@@ -23,7 +23,7 @@ export async function generateMetadata(
   const lp = getLandingPage(slug);
   if (!lp) return {};
   return {
-    title: `${lp.keyword} | Detective Pulse`,
+    title: `${lp.keyword}`,
     description: lp.sub,
     // Paid-traffic landing pages — keep them out of the organic index so they
     // don't compete with / dilute the main pages.

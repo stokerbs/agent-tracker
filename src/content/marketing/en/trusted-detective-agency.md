@@ -4,7 +4,7 @@ kind: "post"
 slug: "/trusted-detective-agency/"
 path: "/en/trusted-detective-agency"
 title: "A Trusted, Professional Detective Agency — Every Type of Case"
-seoTitle: "Trusted Professional Detective Agency in Thailand | Detective Pulse"
+seoTitle: "Trusted Professional Detective Agency in Thailand"
 description: "A trusted, professional detective agency handling investigations across real estate, criminal, business and family cases — with a skilled, highly experienced team."
 ---
 

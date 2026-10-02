@@ -4,7 +4,7 @@ kind: "post"
 slug: "/trace-assets-before-lawsuit/"
 path: "/en/trace-assets-before-lawsuit"
 title: "How to Trace Assets Before Filing Suit — Verify and Value"
-seoTitle: "How to Trace Assets Before Filing a Lawsuit | Detective Pulse"
+seoTitle: "How to Trace Assets Before Filing a Lawsuit"
 description: "Prepare an asset case before you file: how to trace, verify and value the assets involved so your claim stands the best chance in court."
 ---
 

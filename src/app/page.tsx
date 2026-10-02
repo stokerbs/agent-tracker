@@ -21,9 +21,9 @@ import { MarketingHome } from "@/components/marketing/marketing-home";
 export async function generateMetadata(): Promise<Metadata> {
   const host = (await headers()).get("host");
   if (!isMarketingHost(host)) return {};
-  const title = "นักสืบเอกชนมืออาชีพ รับงานสืบทั่วราชอาณาจักร | Detective Pulse";
+  const title = "นักสืบเอกชน Detective Pulse | สืบชู้สาว เช็คประวัติ ตามหาคน ทั่วไทย";
   const description =
-    "นักสืบเอกชน รับสืบชู้สาว สืบทรัพย์สิน ตามหาคน เช็คประวัติบุคคล งานสืบทุกประเภท เป็นความลับ มืออาชีพ ทั่วประเทศไทย";
+    "นักสืบเอกชนมืออาชีพ ตั้งแต่ปี 2016 รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ กรุงเทพฯ และทั่วประเทศ ทำงานถูกกฎหมาย เป็นความลับ ปรึกษาฟรีทาง LINE";
   const ogImage = { url: "https://detectivepulse.com/api/og", width: 1200, height: 630 };
   return {
     title,

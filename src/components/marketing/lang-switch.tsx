@@ -34,12 +34,12 @@ export function LangSwitch() {
   if (onEN) {
     enHref = pathname;
     const en = decodeURIComponent(pathname.replace(/^\/en\/?/, "").replace(/\/$/, ""));
-    thHref = en && EN_TO_TH[en] ? `/${EN_TO_TH[en]}/` : "/";
+    thHref = en && EN_TO_TH[en] ? `/${EN_TO_TH[en]}` : "/";
   } else if (onZH) {
     // Chinese registry pages map to their TH/EN counterparts where one exists.
     const zh = decodeURIComponent(pathname.replace(/^\/zh\/?/, "").replace(/\/$/, ""));
     const link = zh ? zhLinkFor(zh) : undefined;
-    thHref = link?.th ? `/${link.th}/` : "/";
+    thHref = link?.th ? `/${link.th}` : "/";
     enHref = link?.en ? `/en/${link.en}` : "/en";
   } else {
     thHref = pathname;

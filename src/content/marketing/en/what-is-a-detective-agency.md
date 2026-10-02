@@ -4,7 +4,7 @@ kind: "post"
 slug: "/what-is-a-detective-agency/"
 path: "/en/what-is-a-detective-agency"
 title: "What Is a Detective Agency, and What Cases Does It Take?"
-seoTitle: "What Is a Detective Agency & What Cases It Handles | Detective Pulse"
+seoTitle: "What Is a Detective Agency & What Cases It Handles"
 description: "A professional private detective agency covering the whole kingdom — missing persons, infidelity, asset searches, vehicle tracing and other cases. Free consultation."
 ---
 

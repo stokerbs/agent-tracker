@@ -131,7 +131,7 @@ export function MarketingHome() {
         <SectionHeading eyebrow="Active Cases · แฟ้มคดี" title="บริการของเรา" sub="กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก" />
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s, i) => (
-            <Link key={s.slug} href={s.page!.path} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+            <Link key={s.slug} href={s.page!.href} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
               <CornerTicks />
               <div className="flex items-center justify-between">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
@@ -230,7 +230,7 @@ export function MarketingHome() {
           <SectionHeading eyebrow="Field Notes · บันทึก" title="บทความที่น่าสนใจ" sub="เลื่อนดู →" />
           <div className="mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
             {articles.map((a, i) => (
-              <Link key={a.slug} href={a.page!.path} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
+              <Link key={a.slug} href={a.page!.href} className="group w-60 shrink-0 snap-start overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/50">
                 <ArticleCover slug={a.slug} title={a.page!.title} index={i} />
                 <div className="p-3.5">
                   <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{a.page!.title}</h3>
@@ -278,7 +278,7 @@ export function MarketingHome() {
             <TrackedLink href={CONTACT.phoneTel} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> {CONTACT.phoneDisplay}</TrackedLink>
             <TrackedLink href={CONTACT.mailto} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</TrackedLink>
             {contact && (
-              <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
+              <Link href={contact.href} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}
           </div>
           <div className="mt-8 inline-flex flex-col items-center gap-2 rounded-xl border border-border bg-card/50 p-4">

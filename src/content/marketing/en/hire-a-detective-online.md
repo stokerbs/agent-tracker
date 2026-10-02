@@ -4,7 +4,7 @@ kind: "post"
 slug: "/hire-a-detective-online/"
 path: "/en/hire-a-detective-online"
 title: "Hire a Detective Online — Convenient, Fast and Reliable"
-seoTitle: "Hire a Private Detective Online in Thailand | Detective Pulse"
+seoTitle: "Hire a Private Detective Online in Thailand"
 description: "Hire a private detective online with Detective Pulse — investigations, infidelity cases and asset searches, handled professionally. What to prepare and what to watch out for."
 ---
 

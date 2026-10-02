@@ -4,7 +4,7 @@ kind: "post"
 slug: "/cheating-spouse-investigator/"
 path: "/en/cheating-spouse-investigator"
 title: "Cheating Spouse Investigator in Thailand"
-seoTitle: "Cheating Spouse Investigator in Thailand | Detective Pulse"
+seoTitle: "Cheating Spouse Investigator in Thailand"
 description: "Discreet infidelity investigations in Thailand. Detective Pulse follows a partner's movements and gathers clear, court-admissible evidence — fully confidential."
 ---
 

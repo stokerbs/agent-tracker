@@ -11,6 +11,7 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { getRelatedPages } from "@/lib/marketing/related";
 import { EN_TO_TH } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 
@@ -37,7 +38,7 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { en: canonicalPath, ...(th ? { th: `/${th}/` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
+      languages: { en: canonicalPath, ...(th ? { th: `/${th}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
     },
     openGraph: {
       type: "article",
@@ -59,10 +60,7 @@ export default async function MarketingArticleEN(
   if (!page) notFound();
 
   const cover = getArticleCover(page.slug, page.title, "en", page);
-  const related = getMarketingPagesEN()
-    .filter((p) => p.slug !== page.slug)
-    .slice(0, 3)
-    .map((p) => ({ href: p.path, slug: p.slug, title: p.title }));
+  const related = getRelatedPages(getMarketingPagesEN(), page, 3).map((p) => ({ href: p.href, slug: p.slug, title: p.title }));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">

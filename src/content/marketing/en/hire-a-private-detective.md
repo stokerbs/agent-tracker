@@ -4,7 +4,7 @@ kind: "post"
 slug: "/hire-a-private-detective/"
 path: "/en/hire-a-private-detective"
 title: "Hire a Private Detective in Thailand"
-seoTitle: "Hire a Private Detective in Thailand | Detective Pulse"
+seoTitle: "Hire a Private Detective in Thailand"
 description: "How to hire a professional private detective in Thailand — services, process, pricing and what to look for. Detective Pulse: experienced, discreet, nationwide."
 ---
 

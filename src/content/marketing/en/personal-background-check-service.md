@@ -4,7 +4,7 @@ kind: "post"
 slug: "/personal-background-check-service/"
 path: "/en/personal-background-check-service"
 title: "Detailed Personal Background Check — Reveal the Truth, Gain Confidence"
-seoTitle: "Detailed Personal Background Check Service | Detective Pulse"
+seoTitle: "Detailed Personal Background Check Service"
 description: "Need to know the full story about someone who will play an important role in your life or business? Our detailed background-check service helps you feel safe and confident."
 ---
 

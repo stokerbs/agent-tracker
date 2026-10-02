@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const page = getZhPage(slug);
   if (!page) return {};
   const path = `/zh/${page.slug}`;
-  const title = `${page.title} | Detective Pulse`;
+  const title = `${page.title}`;
   // case-studies stays out of the index until the first real case is published.
   const noindex = page.noindex && (page.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0);
   return {

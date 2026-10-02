@@ -7,13 +7,13 @@ import { SectionHeading } from "@/components/marketing/ui";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "文章与指南 | Detective Pulse",
+  title: "文章与指南",
   description: "关于泰国私家侦探的文章与指南 —— 婚外情、财产调查、背景核查、寻人与网络调查。",
   alternates: { canonical: "/zh/articles", languages: { "zh-CN": "/zh/articles", th: "/articles", en: "/en/articles", "x-default": "/en/articles" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/zh/articles",
-    title: "文章与指南 | Detective Pulse",
+    title: "文章与指南",
     description: "关于泰国私家侦探的文章与指南。",
     siteName: "Detective Pulse",
   },

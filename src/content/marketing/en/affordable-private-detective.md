@@ -4,7 +4,7 @@ kind: "post"
 slug: "/affordable-private-detective/"
 path: "/en/affordable-private-detective"
 title: "Affordable Private Detective — Good Work, Discuss Before You Hire"
-seoTitle: "Affordable Private Detective, Fast & Professional | Detective Pulse"
+seoTitle: "Affordable Private Detective, Fast & Professional"
 description: "An affordable private detective doing good, fast, professional work — discuss the details before hiring. Missing persons, background checks from databases, infidelity and more."
 ---
 

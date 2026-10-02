@@ -4,7 +4,7 @@ kind: "post"
 slug: "/online-fraud-investigation/"
 path: "/en/online-fraud-investigation"
 title: "Online Fraud and the Role of the Private Investigator"
-seoTitle: "Online Fraud & the Role of the Private Investigator | Detective Pulse"
+seoTitle: "Online Fraud & the Role of the Private Investigator"
 description: "Online fraud is rising fast. How private investigators help track down offenders, recover stolen assets and information, and how to protect yourself."
 ---
 

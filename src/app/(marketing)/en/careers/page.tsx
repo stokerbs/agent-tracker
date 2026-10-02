@@ -4,14 +4,14 @@ import { SectionHeading, CornerTicks } from "@/components/marketing/ui";
 import { CareersForm } from "@/components/marketing/careers-form";
 
 export const metadata: Metadata = {
-  title: "Careers — Join Our Investigators | Detective Pulse",
+  title: "Careers — Join Our Investigators",
   description:
     "We're hiring private investigators — field investigators, cyber investigators and data analysts. Discreet, professional work nationwide across Thailand. Apply online.",
   alternates: { canonical: "/en/careers", languages: { en: "/en/careers", th: "/careers" } },
   openGraph: {
     type: "website",
     url: "https://detectivepulse.com/en/careers",
-    title: "Careers — Join Our Investigators | Detective Pulse",
+    title: "Careers — Join Our Investigators",
     description: "We're hiring professional private investigators. Apply online.",
     siteName: "Detective Pulse",
   },

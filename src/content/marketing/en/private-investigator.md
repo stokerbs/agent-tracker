@@ -4,7 +4,7 @@ kind: "post"
 slug: "/private-investigator/"
 path: "/en/private-investigator"
 title: "Private Investigator in Thailand — Services for Individuals"
-seoTitle: "Private Investigator in Thailand for Individuals | Detective Pulse"
+seoTitle: "Private Investigator in Thailand for Individuals"
 description: "A professional private investigator for individuals — social-media checks, infidelity evidence, asset searches, background checks and more. Discreet and reliable."
 ---
 

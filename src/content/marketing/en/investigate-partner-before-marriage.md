@@ -4,7 +4,7 @@ kind: "post"
 slug: "/investigate-partner-before-marriage/"
 path: "/en/investigate-partner-before-marriage"
 title: "Investigate a Partner Before You Decide to Marry"
-seoTitle: "Investigate a Partner Before Marriage | Detective Pulse"
+seoTitle: "Investigate a Partner Before Marriage"
 description: "Hiring a detective to check on a partner before deciding to marry — ideal for couples with doubts, or who want certainty before settling down."
 ---
 

@@ -4,7 +4,7 @@ kind: "post"
 slug: "/asset-investigation/"
 path: "/en/asset-investigation"
 title: "Asset Investigation & Debtor Asset Search"
-seoTitle: "Asset Investigation & Debtor Asset Search in Thailand | Detective Pulse"
+seoTitle: "Asset Investigation & Debtor Asset Search in Thailand"
 description: "Locate and verify a debtor's assets before you sue or enforce a judgment. Detective Pulse traces property, vehicles and accounts — systematic and confidential."
 ---
 

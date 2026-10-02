@@ -4,7 +4,7 @@ kind: "post"
 slug: "/phone-usage-investigation/"
 path: "/en/phone-usage-investigation"
 title: "Phone Number Check — Unknown Callers, Scam Numbers and Fake Accounts (Lawful OSINT)"
-seoTitle: "Phone Number Check: Scam & Unknown Numbers in Thailand | Detective Pulse"
+seoTitle: "Phone Number Check: Scam & Unknown Numbers in Thailand"
 description: "Check an unknown or suspicious Thai phone number against public scam reports and open sources, and verify the accounts tied to it — lawfully. We never pull another person's call records or SIM data."
 ---
 

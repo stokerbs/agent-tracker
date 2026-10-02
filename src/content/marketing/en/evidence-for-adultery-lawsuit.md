@@ -4,7 +4,7 @@ kind: "post"
 slug: "/evidence-for-adultery-lawsuit/"
 path: "/en/evidence-for-adultery-lawsuit"
 title: "What to Know Before Hiring a Detective to Gather Adultery Evidence"
-seoTitle: "Evidence for an Adultery Lawsuit — What to Know | Detective Pulse"
+seoTitle: "Evidence for an Adultery Lawsuit — What to Know"
 description: "An adultery claim relies on proper, complete evidence — which a detective can help you gather. What to know before hiring, the key types of evidence, why timing matters, and why some choose to sue rather than divorce."
 ---
 

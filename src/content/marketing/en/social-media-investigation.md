@@ -4,7 +4,7 @@ kind: "post"
 slug: "/social-media-investigation/"
 path: "/en/social-media-investigation"
 title: "Social-Media Investigation — Facebook, LINE, Instagram and Beyond"
-seoTitle: "Social-Media & Online Investigation Service | Detective Pulse"
+seoTitle: "Social-Media & Online Investigation Service"
 description: "Investigate information across digital platforms — Facebook, LINE, Instagram and other online media — with modern technology and a capable team, for complete, accurate, up-to-date results."
 ---
 

@@ -4,7 +4,7 @@ kind: "post"
 slug: "/cyber-investigation/"
 path: "/en/cyber-investigation"
 title: "Cyber & Online Investigation (IT Detective)"
-seoTitle: "Cyber & Online Investigation in Thailand | Detective Pulse"
+seoTitle: "Cyber & Online Investigation in Thailand"
 description: "Online and digital investigations — social media, online fraud, and digital footprints. Detective Pulse's IT detectives trace what happens on the internet."
 ---
 

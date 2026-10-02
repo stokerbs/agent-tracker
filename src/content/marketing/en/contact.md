@@ -4,7 +4,7 @@ kind: "post"
 slug: "/contact/"
 path: "/en/contact"
 title: "Contact a Private Investigator — Detective Pulse"
-seoTitle: "Contact a Private Investigator in Thailand | Detective Pulse"
+seoTitle: "Contact a Private Investigator in Thailand"
 description: "Need reliable information or evidence? Contact Detective Pulse — professional private investigators in Thailand. Free, confidential consultation."
 ---
 

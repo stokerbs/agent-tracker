@@ -34,4 +34,21 @@ describe("marketing content loader", () => {
     const slugs = pages.map((p) => p.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
+
+  it("exposes a decoded, non-trailing-slash href for linking", () => {
+    for (const p of pages) {
+      expect(p.href).toBe(`/${p.slug}`);
+      expect(p.href.endsWith("/")).toBe(false);
+    }
+  });
+
+  it("in-body internal links are relative and do not end with a slash (no 308 hops)", () => {
+    for (const p of pages) {
+      const links = [...p.body.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]!);
+      for (const l of links) {
+        expect(l.startsWith("https://detectivepulse.com"), `${p.slug}: ${l}`).toBe(false);
+        if (l.startsWith("/") && l !== "/") expect(l.endsWith("/"), `${p.slug}: ${l}`).toBe(false);
+      }
+    }
+  });
 });

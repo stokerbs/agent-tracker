@@ -4,7 +4,7 @@ kind: "post"
 slug: "/asset-background-check/"
 path: "/en/asset-background-check"
 title: "Asset Background Check — Verify a Person's Property"
-seoTitle: "Asset Background Check Service in Thailand | Detective Pulse"
+seoTitle: "Asset Background Check Service in Thailand"
 description: "Search a person's assets by name or ID — land, house, condo, and other property such as vehicle and motorcycle registrations, including the legal owner. Fast and easy."
 ---
 

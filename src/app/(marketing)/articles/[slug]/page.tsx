@@ -27,7 +27,7 @@ export async function generateMetadata(
   const cover = getArticleCover(a.th_slug, a.th_title, "th");
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
-    title: `${a.th_title} | Detective Pulse`,
+    title: `${a.th_title}`,
     description: a.th_description,
     alternates: { canonical, languages: { th: canonical, en: `/en/articles/${a.en_slug}`, ...(a.zh_slug ? { "zh-CN": `/zh/articles/${a.zh_slug}` } : {}) } },
     openGraph: {

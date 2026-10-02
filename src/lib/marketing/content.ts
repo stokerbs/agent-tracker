@@ -11,8 +11,11 @@ export interface MarketingPage {
   id: string;
   /** URL-decoded single path segment, e.g. "นักสืบชู้สาว" (no slashes). */
   slug: string;
-  /** Exact original path incl. trailing slash, e.g. "/%e0%b8%99.../". */
+  /** Exact original path incl. trailing slash, e.g. "/%e0%b8%99.../" (canonical/sitemap use). */
   path: string;
+  /** Link target: decoded, no trailing slash, e.g. "/นักสืบชู้สาว" or "/en/background-check" —
+   *  the URL Next actually serves, so internal links never hit the 308 redirect. */
+  href: string;
   title: string;
   seoTitle: string;
   description: string;
@@ -64,6 +67,7 @@ export function getMarketingPages(): MarketingPage[] {
       id: String(data.id ?? f.replace(/\.md$/, "")),
       slug,
       path: String(data.path ?? `/${slug}/`),
+      href: `/${slug}`,
       title: String(data.title ?? slug),
       seoTitle: String(data.seoTitle || data.title || slug),
       description: String(data.description ?? ""),
@@ -101,6 +105,7 @@ export function getMarketingPagesEN(): MarketingPage[] {
       id: String(data.id ?? f.replace(/\.md$/, "")),
       slug,
       path: String(data.path ?? `/en/${slug}/`),
+      href: `/en/${slug}`,
       title: String(data.title ?? slug),
       seoTitle: String(data.seoTitle || data.title || slug),
       description: String(data.description ?? ""),
