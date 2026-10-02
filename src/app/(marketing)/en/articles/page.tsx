@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getMarketingPagesEN } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { SERVICE_PAGES } from "@/lib/marketing/pages";
+import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
@@ -22,7 +23,9 @@ export const metadata: Metadata = {
 
 export default async function ArticlesIndexEN() {
   const registry = new Set(SERVICE_PAGES.en.map((p) => p.slug));
-  const pages = getMarketingPagesEN().filter((p) => !registry.has(p.slug));
+  // Once the consolidation 301s are live, their sources leave the index too.
+  const redirected = consolidationRedirectsEnabled();
+  const pages = getMarketingPagesEN().filter((p) => !registry.has(p.slug) && !(redirected && isConsolidatedSource(p.href)));
   const aiArticles = await getPublishedArticles();
   const cards = [
     ...aiArticles.map((a) => ({ key: a.id, href: `/en/articles/${a.en_slug}`, slug: a.en_slug, title: a.en_title, description: a.en_description })),

@@ -60,7 +60,7 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
         heading: "ข้อมูลที่เราเก็บ",
         body: [],
         bullets: [
-          "แบบฟอร์มติดต่อ: ชื่อหรือชื่อเล่น เบอร์โทรหรือ LINE ID อีเมล (ถ้าให้) ประเภทงาน และข้อความที่คุณเขียน",
+          "แบบฟอร์มติดต่อ: ชื่อหรือชื่อเล่น เบอร์โทรหรือ LINE ID อีเมล (ถ้าให้) ประเภทงาน ข้อความที่คุณเขียน รวมถึงข้อมูลเบราว์เซอร์ (user agent) และหมายเลข IP ที่ใช้ป้องกันสแปม",
           "ผู้ช่วย AI รับเคส: ข้อความที่คุณพิมพ์ในหน้าต่างแชท และสรุปเคสที่ผู้ช่วยสร้างเมื่อคุณขอให้ติดต่อกลับ บทสนทนาดิบไม่ถูกเก็บถาวร",
           "ช่องทางแชทภายนอก: เมื่อคุณทักเราทาง LINE, WhatsApp, WeChat หรือ Facebook ข้อความนั้นอยู่ภายใต้นโยบายของผู้ให้บริการนั้นด้วย",
           "ที่มาของการติดต่อ: พารามิเตอร์แคมเปญ (utm, gclid, fbclid) หน้าที่คุณเข้าชมก่อนติดต่อ และเว็บไซต์ที่อ้างอิงมา เพื่อให้รู้ว่าช่องทางใดได้ผล",
@@ -83,17 +83,20 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
       },
       {
         heading: "ระยะเวลาเก็บรักษา",
-        body: ["ข้อมูลการติดต่อที่ไม่ได้นำไปสู่การว่าจ้าง จะถูกลบภายใน 12 เดือนหลังปิดเรื่อง เว้นแต่คุณขอให้ลบก่อนหน้านั้น ข้อมูลของลูกค้าที่ว่าจ้างจะเก็บตามข้อตกลงและภาระหน้าที่ตามกฎหมาย ข้อมูลวิเคราะห์เว็บไซต์เก็บตามรอบมาตรฐานของ Google Analytics"],
+        body: ["ข้อมูลการติดต่อที่ไม่ได้นำไปสู่การว่าจ้าง จะถูกทบทวนและลบตามรอบ 12 เดือนหลังปิดเรื่อง หรือเร็วกว่านั้นเมื่อคุณร้องขอ ข้อมูลของลูกค้าที่ว่าจ้างจะเก็บตามข้อตกลงและภาระหน้าที่ตามกฎหมาย ข้อมูลวิเคราะห์เว็บไซต์เก็บตามรอบมาตรฐานของ Google Analytics"],
       },
       {
         heading: "ผู้ให้บริการที่ประมวลผลข้อมูลแทนเรา",
         body: ["เราแบ่งปันข้อมูลเฉพาะกับผู้ให้บริการที่ประมวลผลตามคำสั่งของเราเท่านั้น"],
         bullets: [
-          "Supabase — ฐานข้อมูลและพื้นที่จัดเก็บ (เซิร์ฟเวอร์ภูมิภาคสิงคโปร์)",
+          "Supabase — ฐานข้อมูลและพื้นที่จัดเก็บ",
           "Vercel — โฮสต์เว็บไซต์",
+          "Upstash — จำกัดอัตราการส่งเพื่อป้องกันสแปม (ประมวลผลหมายเลข IP ชั่วคราว)",
+          "Sentry — บันทึกข้อผิดพลาดของระบบเพื่อแก้ไขปัญหา",
           "Anthropic — ประมวลผลข้อความในผู้ช่วย AI รับเคส",
           "Google — Tag Manager, Analytics และ Ads สำหรับการวัดผล",
-          "LINE, Meta (WhatsApp / Facebook), Tencent (WeChat) — เมื่อคุณเลือกทักเราผ่านช่องทางเหล่านั้น",
+          "LINE — แจ้งเตือนทีมงานภายในเมื่อมีการติดต่อใหม่ (ชื่อและเบอร์ที่คุณให้ไว้) และเมื่อคุณเลือกทักเราทาง LINE",
+          "Meta (WhatsApp / Facebook), Tencent (WeChat) — เมื่อคุณเลือกทักเราผ่านช่องทางเหล่านั้น",
         ],
       },
       {
@@ -132,7 +135,7 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
         heading: "What we collect",
         body: [],
         bullets: [
-          "Contact form: your name or nickname, phone number or LINE ID, email (if given), the type of matter and any message you write",
+          "Contact form: your name or nickname, phone number or LINE ID, email (if given), the type of matter and any message you write, plus your browser user agent and IP address used for spam protection",
           "AI intake assistant: the messages you type in the chat window and the case summary the assistant produces when you ask to be contacted. The raw conversation is not stored permanently",
           "External chat channels: when you message us on LINE, WhatsApp, WeChat or Facebook, those messages are also subject to that provider's policy",
           "Attribution: campaign parameters (utm, gclid, fbclid), the page you were on before contacting us and the referring site, so we know which channels work",
@@ -155,17 +158,20 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
       },
       {
         heading: "How long we keep it",
-        body: ["Enquiries that do not lead to an engagement are deleted within 12 months of being closed, or earlier on request. Client data is kept according to the engagement and our legal obligations. Website analytics data follows Google Analytics' standard retention."],
+        body: ["Enquiries that do not lead to an engagement are reviewed and deleted on a 12-month cycle after being closed, or earlier on request. Client data is kept according to the engagement and our legal obligations. Website analytics data follows Google Analytics' standard retention."],
       },
       {
         heading: "Service providers acting on our behalf",
         body: ["We share data only with providers that process it on our instructions."],
         bullets: [
-          "Supabase — database and storage (Singapore region)",
+          "Supabase — database and storage",
           "Vercel — website hosting",
+          "Upstash — rate limiting for spam protection (IP addresses, transiently)",
+          "Sentry — error logging so we can fix faults",
           "Anthropic — processing of AI intake assistant messages",
           "Google — Tag Manager, Analytics and Ads for measurement",
-          "LINE, Meta (WhatsApp / Facebook), Tencent (WeChat) — when you choose to message us on those channels",
+          "LINE — internal notification to our team of a new enquiry (the name and number you gave), and when you choose to message us on LINE",
+          "Meta (WhatsApp / Facebook), Tencent (WeChat) — when you choose to message us on those channels",
         ],
       },
       {
@@ -204,7 +210,7 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
         heading: "我们收集的信息",
         body: [],
         bullets: [
-          "联系表单：姓名或昵称、电话或 LINE / 微信 ID、邮箱（如提供）、事项类型及您填写的内容",
+          "联系表单：姓名或昵称、电话或 LINE / 微信 ID、邮箱（如提供）、事项类型及您填写的内容，以及用于防垃圾信息的浏览器 user agent 与 IP 地址",
           "AI 接案助理：您在聊天窗口输入的内容，以及您要求回访时助理生成的案件摘要。原始对话不会永久保存",
           "外部聊天渠道：您通过 LINE、WhatsApp、微信或 Facebook 联系我们时，这些消息同时受该平台隐私政策约束",
           "来源信息：推广参数（utm、gclid、fbclid）、联系前浏览的页面及来源网站，用于了解哪些渠道有效",
@@ -227,17 +233,20 @@ export const PRIVACY_NOTICES: Record<PrivacyLang, PrivacyNotice> = {
       },
       {
         heading: "保存期限",
-        body: ["未形成委托的咨询在结案后 12 个月内删除，或应您要求提前删除。客户数据按委托约定及法律义务保存。网站分析数据遵循 Google Analytics 的标准保留期。"],
+        body: ["未形成委托的咨询在结案后按 12 个月周期复核并删除，或应您要求提前删除。客户数据按委托约定及法律义务保存。网站分析数据遵循 Google Analytics 的标准保留期。"],
       },
       {
         heading: "代我们处理数据的服务商",
         body: ["我们仅与按照我们指示处理数据的服务商共享信息。"],
         bullets: [
-          "Supabase——数据库与存储（新加坡区域）",
+          "Supabase——数据库与存储",
           "Vercel——网站托管",
+          "Upstash——防垃圾信息的频率限制（临时处理 IP 地址）",
+          "Sentry——系统错误日志，用于排查故障",
           "Anthropic——处理 AI 接案助理的消息",
           "Google——Tag Manager、Analytics 与 Ads，用于效果衡量",
-          "LINE、Meta（WhatsApp / Facebook）、腾讯（微信）——当您选择通过这些渠道联系我们时",
+          "LINE——新咨询的内部团队通知（您提供的姓名与电话），以及您选择通过 LINE 联系我们时",
+          "Meta（WhatsApp / Facebook）、腾讯（微信）——当您选择通过这些渠道联系我们时",
         ],
       },
       {

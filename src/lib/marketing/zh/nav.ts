@@ -33,7 +33,7 @@ export const ZH_NAV = {
 
 /** zh slug ↔ EN / TH counterparts (hreflang + language switcher). */
 export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
-  { slug: "private-investigator-thailand", en: "private-investigator", th: "private-investigator" },
+  { slug: "private-investigator-thailand", th: "private-investigator" },
   { slug: "relationship-investigation", en: "cheating-spouse-investigator", th: "นักสืบชู้สาว" },
   { slug: "background-check", en: "background-check", th: "เช็คประวัติบุคคล" },
   { slug: "find-person-thailand", en: "find-missing-person", th: "สืบตามหาคน" },

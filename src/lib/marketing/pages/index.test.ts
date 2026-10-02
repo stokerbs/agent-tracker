@@ -20,9 +20,9 @@ describe("service-page registry (TH/EN)", () => {
     }
   });
 
-  it("metadata fits: title ≤ 70 chars without brand, description ≤ 155, h1 ≠ title, ≥3 FAQ", () => {
+  it("metadata fits: title ≤ 60 chars without brand, description ≤ 155, h1 ≠ title, ≥3 FAQ", () => {
     for (const p of [...SERVICE_PAGES.th, ...SERVICE_PAGES.en]) {
-      expect(p.title.length, `${p.lang}/${p.slug} title`).toBeLessThanOrEqual(70);
+      expect(p.title.length, `${p.lang}/${p.slug} title`).toBeLessThanOrEqual(60);
       expect(p.title.includes("Detective Pulse"), `${p.lang}/${p.slug} brand in title`).toBe(false);
       expect(p.description.length, `${p.lang}/${p.slug} description`).toBeLessThanOrEqual(155);
       expect(p.h1).not.toBe(p.title);
@@ -44,13 +44,20 @@ describe("service-page registry (TH/EN)", () => {
     for (const p of SERVICE_PAGES.th) {
       for (const r of p.related) expect(thSlugs.has(r), `th/${p.slug} related ${r}`).toBe(true);
       if (p.counterpart?.en) expect(enSlugs.has(p.counterpart.en), `th/${p.slug} en ${p.counterpart.en}`).toBe(true);
-      if (p.counterpart?.zh) expect(zhSlugs.has(p.counterpart.zh), `th/${p.slug} zh ${p.counterpart.zh}`).toBe(true);
+      if (p.counterpart?.zh) {
+        expect(zhSlugs.has(p.counterpart.zh), `th/${p.slug} zh ${p.counterpart.zh}`).toBe(true);
+        // hreflang must be reciprocal or Google drops the pair.
+        expect(ZH_PAGES.find((z) => z.slug === p.counterpart!.zh)?.th, `zh/${p.counterpart.zh} must back-link th/${p.slug}`).toBe(p.slug);
+      }
       if (p.caseType) expect(TH_CASE).toContain(p.caseType);
     }
     for (const p of SERVICE_PAGES.en) {
       for (const r of p.related) expect(enSlugs.has(r), `en/${p.slug} related ${r}`).toBe(true);
       if (p.counterpart?.th) expect(thSlugs.has(p.counterpart.th), `en/${p.slug} th ${p.counterpart.th}`).toBe(true);
-      if (p.counterpart?.zh) expect(zhSlugs.has(p.counterpart.zh), `en/${p.slug} zh ${p.counterpart.zh}`).toBe(true);
+      if (p.counterpart?.zh) {
+        expect(zhSlugs.has(p.counterpart.zh), `en/${p.slug} zh ${p.counterpart.zh}`).toBe(true);
+        expect(ZH_PAGES.find((z) => z.slug === p.counterpart!.zh)?.en, `zh/${p.counterpart.zh} must back-link en/${p.slug}`).toBe(p.slug);
+      }
       if (p.caseType) expect(EN_CASE).toContain(p.caseType);
     }
   });

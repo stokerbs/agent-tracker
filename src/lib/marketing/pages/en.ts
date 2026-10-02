@@ -133,7 +133,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
     related: ["cheating-spouse-investigator", "background-check", "pricing", "hire-a-private-detective"],
     caseType: "Cheating spouse",
     priceNote: "Free assessment · Written quote before we start",
-    counterpart: { th: "จ้างนักสืบตามแฟน", zh: "relationship-investigation" },
+    counterpart: { th: "จ้างนักสืบตามแฟน" },
   },
   {
     lang: "en",

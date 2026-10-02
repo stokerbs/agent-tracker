@@ -58,7 +58,7 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["relationship-investigation", "business-due-diligence", "find-person-thailand", "how-it-works"],
     primaryCta: "wechat",
-    en: "private-investigator",
+    // No en: /en/private-investigator is a consolidation-redirect source (→ /en).
     th: "private-investigator",
   },
 

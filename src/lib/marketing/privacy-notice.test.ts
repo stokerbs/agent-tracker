@@ -35,7 +35,7 @@ describe("marketing privacy notice", () => {
   it("covers the website's actual processors and the PDPA rights, without restricted-data claims", () => {
     for (const l of langs) {
       const text = JSON.stringify(getPrivacyNotice(l));
-      for (const vendor of ["Supabase", "Vercel", "Anthropic", "Google", "LINE"]) expect(text, `${l} ${vendor}`).toContain(vendor);
+      for (const vendor of ["Supabase", "Vercel", "Upstash", "Sentry", "Anthropic", "Google", "LINE"]) expect(text, `${l} ${vendor}`).toContain(vendor);
       expect(text).toMatch(/PDPA/);
       expect(text).toMatch(/utm/);
       expect(text.match(BANNED)?.[0] ?? null, l).toBeNull();

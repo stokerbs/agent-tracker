@@ -130,7 +130,8 @@ export const TH_SERVICE_PAGES: MarketingServicePage[] = [
     related: ["นักสืบชู้สาว", "เช็คประวัติบุคคล", "ราคานักสืบ", "จ้างนักสืบ"],
     caseType: "สืบชู้สาว",
     priceNote: "ประเมินความเป็นไปได้ฟรี · เสนอราคาก่อนเริ่มงาน",
-    counterpart: { en: "investigate-partner-before-marriage", zh: "relationship-investigation" },
+    // No zh: the Chinese relationship page back-links to นักสืบชู้สาว only (hreflang must be reciprocal).
+    counterpart: { en: "investigate-partner-before-marriage" },
   },
   {
     lang: "th",

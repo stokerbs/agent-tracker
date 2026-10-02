@@ -36,7 +36,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     // Registry-only Thai pages (pricing, Bangkok, about …) — service pages rank highest.
     ...registryOnlySlugs("th", new Set(thMd.map((p) => p.slug))).map((slug) => ({
-      url: `${BASE}/${slug}`,
+      // Percent-encoded like the markdown `path`s — one spelling per URL.
+      url: `${BASE}/${encodeURI(slug)}`,
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),

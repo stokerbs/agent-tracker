@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getMarketingPages } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { SERVICE_PAGES } from "@/lib/marketing/pages";
+import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
@@ -23,7 +24,9 @@ export const metadata: Metadata = {
 export default async function ArticlesIndex() {
   // Pages promoted to the service registry are services now, not articles.
   const registry = new Set(SERVICE_PAGES.th.map((p) => p.slug));
-  const pages = getMarketingPages().filter((p) => !registry.has(p.slug));
+  // Once the consolidation 301s are live, their sources leave the index too.
+  const redirected = consolidationRedirectsEnabled();
+  const pages = getMarketingPages().filter((p) => !registry.has(p.slug) && !(redirected && isConsolidatedSource(p.href)));
   const aiArticles = await getPublishedArticles();
   // Newest AI-published articles first, then the migrated library.
   const cards = [
