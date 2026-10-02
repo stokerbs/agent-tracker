@@ -5,6 +5,7 @@ import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
 import { track, currentPage } from "@/lib/marketing/analytics";
 import { getAttribution } from "@/lib/marketing/attribution";
 import { TrackedLink } from "@/components/marketing/tracked-link";
+import { WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
 
 type Lang = "th" | "en" | "zh";
@@ -162,7 +163,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
           placement="form_success"
           className={`mt-4 inline-flex items-center gap-2 rounded-lg ${lang === "en" ? "bg-[#178741]" : "bg-[#048739]"} px-5 py-2.5 font-medium text-white hover:opacity-90`}
         >
-          <MessageCircle className="h-4 w-4" /> {t.chat}
+          {lang === "en" ? <WhatsAppIcon className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />} {t.chat}
         </TrackedLink>
       </div>
     );
