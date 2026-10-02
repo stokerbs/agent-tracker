@@ -10,6 +10,7 @@ import {
 import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
 import { sniffMime } from "@/lib/marketing/zh/file-sniff";
 import { channelFor } from "@/lib/marketing/crm";
+import { insertLeadResilient } from "@/lib/marketing/lead-insert";
 
 /**
  * Public, unauthenticated endpoint — the Chinese intake form posts here as
@@ -131,11 +132,11 @@ export async function POST(request: NextRequest) {
   let leadRef = "";
   for (let attempt = 0; attempt < 3 && !leadId; attempt++) {
     leadRef = generateLeadRef();
-    const { data: inserted, error } = await svc
-      .from("marketing_leads")
-      .insert({ ...row, lead_ref: leadRef })
-      .select("id")
-      .single();
+    const { data: inserted, error } = await insertLeadResilient(
+      { ...row, lead_ref: leadRef },
+      (r) => svc.from("marketing_leads").insert(r).select("id").single(),
+      "marketing:zh-intake",
+    );
     if (!error && inserted) {
       leadId = inserted.id;
     } else if (error && error.code !== "23505") {

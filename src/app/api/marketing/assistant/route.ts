@@ -6,6 +6,7 @@ import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { reportError } from "@/lib/errors";
 import { attributionSchema, attributionColumns } from "@/lib/marketing/lead-attribution";
 import { CONTACT } from "@/lib/marketing/contact";
+import { insertLeadResilient } from "@/lib/marketing/lead-insert";
 
 // Public, unauthenticated endpoint — the marketing site's AI assistant posts the
 // running conversation here and gets a reply. The raw chat transcript is NOT
@@ -213,7 +214,7 @@ export async function POST(request: NextRequest) {
       if (caseParsed.success) {
         const c = caseParsed.data;
         const svc = createServiceClient();
-        const { error } = await svc.from("marketing_leads").insert({
+        const { error } = await insertLeadResilient({
           name: c.customer_name?.trim() || (loc === "en" ? "Lead from AI chat" : loc === "zh" ? "AI 聊天客户" : "ลูกค้าจากแชท AI"),
           phone: c.customer_contact,
           email: null,
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest) {
           user_agent: request.headers.get("user-agent")?.slice(0, 300) ?? null,
           consent_at: new Date().toISOString(),
           ...attributionColumns(parsed.data.attribution),
-        });
+        }, (r) => svc.from("marketing_leads").insert(r), "marketing:assistant");
         if (error) {
           reportError(error, "marketing:assistant:insert");
         } else {

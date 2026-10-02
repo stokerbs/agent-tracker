@@ -6,6 +6,7 @@ import { notifyRole, notificationLinks } from "@/lib/notifications";
 import { reportError } from "@/lib/errors";
 import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
 import { attributionSchema, attributionColumns } from "@/lib/marketing/lead-attribution";
+import { insertLeadResilient } from "@/lib/marketing/lead-insert";
 
 // Public, unauthenticated endpoint — the marketing site's contact form posts here.
 const schema = z.object({
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
   let inserted = false;
   for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
     leadRef = generateLeadRef(new Date(), Math.random, prefix);
-    const { error } = await svc.from("marketing_leads").insert({ ...row, lead_ref: leadRef });
+    const { error } = await insertLeadResilient({ ...row, lead_ref: leadRef }, (r) => svc.from("marketing_leads").insert(r), "marketing:lead");
     if (!error) {
       inserted = true;
     } else if (error.code !== "23505") {
