@@ -38,8 +38,10 @@ export const ZH_SLUG_LINKS: { slug: string; en?: string; th?: string }[] = [
   { slug: "background-check", en: "background-check", th: "เช็คประวัติบุคคล" },
   { slug: "find-person-thailand", en: "find-missing-person", th: "สืบตามหาคน" },
   { slug: "asset-investigation", en: "asset-investigation", th: "สืบทรัพย์สิน" },
-  { slug: "pricing", en: "private-detective-pricing", th: "วิธีการคิดราคาจ้างนักส" },
+  { slug: "pricing", en: "pricing", th: "ราคานักสืบ" },
   { slug: "contact", en: "contact", th: "ติดต่อนักสืบ" },
+  { slug: "bangkok", en: "private-investigator-bangkok", th: "นักสืบกรุงเทพ" },
+  { slug: "about", en: "about", th: "เกี่ยวกับเรา" },
 ];
 
 /** Service key (ZhPage.service / article service) → /zh page path. */

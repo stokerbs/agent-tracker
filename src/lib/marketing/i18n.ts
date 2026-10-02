@@ -35,6 +35,10 @@ export const EN_TO_TH: Record<string, string> = {
   "online-fraud-investigation": "การฉ้อโกงออนไลน์และบทบ",
   "qualities-of-a-good-detective": "นักสืบ",
   "detective-services-overview": "บริการนักสืบ",
+  // Registry-only pages (src/lib/marketing/pages) — no markdown file.
+  "pricing": "ราคานักสืบ",
+  "about": "เกี่ยวกับเรา",
+  "private-investigator-bangkok": "นักสืบกรุงเทพ",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(

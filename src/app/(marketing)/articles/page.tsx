@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getMarketingPages } from "@/lib/marketing/content";
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
+import { SERVICE_PAGES } from "@/lib/marketing/pages";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
 
@@ -20,7 +21,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ArticlesIndex() {
-  const pages = getMarketingPages();
+  // Pages promoted to the service registry are services now, not articles.
+  const registry = new Set(SERVICE_PAGES.th.map((p) => p.slug));
+  const pages = getMarketingPages().filter((p) => !registry.has(p.slug));
   const aiArticles = await getPublishedArticles();
   // Newest AI-published articles first, then the migrated library.
   const cards = [

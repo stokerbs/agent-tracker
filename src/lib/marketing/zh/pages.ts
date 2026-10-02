@@ -462,8 +462,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["how-it-works", "contact"],
     primaryCta: "wechat",
-    en: "private-detective-pricing",
-    th: "วิธีการคิดราคาจ้างนักส",
+    en: "pricing",
+    th: "ราคานักสืบ",
   },
   {
     slug: "case-studies",
@@ -514,6 +514,8 @@ export const ZH_SERVICE_PAGES: ZhPage[] = [
     ],
     related: ["how-it-works", "contact", "case-studies"],
     primaryCta: "wechat",
+    en: "about",
+    th: "เกี่ยวกับเรา",
   },
   {
     slug: "partners",

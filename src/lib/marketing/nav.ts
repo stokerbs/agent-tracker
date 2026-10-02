@@ -17,7 +17,10 @@ export const TH_NAV = {
     { href: "/นักสืบไอที", label: "นักสืบไอที" },
   ] as NavLink[],
   primary: [
+    { href: "/ราคานักสืบ", label: "ราคา" },
+    { href: "/นักสืบกรุงเทพ", label: "นักสืบกรุงเทพ" },
     { href: "/จ้างนักสืบ", label: "วิธีจ้างนักสืบ" },
+    { href: "/เกี่ยวกับเรา", label: "เกี่ยวกับเรา" },
     { href: "/articles", label: "บทความ" },
     { href: "/careers", label: "ร่วมงาน" },
     { href: "/ติดต่อนักสืบ", label: "ติดต่อ" },
@@ -39,7 +42,10 @@ export const EN_NAV = {
     { href: "/en/investigate-partner-before-marriage", label: "Partner verification" },
   ] as NavLink[],
   primary: [
+    { href: "/en/pricing", label: "Pricing" },
+    { href: "/en/private-investigator-bangkok", label: "Bangkok" },
     { href: "/en/hire-a-private-detective", label: "How to hire" },
+    { href: "/en/about", label: "About" },
     { href: "/en/articles", label: "Articles" },
     { href: "/en/careers", label: "Careers" },
     { href: "/en/contact", label: "Contact" },

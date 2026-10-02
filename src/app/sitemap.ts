@@ -3,6 +3,7 @@ import { getMarketingPages, getMarketingPagesEN } from "@/lib/marketing/content"
 import { getPublishedArticles } from "@/lib/marketing/articles-db";
 import { ZH_PAGES } from "@/lib/marketing/zh/registry";
 import { ZH_CASE_STUDIES } from "@/lib/marketing/zh/case-studies";
+import { registryOnlySlugs } from "@/lib/marketing/pages";
 
 const BASE = "https://detectivepulse.com";
 
@@ -20,12 +21,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/articles`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/careers`, changeFrequency: "monthly", priority: 0.5 },
   ];
-  const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
-    // Non-trailing-slash to match the served URL (Next 308s the trailing form).
-    url: `${BASE}${p.path.replace(/\/+$/, "") || "/"}`,
-    changeFrequency: "monthly",
-    priority: 0.7,
-  }));
+  const thMd = getMarketingPages();
+  const marketing: MetadataRoute.Sitemap = [
+    ...thMd.map((p) => ({
+      // Non-trailing-slash to match the served URL (Next 308s the trailing form).
+      url: `${BASE}${p.path.replace(/\/+$/, "") || "/"}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+    // Registry-only Thai pages (pricing, Bangkok, about …) — service pages rank highest.
+    ...registryOnlySlugs("th", new Set(thMd.map((p) => p.slug))).map((slug) => ({
+      url: `${BASE}/${slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+  ];
   // Chinese site: home + every registry page (services 0.8, info/locations
   // 0.7) + the article hub. Noindexed pages (case-studies while empty) stay out.
   const chinese: MetadataRoute.Sitemap = [
@@ -45,6 +55,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
       changeFrequency: "monthly" as const,
       priority: 0.7,
+    })),
+    ...registryOnlySlugs("en", new Set(getMarketingPagesEN().map((p) => p.slug))).map((slug) => ({
+      url: `${BASE}/en/${slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
   ];
   // Published AI articles (both language versions), newest → higher priority.

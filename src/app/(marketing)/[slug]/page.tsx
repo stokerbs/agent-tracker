@@ -11,20 +11,55 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { ServicePage } from "@/components/marketing/service-page";
 import { getRelatedPages } from "@/lib/marketing/related";
 import { TH_TO_EN } from "@/lib/marketing/i18n";
 import { zhSlugForEn } from "@/lib/marketing/zh/nav";
+import { getServicePage, registryOnlySlugs, SERVICE_PAGES } from "@/lib/marketing/pages";
+import { CONTACT } from "@/lib/marketing/contact";
 
-export const dynamicParams = false; // only the migrated pages; everything else 404s
+export const dynamicParams = false; // migrated pages + registry pages only; everything else 404s
 
 export function generateStaticParams() {
-  return getMarketingPages().map((p) => ({ slug: p.slug }));
+  const md = getMarketingPages().map((p) => p.slug);
+  return [...md, ...registryOnlySlugs("th", new Set(md))].map((slug) => ({ slug }));
+}
+
+/** Title for a related-link target: registry page first, then markdown page. */
+function titleFor(slug: string): string | undefined {
+  return getServicePage("th", slug)?.h1 ?? getMarketingPage(slug)?.title;
 }
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
   const { slug } = await params;
+
+  // Service / info / location page from the typed registry (money pages).
+  const sp = getServicePage("th", slug);
+  if (sp) {
+    const path = `/${sp.slug}`;
+    const en = sp.counterpart?.en ?? TH_TO_EN[sp.slug];
+    const zh = sp.counterpart?.zh ?? (en ? zhSlugForEn(en) : undefined);
+    return {
+      title: sp.title,
+      description: sp.description,
+      alternates: {
+        canonical: path,
+        languages: { th: path, ...(en ? { en: `/en/${en}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}), "x-default": en ? `/en/${en}` : path },
+      },
+      openGraph: {
+        type: "website",
+        url: `${CONTACT.siteUrl}${path}`,
+        title: `${sp.title} | ${CONTACT.brand}`,
+        description: sp.description,
+        siteName: CONTACT.brand,
+        images: [{ url: `${CONTACT.siteUrl}/api/og`, width: 1200, height: 630 }],
+      },
+      twitter: { card: "summary_large_image", title: `${sp.title} | ${CONTACT.brand}`, description: sp.description },
+    };
+  }
+
   const page = getMarketingPage(slug);
   if (!page) return {};
   // Next strips trailing slashes (308) → the page serves at the non-trailing
@@ -59,11 +94,26 @@ export default async function MarketingArticle(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+
+  const sp = getServicePage("th", slug);
+  if (sp) {
+    const related = sp.related
+      .map((s) => ({ href: `/${s}`, title: titleFor(s) }))
+      .filter((r): r is { href: string; title: string } => Boolean(r.title));
+    return <ServicePage page={sp} related={related} />;
+  }
+
   const page = getMarketingPage(slug);
   if (!page) notFound();
 
   const cover = getArticleCover(page.slug, page.title, "th", page);
-  const related = getRelatedPages(getMarketingPages(), page, 3).map((p) => ({ href: p.href, slug: p.slug, title: p.title }));
+  // Related: same-topic pages, preferring the registry (service) pages' H1 as the label.
+  const registrySlugs = new Set(SERVICE_PAGES.th.map((p) => p.slug));
+  const related = getRelatedPages(getMarketingPages(), page, 3).map((p) => ({
+    href: p.href,
+    slug: p.slug,
+    title: registrySlugs.has(p.slug) ? (getServicePage("th", p.slug)?.h1 ?? p.title) : p.title,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
