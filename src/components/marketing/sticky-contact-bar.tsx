@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { LineIcon } from "@/components/marketing/brand-icons";
+import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
 import { CONTACT } from "@/lib/marketing/contact";
 
-const COPY: Record<MarketingLang, { call: string; line: string }> = {
-  th: { call: "โทรเลย", line: "ปรึกษาฟรี LINE" },
-  en: { call: "Call now", line: "Free LINE consult" },
-  zh: { call: "立即致电", line: "LINE 免费咨询" },
+const COPY: Record<MarketingLang, { call: string; line: string; whatsapp: string }> = {
+  th: { call: "โทรเลย", line: "ปรึกษาฟรี LINE", whatsapp: "WhatsApp" },
+  en: { call: "Call now", line: "LINE", whatsapp: "Free WhatsApp consult" },
+  zh: { call: "立即致电", line: "LINE 免费咨询", whatsapp: "WhatsApp" },
 };
 
 /**
@@ -55,13 +55,24 @@ export function StickyContactBar() {
       <TrackedLink href={CONTACT.phoneTel} placement="sticky" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
         <Phone className="h-5 w-5" /> {t.call}
       </TrackedLink>
-      <TrackedLink
-        href={CONTACT.lineUrl}
-        placement="sticky"
-        className="flex flex-1 items-center justify-center gap-2 bg-[#048739] py-3 font-semibold text-white"
-      >
-        <LineIcon className="h-5 w-5" /> {t.line}
-      </TrackedLink>
+      {lang === "en" ? (
+        // English visitors: WhatsApp is the channel they actually have.
+        <TrackedLink
+          href={CONTACT.whatsappUrl}
+          placement="sticky"
+          className="flex flex-1 items-center justify-center gap-2 bg-[#178741] py-3 font-semibold text-white"
+        >
+          <WhatsAppIcon className="h-5 w-5" /> {t.whatsapp}
+        </TrackedLink>
+      ) : (
+        <TrackedLink
+          href={CONTACT.lineUrl}
+          placement="sticky"
+          className="flex flex-1 items-center justify-center gap-2 bg-[#048739] py-3 font-semibold text-white"
+        >
+          <LineIcon className="h-5 w-5" /> {t.line}
+        </TrackedLink>
+      )}
       </>
       )}
     </div>

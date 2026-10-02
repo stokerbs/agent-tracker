@@ -8,41 +8,41 @@ const BASE = "https://detectivepulse.com";
 
 // Public marketing pages: the static landing/legal pages + every page migrated
 // from WordPress (preserved at its original slug) + published AI articles.
+//
+// lastModified: only emitted where we know it (AI articles → published_at).
+// Static and content pages previously reported `new Date()` on every request,
+// which Google treats as noise and then ignores for the whole sitemap
+// (docs/seo-growth-audit §A.4). Omitting it is more honest than a fake date.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const staticPages: MetadataRoute.Sitemap = [
-    { url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/support`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE}/careers`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/`, changeFrequency: "weekly", priority: 1 },
+    { url: `${BASE}/articles`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/careers`, changeFrequency: "monthly", priority: 0.5 },
   ];
   const marketing: MetadataRoute.Sitemap = getMarketingPages().map((p) => ({
     // Non-trailing-slash to match the served URL (Next 308s the trailing form).
     url: `${BASE}${p.path.replace(/\/+$/, "") || "/"}`,
-    lastModified: now,
     changeFrequency: "monthly",
     priority: 0.7,
   }));
   // Chinese site: home + every registry page (services 0.8, info/locations
   // 0.7) + the article hub. Noindexed pages (case-studies while empty) stay out.
   const chinese: MetadataRoute.Sitemap = [
-    { url: `${BASE}/zh`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${BASE}/zh`, changeFrequency: "weekly", priority: 0.9 },
     ...ZH_PAGES.filter((p) => !(p.noindex && (p.slug !== "case-studies" || ZH_CASE_STUDIES.length === 0))).map((p) => ({
       url: `${BASE}/zh/${p.slug}`,
-      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: p.kind === "service" ? 0.8 : 0.7,
     })),
-    { url: `${BASE}/zh/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
+    { url: `${BASE}/zh/articles`, changeFrequency: "weekly", priority: 0.5 },
   ];
   const english: MetadataRoute.Sitemap = [
-    { url: `${BASE}/en`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/en/articles`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE}/en/careers`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/en`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/en/articles`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/en/careers`, changeFrequency: "monthly", priority: 0.5 },
     ...getMarketingPagesEN().map((p) => ({
       url: `${BASE}${p.path.replace(/\/+$/, "")}`,
-      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),

@@ -34,7 +34,7 @@ const COPY = {
   },
   en: {
     name: "Your name",
-    phone: "Phone or LINE ID",
+    phone: "Phone / WhatsApp number",
     email: "Email (optional)",
     emailInvalid: "That email doesn't look right",
     caseType: "What do you need investigated?",
@@ -48,10 +48,10 @@ const COPY = {
     sending: "Sending...",
     successTitle: "Message received",
     successBody: "Our investigators will get back to you shortly — or chat now for a faster reply.",
-    chat: "Chat on LINE now",
+    chat: "Chat on WhatsApp now",
     refLabel: "Reference",
-    errRate: "Too many submissions. Please wait a moment and try again, or message us on LINE.",
-    errGeneric: "Couldn't send. Please try again, or message us on LINE.",
+    errRate: "Too many submissions. Please wait a moment and try again, or message us on WhatsApp.",
+    errGeneric: "Couldn't send. Please try again, or message us on WhatsApp.",
     required: "Please enter your name and a contact.",
   },
   zh: {
@@ -158,7 +158,7 @@ export function LeadForm({ lang = "th" }: { lang?: Lang }) {
           </p>
         )}
         <TrackedLink
-          href={LINE_URL}
+          href={lang === "en" ? CONTACT.whatsappUrl : LINE_URL}
           placement="form_success"
           className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"
         >

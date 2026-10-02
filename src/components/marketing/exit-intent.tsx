@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { X, Phone } from "lucide-react";
-import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
+import { LineIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
+import { WhatsAppIcon as WaIcon } from "@/components/marketing/brand-icons";
 import { CONTACT } from "@/lib/marketing/contact";
 
 const COPY: Record<MarketingLang, {
@@ -20,7 +21,7 @@ const COPY: Record<MarketingLang, {
     eyebrow: "Free consult · Confidential",
     title: "Wait — can we help?",
     body: "Free consultation with an investigator, no obligation, always confidential. Reach out and let's talk.",
-    line: "Free consult on LINE", whatsapp: "WhatsApp", call: `Call ${CONTACT.phoneDisplay}`, dismiss: "Maybe later", close: "Close",
+    line: "LINE", whatsapp: "Free consult on WhatsApp", call: `Call ${CONTACT.phoneDisplay}`, dismiss: "Maybe later", close: "Close",
   },
   zh: {
     eyebrow: "免费咨询 · 严格保密",
@@ -39,8 +40,16 @@ const SEEN_KEY = "dp_exit_seen";
  * recover visitors who are about to leave without converting.
  */
 export function ExitIntent() {
-  const t = COPY[useMarketingLang()];
+  const lang = useMarketingLang();
+  const t = COPY[lang];
   const [open, setOpen] = useState(false);
+  // Primary channel by audience: WhatsApp for English visitors, LINE otherwise.
+  const primary = lang === "en"
+    ? { href: CONTACT.whatsappUrl, label: t.whatsapp, bg: "bg-[#178741]", Icon: WaIcon }
+    : { href: CONTACT.lineUrl, label: t.line, bg: "bg-[#048739]", Icon: LineIcon };
+  const secondary = lang === "en"
+    ? { href: CONTACT.lineUrl, label: t.line, bg: "bg-[#048739]", Icon: LineIcon }
+    : { href: CONTACT.whatsappUrl, label: t.whatsapp, bg: "bg-[#178741]", Icon: WaIcon };
 
   useEffect(() => {
     if (sessionStorage.getItem(SEEN_KEY)) return;
@@ -78,12 +87,12 @@ export function ExitIntent() {
         <h2 className="mt-3 font-serif text-2xl font-bold">{t.title}</h2>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{t.body}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <TrackedLink href={CONTACT.lineUrl} placement="exit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90">
-            <LineIcon className="h-5 w-5" /> {t.line}
+          <TrackedLink href={primary.href} placement="exit" className={`inline-flex items-center justify-center gap-2 rounded-lg ${primary.bg} px-5 py-2.5 font-medium text-white hover:opacity-90`}>
+            <primary.Icon className="h-5 w-5" /> {primary.label}
           </TrackedLink>
           <div className="flex gap-2">
-            <TrackedLink href={CONTACT.whatsappUrl} placement="exit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#178741] px-4 py-2.5 font-medium text-white hover:opacity-90">
-              <WhatsAppIcon className="h-5 w-5" /> {t.whatsapp}
+            <TrackedLink href={secondary.href} placement="exit" className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg ${secondary.bg} px-4 py-2.5 font-medium text-white hover:opacity-90`}>
+              <secondary.Icon className="h-5 w-5" /> {secondary.label}
             </TrackedLink>
             <TrackedLink href={CONTACT.phoneTel} placement="exit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted">
               <Phone className="h-4 w-4 text-primary" /> {t.call}

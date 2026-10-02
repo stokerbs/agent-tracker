@@ -27,14 +27,16 @@ function detectLang(pathname: string): Lang {
  * (like the old WP popup) so customers immediately see how to reach us.
  */
 export function ContactFab() {
-  const t = COPY[detectLang(usePathname() || "/")];
-  const channels = [
-    { label: "LINE", href: CONTACT.lineUrl, bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
-    { label: "WhatsApp", href: CONTACT.whatsappUrl, bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
-    { label: t.call, href: CONTACT.phoneTel, bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
-    { label: "Facebook", href: CONTACT.facebookUrl, bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
-    { label: t.email, href: CONTACT.mailto, bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
-  ];
+  const lang = detectLang(usePathname() || "/");
+  const t = COPY[lang];
+  const line = { label: "LINE", href: CONTACT.lineUrl, bg: "#048739", icon: <LineIcon className="h-5 w-5" /> };
+  const whatsapp = { label: "WhatsApp", href: CONTACT.whatsappUrl, bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> };
+  const call = { label: t.call, href: CONTACT.phoneTel, bg: "#2563eb", icon: <Phone className="h-5 w-5" /> };
+  const facebook = { label: "Facebook", href: CONTACT.facebookUrl, bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> };
+  const email = { label: t.email, href: CONTACT.mailto, bg: "#6b7280", icon: <Mail className="h-5 w-5" /> };
+  // Channel order follows what each audience actually uses: Thai → LINE first;
+  // English → WhatsApp, then email (corporate), phone; LINE last.
+  const channels = lang === "en" ? [whatsapp, email, call, line, facebook] : [line, whatsapp, call, facebook, email];
   const [open, setOpen] = useState(false);
   const [nudged, setNudged] = useState(false);
 

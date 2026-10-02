@@ -79,9 +79,10 @@ export function MarketingHomeEN() {
         titleRest="in Thailand"
         subtitle="Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence."
         ctas={[
-          { href: CONTACT.lineUrl, label: "Free consult on LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: CONTACT.whatsappUrl, label: "WhatsApp us", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
-          { href: "#contact", label: "Contact", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
+          // International visitors rarely have LINE: WhatsApp leads, the form is second, LINE stays available.
+          { href: CONTACT.whatsappUrl, label: "Chat on WhatsApp", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
+          { href: "#contact", label: "Request a free assessment", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: CONTACT.lineUrl, label: "LINE", icon: <LineIcon className="h-5 w-5" />, className: "border border-border font-medium hover:bg-muted", external: true },
         ]}
         tagline="// Relentless · discreet · nationwide"
         scrollLabel="Scroll to investigate"
