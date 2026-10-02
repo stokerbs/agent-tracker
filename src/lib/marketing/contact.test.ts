@@ -33,8 +33,8 @@ describe("canonical contact facts (NAP consistency guard)", () => {
     for (const f of contentFiles()) {
       const s = readFileSync(f, "utf8");
       // Handles/URLs (detectivepulse.com, detectivepluse) are identifiers and allowed.
-      const prose = s.replace(/https?:\/\/\S+/g, "").replace(/detectivepluse/g, "");
-      expect({ file: f, hit: prose.match(/Detectivepulse\b/)?.[0] ?? null }).toEqual({ file: f, hit: null });
+      const prose = s.replace(/https?:\/\/\S+/g, "").replace(/detectivepulse\.com/gi, "").replace(/detectivepluse/gi, "");
+      expect({ file: f, hit: prose.match(/detectivepulse\b/i)?.[0] ?? null }).toEqual({ file: f, hit: null });
       expect({ file: f, hit: prose.match(/Sherlock/)?.[0] ?? null }).toEqual({ file: f, hit: null });
     }
   });
