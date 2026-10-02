@@ -6,6 +6,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeadsChart, type WeeklyPoint } from "@/components/marketing/insights-chart";
 import { FunnelPanel } from "./funnel-panel";
+import { LocaleFunnelPanel, type ChannelRow } from "./locale-funnel-panel";
+import { AdSpendImport } from "./ad-spend-import";
+import { costPerLead } from "@/lib/marketing/ad-spend";
+import { Download } from "lucide-react";
 import { computeFunnel, type FunnelLeadRow } from "@/lib/marketing/zh/funnel";
 import { reportError } from "@/lib/errors";
 
@@ -45,18 +49,43 @@ export default async function MarketingInsightsPage() {
   const svc = createServiceClient();
   const since = new Date(Date.now() - WEEKS * 7 * DAY);
 
-  const [leadsRes, careersRes, articlesRes, funnelRes] = await Promise.all([
+  const [leadsRes, careersRes, articlesRes, funnelRes, spendRes] = await Promise.all([
     svc.from("marketing_leads").select("created_at, source, case_type").gte("created_at", since.toISOString()),
     svc.from("recruitment_applications").select("created_at").gte("created_at", since.toISOString()),
     svc.from("marketing_articles").select("status, published_at"),
     // Funnel (docs/china-market/12): all-time pipeline state, not windowed —
     // conversions lag first contact by weeks.
-    svc.from("marketing_leads").select("locale, source, stage, quoted_value, final_revenue, converted_at, service, utm_source"),
+    svc.from("marketing_leads").select("locale, source, stage, quoted_value, final_revenue, converted_at, service, utm_source, channel, lead_quality, created_at"),
+    // Imported ad cost for CPL (migration 0128); last 90 days.
+    svc.from("marketing_ad_spend").select("platform, locale, cost, spend_date").gte("spend_date", new Date(Date.now() - 90 * DAY).toISOString().slice(0, 10)),
   ]);
   if (funnelRes.error) reportError(funnelRes.error, "marketing-insights:funnel");
   const funnelRows = (funnelRes.data as FunnelLeadRow[] | null) ?? [];
   const funnelAll = computeFunnel(funnelRows);
   const funnelZh = computeFunnel(funnelRows.filter((r) => r.locale === "zh"));
+  // Per-locale funnel + channels + CPL (audit Days 31–90).
+  type CrmRow = FunnelLeadRow & { channel: string | null; lead_quality: string | null; created_at: string };
+  const crmRows = funnelRows as CrmRow[];
+  const byLocale = [
+    { key: "all", label: "ทั้งหมด", m: funnelAll },
+    { key: "th", label: "ไทย", m: computeFunnel(crmRows.filter((r) => r.locale === "th")) },
+    { key: "en", label: "อังกฤษ", m: computeFunnel(crmRows.filter((r) => r.locale === "en")) },
+    { key: "zh", label: "จีน", m: funnelZh },
+  ];
+  const channelMap = new Map<string, ChannelRow>();
+  for (const r of crmRows) {
+    const key = r.channel ?? "unknown";
+    const c = channelMap.get(key) ?? { channel: key, leads: 0, qualified: 0, paid: 0, revenue: 0 };
+    c.leads += 1;
+    if (r.lead_quality === "qualified" || r.lead_quality === "high_value" || r.converted_at) c.qualified += 1;
+    if (r.converted_at) c.paid += 1;
+    c.revenue += Number(r.final_revenue ?? 0) || 0;
+    channelMap.set(key, c);
+  }
+  const channels = [...channelMap.values()].sort((a, b) => b.leads - a.leads);
+  if (spendRes.error) reportError(spendRes.error, "marketing-insights:ad-spend");
+  const spendRows = (spendRes.data as Array<{ platform: string; locale: string; cost: number | string; spend_date: string }> | null) ?? [];
+  const cpl = costPerLead(spendRows, crmRows, { from: new Date(Date.now() - 90 * DAY), to: new Date() });
   const leads = (leadsRes.data as Array<{ created_at: string; source: string; case_type: string | null }>) ?? [];
   const careers = (careersRes.data as Array<{ created_at: string }>) ?? [];
   const articles = (articlesRes.data as Array<{ status: string; published_at: string | null }>) ?? [];
@@ -125,6 +154,27 @@ export default async function MarketingInsightsPage() {
 
       {/* Lead → quote → paid funnel (all leads vs Chinese market) */}
       <FunnelPanel all={funnelAll} zh={funnelZh} error={Boolean(funnelRes.error)} />
+      <LocaleFunnelPanel byLocale={byLocale} channels={channels} cpl={cpl} windowDays={90} error={Boolean(funnelRes.error || spendRes.error)} />
+
+      {/* Ad cost import + Google Ads offline conversions */}
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <h2 className="text-sm font-semibold">ค่าโฆษณา & Offline conversions</h2>
+          <p className="mt-1 text-xs text-muted-foreground">นำเข้าค่าใช้จ่ายโฆษณาเพื่อคำนวณ CPL/ROAS · ส่งออกไฟล์ offline conversions (ลีดที่ผ่านคัดกรอง/ชำระ พร้อม gclid) ไปอัปโหลดใน Google Ads</p>
+          <div className="mt-4 grid gap-6 md:grid-cols-[1fr_auto]">
+            <AdSpendImport />
+            <div className="rounded-xl border border-border p-4 text-sm md:w-64">
+              <div className="font-medium">Google Ads offline conversions</div>
+              <p className="mt-1 text-xs text-muted-foreground">CSV รูปแบบ Conversions from clicks (Qualified lead / Paid case) จาก 90 วันล่าสุด</p>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler streams a CSV download, not a page */}
+              <a href="/marketing-insights/offline-conversions?days=90" download className="mt-3 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">
+                <Download className="h-3.5 w-3.5" /> ดาวน์โหลด CSV
+              </a>
+              <p className="mt-2 text-[11px] text-muted-foreground">ต้องสร้าง conversion action ชื่อเดียวกันใน Google Ads ก่อน (ดู docs/seo-growth-audit/ads-offline-conversions.md)</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Weekly leads chart */}
       <Card>

@@ -9,6 +9,7 @@ describe("attributionSchema / attributionColumns", () => {
     expect(cols).toEqual({
       landing_page: null, referrer: null, utm_source: null, utm_medium: null, utm_campaign: null,
       utm_term: null, utm_content: null, gclid: null, fbclid: null,
+      channel: "unknown", // migration 0128: derived at insert
     });
   });
 

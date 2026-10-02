@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeadPipelineControls, type LeadFileSummary } from "./lead-pipeline-controls";
 import { LEAD_STAGE_LABELS, isLeadStage, type LeadStage } from "@/lib/marketing/zh/pipeline";
+import { CHANNEL_LABELS, LEAD_QUALITY_LABELS, isChannel, isLeadQuality, isLostReason } from "@/lib/marketing/crm";
 import {
   Table,
   TableBody,
@@ -51,6 +52,11 @@ interface Lead {
   quoted_value: number | null;
   final_revenue: number | null;
   admin_notes: string | null;
+  // CRM (migration 0128)
+  lead_quality: string | null;
+  lost_reason: string | null;
+  channel: string | null;
+  gclid: string | null;
 }
 
 function stageOf(l: Lead): LeadStage {
@@ -111,10 +117,20 @@ export default async function LeadsPage() {
       finalRevenue={l.final_revenue}
       adminNotes={l.admin_notes}
       files={filesByLead.get(l.id) ?? []}
+      leadQuality={isLeadQuality(l.lead_quality) ? l.lead_quality : "unrated"}
+      lostReason={isLostReason(l.lost_reason) ? l.lost_reason : null}
     />
   );
   const stageBadge = (l: Lead) => (
-    <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">{LEAD_STAGE_LABELS[stageOf(l)].th}</span>
+    <span className="inline-flex flex-wrap gap-1">
+      <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">{LEAD_STAGE_LABELS[stageOf(l)].th}</span>
+      {isChannel(l.channel) && l.channel !== "unknown" && (
+        <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">{CHANNEL_LABELS[l.channel].th}{l.gclid ? " · gclid" : ""}</span>
+      )}
+      {isLeadQuality(l.lead_quality) && l.lead_quality !== "unrated" && (
+        <span className={`rounded border px-1.5 py-0.5 text-[10px] ${l.lead_quality === "qualified" || l.lead_quality === "high_value" ? "border-success/40 bg-success/10 text-success" : "border-border text-muted-foreground"}`}>{LEAD_QUALITY_LABELS[l.lead_quality].th}</span>
+      )}
+    </span>
   );
 
   return (

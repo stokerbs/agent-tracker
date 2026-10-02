@@ -178,3 +178,15 @@ paid click ids `gclid` / `fbclid` (indexed) and `stage = 'new'`. Form leads from
 (same format as the Chinese `CN-` refs; same partial unique index); assistant
 leads have no ref yet. Values are client-supplied, bounded by the API,
 informational only.
+
+Migration `0128` adds the CRM fields from the SEO/growth audit (Days 31–90):
+`marketing_leads.lead_quality` (`unrated | spam | unqualified | qualified |
+high_value`, admin-set after first contact), `lost_reason` (nullable, fixed
+list) and `channel` (acquisition channel derived at insert from first-touch
+attribution by `channelFor()` in `src/lib/marketing/crm.ts`; backfilled in the
+migration with the same rules). New table `marketing_ad_spend` (daily cost per
+platform / campaign / locale, unique on that tuple) is written by admins through
+the RLS insert/update policies from the `/marketing-insights` CSV importer and
+read for CPL / CPQL / ROAS. `qualified` / `high_value` and `converted_at` drive
+the Google Ads offline-conversion export at
+`/marketing-insights/offline-conversions` (admin, audited).

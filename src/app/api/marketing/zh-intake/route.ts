@@ -9,6 +9,7 @@ import {
 } from "@/lib/marketing/zh/intake-schema";
 import { generateLeadRef } from "@/lib/marketing/zh/lead-ref";
 import { sniffMime } from "@/lib/marketing/zh/file-sniff";
+import { channelFor } from "@/lib/marketing/crm";
 
 /**
  * Public, unauthenticated endpoint — the Chinese intake form posts here as
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
     utm_medium: data.utmMedium || null,
     utm_campaign: data.utmCampaign || null,
     utm_term: data.utmTerm || null,
+    channel: channelFor({ utm_source: data.utmSource, utm_medium: data.utmMedium, referrer: data.referrer, landing_page: data.landingPage }),
     locale: "zh",
     source: "zh_intake",
     stage: "new",

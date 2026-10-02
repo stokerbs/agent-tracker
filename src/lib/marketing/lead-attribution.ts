@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ATTRIBUTION_LIMITS } from "@/lib/marketing/attribution";
+import { channelFor } from "@/lib/marketing/crm";
 
 /**
  * Server-side contract for the first-touch attribution object that the
@@ -37,7 +38,7 @@ export function attributionColumns(a: AttributionInput) {
   const v = (s?: string) => (s && s.length > 0 ? s : null);
   const path = (s?: string) => (s && LANDING_PATH.test(s) ? s : null);
   const url = (s?: string) => (s && HTTP_URL.test(s) ? s : null);
-  return {
+  const cols = {
     landing_page: path(a?.landing_page),
     referrer: url(a?.referrer),
     utm_source: v(a?.utm_source),
@@ -48,4 +49,6 @@ export function attributionColumns(a: AttributionInput) {
     gclid: v(a?.gclid),
     fbclid: v(a?.fbclid),
   };
+  // Acquisition channel (migration 0128) derived once at insert.
+  return { ...cols, channel: channelFor(cols) };
 }

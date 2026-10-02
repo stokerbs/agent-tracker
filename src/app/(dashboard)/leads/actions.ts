@@ -7,6 +7,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
 import { handleDbError, reportError } from "@/lib/errors";
 import { LEAD_STAGES, PAID_STAGES, legacyStatusFor } from "@/lib/marketing/zh/pipeline";
+import { LEAD_QUALITIES, LOST_REASONS } from "@/lib/marketing/crm";
 
 const money = z.preprocess(
   (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
@@ -20,6 +21,10 @@ const schema = z.object({
   quotedValue: money,
   finalRevenue: money,
   adminNotes: z.string().trim().max(2000).optional().or(z.literal("")),
+  // CRM (migration 0128): optional so older forms / tests keep working.
+  leadQuality: z.enum(LEAD_QUALITIES).optional(),
+  lostReason: z.preprocess((v) => (v === "" || v === null ? undefined : v), z.enum(LOST_REASONS).optional()),
+  clearLostReason: z.preprocess((v) => v === "1" || v === "true", z.boolean()).optional(),
 });
 
 /**
@@ -37,6 +42,9 @@ export async function updateLeadPipeline(formData: FormData): Promise<{ ok: true
     quotedValue: formData.get("quotedValue"),
     finalRevenue: formData.get("finalRevenue"),
     adminNotes: formData.get("adminNotes"),
+    leadQuality: formData.get("leadQuality") ?? undefined,
+    lostReason: formData.get("lostReason"),
+    clearLostReason: formData.get("clearLostReason") ?? undefined,
   });
   if (!parsed.success) return { error: "invalid_input" };
   const d = parsed.data;
@@ -63,6 +71,8 @@ export async function updateLeadPipeline(formData: FormData): Promise<{ ok: true
       quoted_value: d.quotedValue,
       final_revenue: d.finalRevenue,
       admin_notes: d.adminNotes ? d.adminNotes : null,
+      ...(d.leadQuality ? { lead_quality: d.leadQuality } : {}),
+      ...(d.lostReason ? { lost_reason: d.lostReason } : d.clearLostReason ? { lost_reason: null } : {}),
     })
     .eq("id", d.id);
   if (error) return { error: handleDbError(error, "leads:updateLeadPipeline") };
@@ -72,7 +82,7 @@ export async function updateLeadPipeline(formData: FormData): Promise<{ ok: true
     action: stageChanged ? "LEAD_STAGE_CHANGE" : "LEAD_PIPELINE_UPDATE",
     entity: "marketing_leads",
     entityId: d.id,
-    metadata: { from: current.stage, to: d.stage, quoted_value: d.quotedValue, final_revenue: d.finalRevenue },
+    metadata: { from: current.stage, to: d.stage, quoted_value: d.quotedValue, final_revenue: d.finalRevenue, lead_quality: d.leadQuality ?? null, lost_reason: d.lostReason ?? null },
   });
 
   revalidatePath("/leads");
