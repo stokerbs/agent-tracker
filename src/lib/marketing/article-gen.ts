@@ -3,6 +3,8 @@ import "server-only";
 import { classifyArticle } from "@/lib/marketing/article-category";
 import { findBannedPhrases } from "@/lib/marketing/zh/compliance";
 import { ZH_SERVICE_PAGE } from "@/lib/marketing/zh/nav";
+import { servicePathForKey } from "@/lib/marketing/pages";
+import { HUMAN_PARAGRAPH_MARKER } from "@/lib/marketing/human-paragraph";
 
 const MODEL = process.env.MARKETING_AI_MODEL ?? "claude-haiku-4-5-20251001";
 /** Per-call timeout. Two calls (draft + one compliance retry) must fit inside
@@ -26,6 +28,8 @@ export interface KeywordTopic {
   angle: string;
   /** Service key (ZhPage.service / "pricing") — links the article to its /zh service page. */
   service?: string;
+  /** Content-calendar topics: leave a marker where the owner adds a first-hand paragraph before publishing. */
+  humanParagraph?: boolean;
 }
 
 export const KEYWORD_TOPICS: KeywordTopic[] = [
@@ -105,6 +109,8 @@ CHINESE VERSION — COMPLIANCE (strict):
 - Do not describe surveillance tactics or anything that could compromise investigators or cases. Do not sensationalise.
 - The Chinese call-to-action is 微信咨询 (WeChat) or the online form at https://detectivepulse.com/zh/contact — NOT LINE/phone.
 - When a SERVICE PAGE URL is given, link to it once naturally in the Chinese body (Markdown link) and mention the English/Thai equivalents are available.
+- When a THAI SERVICE PAGE URL / ENGLISH SERVICE PAGE URL is given, link to it once naturally in the Thai / English body (Markdown link, anchor = the service name).
+- When HUMAN PARAGRAPH is requested, put the exact token ${HUMAN_PARAGRAPH_MARKER} on its own line right after the first paragraph of BOTH the Thai and the English body. Do not write that paragraph yourself; the firm adds first-hand experience there.
 - The meta description must be a single plain sentence, 120–155 characters, no Markdown.
 - Titles: compelling but honest, ≤60 characters, include "| Detective Pulse" is NOT needed (the template adds branding).
 - Provide URL slugs: en_slug in lowercase kebab-case (a–z, 0–9, hyphens); th_slug a short Thai slug and zh_slug a short Chinese slug (concise, no spaces — use hyphens between words if needed).
@@ -156,6 +162,8 @@ export async function generateArticle(seed: KeywordTopic, feedback?: string): Pr
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const servicePath = seed.service && Object.hasOwn(ZH_SERVICE_PAGE, seed.service) ? ZH_SERVICE_PAGE[seed.service] : undefined;
+  const thServicePath = servicePathForKey("th", seed.service);
+  const enServicePath = servicePathForKey("en", seed.service);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ARTICLE_CALL_TIMEOUT_MS);
@@ -180,6 +188,9 @@ export async function generateArticle(seed: KeywordTopic, feedback?: string): Pr
               `TARGET KEYWORD (Chinese): ${seed.zh}\n` +
               `ANGLE: ${seed.angle}\n` +
               (servicePath ? `SERVICE PAGE URL (link once in the Chinese body): https://detectivepulse.com${servicePath}\n` : "") +
+              (thServicePath ? `THAI SERVICE PAGE URL (link once in the Thai body): https://detectivepulse.com${encodeURI(thServicePath)}\n` : "") +
+              (enServicePath ? `ENGLISH SERVICE PAGE URL (link once in the English body): https://detectivepulse.com${enServicePath}\n` : "") +
+              (seed.humanParagraph ? `HUMAN PARAGRAPH: requested — insert ${HUMAN_PARAGRAPH_MARKER} after the first paragraph of the Thai and English bodies.\n` : "") +
               (feedback ? `\nPREVIOUS DRAFT REJECTED — ${feedback}\n` : "") +
               `\nWrite the article in all three languages and call save_article.`,
           },
