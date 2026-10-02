@@ -52,4 +52,4 @@ Whether it's a loved one who has disappeared or someone important you've lost co
 
 Investigating on your own may look easy and convenient, but it carries risks and limits you may overlook. Hiring a private investigator from Detective Pulse means accurate, safe information — and peace of mind.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

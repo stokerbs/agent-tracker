@@ -32,4 +32,4 @@ With online fraud on the rise, having a private investigator and sensible self-p
 
 *Reference: FTC, "New FTC Data Show Consumers Reported Losing Nearly $8.8 Billion to Scams in 2022."*
 
-Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

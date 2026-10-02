@@ -18,4 +18,4 @@ One point worth noting: you can claim damages from the third party without getti
 
 In the end, choosing to hire a detective to gather adultery evidence takes careful thought. The information in this article should help you understand what to expect and what to know before taking the next step.
 
-See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -16,8 +16,9 @@ import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { getMarketingPageEN } from "@/lib/marketing/content";
 import { FAQ_EN } from "@/lib/marketing/faq";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
+const YOUTUBE_URL = CONTACT.youtubeUrl;
 
 const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "cheating-spouse-investigator", label: "Cheating Spouse", blurb: "Discreetly track a partner's behaviour and gather court-admissible evidence.", Icon: HeartCrack },
@@ -66,7 +67,7 @@ export function MarketingHomeEN() {
 
   return (
     <>
-      <MarketingJsonLd faq={FAQ_EN} />
+      <MarketingJsonLd faq={FAQ_EN} lang="en" />
       {/* Hero */}
       <DetectiveHero
         caseNo="CASE FILE №DP-∞"
@@ -78,8 +79,8 @@ export function MarketingHomeEN() {
         titleRest="in Thailand"
         subtitle="Infidelity, asset searches, missing persons, background checks and cyber investigations — clear evidence, gathered professionally and in complete confidence."
         ctas={[
-          { href: "https://lin.ee/SSqk98x", label: "Free consult on LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: "https://api.whatsapp.com/send?phone=+66968461406", label: "WhatsApp us", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
+          { href: CONTACT.lineUrl, label: "Free consult on LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
+          { href: CONTACT.whatsappUrl, label: "WhatsApp us", icon: <WhatsAppIcon className="h-5 w-5" />, className: "bg-[#178741] font-semibold text-white", external: true },
           { href: "#contact", label: "Contact", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
         ]}
         tagline="// Relentless · discreet · nationwide"
@@ -253,9 +254,9 @@ export function MarketingHomeEN() {
             <span className="h-px w-8 bg-border" /> or chat directly <span className="h-px w-8 bg-border" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <TrackedLink href="https://api.whatsapp.com/send?phone=+66968461406" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</TrackedLink>
-            <TrackedLink href="https://lin.ee/SSqk98x" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</TrackedLink>
-            <TrackedLink href="https://www.facebook.com/Detectivepluse.th" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</TrackedLink>
+            <TrackedLink href={CONTACT.whatsappUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white hover:opacity-90"><WhatsAppIcon className="h-5 w-5" /> WhatsApp</TrackedLink>
+            <TrackedLink href={CONTACT.lineUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white hover:opacity-90"><LineIcon className="h-5 w-5" /> LINE</TrackedLink>
+            <TrackedLink href={CONTACT.facebookUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white hover:opacity-90"><FacebookIcon className="h-5 w-5" /> Facebook</TrackedLink>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 font-medium text-primary hover:bg-primary/10">All contact options</Link>
             )}

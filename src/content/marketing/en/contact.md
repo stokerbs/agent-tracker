@@ -18,4 +18,4 @@ The initial consultation is free. Tell us your situation and our team will advis
 - **WhatsApp:** [096 846 1406](https://api.whatsapp.com/send?phone=+66968461406)
 - **Phone:** [096 846 1406](tel:+66968461406)
 - **Email:** [detectivepluse@gmail.com](mailto:detectivepluse@gmail.com)
-- **Facebook:** [Detectivepulse.th](https://www.facebook.com/Detectivepluse.th)
+- **Facebook:** [Detective Pulse on Facebook](https://www.facebook.com/Detectivepluse.th)

@@ -18,4 +18,4 @@ For this service, once we receive your information, we pass this confidential da
 
 Whether you're an investor interested in buying or selling property, or an owner wanting to check further details, our asset background-check service is always glad to help. We guarantee accurate, complete information so you can decide with confidence.
 
-See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

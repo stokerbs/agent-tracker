@@ -28,4 +28,4 @@ We use modern data-analysis techniques and tools to reach accurate results and a
 
 Our leading detective service brings expertise and experience to finding the key information and evidence in any case. With good coordination and sound planning, we deliver the best possible results in your search for the facts and evidence you need.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

@@ -8,6 +8,7 @@ import { LineIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { useMarketingLang, type MarketingLang } from "@/components/marketing/use-marketing-lang";
+import { CONTACT } from "@/lib/marketing/contact";
 
 const COPY: Record<MarketingLang, { call: string; line: string }> = {
   th: { call: "โทรเลย", line: "ปรึกษาฟรี LINE" },
@@ -51,11 +52,11 @@ export function StickyContactBar() {
         </>
       ) : (
       <>
-      <TrackedLink href="tel:+66968461406" placement="sticky" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
+      <TrackedLink href={CONTACT.phoneTel} placement="sticky" className="flex flex-1 items-center justify-center gap-2 py-3 font-semibold text-primary">
         <Phone className="h-5 w-5" /> {t.call}
       </TrackedLink>
       <TrackedLink
-        href="https://lin.ee/SSqk98x"
+        href={CONTACT.lineUrl}
         placement="sticky"
         className="flex flex-1 items-center justify-center gap-2 bg-[#048739] py-3 font-semibold text-white"
       >

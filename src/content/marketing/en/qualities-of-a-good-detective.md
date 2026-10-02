@@ -45,4 +45,4 @@ What detectives do isn't only tailing people or taking covert photos, as in thri
 
 A detective's work isn't only tracking or gathering information — it's using skill to find the truth with honesty and professionalism. A good detective needs many qualities: patience, attention to detail, and quick problem-solving. And their vision is to work for justice. If you're looking for an excellent detective who does good work, we recommend Detective Pulse.
 
-Contact us easily online — **LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+Contact us easily online — **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -5,6 +5,7 @@ import { Send, CheckCircle2, MessageCircle, Loader2 } from "lucide-react";
 import { track, currentPage } from "@/lib/marketing/analytics";
 import { getAttribution } from "@/lib/marketing/attribution";
 import { TrackedLink } from "@/components/marketing/tracked-link";
+import { CONTACT } from "@/lib/marketing/contact";
 
 type Lang = "th" | "en" | "zh";
 
@@ -77,7 +78,7 @@ const COPY = {
   },
 } as const;
 
-const LINE_URL = "https://lin.ee/SSqk98x";
+const LINE_URL = CONTACT.lineUrl;
 
 export function LeadForm({ lang = "th" }: { lang?: Lang }) {
   const t = COPY[lang];

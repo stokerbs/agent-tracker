@@ -22,4 +22,4 @@ Tracing assets before you begin legal proceedings is essential when property or 
 
 Preparation before you file matters. A well-prepared asset search — with the accuracy and value of the assets properly assessed — is a key ingredient in a case that has a real chance of succeeding in court.
 
-If you'd like professional help tracing and valuing assets, Detective Pulse can search discreetly and give you the complete information you need. See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+If you'd like professional help tracing and valuing assets, Detective Pulse can search discreetly and give you the complete information you need. See our [asset investigation service](/en/asset-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

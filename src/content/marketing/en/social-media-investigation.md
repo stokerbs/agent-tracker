@@ -18,4 +18,4 @@ On **Instagram**, focused on sharing images and video, we can investigate images
 
 In short, our IT-investigation service isn't only about convenience and speed — it covers detailed investigation of every kind of data: commercial, market and general information — so you receive the most complete, accurate and current results. You can be confident you'll get the information you need, quickly and with the highest accuracy.
 
-See our [cyber & online investigation service](/en/cyber-investigation), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [cyber & online investigation service](/en/cyber-investigation), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

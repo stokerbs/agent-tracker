@@ -20,4 +20,4 @@ With a team of skilled investigators, we have access to a wide range of reliable
 
 Whether you want to know about someone starting a new business, an important business partner, or a family member who could affect your life, we're glad to help you get comprehensive, reliable information. With accurate, complete information in hand, you can move forward with far more confidence and safety. Our detailed background-check service is the tool that helps you know the truth — and act on it with confidence, in both your legal and business affairs.
 
-See our [background check service](/en/background-check), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [background check service](/en/background-check), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

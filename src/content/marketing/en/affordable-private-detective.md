@@ -20,7 +20,7 @@ Detective Pulse's investigations come at several price points. Here are three st
 
 - **From 5,000 THB** — asset searches: for example the source of assets, asset transfers, or finding a missing vehicle (pawned, or lent to a friend or relative and never returned). (We're investigators — we trace assets, but we do not collect debts.)
 
-These are the basics of hiring an affordable-but-good detective. For the deeper details, we'd encourage you to message us before you decide — we can recommend an approach and investigate exactly what you need. **LINE: [@detectivepluse](https://lin.ee/49Hessi)**
+These are the basics of hiring an affordable-but-good detective. For the deeper details, we'd encourage you to message us before you decide — we can recommend an approach and investigate exactly what you need. **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**
 
 ## Detective Pulse — serving all of Thailand
 

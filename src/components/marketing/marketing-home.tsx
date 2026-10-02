@@ -18,8 +18,9 @@ import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { getMarketingPage } from "@/lib/marketing/content";
 import { FAQ_TH } from "@/lib/marketing/faq";
+import { CONTACT } from "@/lib/marketing/contact";
 
-const YOUTUBE_URL = "https://www.youtube.com/watch?v=-sYx6i8OBF0";
+const YOUTUBE_URL = CONTACT.youtubeUrl;
 
 const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "นักสืบชู้สาว", label: "นักสืบชู้สาว", blurb: "ติดตามพฤติกรรมสามี/ภรรยา สืบชู้ สืบกิ๊ก เก็บหลักฐานเพื่อใช้ในชั้นศาล", Icon: HeartCrack },
@@ -80,8 +81,8 @@ export function MarketingHome() {
         titleRest="รับงานสืบทั่วราชอาณาจักร"
         subtitle="ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
         ctas={[
-          { href: "https://lin.ee/SSqk98x", label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
-          { href: "tel:+66968461406", label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
+          { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
+          { href: CONTACT.phoneTel, label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
           { href: "#contact", label: "ช่องทางติดต่อ", icon: <ArrowRight className="h-4 w-4 order-last" />, className: "border border-border font-medium hover:bg-muted" },
         ]}
         tagline="// กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก"
@@ -263,19 +264,19 @@ export function MarketingHome() {
             <span className="h-px w-8 bg-border" /> หรือทักแชทโดยตรง <span className="h-px w-8 bg-border" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <TrackedLink href="https://lin.ee/SSqk98x" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            <TrackedLink href={CONTACT.lineUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#048739] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <LineIcon className="h-5 w-5" /> LINE
             </TrackedLink>
-            <TrackedLink href="https://api.whatsapp.com/send?phone=+66968461406" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            <TrackedLink href={CONTACT.whatsappUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#178741] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <WhatsAppIcon className="h-5 w-5" /> WhatsApp
             </TrackedLink>
-            <TrackedLink href="https://www.facebook.com/Detectivepluse.th" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
+            <TrackedLink href={CONTACT.facebookUrl} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg bg-[#1772e8] px-5 py-2.5 font-medium text-white transition-opacity hover:opacity-90">
               <FacebookIcon className="h-5 w-5" /> Facebook
             </TrackedLink>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <TrackedLink href="tel:+66968461406" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</TrackedLink>
-            <TrackedLink href="mailto:detectivepluse@gmail.com" placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</TrackedLink>
+            <TrackedLink href={CONTACT.phoneTel} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><PhoneCall className="h-4 w-4 text-primary" /> 096 846 1406</TrackedLink>
+            <TrackedLink href={CONTACT.mailto} placement="contact_section" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 font-mono text-xs hover:bg-muted"><Mail className="h-4 w-4 text-primary" /> detectivepluse@gmail.com</TrackedLink>
             {contact && (
               <Link href={contact.path} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"><MessageCircle className="h-4 w-4" /> ช่องทางทั้งหมด</Link>
             )}

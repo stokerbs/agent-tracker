@@ -7,12 +7,13 @@ import { LineIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { track, currentPage } from "@/lib/marketing/analytics";
 import { getAttribution } from "@/lib/marketing/attribution";
+import { CONTACT } from "@/lib/marketing/contact";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Lang = "th" | "en" | "zh";
 
-const LINE_URL = "https://lin.ee/SSqk98x";
-const TEL_URL = "tel:+66968461406";
+const LINE_URL = CONTACT.lineUrl;
+const TEL_URL = CONTACT.phoneTel;
 
 const COPY: Record<Lang, {
   header: string; greeting: string; suggestions: string[]; placeholder: string;

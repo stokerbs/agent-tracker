@@ -28,4 +28,4 @@ The work we take on comes in many forms. Here are the main categories clients mo
 - Vehicle searches — finding a missing car, whether pawned or lent to a friend or relative; we find it.
 - Missing persons — people with or without a warrant, and reuniting separated relatives.
 
-Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+Message our professional private investigators, serving all of Thailand — **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

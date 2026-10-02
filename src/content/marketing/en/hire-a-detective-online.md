@@ -35,7 +35,7 @@ Convenient as it is, hiring a detective online carries risk if you don't careful
 
 If you're looking for a trustworthy online detective, **[Detective Pulse](/en)** is an answer you can rely on. With an experienced, professional team and modern tools, we're ready to help you solve the mystery and find the truth in any situation.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**
 
 ## In summary — hire online safely by choosing well
 

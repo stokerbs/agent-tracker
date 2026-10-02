@@ -24,7 +24,8 @@ export function ZhBusinessJsonLd() {
     foundingDate: String(ZH_COMPANY.since),
     areaServed: { "@type": "Country", name: "Thailand" },
     availableLanguage: ["zh-CN", "en", "th"],
-    sameAs: ["https://www.facebook.com/Detectivepluse.th"],
+    sameAs: ZH_COMPANY.sameAs,
+    address: { "@type": "PostalAddress", addressLocality: "Bangkok", addressCountry: "TH" },
     aggregateRating: {
       "@type": "AggregateRating",
       ratingValue: ZH_COMPANY.reviews.rating,

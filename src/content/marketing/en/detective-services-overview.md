@@ -34,4 +34,4 @@ Detective services provide advice and investigation on matters tied to the doubt
 
 Detective services are a compelling option for anyone with doubts or problems that need answers — relationships, asset searches, or finding information in the digital world. Choosing the right agency matters just as much: consider reputation, client reviews, and confidentiality, so you get the best service from a detective you trust. If you want a professional, reliable detective ready to help with anything, think of Detective Pulse.
 
-**Contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**
+**Contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**

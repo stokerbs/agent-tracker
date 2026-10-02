@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageCircle, X, Phone, Mail } from "lucide-react";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
+import { CONTACT } from "@/lib/marketing/contact";
 
 type Lang = "th" | "en" | "zh";
 
@@ -28,11 +29,11 @@ function detectLang(pathname: string): Lang {
 export function ContactFab() {
   const t = COPY[detectLang(usePathname() || "/")];
   const channels = [
-    { label: "LINE", href: "https://lin.ee/SSqk98x", bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
-    { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=+66968461406", bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
-    { label: t.call, href: "tel:+66968461406", bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
-    { label: "Facebook", href: "https://www.facebook.com/Detectivepluse.th", bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
-    { label: t.email, href: "mailto:detectivepluse@gmail.com", bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
+    { label: "LINE", href: CONTACT.lineUrl, bg: "#048739", icon: <LineIcon className="h-5 w-5" /> },
+    { label: "WhatsApp", href: CONTACT.whatsappUrl, bg: "#178741", icon: <WhatsAppIcon className="h-5 w-5" /> },
+    { label: t.call, href: CONTACT.phoneTel, bg: "#2563eb", icon: <Phone className="h-5 w-5" /> },
+    { label: "Facebook", href: CONTACT.facebookUrl, bg: "#1772e8", icon: <FacebookIcon className="h-5 w-5" /> },
+    { label: t.email, href: CONTACT.mailto, bg: "#6b7280", icon: <Mail className="h-5 w-5" /> },
   ];
   const [open, setOpen] = useState(false);
   const [nudged, setNudged] = useState(false);

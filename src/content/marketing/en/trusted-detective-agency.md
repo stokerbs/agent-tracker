@@ -30,4 +30,4 @@ Professional detectives focused on family cases handle matters that may involve 
 
 A trusted, professional detective agency is one with a skilled team experienced in investigating every type of case. With modern techniques and tools, you can be confident of accurate, reliable results — whether your case is business, real estate, criminal or family related.
 
-See [all our detective services](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See [all our detective services](/en/hire-a-private-detective), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

@@ -28,4 +28,4 @@ Hiring a professional matters a great deal in a case like this. Here's why:
 
 Hiring an investigator is an effective way to handle an infidelity case and find the truth — by entrusting the task to someone with the right expertise and tools. With a professional on your side, you can be confident the problem is being handled properly.
 
-See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://page.line.me/detectivepluse)**.
+See our [cheating-spouse investigation service](/en/cheating-spouse-investigator), or **contact us on LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

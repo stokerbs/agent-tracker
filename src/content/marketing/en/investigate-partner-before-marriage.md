@@ -22,4 +22,4 @@ There are several reasons someone might want to check on a partner before marria
 
 ## In summary
 
-For investigating a partner, we recommend talking openly first, as a couple in a relationship. But if doubt or suspicion remains, hiring a detective to follow a partner is worth considering — because if nothing turns up, you can trust more fully, and if something does, you'll have the information to decide how the relationship should go. To consult or ask more, reach us any time on **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+For investigating a partner, we recommend talking openly first, as a couple in a relationship. But if doubt or suspicion remains, hiring a detective to follow a partner is worth considering — because if nothing turns up, you can trust more fully, and if something does, you'll have the information to decide how the relationship should go. To consult or ask more, reach us any time on **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.

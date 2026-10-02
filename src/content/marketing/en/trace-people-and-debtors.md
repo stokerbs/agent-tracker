@@ -26,4 +26,4 @@ That's because a detective's process for finding a missing person is better than
 
 The time needed to find a missing person — where they've gone, or simply someone you've lost contact with — depends on the information you have before we start. The more information, the faster and easier the work. So before hiring a detective to find someone, give the investigator everything you have, for the fastest, most useful result for everyone.
 
-We at Detective Pulse offer every kind of missing-person search — with or without a warrant — handled professionally, reducing risk to the client, and keeping everything strictly confidential. Any questions, reach us any time on **LINE: [@detectivepluse](https://lin.ee/49Hessi)**.
+We at Detective Pulse offer every kind of missing-person search — with or without a warrant — handled professionally, reducing risk to the client, and keeping everything strictly confidential. Any questions, reach us any time on **LINE: [@detectivepluse](https://lin.ee/SSqk98x)**.
