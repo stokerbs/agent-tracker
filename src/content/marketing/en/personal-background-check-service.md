@@ -5,7 +5,7 @@ slug: "/personal-background-check-service/"
 path: "/en/personal-background-check-service"
 title: "Detailed Personal Background Check — Reveal the Truth, Gain Confidence"
 seoTitle: "Detailed Personal Background Check Service"
-description: "Need to know the full story about someone who will play an important role in your life or business? Our detailed background-check service helps you feel safe and confident."
+description: "Detailed, lawful background checks on someone important to your life or business — identity, work history, court records and credibility."
 ---
 
 A detailed personal background check is a service that matters enormously today, as privacy and safety draw ever more attention. We make sure you receive accurate, reliable information about someone who is about to become an important part of your future — a spouse, a colleague, a business partner, a supplier, and so on.

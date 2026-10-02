@@ -41,7 +41,5 @@ export const TH_TO_EN: Record<string, string> = Object.fromEntries(
   Object.entries(EN_TO_TH).map(([en, th]) => [th, en]),
 );
 
-/** Thai path (decoded, slash-wrapped) for a Thai slug. */
-export const thPath = (thSlug: string) => `/${thSlug}`;
 /** English path for an English slug. */
 export const enPath = (enSlug: string) => `/en/${enSlug}`;

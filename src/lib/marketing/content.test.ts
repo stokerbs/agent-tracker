@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMarketingPages, getMarketingPage } from "./content";
+import { getMarketingPages, getMarketingPage, getMarketingPagesEN } from "./content";
 
 describe("marketing content loader", () => {
   const pages = getMarketingPages();
@@ -49,6 +49,13 @@ describe("marketing content loader", () => {
         expect(l.startsWith("https://detectivepulse.com"), `${p.slug}: ${l}`).toBe(false);
         if (l.startsWith("/") && l !== "/") expect(l.endsWith("/"), `${p.slug}: ${l}`).toBe(false);
       }
+    }
+  });
+
+  it("descriptions fit a search snippet (≤155 chars) and titles carry no brand suffix (the layout template adds it)", () => {
+    for (const p of [...pages, ...getMarketingPagesEN()]) {
+      expect(p.description.length, `${p.slug}: ${p.description.length}`).toBeLessThanOrEqual(155);
+      expect(p.seoTitle.includes("| Detective Pulse"), p.slug).toBe(false);
     }
   });
 });

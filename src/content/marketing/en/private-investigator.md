@@ -5,7 +5,7 @@ slug: "/private-investigator/"
 path: "/en/private-investigator"
 title: "Private Investigator in Thailand — Services for Individuals"
 seoTitle: "Private Investigator in Thailand for Individuals"
-description: "A professional private investigator for individuals — social-media checks, infidelity evidence, asset searches, background checks and more. Discreet and reliable."
+description: "A professional private investigator for individuals in Thailand — social-media checks, infidelity evidence, asset searches and background checks."
 ---
 
 In an age where relationships and information overlap across the online world and a fast-changing society, getting to the truth on your own is rarely easy. Accurate, clear information matters — whether the issue is personal or business-related — and a **private investigator** has become an indispensable ally for ordinary people.

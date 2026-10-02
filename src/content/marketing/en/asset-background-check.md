@@ -5,7 +5,7 @@ slug: "/asset-background-check/"
 path: "/en/asset-background-check"
 title: "Asset Background Check — Verify a Person's Property"
 seoTitle: "Asset Background Check Service in Thailand"
-description: "Search a person's assets by name or ID — land, house, condo, and other property such as vehicle and motorcycle registrations, including the legal owner. Fast and easy."
+description: "Lawful asset checks on a person or debtor — land, houses, condos, vehicles and businesses from accessible sources, to support a claim or enforcement."
 ---
 
 In an age where technology and information shape daily life, we can reach useful data more easily than ever — such as checking the assets of a person involved, so we can make transactions and decisions correctly and with confidence in the accuracy of the information.

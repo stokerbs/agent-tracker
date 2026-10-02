@@ -5,7 +5,7 @@ slug: "/qualities-of-a-good-detective/"
 path: "/en/qualities-of-a-good-detective"
 title: "What Makes a Good Detective — Qualities and Vision"
 seoTitle: "What Makes a Good Detective — Qualities & Vision"
-description: "The qualities a good detective should have, plus the vision that matters in investigative work. Read this to learn how to choose a detective for your important case."
+description: "The qualities a good detective needs and the mindset that matters in investigative work — a guide to choosing the right detective for your case."
 coverImage: "/marketing/articles/investigation.jpg"
 coverAlt: "The qualities of a good private detective — Detective Pulse"
 ---

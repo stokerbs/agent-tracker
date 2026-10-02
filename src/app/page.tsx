@@ -26,7 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
     "นักสืบเอกชนมืออาชีพ ตั้งแต่ปี 2016 รับสืบชู้สาว เช็คประวัติบุคคล ตามหาคน สืบทรัพย์ กรุงเทพฯ และทั่วประเทศ ทำงานถูกกฎหมาย เป็นความลับ ปรึกษาฟรีทาง LINE";
   const ogImage = { url: "https://detectivepulse.com/api/og", width: 1200, height: 630 };
   return {
-    title,
+    // Absolute: the root layout template ("%s · Detective Pulse") must not append a second brand.
+    title: { absolute: title },
     description,
     alternates: { canonical: "/", languages: { th: "/", en: "/en", "zh-CN": "/zh", "x-default": "/en" } },
     openGraph: { type: "website", url: "https://detectivepulse.com", title, description, siteName: "Detective Pulse", images: [ogImage] },

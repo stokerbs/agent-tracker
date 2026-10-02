@@ -5,7 +5,7 @@ slug: "/asset-investigation/"
 path: "/en/asset-investigation"
 title: "Asset Investigation & Debtor Asset Search"
 seoTitle: "Asset Investigation & Debtor Asset Search in Thailand"
-description: "Locate and verify a debtor's assets before you sue or enforce a judgment. Detective Pulse traces property, vehicles and accounts — systematic and confidential."
+description: "Locate and verify a debtor's assets before you sue or enforce a judgment. Lawful tracing of property, vehicles and businesses — systematic, confidential."
 ---
 
 Before filing a lawsuit or enforcing a court judgment, it pays to know what assets the other party actually holds. **Detective Pulse** provides professional asset investigations — tracing and verifying a debtor's property so you can make informed legal and financial decisions.

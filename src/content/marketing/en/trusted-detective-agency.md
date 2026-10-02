@@ -5,7 +5,7 @@ slug: "/trusted-detective-agency/"
 path: "/en/trusted-detective-agency"
 title: "A Trusted, Professional Detective Agency — Every Type of Case"
 seoTitle: "Trusted Professional Detective Agency in Thailand"
-description: "A trusted, professional detective agency handling investigations across real estate, criminal, business and family cases — with a skilled, highly experienced team."
+description: "A trusted, professional detective agency in Thailand handling family, business, property and fraud-related investigations with an experienced team."
 ---
 
 When you need help investigating and resolving a case, we recommend finding an agency that is both expert and trustworthy. Detective agencies come in many forms — look for one whose expertise and experience will be your ally in finding the truth and solving problems across a wide range of case types.

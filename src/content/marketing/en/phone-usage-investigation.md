@@ -5,7 +5,7 @@ slug: "/phone-usage-investigation/"
 path: "/en/phone-usage-investigation"
 title: "Phone Number Check — Unknown Callers, Scam Numbers and Fake Accounts (Lawful OSINT)"
 seoTitle: "Phone Number Check: Scam & Unknown Numbers in Thailand"
-description: "Check an unknown or suspicious Thai phone number against public scam reports and open sources, and verify the accounts tied to it — lawfully. We never pull another person's call records or SIM data."
+description: "Check an unknown or suspicious Thai phone number against public scam reports and open sources — lawfully. We never pull another person's call or SIM data."
 ---
 
 Scam calls and messages reach almost everyone in Thailand. When an unknown number keeps calling, or someone you met online gives you only a phone number and a social-media handle, you want to know who is behind it before you reply, transfer money or meet. Detective Pulse offers a **phone number check** built on the lawful open-source methods of our [cyber investigation](/en/cyber-investigation) team.

@@ -5,7 +5,7 @@ slug: "/trace-people-and-debtors/"
 path: "/en/trace-people-and-debtors"
 title: "Hire a Detective to Find People, Relatives and Debtors"
 seoTitle: "Find Missing People, Relatives and Debtors"
-description: "Hire a detective to find a person — relatives, friends, debtors, missing persons, or someone you once shared your life with. We're ready to find the person you want to see."
+description: "Hire a detective to find a person in Thailand — relatives, old friends, debtors or missing persons — with a free, honest feasibility assessment first."
 coverImage: "/marketing/articles/find-person.jpg"
 coverAlt: "Finding missing people and debtors — Detective Pulse"
 ---

@@ -5,7 +5,7 @@ slug: "/social-media-investigation/"
 path: "/en/social-media-investigation"
 title: "Social-Media Investigation — Facebook, LINE, Instagram and Beyond"
 seoTitle: "Social-Media & Online Investigation Service"
-description: "Investigate information across digital platforms — Facebook, LINE, Instagram and other online media — with modern technology and a capable team, for complete, accurate, up-to-date results."
+description: "Lawful social-media and online investigations across Facebook, LINE, Instagram and more — identity checks, fake accounts and digital footprints."
 ---
 
 In today's digital age we can reach information anywhere, any time, from many sources — online and offline. With a modern IT-investigation service, finding that information becomes easier: with up-to-date technology and a capable team, we can search out the data you need quickly and accurately.

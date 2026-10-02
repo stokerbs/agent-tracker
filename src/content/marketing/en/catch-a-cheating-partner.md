@@ -5,7 +5,7 @@ slug: "/catch-a-cheating-partner/"
 path: "/en/catch-a-cheating-partner"
 title: "Infidelity Investigators — Tracking a Cheating Spouse or Partner"
 seoTitle: "Infidelity Investigators — Catch a Cheating Partner"
-description: "A professional infidelity investigation team you can trust to track a suspected spouse or partner and gather clear evidence. How we track and investigate, discreetly."
+description: "A professional infidelity team that discreetly observes a suspected spouse or partner in public places and documents clear, lawful evidence."
 ---
 
 We are specialists in investigating and tracking the behaviour of a spouse or a person of interest. An infidelity investigation is an important process for uncovering the truth and delivering justice in a cheating case. In this article we'll help you understand why tracking behaviour and investigating correctly matters — along with tips and precautions for gathering the information that leads to a successful outcome. Read on to prepare for effective surveillance of a spouse or partner, and for systematic investigation of a suspected affair.
