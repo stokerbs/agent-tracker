@@ -14,6 +14,7 @@ import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPageEN } from "@/lib/marketing/content";
 import { FAQ_EN } from "@/lib/marketing/faq";
 import { CONTACT } from "@/lib/marketing/contact";
@@ -38,8 +39,8 @@ const WHY = [
 ];
 
 // Verified customer reviews from the firm's Fastwork profile.
-const REVIEW_RATING = "4.8";
-const REVIEW_COUNT = 63;
+const REVIEW_RATING = FACTS.confirmed.reviews.rating;
+const REVIEW_COUNT = FACTS.confirmed.reviews.count;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
   { name: "pingpong27", date: "07/02/2026", stars: 5, text: "Fast and 100% accurate. Far quicker than promised — they said 1–2 days, but I had the complete, correct information in under half a day." },
   { name: "Nattavara", date: "13/01/2026", stars: 5, text: "I was stunned by how much they uncovered — genuinely deep detail on the person. Highly recommend." },
@@ -92,10 +93,10 @@ export function MarketingHomeEN() {
       <StatBand
         eyebrow="Track Record · By the numbers"
         stats={[
-          { value: new Date().getFullYear() - 2016, suffix: "+", label: "Years of experience" },
-          { value: 1953, suffix: "+", label: "Cases closed" },
+          { value: new Date().getFullYear() - FACTS.confirmed.foundingYear, suffix: "+", label: "Years of experience" },
+          { value: FACTS.confirmed.closedCases, suffix: "+", label: "Cases closed" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "Average rating (of 5)" },
-          { value: 77, label: "Provinces covered" },
+          { value: FACTS.confirmed.provinces, label: "Provinces covered" },
         ]}
       />
 
@@ -189,7 +190,11 @@ export function MarketingHomeEN() {
                 <Star key={i} className="h-4 w-4 fill-primary text-primary" />
               ))}
             </span>
-            <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} reviews · Fastwork</span>
+            {FACTS.confirmed.reviews.url ? (
+              <a href={FACTS.confirmed.reviews.url} target="_blank" rel="noopener noreferrer" className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground underline-offset-2 hover:underline">{REVIEW_COUNT} reviews · {FACTS.confirmed.reviews.source} ↗</a>
+            ) : (
+              <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} reviews · {FACTS.confirmed.reviews.source}</span>
+            )}
           </div>
         </div>
 

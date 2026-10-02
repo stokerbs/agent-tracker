@@ -9,6 +9,7 @@ import { LineIcon, WhatsAppIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LANDING_PAGES, getLandingPage } from "@/lib/marketing/landing-pages";
 import { CONTACT } from "@/lib/marketing/contact";
+import { FACTS } from "@/lib/marketing/facts";
 
 export const dynamicParams = false; // only the defined campaign pages
 
@@ -54,7 +55,7 @@ export default async function CampaignLanding(
           { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
           { href: CONTACT.phoneTel, label: `โทรเลย ${CONTACT.phoneDisplay}`, icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
         ]}
-        tagline="// ปิดกว่า 1,900 เคส · คะแนน 4.8/5 · ทั่วราชอาณาจักร"
+        tagline={`// ปิดกว่า ${FACTS.confirmed.closedCases.toLocaleString("en-US")} เคส · คะแนน ${FACTS.confirmed.reviews.rating}/5 · ทั่วราชอาณาจักร`}
         scrollLabel="เลื่อนลงดูรายละเอียด"
       />
 
@@ -73,9 +74,9 @@ export default async function CampaignLanding(
         {/* Trust strip */}
         <div className="mx-auto mt-8 flex w-fit flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl border border-primary/30 bg-primary/5 px-6 py-4 text-sm">
           <span className="flex items-center gap-1.5 font-semibold text-primary">
-            <Star className="h-4 w-4 fill-primary" /> 4.8/5
+            <Star className="h-4 w-4 fill-primary" /> {FACTS.confirmed.reviews.rating}/5
           </span>
-          <span className="text-muted-foreground">ปิดแล้วกว่า 1,900 เคส</span>
+          <span className="text-muted-foreground">ปิดแล้วกว่า {FACTS.confirmed.closedCases.toLocaleString("en-US")} เคส</span>
           <span className="flex items-center gap-1.5 text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> เป็นความลับ 100%</span>
         </div>
       </section>

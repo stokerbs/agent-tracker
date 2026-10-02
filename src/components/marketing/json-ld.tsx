@@ -1,5 +1,6 @@
 import type { QA } from "@/lib/marketing/faq";
 import { CONTACT, SAME_AS } from "@/lib/marketing/contact";
+import { FACTS } from "@/lib/marketing/facts";
 
 /**
  * Structured data (JSON-LD) for the marketing homepages — drives Google rich
@@ -78,12 +79,14 @@ export function MarketingJsonLd({ faq, lang = "th" }: { faq: QA[]; lang?: "th" |
     "@type": ["ProfessionalService", "LocalBusiness"],
     "@id": `${BASE}/#business`,
     name: CONTACT.brand,
+    ...(FACTS.pending.legalName ? { legalName: FACTS.pending.legalName } : {}),
     alternateName: ["นักสืบเอกชน Detective Pulse", "Detective Pulse Thailand"],
     description: DESCRIPTION[lang],
     url: lang === "en" ? `${BASE}/en` : `${BASE}/`,
     image: `${BASE}/marketing/logo.png`,
     logo: `${BASE}/marketing/logo.png`,
-    foundingDate: String(CONTACT.foundingYear),
+    foundingDate: String(FACTS.confirmed.foundingYear),
+    ...(FACTS.pending.awards.length > 0 ? { award: FACTS.pending.awards.map((a) => `${a.name} (${a.issuer}, ${a.year})`) } : {}),
     telephone: CONTACT.phoneE164,
     email: CONTACT.email,
     address: { "@type": "PostalAddress", addressLocality: CONTACT.city, addressCountry: CONTACT.countryCode },
@@ -98,8 +101,8 @@ export function MarketingJsonLd({ faq, lang = "th" }: { faq: QA[]; lang?: "th" |
     sameAs: SAME_AS,
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: "4.8",
-      reviewCount: "63",
+      ratingValue: FACTS.confirmed.reviews.rating,
+      reviewCount: String(FACTS.confirmed.reviews.count),
       bestRating: "5",
       worstRating: "1",
     },

@@ -6,6 +6,7 @@
  * that cannot be verified by Detective Pulse.
  */
 import { CONTACT, SAME_AS } from "@/lib/marketing/contact";
+import { FACTS } from "@/lib/marketing/facts";
 
 export const ZH_COMPANY = {
   name: CONTACT.brand,
@@ -23,10 +24,10 @@ export const ZH_COMPANY = {
   /** schema.org sameAs — shared with the TH/EN entity so Google sees one business. */
   sameAs: SAME_AS,
   /** Review figures displayed on the existing homepages (Fastwork). */
-  reviews: { rating: "4.8", count: 63, source: "Fastwork" },
+  reviews: { rating: FACTS.confirmed.reviews.rating, count: FACTS.confirmed.reviews.count, source: FACTS.confirmed.reviews.source },
   /** Closed-case figure displayed on the existing homepages. */
-  closedCases: 1953,
-  provinces: 77,
+  closedCases: FACTS.confirmed.closedCases,
+  provinces: FACTS.confirmed.provinces,
   /** Deposit rule from the existing FAQ / process copy. */
-  depositPercent: 50,
+  depositPercent: FACTS.confirmed.depositPercent,
 } as const;

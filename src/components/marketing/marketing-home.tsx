@@ -16,6 +16,7 @@ import { MarketingJsonLd } from "@/components/marketing/json-ld";
 import { LineIcon, WhatsAppIcon, FacebookIcon, WeChatIcon } from "@/components/marketing/brand-icons";
 import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
+import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPage } from "@/lib/marketing/content";
 import { FAQ_TH } from "@/lib/marketing/faq";
 import { CONTACT } from "@/lib/marketing/contact";
@@ -35,7 +36,7 @@ const PROCESS = ["คุยรายละเอียดของงาน", "�
 
 const WHY = [
   { Icon: ShieldCheck, title: "เป็นความลับ", desc: "ข้อมูลทุกอย่างของลูกค้าถูกเก็บเป็นความลับอย่างเคร่งครัด" },
-  { Icon: Search, title: "มืออาชีพ", desc: "ทีมนักสืบประสบการณ์สูง พร้อมรางวัลการันตีความสำเร็จ" },
+  { Icon: Search, title: "มืออาชีพ", desc: "ทีมนักสืบประสบการณ์สูง ทำงานเป็นระบบ รายงานข้อเท็จจริงพร้อมหลักฐานชัดเจน" },
   { Icon: MapPin, title: "ทั่วราชอาณาจักร", desc: "รับงานสืบทุกจังหวัดทั่วประเทศไทย เฝ้าไม่พลาดแม้วินาทีเดียว" },
 ];
 
@@ -51,8 +52,8 @@ const ARTICLES = [
 ];
 
 // Verified customer reviews (from the firm's Fastwork profile).
-const REVIEW_RATING = "4.8";
-const REVIEW_COUNT = 63;
+const REVIEW_RATING = FACTS.confirmed.reviews.rating;
+const REVIEW_COUNT = FACTS.confirmed.reviews.count;
 const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[] = [
   { name: "pingpong27", date: "07/02/2026", stars: 5, text: "รวดเร็วและข้อมูลแม่นยำแบบ 100% ทำงานเร็วกว่ากำหนดไว้มาก แจ้งว่าได้ข้อมูล 1-2 วัน แต่เวลาจริงไม่ถึงครึ่งวันได้ข้อมูลมาแล้วและครบถ้วนถูกต้อง" },
   { name: "Nattavara", date: "13/01/2026", stars: 5, text: "ตกใจกับข้อมูลที่ได้เพราะรู้ลึกพอสมควรสำหรับคนที่ให้สืบ แนะนำค่ะ" },
@@ -79,7 +80,7 @@ export function MarketingHome() {
         titleLead="นักสืบเอกชน"
         titleAccent="มืออาชีพ"
         titleRest="รับงานสืบทั่วราชอาณาจักร"
-        subtitle="ด้วยประสบการณ์ที่สั่งสมมานาน พร้อมรางวัลการันตีความสำเร็จมากมาย และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
+        subtitle="นักสืบเอกชนประสบการณ์สูง ตั้งแต่ปี 2016 ทำงานภายใต้กรอบกฎหมาย รายงานพร้อมหลักฐานชัดเจน และที่สำคัญ — ข้อมูลทุกอย่างของลูกค้าจะถูกเก็บเป็นความลับ"
         ctas={[
           { href: CONTACT.lineUrl, label: "ปรึกษาฟรีทาง LINE", icon: <LineIcon className="h-5 w-5" />, className: "bg-[#048739] font-medium text-white", external: true },
           { href: CONTACT.phoneTel, label: "โทรเลย", icon: <PhoneCall className="h-4 w-4" />, className: "bg-primary font-semibold text-primary-foreground" },
@@ -93,10 +94,10 @@ export function MarketingHome() {
       <StatBand
         eyebrow="Track Record · สถิติการทำงาน"
         stats={[
-          { value: new Date().getFullYear() - 2016, suffix: "+", label: "ปีประสบการณ์" },
-          { value: 1953, suffix: "+", label: "เคสที่ปิดไปแล้ว" },
+          { value: new Date().getFullYear() - FACTS.confirmed.foundingYear, suffix: "+", label: "ปีประสบการณ์" },
+          { value: FACTS.confirmed.closedCases, suffix: "+", label: "เคสที่ปิดไปแล้ว" },
           { value: Number(REVIEW_RATING), decimals: 1, label: "คะแนนเฉลี่ย (จาก 5)" },
-          { value: 77, label: "จังหวัดทั่วไทย" },
+          { value: FACTS.confirmed.provinces, label: "จังหวัดทั่วไทย" },
         ]}
       />
 
@@ -197,7 +198,11 @@ export function MarketingHome() {
                   <Star key={i} className="h-4 w-4 fill-primary text-primary" />
                 ))}
               </span>
-              <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} รีวิว · Fastwork</span>
+              {FACTS.confirmed.reviews.url ? (
+                <a href={FACTS.confirmed.reviews.url} target="_blank" rel="noopener noreferrer" className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground underline-offset-2 hover:underline">{REVIEW_COUNT} รีวิว · {FACTS.confirmed.reviews.source} ↗</a>
+              ) : (
+                <span className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{REVIEW_COUNT} รีวิว · {FACTS.confirmed.reviews.source}</span>
+              )}
             </div>
           </div>
 

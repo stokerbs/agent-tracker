@@ -1,4 +1,5 @@
 import { CONTACT } from "@/lib/marketing/contact";
+import { officeAnswer } from "@/lib/marketing/facts";
 
 /** Frequently-asked questions for the public marketing site (TH + EN). Used for
  *  both the visible FAQ section and the FAQPage structured data (rich results).
@@ -43,7 +44,7 @@ export const FAQ_TH: QA[] = [
   },
   {
     q: "สำนักงานตั้งอยู่ที่ไหน?",
-    a: "Detective Pulse เป็นฟรีแลนซ์นักสืบเอกชน ไม่มีที่ตั้งสำนักงาน แต่สามารถนัดพูดคุยรายละเอียดของงานได้",
+    a: officeAnswer("th"),
   },
   {
     q: "ฉันจะได้รับรายงานผลการสืบสวนอย่างไร?",
@@ -90,7 +91,7 @@ export const FAQ_EN: QA[] = [
   },
   {
     q: "Where is your office located?",
-    a: "Detective Pulse is a freelance private investigator with no fixed office, but we can arrange a meeting to discuss the details of your case.",
+    a: officeAnswer("en"),
   },
   {
     q: "How will I receive the investigation report?",
@@ -145,6 +146,6 @@ export const FAQ_ZH: QA[] = [
   },
   {
     q: "你们的办公室在哪里？",
-    a: "Detective Pulse 是自由职业私家侦探，没有固定办公室，但可以约见面详谈案件细节。",
+    a: officeAnswer("zh"),
   },
 ];

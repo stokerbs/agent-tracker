@@ -1,3 +1,5 @@
+import { FACTS } from "@/lib/marketing/facts";
+
 // Focused, conversion-optimised landing pages for Google Ads campaigns. Each
 // one matches a top-converting ad keyword (message match → better Quality Score
 // + conversion) and carries service-specific content (deliverables + FAQ) so the
@@ -80,7 +82,7 @@ export const LANDING_PAGES: LandingPage[] = [
     headlineAccent: "มืออาชีพ",
     sub: "รับงานสืบทุกประเภทในกรุงเทพฯ และทั่วประเทศ — สืบชู้สาว สืบทรัพย์ ตามหาคน เช็คประวัติ นักสืบไอที",
     benefitsTitle: "ทำไมต้องนักสืบ Detective Pulse",
-    benefits: ["ทีมนักสืบประสบการณ์สูง การันตีผลงาน", "รับงานทุกประเภท ครบวงจร", "ปิดกว่า 1,900 เคส คะแนน 4.8/5", "ปรึกษาฟรี เป็นความลับ"],
+    benefits: ["ทีมนักสืบประสบการณ์สูง ทำงานเป็นระบบ", "รับงานทุกประเภท ครบวงจร", `ปิดกว่า ${FACTS.confirmed.closedCases.toLocaleString("en-US")} เคส คะแนน ${FACTS.confirmed.reviews.rating}/5`, "ปรึกษาฟรี เป็นความลับ"],
     deliverables: ["ประเมินแนวทางการสืบตามลักษณะงาน", "ทีมนักสืบลงพื้นที่จริง", "หลักฐาน/ข้อมูลตามประเภทงาน", "รายงานสรุปพร้อมหลักฐาน"],
     faq: [
       { q: "รับงานประเภทไหนบ้าง?", a: "สืบชู้สาว สืบทรัพย์สิน ตามหาคน เช็คประวัติบุคคล นักสืบไอที และงานสืบเอกชนอื่น ๆ" },
