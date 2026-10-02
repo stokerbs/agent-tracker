@@ -135,7 +135,10 @@ describe("POST /api/marketing/lead", () => {
     vi.mocked(createServiceClient).mockReturnValue(s.client as never);
     const res = await POST(req({ ...valid, website: "http://spam.example" }));
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true });
+    // Same shape as a real submission so bots cannot detect the honeypot.
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.leadRef).toMatch(/^TH-/);
     expect(s.insert).not.toHaveBeenCalled();
     expect(vi.mocked(notifyRole)).not.toHaveBeenCalled();
   });

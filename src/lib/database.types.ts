@@ -2592,6 +2592,9 @@ export type Database = {
           utm_medium: string | null
           utm_source: string | null
           utm_term: string | null
+          utm_content: string | null
+          gclid: string | null
+          fbclid: string | null
           wechat_id: string | null
           case_type: string | null
           consent_at: string | null
@@ -2630,6 +2633,9 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          utm_content?: string | null
+          gclid?: string | null
+          fbclid?: string | null
           wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null
@@ -2668,6 +2674,9 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          utm_content?: string | null
+          gclid?: string | null
+          fbclid?: string | null
           wechat_id?: string | null
           case_type?: string | null
           consent_at?: string | null

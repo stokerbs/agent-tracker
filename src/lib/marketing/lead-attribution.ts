@@ -27,12 +27,19 @@ export const attributionSchema = z
 
 export type AttributionInput = z.infer<typeof attributionSchema>;
 
-/** Map the validated attribution object onto marketing_leads columns (empty → null). */
+const LANDING_PATH = /^\/[^\s]*$/;
+const HTTP_URL = /^https?:\/\/[^\s]+$/i;
+
+/** Map the validated attribution object onto marketing_leads columns (empty → null).
+ *  landing_page must be a site-relative path and referrer an http(s) URL; anything
+ *  else (e.g. `javascript:`) is dropped to null rather than failing the lead. */
 export function attributionColumns(a: AttributionInput) {
   const v = (s?: string) => (s && s.length > 0 ? s : null);
+  const path = (s?: string) => (s && LANDING_PATH.test(s) ? s : null);
+  const url = (s?: string) => (s && HTTP_URL.test(s) ? s : null);
   return {
-    landing_page: v(a?.landing_page),
-    referrer: v(a?.referrer),
+    landing_page: path(a?.landing_page),
+    referrer: url(a?.referrer),
     utm_source: v(a?.utm_source),
     utm_medium: v(a?.utm_medium),
     utm_campaign: v(a?.utm_campaign),

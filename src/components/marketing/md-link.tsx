@@ -6,7 +6,9 @@ import { track, currentPage, langForPath } from "@/lib/marketing/analytics";
 
 /** Anchor renderer for react-markdown: LINE / WhatsApp / tel / mailto links in
  *  article bodies fire `contact_click` (placement "inline"); other links are plain. */
-export function MdLink({ href, children, ...rest }: ComponentProps<"a">) {
+type Props = Omit<ComponentProps<"a">, "href" | "onClick" | "target" | "rel" | "dangerouslySetInnerHTML"> & { href?: string };
+
+export function MdLink({ href, children, ...rest }: Props) {
   const channel = channelForHref(href);
   const external = typeof href === "string" && /^https?:\/\//i.test(href);
   return (

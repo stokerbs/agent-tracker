@@ -4,7 +4,7 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { channelForHref, type ContactChannel } from "@/lib/marketing/contact-channel";
 import { track, currentPage, langForPath, type ContactPlacement } from "@/lib/marketing/analytics";
 
-type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick"> & {
+type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick" | "target" | "rel" | "dangerouslySetInnerHTML"> & {
   href: string;
   /** Where on the page this CTA sits — the GA4 dimension that tells us which
    *  placements actually produce LINE / WhatsApp / phone contacts. */

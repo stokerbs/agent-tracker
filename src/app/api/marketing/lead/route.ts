@@ -55,11 +55,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { website, attribution, ...data } = parsed.data;
-  // Honeypot tripped → pretend success, store nothing (don't tip off bots).
-  if (website) return NextResponse.json({ ok: true });
+  const prefix = data.locale === "en" ? "EN" : data.locale === "zh" ? "CN" : "TH";
+  // Honeypot tripped → pretend success with the same response shape as a real
+  // submission (a throw-away ref), store nothing — don't tip off bots.
+  if (website) return NextResponse.json({ ok: true, leadRef: generateLeadRef(new Date(), Math.random, prefix) });
 
   const nowIso = new Date().toISOString();
-  const prefix = data.locale === "en" ? "EN" : data.locale === "zh" ? "CN" : "TH";
   const row = {
     name: data.name,
     phone: data.phone,
