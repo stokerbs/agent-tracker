@@ -18,6 +18,7 @@ export const TH_NAV = {
     { href: "/ติดตามพฤติกรรม", label: "ติดตามพฤติกรรม" },
     { href: "/ตรวจสอบธุรกิจและคู่ค้า", label: "ตรวจสอบธุรกิจ" },
     { href: "/ตรวจสอบประวัติพนักงาน", label: "ตรวจสอบพนักงาน" },
+    { href: "/ลูกค้าปริศนา", label: "ลูกค้าปริศนา / Mystery Shopper" },
   ] as NavLink[],
   primary: [
     { href: "/ราคานักสืบ", label: "ราคา" },
@@ -49,6 +50,7 @@ export const EN_NAV = {
     { href: "/en/surveillance-thailand", label: "Surveillance" },
     { href: "/en/due-diligence-thailand", label: "Due diligence" },
     { href: "/en/romance-scam-investigation", label: "Romance scam" },
+    { href: "/en/mystery-shopper", label: "Mystery shopper" },
   ] as NavLink[],
   primary: [
     { href: "/en/pricing", label: "Pricing" },

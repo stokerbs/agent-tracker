@@ -44,6 +44,7 @@ export const EN_TO_TH: Record<string, string> = {
   "surveillance-thailand": "ติดตามพฤติกรรม",
   "for-law-firms": "สำหรับทนายความ",
   "case-studies": "กรณีศึกษา",
+  "mystery-shopper": "ลูกค้าปริศนา",
 };
 
 export const TH_TO_EN: Record<string, string> = Object.fromEntries(

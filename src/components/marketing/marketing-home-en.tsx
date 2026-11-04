@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
+  Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck, ClipboardCheck,
   PhoneCall, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { Eyebrow, SectionHeading, FileTag, Stamp, CornerTicks } from "@/components/marketing/ui";
@@ -16,6 +16,7 @@ import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPageEN } from "@/lib/marketing/content";
+import { getServicePage } from "@/lib/marketing/pages";
 import { FAQ_EN } from "@/lib/marketing/faq";
 import { CONTACT } from "@/lib/marketing/contact";
 
@@ -27,6 +28,7 @@ const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Searc
   { slug: "background-check", label: "Background Check", blurb: "Verify a person's history and credibility before you trust or hire.", Icon: UserSearch },
   { slug: "find-missing-person", label: "Find a Person", blurb: "Locate missing people, lost relatives, or a debtor in hiding.", Icon: MapPin },
   { slug: "cyber-investigation", label: "Cyber Investigation", blurb: "Social media, online fraud, and digital footprint investigations.", Icon: Smartphone },
+  { slug: "mystery-shopper", label: "Mystery Shopper", blurb: "Audit your own service quality, sales process and staff performance as a customer sees them.", Icon: ClipboardCheck },
   { slug: "hire-a-private-detective", label: "Hire a Detective", blurb: "Services, process and pricing — how to hire a pro you can trust.", Icon: Search },
 ];
 
@@ -62,7 +64,10 @@ const ARTICLE_SLUGS = [
 ];
 
 export function MarketingHomeEN() {
-  const services = SERVICES.map((s) => ({ ...s, page: getMarketingPageEN(s.slug) })).filter((s) => s.page);
+  const services = SERVICES.map((s) => ({
+    ...s,
+    href: getMarketingPageEN(s.slug)?.href ?? (getServicePage("en", s.slug) ? `/en/${s.slug}` : null),
+  })).filter((s) => s.href);
   const articles = ARTICLE_SLUGS.map((slug) => getMarketingPageEN(slug)).filter((p) => p != null);
   const contact = getMarketingPageEN("contact");
 
@@ -119,7 +124,7 @@ export function MarketingHomeEN() {
           <SectionHeading eyebrow="Active Cases · Services" title="Our Services" />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s, i) => (
-              <Link key={s.slug} href={s.page!.href} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+              <Link key={s.slug} href={s.href!} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
                 <CornerTicks />
                 <div className="flex items-center justify-between">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">

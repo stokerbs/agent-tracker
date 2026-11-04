@@ -5,8 +5,8 @@ import { ZH_PAGES } from "@/lib/marketing/zh/registry";
 import { FACTS } from "@/lib/marketing/facts";
 
 const BANNED = /เครดิตบูโร|รายการเดินบัญชี|ทะเบียนราษฎร|ประกันสังคม|เข้า-?ออกประเทศ|ประวัติการโทร|credit bureau|bank statement|call (logs|history|records)|immigration record|phone records|licensed|guarantee(d)? result|#1|อันดับ 1|รับประกันผล/i;
-const TH_CASE = ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "อื่น ๆ"];
-const EN_CASE = ["Cheating spouse", "Asset search", "Background check", "Find a person", "Cyber / online", "Other"];
+const TH_CASE = ["สืบชู้สาว", "สืบทรัพย์สิน", "เช็คประวัติบุคคล", "ตามหาคน", "นักสืบไอที / ออนไลน์", "ลูกค้าปริศนา (Mystery Shopper)", "อื่น ๆ"];
+const EN_CASE = ["Cheating spouse", "Asset search", "Background check", "Find a person", "Cyber / online", "Mystery shopper", "Other"];
 
 describe("service-page registry (TH/EN)", () => {
   const thSlugs = new Set([...getMarketingPages().map((p) => p.slug), ...SERVICE_PAGES.th.map((p) => p.slug)]);

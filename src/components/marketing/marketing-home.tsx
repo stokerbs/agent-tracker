@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck,
+  Search, HeartCrack, Wallet, MapPin, Smartphone, UserSearch, ShieldCheck, ClipboardCheck,
   PhoneCall, Mail, MessageCircle, ArrowRight, PlayCircle, Crosshair, Fingerprint, Star,
 } from "lucide-react";
 import { SiteChrome } from "@/components/marketing/site-chrome";
@@ -18,6 +18,7 @@ import { TrackedLink } from "@/components/marketing/tracked-link";
 import { LawfulScope } from "@/components/marketing/lawful-scope";
 import { FACTS } from "@/lib/marketing/facts";
 import { getMarketingPage } from "@/lib/marketing/content";
+import { getServicePage } from "@/lib/marketing/pages";
 import { FAQ_TH } from "@/lib/marketing/faq";
 import { CONTACT } from "@/lib/marketing/contact";
 
@@ -29,6 +30,7 @@ const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Searc
   { slug: "เช็คประวัติบุคคล", label: "เช็คประวัติบุคคล", blurb: "ตรวจสอบประวัติ ความน่าเชื่อถือ ก่อนร่วมงานหรือทำธุรกรรม", Icon: UserSearch },
   { slug: "สืบตามหาคน", label: "สืบตามหาคน", blurb: "ติดตามคนหาย ญาติพลัดพราก ลูกหนี้หลบหนี ตามหาคนโกง", Icon: MapPin },
   { slug: "นักสืบไอที", label: "นักสืบไอที", blurb: "สืบงานบนโลกออนไลน์ โซเชียล และข้อมูลดิจิทัล", Icon: Smartphone },
+  { slug: "ลูกค้าปริศนา", label: "ลูกค้าปริศนา (Mystery Shopper)", blurb: "ตรวจสอบคุณภาพการบริการและมาตรฐานการทำงานของพนักงาน จากมุมมองลูกค้าจริง", Icon: ClipboardCheck },
   { slug: "จ้างนักสืบ", label: "จ้างนักสืบ", blurb: "ขั้นตอน ราคา และวิธีเลือกนักสืบมืออาชีพที่ไว้ใจได้", Icon: Search },
 ];
 
@@ -64,7 +66,10 @@ const TESTIMONIALS: { name: string; date: string; stars: number; text: string }[
 ];
 
 export function MarketingHome() {
-  const services = SERVICES.map((s) => ({ ...s, page: getMarketingPage(s.slug) })).filter((s) => s.page);
+  const services = SERVICES.map((s) => ({
+    ...s,
+    href: getMarketingPage(s.slug)?.href ?? (getServicePage("th", s.slug) ? `/${s.slug}` : null),
+  })).filter((s) => s.href);
   const articles = ARTICLES.map((a) => ({ ...a, page: getMarketingPage(a.slug) })).filter((a) => a.page);
   const contact = getMarketingPage("ติดต่อนักสืบ");
 
@@ -132,7 +137,7 @@ export function MarketingHome() {
         <SectionHeading eyebrow="Active Cases · แฟ้มคดี" title="บริการของเรา" sub="กัดไม่ปล่อย เฝ้าไม่ถอย คอยไม่เลิก" />
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s, i) => (
-            <Link key={s.slug} href={s.page!.href} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
+            <Link key={s.slug} href={s.href!} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/50">
               <CornerTicks />
               <div className="flex items-center justify-between">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:border-primary/60">
