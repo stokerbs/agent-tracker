@@ -200,7 +200,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       { q: "Can my company use this for hiring?", a: "Yes, with the candidate's consent and within what Thailand's PDPA allows. We help design a compliant process." },
       { q: "Is the result confidential?", a: "Client identity and findings are confidential and delivered through the channel you choose." },
     ],
-    related: ["investigate-partner-before-marriage", "asset-investigation", "cyber-investigation", "pricing"],
+    related: ["investigate-partner-before-marriage", "asset-investigation", "cyber-investigation", "mystery-shopper", "pricing"],
     caseType: "Background check",
     priceNote: "Written quote before we start · 50 % deposit",
     counterpart: { th: "เช็คประวัติบุคคล", zh: "background-check" },
@@ -728,7 +728,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
       { q: "How is this different from pulling the DBD record myself?", a: "The registry is the starting point. We add the site visit, litigation search, related-company map, principals' reputation and a comparison with what the counterparty claimed, which is where problems usually appear." },
       { q: "Is it confidential?", a: "Yes. The target company does not learn of the check, and the client's identity is confidential." },
     ],
-    related: ["background-check", "asset-investigation", "mystery-shopper", "pricing"],
+    related: ["background-check", "asset-investigation", "mystery-shopper", "for-law-firms", "pricing"],
     caseType: "Background check",
     priceNote: "Per-case pricing · Written quote before we start",
     counterpart: { th: "ตรวจสอบธุรกิจและคู่ค้า", zh: "business-due-diligence" },
@@ -1038,7 +1038,7 @@ export const EN_SERVICE_PAGES: MarketingServicePage[] = [
         heading: "Scope, consent and the law",
         body: [
           "We audit businesses for the people who own or are authorised to assess them, and we ask you to confirm that authority before we start. Assessments stay inside the scope agreed in writing and inside Thai law, including the PDPA.",
-          "That means we observe and record a genuine customer interaction. We do not provoke staff into misconduct in order to document it, we do not install recording equipment on your premises without your written instruction and a lawful basis, and we do not gather information about employees' private lives. Where recording is restricted by law or by the venue's own rules, the report relies on the shopper's structured observation notes instead, and says so.",
+          "That means we observe and record a genuine customer interaction. We do not provoke staff into misconduct in order to document it, we do not install recording equipment on your premises as part of a mystery shopping assignment, and we do not gather information about employees' private lives. Where recording is restricted by law or by the venue's own rules, the report relies on the shopper's structured observation notes instead, and says so.",
         ],
       },
       {

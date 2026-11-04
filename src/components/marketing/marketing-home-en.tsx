@@ -22,7 +22,7 @@ import { CONTACT } from "@/lib/marketing/contact";
 
 const YOUTUBE_URL = CONTACT.youtubeUrl;
 
-const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
+export const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "cheating-spouse-investigator", label: "Cheating Spouse", blurb: "Discreetly track a partner's behaviour and gather court-admissible evidence.", Icon: HeartCrack },
   { slug: "asset-investigation", label: "Asset Investigation", blurb: "Trace and verify a debtor's assets before you sue or enforce a judgment.", Icon: Wallet },
   { slug: "background-check", label: "Background Check", blurb: "Verify a person's history and credibility before you trust or hire.", Icon: UserSearch },

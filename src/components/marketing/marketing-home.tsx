@@ -24,7 +24,7 @@ import { CONTACT } from "@/lib/marketing/contact";
 
 const YOUTUBE_URL = CONTACT.youtubeUrl;
 
-const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
+export const SERVICES: { slug: string; label: string; blurb: string; Icon: typeof Search }[] = [
   { slug: "นักสืบชู้สาว", label: "นักสืบชู้สาว", blurb: "ติดตามพฤติกรรมสามี/ภรรยา สืบชู้ สืบกิ๊ก เก็บหลักฐานเพื่อใช้ในชั้นศาล", Icon: HeartCrack },
   { slug: "สืบทรัพย์สิน", label: "สืบทรัพย์สิน", blurb: "ตรวจสอบทรัพย์สินลูกหนี้ก่อนฟ้อง/บังคับคดี อย่างเป็นระบบ", Icon: Wallet },
   { slug: "เช็คประวัติบุคคล", label: "เช็คประวัติบุคคล", blurb: "ตรวจสอบประวัติ ความน่าเชื่อถือ ก่อนร่วมงานหรือทำธุรกรรม", Icon: UserSearch },
