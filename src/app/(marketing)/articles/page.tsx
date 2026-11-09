@@ -6,6 +6,7 @@ import { SERVICE_PAGES } from "@/lib/marketing/pages";
 import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
+import { isArticleLibraryPage } from "@/lib/marketing/seo-canonical";
 
 export const metadata: Metadata = {
   title: "บทความน่ารู้เกี่ยวกับงานนักสืบเอกชน",
@@ -26,7 +27,7 @@ export default async function ArticlesIndex() {
   const registry = new Set(SERVICE_PAGES.th.map((p) => p.slug));
   // Once the consolidation 301s are live, their sources leave the index too.
   const redirected = consolidationRedirectsEnabled();
-  const pages = getMarketingPages().filter((p) => !registry.has(p.slug) && !(redirected && isConsolidatedSource(p.href)));
+  const pages = getMarketingPages().filter((p) => isArticleLibraryPage(p.href, registry, p.slug) && !(redirected && isConsolidatedSource(p.href)));
   const aiArticles = await getPublishedArticles();
   // Newest AI-published articles first, then the migrated library.
   const cards = [
@@ -37,6 +38,7 @@ export default async function ArticlesIndex() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
+        as="h1"
         eyebrow="Case Files · คลังบทความ"
         title="บทความทั้งหมด"
         sub={`${cards.length} บทความความรู้เกี่ยวกับงานนักสืบเอกชน`}

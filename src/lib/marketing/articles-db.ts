@@ -1,7 +1,9 @@
 import "server-only";
 
+import { cache } from "react";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { GeneratedArticle } from "@/lib/marketing/article-gen";
+import { articleHasLanguage, canonicalArticleFor, canonicalArticles, preferredArticleId, type ArticleLanguage } from "./article-consolidation";
 
 export interface DbArticle {
   id: string;
@@ -27,49 +29,60 @@ export interface DbArticle {
   published_at: string | null;
 }
 
-/** All published AI articles, newest first (public reads). */
-export async function getPublishedArticles(): Promise<DbArticle[]> {
+export type ArticleCanonical = Pick<DbArticle, "id" | "th_slug" | "en_slug" | "zh_slug" | "th_title" | "en_title" | "zh_title">;
+export type PublishedArticle = Omit<DbArticle, "approve_token"> & { canonicalArticle?: ArticleCanonical };
+
+// Public reads never retrieve approval capabilities. Request caching shares
+// the snapshot between metadata, article content, related cards and the hub.
+const PUBLISHED_COLUMNS = "id,topic,th_slug,en_slug,zh_slug,th_title,en_title,zh_title,th_description,en_description,zh_description,th_body,en_body,zh_body,cover_category,service,status,created_at,published_at";
+const readPublishedArticles = cache(async (): Promise<PublishedArticle[]> => {
   const svc = createServiceClient();
-  const { data } = await svc
+  const { data, error } = await svc
     .from("marketing_articles")
-    .select("*")
+    .select(PUBLISHED_COLUMNS)
     .eq("status", "published")
     .order("published_at", { ascending: false });
-  return (data as DbArticle[]) ?? [];
+  if (error) console.error("[articles-db] published query failed", { message: error.message });
+  return (data as PublishedArticle[]) ?? [];
+});
+
+/** One main guide per reviewed topic family, newest first. */
+export async function getPublishedArticles(): Promise<PublishedArticle[]> {
+  return canonicalArticles(await readPublishedArticles(), "th");
 }
 
 /** Published articles that have a Chinese version (for the /zh article index). */
-export async function getPublishedArticlesZh(): Promise<DbArticle[]> {
-  const svc = createServiceClient();
-  const { data } = await svc
-    .from("marketing_articles")
-    .select("*")
-    .eq("status", "published")
-    .not("zh_slug", "is", null)
-    .order("published_at", { ascending: false });
-  return (data as DbArticle[]) ?? [];
+export async function getPublishedArticlesZh(): Promise<PublishedArticle[]> {
+  return canonicalArticles(await readPublishedArticles(), "zh");
 }
 
 export type DbArticleCard = Pick<DbArticle, "id" | "zh_slug" | "zh_title" | "en_slug" | "cover_category" | "service" | "published_at">;
 
+// Service pages need small card records, not every article's three bodies.
+const readPublishedChineseCards = cache(async (): Promise<DbArticleCard[]> => {
+  const { data, error } = await createServiceClient().from("marketing_articles")
+    .select("id,zh_slug,zh_title,en_slug,cover_category,service,published_at")
+    .eq("status", "published").not("zh_slug", "is", null)
+    .order("published_at", { ascending: false });
+  if (error) console.error("[articles-db] Chinese card query failed", { message: error.message });
+  return ((data ?? []) as DbArticleCard[]).filter((a) => Boolean(a.zh_slug && a.zh_title));
+});
+
 /** Published Chinese articles for one service key (newest first). "general"
- *  returns any Chinese article so the pillar page is never empty. Selects only
+ *  returns any Chinese article so the pillar page is never empty. Returns only
  *  card columns (never approve_token) and degrades to [] on any failure — it
  *  feeds a public, statically rendered page. */
 export async function getPublishedArticlesZhByService(service: string, limit = 3): Promise<DbArticleCard[]> {
   try {
-    const svc = createServiceClient();
-    let q = svc
-      .from("marketing_articles")
-      .select("id, zh_slug, zh_title, en_slug, cover_category, service, published_at")
-      .eq("status", "published")
-      .not("zh_slug", "is", null)
-      .order("published_at", { ascending: false })
-      .limit(limit);
-    if (service !== "general") q = q.eq("service", service);
-    const { data, error } = await q;
-    if (error) console.error("[articles-db] by-service query failed", { service, message: error.message });
-    return (data as DbArticleCard[]) ?? [];
+    const cards = await readPublishedChineseCards();
+    const available = new Set(cards.map((a) => a.id));
+    return cards
+      .filter((a) => preferredArticleId(a.id) === a.id || !available.has(preferredArticleId(a.id)))
+      .filter((a) => service === "general" || a.service === service)
+      .slice(0, Math.max(0, limit))
+      .map(({ id, zh_slug, zh_title, en_slug, cover_category, service: key, published_at }) => ({
+        id, zh_slug, zh_title, en_slug, cover_category, service: key, published_at,
+      }));
   } catch (e) {
     console.error("[articles-db] by-service query threw", { service, message: e instanceof Error ? e.message : String(e) });
     return [];
@@ -78,23 +91,22 @@ export async function getPublishedArticlesZhByService(service: string, limit = 3
 
 /** A single published article by its TH or EN slug (public reads). The route
  *  param for non-ASCII (Thai) slugs arrives percent-encoded, so decode first. */
-export async function getPublishedArticleBySlug(slug: string, lang: "th" | "en" | "zh"): Promise<DbArticle | null> {
+export const getPublishedArticleBySlug = cache(async (slug: string, lang: ArticleLanguage): Promise<PublishedArticle | null> => {
   let decoded = slug;
   try {
     decoded = decodeURIComponent(slug);
   } catch {
     /* malformed encoding — fall back to the raw value */
   }
-  const svc = createServiceClient();
+  const published = await readPublishedArticles();
   const col = lang === "en" ? "en_slug" : lang === "zh" ? "zh_slug" : "th_slug";
-  const { data } = await svc
-    .from("marketing_articles")
-    .select("*")
-    .eq("status", "published")
-    .eq(col, decoded)
-    .maybeSingle();
-  return (data as DbArticle | null) ?? null;
-}
+  const article = published.find((a) => a[col] === decoded);
+  if (!article || !articleHasLanguage(article, lang)) return null;
+  const primary = canonicalArticleFor(article, published, lang);
+  if (primary.id === article.id) return article;
+  const { id, th_slug, en_slug, zh_slug, th_title, en_title, zh_title } = primary;
+  return { ...article, canonicalArticle: { id, th_slug, en_slug, zh_slug, th_title, en_title, zh_title } };
+});
 
 /** Topics + slugs already used, so the generator avoids repeats/collisions. */
 export async function getUsedTopicsAndSlugs(): Promise<{ topics: Set<string>; slugs: Set<string> }> {

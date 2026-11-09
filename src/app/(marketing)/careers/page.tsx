@@ -28,6 +28,7 @@ export default function CareersPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
+        as="h1"
         eyebrow="Recruitment · ร่วมงานกับเรา"
         title="ร่วมทีมนักสืบ Detective Pulse"
         sub="เรากำลังมองหาคนที่ละเอียด อดทน รักษาความลับ และกัดไม่ปล่อย — ถ้าคุณใช่ ส่งใบสมัครมาได้เลย"

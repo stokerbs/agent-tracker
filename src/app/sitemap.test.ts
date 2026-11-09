@@ -57,19 +57,22 @@ describe("sitemap.xml", () => {
     for (const p of ["/en/pricing", "/en/private-investigator-bangkok", "/en/about"]) expect(urls).toContain(`https://detectivepulse.com${p}`);
   });
 
-  it("drops consolidation-redirect sources only when MARKETING_CONSOLIDATION_REDIRECTS=1", async () => {
+  it("lists canonical destinations instead of duplicate legacy sources, even before permanent redirects", async () => {
     // Markdown paths are lowercase-percent-encoded (WordPress export); compare decoded.
     const decoded = async () => (await sitemap()).map((e) => decodeURI(e.url));
     const src = "https://detectivepulse.com/นักสืบคดีชู้สาว-รับสืบค";
     const enSrc = "https://detectivepulse.com/en/private-detective-pricing";
-    expect(await decoded()).toContain(src);
-    expect(await decoded()).toContain(enSrc);
+    expect(await decoded()).not.toContain(src);
+    expect(await decoded()).not.toContain(enSrc);
     vi.stubEnv("MARKETING_CONSOLIDATION_REDIRECTS", "1");
     try {
       const urls = await decoded();
       expect(urls).not.toContain(src);
       expect(urls).not.toContain(enSrc);
       expect(urls).toContain("https://detectivepulse.com/en/pricing");
+      for (const path of ["/en/phone-usage-investigation", "/en/hire-a-detective-online", "/en/trace-assets-before-lawsuit", "/en/detective-services-overview"]) {
+        expect(urls).toContain(`https://detectivepulse.com${path}`);
+      }
     } finally {
       vi.unstubAllEnvs();
     }

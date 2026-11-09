@@ -15,6 +15,7 @@ import { ZH_SERVICE_PAGE, articleServiceKey } from "@/lib/marketing/zh/nav";
 import { zhPageLabel } from "@/lib/marketing/zh/registry";
 import { WeChatCta } from "@/components/marketing/zh/wechat-cta";
 import { ArrowRight } from "lucide-react";
+import { CanonicalGuideNotice } from "@/components/marketing/canonical-guide-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,8 @@ export async function generateMetadata(
   const { slug } = await params;
   const a = await getPublishedArticleBySlug(slug, "zh");
   if (!a || !a.zh_title) return {};
-  const canonical = `/zh/articles/${a.zh_slug}`;
+  const main = a.canonicalArticle ?? a;
+  const canonical = `/zh/articles/${main.zh_slug}`;
   const cover = getArticleCover(a.zh_slug ?? a.en_slug, a.zh_title, "en");
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
@@ -32,7 +34,7 @@ export async function generateMetadata(
     description: a.zh_description ?? undefined,
     alternates: {
       canonical,
-      languages: { "zh-CN": canonical, th: `/articles/${a.th_slug}`, en: `/en/articles/${a.en_slug}`, "x-default": `/en/articles/${a.en_slug}` },
+      languages: { "zh-CN": canonical, th: `/articles/${main.th_slug}`, en: `/en/articles/${main.en_slug}`, "x-default": `/en/articles/${main.en_slug}` },
     },
     openGraph: {
       type: "article",
@@ -66,15 +68,16 @@ export default async function DbArticleZH(
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <ArticleJsonLd
+      {!a.canonicalArticle && <ArticleJsonLd
         headline={a.zh_title}
         description={a.zh_description ?? undefined}
         image={`https://detectivepulse.com${cover.src}`}
         url={`https://detectivepulse.com/zh/articles/${a.zh_slug}`}
         datePublished={a.published_at ?? undefined}
         inLanguage="zh"
-      />
+      />}
       <Breadcrumb items={[{ name: "首页", href: "/zh" }, { name: "文章", href: "/zh/articles" }, { name: a.zh_title }]} />
+      {a.canonicalArticle?.zh_slug && <CanonicalGuideNotice lang="zh" href={`/zh/articles/${a.canonicalArticle.zh_slug}`} title={a.canonicalArticle.zh_title ?? a.canonicalArticle.en_title} />}
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
           <ArticleCover slug={a.zh_slug ?? a.en_slug} title={a.zh_title} lang="en" />

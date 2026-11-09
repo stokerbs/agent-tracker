@@ -31,17 +31,19 @@ export function SectionHeading({
   eyebrow,
   title,
   sub,
+  as: Heading = "h2",
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   sub?: ReactNode;
+  as?: "h1" | "h2";
 }) {
   return (
     <div className="dp-reveal text-center">
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 className="mt-4 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+      <Heading className="mt-4 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         {title}
-      </h2>
+      </Heading>
       {sub ? (
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {sub}

@@ -1,55 +1,53 @@
-# Consolidation redirects (Appendix C.3) — runbook
+# Legacy page consolidation
 
-**Status:** implemented, **gated off**. Nothing redirects until the owner flips the flag.
+Updated 2026-11-09. Canonical consolidation is active for **20 legacy URLs**. Original copy remains readable with HTTP 200 and a visible primary-service link. Only primary pages appear in sitemap, article cards and related recommendations. Internal Markdown and language-switch links point at primary pages.
 
-Code: `src/lib/marketing/redirects.ts` (map + gate), wired into `next.config.ts` → `redirects()`.
-Tests: `src/lib/marketing/redirects.test.ts` (off by default; destinations are live registry pages; no chains; nav/related links never point at a source; sources percent-encoded).
-Sitemap: once the flag is on, redirected sources drop out of `sitemap.xml` automatically.
+Permanent redirects remain **off** unless `MARKETING_CONSOLIDATION_REDIRECTS=1` is explicitly configured. This release does not change that variable. No connected Search Console report was available for this cleanup, so it does not claim to have checked impressions, clicks or indexing and does not automatically activate permanently cached redirects.
 
-## Why gated
+Code: `src/lib/marketing/redirects.ts` contains the reviewed map and optional redirect gate. `src/lib/marketing/seo-canonical.ts` supplies the active canonical/link policy. The separate database-article families are documented in `docs/marketing/seo-organization.md`.
 
-The audit (Appendix C.3) says: *before redirecting, check GSC for any of these URLs with meaningful impressions and move their unique sentences into the target page.* Flipping 27 permanent redirects without that check could lose rankings the thin pages still hold. The map is therefore shipped dark so Dev and Owner can turn it on in one deploy once the checklist below is done.
+## Reviewed map
 
-## Checklist before enabling
-
-1. **GSC → Performance → Pages**, last 3 months, filter each source URL below. For any source with > 50 impressions or any clicks: read the page, move the sentences that are unique and useful into the destination page's registry entry (`src/lib/marketing/pages/th.ts` / `en.ts`), then continue.
-2. Confirm the destinations are **indexed** (GSC URL inspection) — the new pages `/ราคานักสืบ`, `/นักสืบกรุงเทพ`, `/เกี่ยวกับเรา`, `/en/pricing`, `/en/private-investigator-bangkok`, `/en/about` went live with the registry; give them ~2 weeks and submit them in GSC first (see `gsc-reindex-checklist.md`).
-3. Search the codebase and the published AI articles for internal links to the sources (`grep -rn "<slug>" src/content src/lib`) and re-point them to the destinations. The registry pages and nav already comply (tested).
-4. Set the environment variable in Vercel (Production + Preview): `MARKETING_CONSOLIDATION_REDIRECTS=1`, redeploy.
-5. Verify a Thai and an English source return `308/301 → destination` with `curl -I`, then **re-submit the sitemap** in GSC and request indexing for the six destination pages.
-6. Two weeks later: check GSC coverage for "Page with redirect" on the sources (expected) and that destination impressions ≥ previous source + destination combined.
-
-## Rollback
-
-Unset the variable and redeploy. Sources serve again unchanged (they are still in the repo and the sitemap logic restores them).
-
-## The map
-
-| From (decoded) | To |
+| Source | Primary |
 |---|---|
 | `/นักสืบคดีชู้สาว-รับสืบค` | `/นักสืบชู้สาว` |
 | `/บริการตรวจสอบประวัติบุ` | `/เช็คประวัติบุคคล` |
 | `/บริการสืบประวัติบุคคลด` | `/สืบทรัพย์สิน` |
 | `/จ้างนักสืบตามหาคน` | `/สืบตามหาคน` |
-| `/บริการสืบค้นข้อมูลไอที`, `/บริการตรวจสอบการใช้โทร` | `/นักสืบไอที` |
-| `/จ้างนักสืบ-ราคาถูก`, `/วิธีการคิดราคาจ้างนักส` | `/ราคานักสืบ` |
+| `/บริการสืบค้นข้อมูลไอที` | `/นักสืบไอที` |
+| `/จ้างนักสืบ-ราคาถูก` | `/ราคานักสืบ` |
+| `/วิธีการคิดราคาจ้างนักส` | `/ราคานักสืบ` |
 | `/การหานักสืบเชี่ยวชาญ-คำ` | `/จ้างนักสืบ` |
-| `/บริษัทนักสืบมืออาชีพที`, `/บริการนักสืบชั้นนำเพื่` | `/เกี่ยวกับเรา` |
-| `/en/private-investigator` | `/en` |
+| `/บริษัทนักสืบมืออาชีพที` | `/เกี่ยวกับเรา` |
+| `/บริการนักสืบชั้นนำเพื่` | `/เกี่ยวกับเรา` |
 | `/en/catch-a-cheating-partner` | `/en/cheating-spouse-investigator` |
 | `/en/personal-background-check-service` | `/en/background-check` |
-| `/en/asset-background-check`, `/en/trace-assets-before-lawsuit` | `/en/asset-investigation` |
+| `/en/asset-background-check` | `/en/asset-investigation` |
 | `/en/trace-people-and-debtors` | `/en/find-missing-person` |
-| `/en/social-media-investigation`, `/en/phone-usage-investigation` | `/en/cyber-investigation` |
-| `/en/hire-a-detective-online`, `/en/how-to-find-a-good-detective` | `/en/hire-a-private-detective` |
-| `/en/private-detective-pricing`, `/en/affordable-private-detective` | `/en/pricing` |
-| `/en/trusted-detective-agency`, `/en/leading-detective-services`, `/en/detective-services-overview` | `/en/about` |
+| `/en/social-media-investigation` | `/en/cyber-investigation` |
+| `/en/how-to-find-a-good-detective` | `/en/hire-a-private-detective` |
+| `/en/private-detective-pricing` | `/en/pricing` |
+| `/en/affordable-private-detective` | `/en/pricing` |
+| `/en/trusted-detective-agency` | `/en/about` |
+| `/en/leading-detective-services` | `/en/about` |
 
-**Deliberately not redirected**
+## Supporting guides retained
 
-- `/วิธีสืบทรัพย์ก่อนฟ้อง-เ` and `/en/evidence-for-adultery-lawsuit` — kept as supporting articles (the audit allowed either); the service pages link to them.
-- `/en/investigate-partner-before-marriage` → `/en/thai-partner-verification` — the partner page was rebuilt in the registry at its **existing** URL instead of moving; revisit only if a separate verification page ships (Days 31–90).
+- Online hiring: `/จ้างนักสืบออนไลน์`, `/en/hire-a-detective-online`.
+- Preparing an asset inquiry before filing suit: `/วิธีสืบทรัพย์ก่อนฟ้อง-เ`, `/en/trace-assets-before-lawsuit`.
+- Unknown/scam numbers: `/บริการตรวจสอบการใช้โทร`, `/en/phone-usage-investigation`.
+- Investigator definitions: `/private-investigator`, `/en/private-investigator`.
+- Service overview: `/บริการนักสืบ`, `/en/detective-services-overview`.
+- Adultery-evidence preparation, investigator qualities, agency definitions and online-fraud guidance remain supporting articles.
 
-## Thai summary / สรุปภาษาไทย
+The pre-marriage page remains a service at its existing URL. Contact pages remain reachable but are excluded from article cards.
 
-สร้างแผนที่ 301 ตามภาคผนวก C.3 ไว้แล้วแต่ **ปิดอยู่** จะทำงานเมื่อตั้งค่า `MARKETING_CONSOLIDATION_REDIRECTS=1` ใน Vercel เท่านั้น ก่อนเปิดให้ (1) เช็ค GSC ว่าหน้าเก่าหน้าไหนยังมี impressions แล้วย้ายประโยคที่มีประโยชน์ไปหน้าปลายทาง (2) ยืนยันว่าหน้าปลายทางใหม่ถูก index แล้ว (3) เปิดธง (4) ตรวจด้วย `curl -I` และส่ง sitemap ใหม่ใน GSC ย้อนกลับได้ทันทีด้วยการลบตัวแปรแล้ว deploy ใหม่
+## Optional permanent-redirect rollout
+
+1. Check Search Console Performance → Pages for source URLs and URL inspection for destinations. Do not infer rankings/indexing from HTTP 200.
+2. Retain useful unique copy in the destination before retiring source content. Original Markdown remains in the repository.
+3. Verify incoming links, translated counterparts and contact anchors.
+4. If permanent redirects are appropriate, set `MARKETING_CONSOLIDATION_REDIRECTS=1` in the intended Vercel environment and redeploy. Verify 308 → 200 with no chain or loop.
+5. Re-submit the sitemap and monitor source/destination performance together.
+
+To undo canonical consolidation, revert the reviewed source map/code. To undo the optional permanent-redirect setting, unset its variable and redeploy; clients may retain previously cached permanent redirects.
