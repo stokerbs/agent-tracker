@@ -7,12 +7,9 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { generateArticleNow } from "./actions";
-import { GenerateButton } from "./generate-button";
 
 export const metadata: Metadata = { title: "AI Articles" };
 export const dynamic = "force-dynamic";
-export const maxDuration = 120; // generation runs inside the "generate now" action
 
 interface Row {
   id: string;
@@ -43,21 +40,26 @@ export default async function MarketingArticlesPage() {
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
         title="บทความ AI"
-        description="สร้างบทความอัตโนมัติด้วย AI (เจาะคีย์เวิร์ดจากแอด) — ระบบจะร่างให้ แล้วส่งลิงก์อนุมัติเข้า LINE · ปกติรันอัตโนมัติ อังคาร & ศุกร์"
+        description="Codex ร่างบทความไทย อังกฤษ และจีนผ่านงานตามเวลาใน ChatGPT — อังคารและศุกร์ 09:00 น. เวลาไทย · ตรวจและอนุมัติร่างก่อนเผยแพร่"
       />
 
-      <form action={generateArticleNow} className="mb-6">
-        <GenerateButton />
-        <p className="mt-2 text-xs text-muted-foreground">
-          กดแล้ว AI จะร่างบทความใหม่ 1 ชิ้น (TH+EN) แล้วส่งลิงก์รีวิวเข้า LINE ของคุณให้กดอนุมัติ
+      <div className="mb-6 rounded-lg border bg-muted/30 p-4 text-sm">
+        <p>
+          ระบบสร้างร่างผ่านงานตามเวลาใน Codex โดยใช้โควตาแพ็กเกจ ChatGPT ของเจ้าของ
+          และแจ้งผลใน ChatGPT แทน LINE ร่างที่สร้างสำเร็จจะแสดงในรายการด้านล่าง
         </p>
-      </form>
+        <p className="mt-2 text-muted-foreground">
+          หากต้องการสร้างร่างเพิ่มเติม ให้สั่ง Codex ใน ChatGPT
+          หรือจัดการงานชื่อ “ร่างบทความ Detective Pulse” ในหน้ารวมงานตามเวลา
+          การรันขึ้นอยู่กับโควตาและสิทธิ์เข้าถึงแอปที่เชื่อมต่อ
+        </p>
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
           title="ยังไม่มีบทความ AI"
-          description="กด “สร้างบทความใหม่ตอนนี้” เพื่อให้ AI ร่างบทความแรก"
+          description="ร่างจากงานตามเวลาใน Codex จะแสดงที่นี่เมื่อสร้างสำเร็จ"
         />
       ) : (
         <Card>
