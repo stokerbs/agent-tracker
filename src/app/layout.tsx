@@ -9,6 +9,7 @@ import { SplashGate } from "@/components/layout/splash-gate";
 import { PwaRegister } from "@/components/pwa-register";
 import { DeferredGTM } from "@/components/marketing/deferred-gtm";
 import { isMarketingHost } from "@/lib/marketing/host";
+import { documentLanguage } from "@/lib/marketing/document-language";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -84,10 +85,8 @@ export default async function RootLayout({
   const hdrs = await headers();
   const host = hdrs.get("host");
   const showGtm = Boolean(gtmId) && isMarketingHost(host);
-  // /zh and /en marketing pages declare their own language (set by middleware);
-  // everything else follows the app locale cookie.
-  const marketingLang = hdrs.get("x-marketing-lang");
-  const htmlLang = marketingLang === "zh-CN" || marketingLang === "en" ? marketingLang : locale;
+  // The .com language follows the URL, independently of the app locale cookie.
+  const htmlLang = documentLanguage(host, hdrs.get("x-marketing-lang"), locale);
 
   return (
     <html lang={htmlLang} suppressHydrationWarning>
