@@ -24,10 +24,6 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/publish-article",
-      "schedule": "0 2 * * 2,5"
-    },
-    {
       "path": "/api/cron/weekly-digest",
       "schedule": "0 2 * * 1"
     },
