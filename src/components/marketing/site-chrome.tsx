@@ -7,6 +7,7 @@ import { ExitIntent } from "@/components/marketing/exit-intent";
 import { SiteNav, SiteFooterLinks } from "@/components/marketing/site-nav";
 import { FACTS } from "@/lib/marketing/facts";
 import { AttributionCapture } from "@/components/marketing/attribution-capture";
+import { MarketingDocumentLanguage } from "@/components/marketing/document-language";
 
 /**
  * Shared public marketing chrome (header + footer) for detectivepulse.com.
@@ -17,6 +18,7 @@ import { AttributionCapture } from "@/components/marketing/attribution-capture";
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <div className="theme-detective relative min-h-screen overflow-hidden bg-background font-sans text-foreground">
+      <MarketingDocumentLanguage />
       {/* Surveillance backdrop */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0 print:hidden">
         <div className="dp-grid absolute inset-0" />
