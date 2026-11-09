@@ -10,6 +10,7 @@ import { Breadcrumb } from "@/components/marketing/breadcrumb";
 import { ArticleJsonLd } from "@/components/marketing/json-ld";
 import { RelatedArticles } from "@/components/marketing/related-articles";
 import { getPublishedArticleBySlug, getPublishedArticles } from "@/lib/marketing/articles-db";
+import { CanonicalGuideNotice } from "@/components/marketing/canonical-guide-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,14 @@ export async function generateMetadata(
   const { slug } = await params;
   const a = await getPublishedArticleBySlug(slug, "en");
   if (!a) return {};
-  const canonical = `/en/articles/${a.en_slug}`;
+  const main = a.canonicalArticle ?? a;
+  const canonical = `/en/articles/${main.en_slug}`;
   const cover = getArticleCover(a.en_slug, a.en_title, "en");
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
     title: `${a.en_title}`,
     description: a.en_description,
-    alternates: { canonical, languages: { en: canonical, th: `/articles/${a.th_slug}`, ...(a.zh_slug ? { "zh-CN": `/zh/articles/${a.zh_slug}` } : {}) } },
+    alternates: { canonical, languages: { en: canonical, th: `/articles/${main.th_slug}`, ...(main.zh_slug ? { "zh-CN": `/zh/articles/${main.zh_slug}` } : {}), "x-default": canonical } },
     openGraph: {
       type: "article",
       url: `https://detectivepulse.com${canonical}`,
@@ -53,15 +55,16 @@ export default async function DbArticleEN(
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <ArticleJsonLd
+      {!a.canonicalArticle && <ArticleJsonLd
         headline={a.en_title}
         description={a.en_description}
         image={`https://detectivepulse.com${cover.src}`}
         url={`https://detectivepulse.com/en/articles/${a.en_slug}`}
         datePublished={a.published_at ?? undefined}
         inLanguage="en"
-      />
+      />}
       <Breadcrumb items={[{ name: "Home", href: "/en" }, { name: "Articles", href: "/en/articles" }, { name: a.en_title }]} />
+      {a.canonicalArticle && <CanonicalGuideNotice lang="en" href={`/en/articles/${a.canonicalArticle.en_slug}`} title={a.canonicalArticle.en_title} />}
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
           <ArticleCover slug={a.en_slug} title={a.en_title} lang="en" />

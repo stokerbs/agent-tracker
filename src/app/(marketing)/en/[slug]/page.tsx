@@ -18,6 +18,8 @@ import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 import { getServicePage, registryOnlySlugs, SERVICE_PAGES } from "@/lib/marketing/pages";
 import { CONTACT } from "@/lib/marketing/contact";
 import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
+import { canonicalMarketingHref, isSecondaryMarketingPath, primaryMarketingPath } from "@/lib/marketing/seo-canonical";
+import { CanonicalGuideNotice } from "@/components/marketing/canonical-guide-notice";
 
 export const dynamicParams = false; // translated pages + registry pages only; everything else 404s
 
@@ -63,10 +65,12 @@ export async function generateMetadata(
 
   const page = getMarketingPageEN(slug);
   if (!page) return {};
-  const canonicalPath = page.path; // /en/<slug> (no trailing slash)
+  const secondary = isSecondaryMarketingPath(page.href);
+  const canonicalPath = secondary ? primaryMarketingPath(page.href) : page.path;
   const th = EN_TO_TH[page.slug];
+  const thHref = th ? canonicalMarketingHref(`/${th}`) : undefined;
   // Reciprocal hreflang: the Chinese registry page for this slug, if any.
-  const zh = zhSlugForEn(page.slug);
+  const zh = zhSlugForEn(canonicalPath.replace(/^\/en\//, ""));
   const cover = getArticleCover(page.slug, page.title, "en", page);
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
@@ -74,10 +78,10 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { en: canonicalPath, ...(th ? { th: `/${th}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
+      languages: { en: canonicalPath, ...(thHref ? { th: thHref } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}), "x-default": canonicalPath },
     },
     openGraph: {
-      type: "article",
+      type: secondary ? "website" : "article",
       url: `https://detectivepulse.com${canonicalPath}`,
       title: page.seoTitle,
       description: page.description,
@@ -114,14 +118,15 @@ export default async function MarketingArticleEN(
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <ArticleJsonLd
+      {!isSecondaryMarketingPath(page.href) && <ArticleJsonLd
         headline={page.title}
         description={page.description}
         image={`https://detectivepulse.com${cover.src}`}
         url={`https://detectivepulse.com${page.path}`}
         inLanguage="en"
-      />
+      />}
       <Breadcrumb items={[{ name: "Home", href: "/en" }, { name: "Articles", href: "/en/articles" }, { name: page.title }]} />
+      {isSecondaryMarketingPath(page.href) && <CanonicalGuideNotice lang="en" href={primaryMarketingPath(page.href)} title={getServicePage("en", primaryMarketingPath(page.href).replace(/^\/en\//, ""))?.h1 ?? "Related service"} />}
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
           <ArticleCover

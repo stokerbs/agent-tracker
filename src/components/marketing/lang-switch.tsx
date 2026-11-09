@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Globe, ChevronDown, Check } from "lucide-react";
 import { EN_TO_TH, TH_TO_EN } from "@/lib/marketing/i18n";
 import { zhLinkFor, zhSlugForEn } from "@/lib/marketing/zh/nav";
+import { canonicalMarketingHref } from "@/lib/marketing/seo-canonical";
 
 /**
  * Marketing language switcher (TH / EN / 中文) as a compact dropdown — the button
@@ -81,7 +82,7 @@ export function LangSwitch() {
           {options.map((o) => (
             <Link
               key={o.key}
-              href={o.href}
+              href={canonicalMarketingHref(o.href) ?? o.href}
               onClick={() => setOpen(false)}
               className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-muted ${o.active ? "font-semibold text-foreground" : "text-muted-foreground"}`}
             >

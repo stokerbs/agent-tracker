@@ -58,8 +58,8 @@ const ARTICLE_SLUGS = [
   "hire-a-detective-online",
   "online-fraud-investigation",
   "qualities-of-a-good-detective",
-  "private-detective-pricing",
-  "investigate-partner-before-marriage",
+  "phone-usage-investigation",
+  "trace-assets-before-lawsuit",
   "what-is-a-detective-agency",
 ];
 

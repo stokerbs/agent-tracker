@@ -71,7 +71,8 @@ describe("consolidation redirects (Appendix C.3)", () => {
     expect(th?.source).toBe(encodeURI("/นักสืบคดีชู้สาว-รับสืบค"));
     expect(th?.source).toMatch(/^\/%E0/);
     expect(rules.every((r) => r.permanent)).toBe(true);
-    expect(isConsolidatedSource("/en/private-investigator/")).toBe(true);
+    expect(isConsolidatedSource("/en/private-detective-pricing/")).toBe(true);
+    expect(isConsolidatedSource("/en/private-investigator/")).toBe(false);
     expect(isConsolidatedSource("/en/pricing")).toBe(false);
   });
 });

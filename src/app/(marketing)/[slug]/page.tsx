@@ -18,6 +18,8 @@ import { zhSlugForEn } from "@/lib/marketing/zh/nav";
 import { getServicePage, registryOnlySlugs, SERVICE_PAGES } from "@/lib/marketing/pages";
 import { CONTACT } from "@/lib/marketing/contact";
 import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
+import { canonicalMarketingHref, isSecondaryMarketingPath, primaryMarketingPath } from "@/lib/marketing/seo-canonical";
+import { CanonicalGuideNotice } from "@/components/marketing/canonical-guide-notice";
 
 export const dynamicParams = false; // migrated pages + registry pages only; everything else 404s
 
@@ -68,10 +70,12 @@ export async function generateMetadata(
   // Next strips trailing slashes (308) → the page serves at the non-trailing
   // path; keep canonical/OG on that exact served URL so they don't point at a
   // redirect. The old WP trailing-slash URLs 308 here (Google honors it).
-  const canonicalPath = page.path.replace(/\/+$/, "") || "/";
+  const secondary = isSecondaryMarketingPath(page.href);
+  const canonicalPath = secondary ? primaryMarketingPath(page.href) : page.path.replace(/\/+$/, "") || "/";
   const en = TH_TO_EN[page.slug];
+  const enHref = en ? canonicalMarketingHref(`/en/${en}`) : undefined;
   // Reciprocal hreflang: the Chinese registry page for this slug, if any.
-  const zh = en ? zhSlugForEn(en) : undefined;
+  const zh = enHref ? zhSlugForEn(enHref.replace(/^\/en\//, "")) : undefined;
   const cover = getArticleCover(page.slug, page.title, "th", page);
   const ogImage = `https://detectivepulse.com${cover.src}`;
   return {
@@ -79,10 +83,10 @@ export async function generateMetadata(
     description: page.description,
     alternates: {
       canonical: canonicalPath,
-      languages: { th: canonicalPath, ...(en ? { en: `/en/${en}` } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}) },
+      languages: { th: canonicalPath, ...(enHref ? { en: enHref } : {}), ...(zh ? { "zh-CN": `/zh/${zh}` } : {}), "x-default": enHref ?? canonicalPath },
     },
     openGraph: {
-      type: "article",
+      type: secondary ? "website" : "article",
       url: `https://detectivepulse.com${canonicalPath}`,
       title: page.seoTitle,
       description: page.description,
@@ -120,14 +124,15 @@ export default async function MarketingArticle(
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <ArticleJsonLd
+      {!isSecondaryMarketingPath(page.href) && <ArticleJsonLd
         headline={page.title}
         description={page.description}
         image={`https://detectivepulse.com${cover.src}`}
         url={`https://detectivepulse.com${page.path.replace(/\/+$/, "") || "/"}`}
         inLanguage="th"
-      />
+      />}
       <Breadcrumb items={[{ name: "หน้าแรก", href: "/" }, { name: "บทความ", href: "/articles" }, { name: page.title }]} />
+      {isSecondaryMarketingPath(page.href) && <CanonicalGuideNotice lang="th" href={primaryMarketingPath(page.href)} title={getServicePage("th", primaryMarketingPath(page.href).slice(1))?.h1 ?? "บริการที่เกี่ยวข้อง"} />}
       <article className="mt-6">
         <div className="overflow-hidden rounded-xl border border-border">
           <ArticleCover

@@ -28,28 +28,25 @@ export const CONSOLIDATION_REDIRECTS: ConsolidationRedirect[] = [
   { from: "/บริการสืบประวัติบุคคลด", to: "/สืบทรัพย์สิน" },
   { from: "/จ้างนักสืบตามหาคน", to: "/สืบตามหาคน" },
   { from: "/บริการสืบค้นข้อมูลไอที", to: "/นักสืบไอที" },
-  { from: "/บริการตรวจสอบการใช้โทร", to: "/นักสืบไอที" },
   { from: "/จ้างนักสืบ-ราคาถูก", to: "/ราคานักสืบ" },
   { from: "/วิธีการคิดราคาจ้างนักส", to: "/ราคานักสืบ" },
   { from: "/การหานักสืบเชี่ยวชาญ-คำ", to: "/จ้างนักสืบ" },
   { from: "/บริษัทนักสืบมืออาชีพที", to: "/เกี่ยวกับเรา" },
   { from: "/บริการนักสืบชั้นนำเพื่", to: "/เกี่ยวกับเรา" },
   // ── English ─────────────────────────────────────────────────────────────
-  { from: "/en/private-investigator", to: "/en" },
   { from: "/en/catch-a-cheating-partner", to: "/en/cheating-spouse-investigator" },
   { from: "/en/personal-background-check-service", to: "/en/background-check" },
   { from: "/en/asset-background-check", to: "/en/asset-investigation" },
-  { from: "/en/trace-assets-before-lawsuit", to: "/en/asset-investigation" },
   { from: "/en/trace-people-and-debtors", to: "/en/find-missing-person" },
   { from: "/en/social-media-investigation", to: "/en/cyber-investigation" },
-  { from: "/en/phone-usage-investigation", to: "/en/cyber-investigation" },
-  { from: "/en/hire-a-detective-online", to: "/en/hire-a-private-detective" },
   { from: "/en/how-to-find-a-good-detective", to: "/en/hire-a-private-detective" },
   { from: "/en/private-detective-pricing", to: "/en/pricing" },
   { from: "/en/affordable-private-detective", to: "/en/pricing" },
   { from: "/en/trusted-detective-agency", to: "/en/about" },
   { from: "/en/leading-detective-services", to: "/en/about" },
-  { from: "/en/detective-services-overview", to: "/en/about" },
+  // Distinct supporting guides remain separate: phone/scam-number checks,
+  // online hiring, pre-lawsuit asset preparation, PI definitions and the
+  // service overview. They do not share the service/about page's intent.
   // Not included (deliberately): /en/investigate-partner-before-marriage →
   // /en/thai-partner-verification. The partner page was rebuilt in the
   // registry at its existing URL; revisit if a separate verification page ships.

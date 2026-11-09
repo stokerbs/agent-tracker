@@ -6,6 +6,7 @@ import { SERVICE_PAGES } from "@/lib/marketing/pages";
 import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
 import { ArticleCover } from "@/components/marketing/article-cover";
 import { SectionHeading } from "@/components/marketing/ui";
+import { isArticleLibraryPage } from "@/lib/marketing/seo-canonical";
 
 export const metadata: Metadata = {
   title: "Articles & Resources",
@@ -25,7 +26,7 @@ export default async function ArticlesIndexEN() {
   const registry = new Set(SERVICE_PAGES.en.map((p) => p.slug));
   // Once the consolidation 301s are live, their sources leave the index too.
   const redirected = consolidationRedirectsEnabled();
-  const pages = getMarketingPagesEN().filter((p) => !registry.has(p.slug) && !(redirected && isConsolidatedSource(p.href)));
+  const pages = getMarketingPagesEN().filter((p) => isArticleLibraryPage(p.href, registry, p.slug) && !(redirected && isConsolidatedSource(p.href)));
   const aiArticles = await getPublishedArticles();
   const cards = [
     ...aiArticles.map((a) => ({ key: a.id, href: `/en/articles/${a.en_slug}`, slug: a.en_slug, title: a.en_title, description: a.en_description })),
@@ -35,6 +36,7 @@ export default async function ArticlesIndexEN() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
+        as="h1"
         eyebrow="Case Files · Resources"
         title="Articles &amp; Resources"
         sub={`${cards.length} guides on professional private investigation`}

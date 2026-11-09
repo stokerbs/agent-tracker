@@ -28,6 +28,7 @@ export default function CareersPageEN() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
       <SectionHeading
+        as="h1"
         eyebrow="Recruitment · Join us"
         title="Join the Detective Pulse team"
         sub="We're looking for people who are meticulous, patient, discreet and relentless — if that's you, send us your application."

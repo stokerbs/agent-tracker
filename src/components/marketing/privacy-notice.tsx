@@ -12,7 +12,7 @@ export function PrivacyNotice({ notice }: { notice: Notice }) {
   const eyebrow = { th: "Legal · ความเป็นส่วนตัว", en: "Legal · Privacy", zh: "Legal · 隐私" }[notice.lang];
   return (
     <article className="mx-auto max-w-3xl px-4 py-14">
-      <SectionHeading eyebrow={eyebrow} title={notice.h1} sub={notice.intro} />
+      <SectionHeading as="h1" eyebrow={eyebrow} title={notice.h1} sub={notice.intro} />
       <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
         {notice.updatedLabel}: <time dateTime={PRIVACY_UPDATED}>{PRIVACY_UPDATED}</time>
       </p>

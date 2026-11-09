@@ -6,6 +6,7 @@ import { caseStudiesIndexable } from "@/lib/marketing/case-studies";
 import { SERVICE_PAGES } from "@/lib/marketing/pages";
 import { registryOnlySlugs } from "@/lib/marketing/pages";
 import { consolidationRedirectsEnabled, isConsolidatedSource } from "@/lib/marketing/redirects";
+import { isSecondaryMarketingPath } from "@/lib/marketing/seo-canonical";
 
 const BASE = "https://detectivepulse.com";
 
@@ -26,7 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   // Once the consolidation 301s are live, their sources leave the sitemap.
   const redirected = consolidationRedirectsEnabled();
-  const keep = (decodedPath: string) => !redirected || !isConsolidatedSource(decodedPath);
+  const keep = (decodedPath: string) => !isSecondaryMarketingPath(decodedPath)
+    && (!redirected || !isConsolidatedSource(decodedPath));
   // TH/EN case-study pages stay out of the sitemap until ≥ 3 real cases exist.
   const casesHidden = new Set(
     [...SERVICE_PAGES.th, ...SERVICE_PAGES.en].filter((p) => p.caseStudies && !caseStudiesIndexable()).map((p) => p.slug),

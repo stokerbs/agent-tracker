@@ -24,7 +24,7 @@ export default async function ArticlesIndexZH() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-16">
-      <SectionHeading eyebrow="Case Files · 文章库" title="文章与指南" sub={`${articles.length} 篇私家侦探相关文章`} />
+      <SectionHeading as="h1" eyebrow="Case Files · 文章库" title="文章与指南" sub={`${articles.length} 篇私家侦探相关文章`} />
       {articles.length === 0 ? (
         <p className="mt-10 text-center text-muted-foreground">暂无文章，敬请期待。</p>
       ) : (
